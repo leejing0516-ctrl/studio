@@ -25,7 +25,7 @@ export default function RewardsPage() {
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const { toast } = useToast();
-  const { studentData, updateStudentPoints } = useContext(StudentDataContext);
+  const { studentData, updateStudentData } = useContext(StudentDataContext);
   const { students, setStudents } = useContext(StudentManagementContext);
   const { rewards, setRewards } = useContext(RewardContext);
 
@@ -53,7 +53,7 @@ export default function RewardsPage() {
       } else {
         // 更新學生點數 (StudentDataContext)
         const newPoints = studentData.points - selectedReward.cost;
-        updateStudentPoints(newPoints);
+        updateStudentData({ points: newPoints });
         
         // 更新學生總名單中的點數 (StudentManagementContext)
         setStudents(students.map(s => 

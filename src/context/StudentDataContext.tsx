@@ -2,7 +2,6 @@
 
 import { createContext, useState, ReactNode } from 'react';
 import type { PortfolioItem, Student } from '@/lib/types';
-import { portfolio as initialPortfolio } from '@/lib/placeholder-data';
 
 interface StudentData {
   student: Student | null;
@@ -13,36 +12,40 @@ interface StudentData {
 interface StudentDataContextType {
   studentData: StudentData;
   setStudentData: React.Dispatch<React.SetStateAction<StudentData>>;
-  updateStudentPoints: (newPoints: number) => void;
+  updateStudentData: (updatedData: Partial<StudentData>) => void;
 }
 
-export const StudentDataContext = createContext<StudentDataContextType>({
-  studentData: {
+const defaultStudentData = {
     student: null,
     points: 0,
-    portfolio: initialPortfolio,
-  },
+    portfolio: [],
+};
+
+export const StudentDataContext = createContext<StudentDataContextType>({
+  studentData: defaultStudentData,
   setStudentData: () => {},
-  updateStudentPoints: () => {},
+  updateStudentData: () => {},
 });
 
 export const StudentDataProvider = ({ children }: { children: ReactNode }) => {
-  const [studentData, setStudentData] = useState<StudentData>({
-    student: null,
-    points: 0,
-    portfolio: initialPortfolio,
-  });
+  const [studentData, setStudentData] = useState<StudentData>(defaultStudentData);
 
-  const updateStudentPoints = (newPoints: number) => {
-    setStudentData(prevData => ({
-        ...prevData,
-        points: newPoints,
-        student: prevData.student ? { ...prevData.student, points: newPoints } : null,
-    }));
+  const updateStudentData = (updatedData: Partial<StudentData>) => {
+    setStudentData(prevData => {
+        const newStudent = updatedData.student !== undefined ? updatedData.student : prevData.student;
+        const newPoints = updatedData.points !== undefined ? updatedData.points : prevData.points;
+        const newPortfolio = updatedData.portfolio !== undefined ? updatedData.portfolio : prevData.portfolio;
+
+        return {
+            ...prevData,
+            ...updatedData,
+            student: newStudent ? { ...newStudent, points: newPoints, portfolio: newPortfolio } : null,
+        }
+    });
   };
 
   return (
-    <StudentDataContext.Provider value={{ studentData, setStudentData, updateStudentPoints }}>
+    <StudentDataContext.Provider value={{ studentData, setStudentData, updateStudentData }}>
       {children}
     </StudentDataContext.Provider>
   );

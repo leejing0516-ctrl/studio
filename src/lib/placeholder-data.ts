@@ -1,9 +1,20 @@
-import type { Student, Reward, Stock, PortfolioItem } from "./types";
+import type { Student, Reward, Stock } from "./types";
+
+export const portfolio = [
+    { ticker: "EDU", name: "學習公司", shares: 10, avgCost: 140.00 },
+    { ticker: "SCI", name: "科學解決方案", shares: 5, avgCost: 220.00 },
+    { ticker: "TECH", name: "創新有限責任公司", shares: 2, avgCost: 560.00 },
+];
 
 export const students: Student[] = [
-  { id: "S001", name: "愛麗絲·強森", points: 1250, avatar: "https://picsum.photos/seed/alice/100", password: "password123" },
-  { id: "S002", name: "鮑伯·威廉斯", points: 800, avatar: "https://picsum.photos/seed/bob/100", password: "password123" },
-  { id: "S003", name: "查理·布朗", points: 1500, avatar: "https://picsum.photos/seed/charlie/100", password: "password123" },
+  { id: "S001", name: "愛麗絲·強森", points: 1250, avatar: "https://picsum.photos/seed/alice/100", password: "password123", portfolio: [
+      { ticker: "EDU", name: "學習公司", shares: 10, avgCost: 140.00 },
+      { ticker: "SCI", name: "科學解決方案", shares: 5, avgCost: 220.00 },
+  ] },
+  { id: "S002", name: "鮑伯·威廉斯", points: 800, avatar: "https://picsum.photos/seed/bob/100", password: "password123", portfolio: [
+      { ticker: "TECH", name: "創新有限責任公司", shares: 2, avgCost: 560.00 },
+  ] },
+  { id: "S003", name: "查理·布朗", points: 1500, avatar: "https://picsum.photos/seed/charlie/100", password: "password123", portfolio: [] },
 ];
 
 export const rewards: Reward[] = [
@@ -21,10 +32,4 @@ export const stocks: Stock[] = [
     { ticker: "SCI", name: "科學解決方案", price: 234.50, change: 5.60, changePercent: 2.45, marketCap: "2.1兆" },
     { ticker: "ART", name: "創意公司", price: 45.30, change: 0.25, changePercent: 0.55, marketCap: "3000億" },
     { ticker: "TECH", name: "創新有限責任公司", price: 550.00, change: -12.30, changePercent: -2.18, marketCap: "5.5兆" },
-];
-
-export const portfolio: PortfolioItem[] = [
-    { ticker: "EDU", name: "學習公司", shares: 10, avgCost: 140.00, currentValue: 1507.50, totalGain: 107.50, totalGainPercent: 7.68 },
-    { ticker: "SCI", name: "科學解決方案", shares: 5, avgCost: 220.00, currentValue: 1172.50, totalGain: 72.50, totalGainPercent: 6.59 },
-    { ticker: "TECH", name: "創新有限責任公司", shares: 2, avgCost: 560.00, currentValue: 1100.00, totalGain: -20.00, totalGainPercent: -1.79 },
 ];

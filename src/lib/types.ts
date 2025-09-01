@@ -4,6 +4,7 @@ export type Student = {
   points: number;
   avatar: string;
   password?: string;
+  portfolio: PortfolioItem[];
 };
 
 export type Reward = {
@@ -29,7 +30,4 @@ export type PortfolioItem = {
   name: string;
   shares: number;
   avgCost: number;
-  currentValue: number;
-  totalGain: number;
-  totalGainPercent: number;
 };

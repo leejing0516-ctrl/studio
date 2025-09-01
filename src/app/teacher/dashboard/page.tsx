@@ -139,6 +139,7 @@ export default function TeacherDashboardPage() {
         password,
         points: 0,
         avatar: `https://picsum.photos/seed/${id}/100`,
+        portfolio: [],
     };
     setStudents([...students, newStudent]);
     setIsAddStudentDialogOpen(false);

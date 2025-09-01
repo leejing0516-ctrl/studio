@@ -61,7 +61,7 @@ export default function StocksPage() {
   const [tradeType, setTradeType] = useState<"buy" | "sell">("buy");
   const [tradeShares, setTradeShares] = useState(0);
   const { toast } = useToast();
-  const { studentData, setStudentData, updateStudentPoints } = useContext(StudentDataContext);
+  const { studentData, updateStudentData } = useContext(StudentDataContext);
   const { students, setStudents } = useContext(StudentManagementContext);
 
   const handleTradeClick = (stock: Stock, type: "buy" | "sell") => {
@@ -82,6 +82,7 @@ export default function StocksPage() {
     }
 
     const totalCost = tradeShares * selectedStock.price;
+    const currentStudentId = studentData.student.id;
 
     if (tradeType === "buy") {
       if (studentData.points < totalCost) {
@@ -94,48 +95,46 @@ export default function StocksPage() {
       }
 
       const newPoints = studentData.points - totalCost;
-      updateStudentPoints(newPoints);
-      setStudents(students.map(s => s.id === studentData.student?.id ? { ...s, points: newPoints } : s));
+      
+      const existingHolding = studentData.portfolio.find(
+        (item) => item.ticker === selectedStock.ticker
+      );
+      
+      let newPortfolio: PortfolioItem[];
 
-      setStudentData((prevData) => {
-        const existingHolding = prevData.portfolio.find(
-          (item) => item.ticker === selectedStock.ticker
-        );
+      if (existingHolding) {
+        newPortfolio = studentData.portfolio.map((item) => {
+          if (item.ticker === selectedStock.ticker) {
+            const newShares = item.shares + tradeShares;
+            const newTotalCost = item.avgCost * item.shares + totalCost;
+            const newAvgCost = newTotalCost / newShares;
+            return { ...item, shares: newShares, avgCost: newAvgCost };
+          }
+          return item;
+        });
+      } else {
+        newPortfolio = [
+          ...studentData.portfolio,
+          {
+            ticker: selectedStock.ticker,
+            name: selectedStock.name,
+            shares: tradeShares,
+            avgCost: selectedStock.price,
+          },
+        ];
+      }
 
-        let newPortfolio: PortfolioItem[];
-
-        if (existingHolding) {
-          newPortfolio = prevData.portfolio.map((item) => {
-            if (item.ticker === selectedStock.ticker) {
-              const newShares = item.shares + tradeShares;
-              const newTotalCost = item.avgCost * item.shares + totalCost;
-              const newAvgCost = newTotalCost / newShares;
-              return { ...item, shares: newShares, avgCost: newAvgCost };
-            }
-            return item;
-          });
-        } else {
-          newPortfolio = [
-            ...prevData.portfolio,
-            {
-              ticker: selectedStock.ticker,
-              name: selectedStock.name,
-              shares: tradeShares,
-              avgCost: selectedStock.price,
-              currentValue: 0,
-              totalGain: 0,
-              totalGainPercent: 0,
-            },
-          ];
-        }
-
-        return { ...prevData, portfolio: newPortfolio };
-      });
+      // Update local context for immediate UI feedback
+      updateStudentData({ points: newPoints, portfolio: newPortfolio });
+      
+      // Update global context for persistence
+      setStudents(students.map(s => s.id === currentStudentId ? { ...s, points: newPoints, portfolio: newPortfolio } : s));
 
       toast({
         title: "買入成功！",
         description: `您已成功買入 ${tradeShares} 股 ${selectedStock.name}。`,
       });
+
     } else { // Sell
       const holding = studentData.portfolio.find(item => item.ticker === selectedStock.ticker);
 
@@ -149,19 +148,18 @@ export default function StocksPage() {
       }
 
       const newPoints = studentData.points + totalCost;
-      updateStudentPoints(newPoints);
-      setStudents(students.map(s => s.id === studentData.student?.id ? { ...s, points: newPoints } : s));
-
-      setStudentData((prevData) => {
-        const newPortfolio = prevData.portfolio.map(item => {
+      const newPortfolio = studentData.portfolio.map(item => {
           if (item.ticker === selectedStock.ticker) {
             return { ...item, shares: item.shares - tradeShares };
           }
           return item;
         }).filter(item => item.shares > 0); // Remove if shares are zero
 
-        return { ...prevData, portfolio: newPortfolio };
-      });
+      // Update local context for immediate UI feedback
+      updateStudentData({ points: newPoints, portfolio: newPortfolio });
+
+      // Update global context for persistence
+      setStudents(students.map(s => s.id === currentStudentId ? { ...s, points: newPoints, portfolio: newPortfolio } : s));
 
       toast({
         title: "賣出成功！",

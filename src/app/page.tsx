@@ -30,11 +30,11 @@ export default function HomePage() {
         title: "登入成功！",
         description: `歡迎回來，${student.name}！`,
       });
-      // 儲存完整學生資料到 Context
+      // 儲存完整學生資料到 Context，包括投資組合
       setStudentData({
           student: student,
           points: student.points,
-          portfolio: [], // 這裡應從後端或 LocalStorage 取得該學生的投資組合
+          portfolio: student.portfolio || [],
       });
       router.push('/dashboard');
     } else {
