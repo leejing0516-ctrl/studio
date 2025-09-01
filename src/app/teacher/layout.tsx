@@ -50,7 +50,7 @@ export default function TeacherLayout({
           <div className="flex items-center gap-2">
             <Logo className="size-8" />
             <span className="text-lg font-semibold group-data-[collapsible=icon]:hidden">
-              FinLit 教室
+              南梓實小虛擬銀行
             </span>
           </div>
         </SidebarHeader>

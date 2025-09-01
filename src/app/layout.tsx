@@ -6,8 +6,8 @@ import { RewardProvider } from "@/context/RewardContext";
 import { StudentManagementProvider } from "@/context/StudentManagementContext";
 
 export const metadata: Metadata = {
-  title: "FinLit Classroom",
-  description: "A vibrant rewards and financial literacy app for students.",
+  title: "南梓實小虛擬銀行",
+  description: "一個為學生設計，充滿活力的獎勵與金融素養應用程式。",
 };
 
 export default function RootLayout({

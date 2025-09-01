@@ -52,7 +52,7 @@ export default function HomePage() {
       <header className="mb-12 text-center animate-in fade-in slide-in-from-top duration-700">
         <Logo className="h-16 w-auto mx-auto mb-4" />
         <h1 className="text-4xl md:text-5xl font-bold font-headline text-foreground">
-          歡迎來到 FinLit 教室
+          歡迎來到南梓實小虛擬銀行
         </h1>
         <p className="text-lg text-muted-foreground mt-2 max-w-2xl mx-auto">
           您通往金融素養的門戶，在這裡學習金錢知識既有回報又充滿樂趣！
@@ -125,7 +125,7 @@ export default function HomePage() {
         </Card>
       </div>
       <footer className="text-center mt-12 text-muted-foreground text-sm">
-        <p>&copy; {new Date().getFullYear()} FinLit 教室. 版權所有。</p>
+        <p>&copy; {new Date().getFullYear()} 南梓實小虛擬銀行. 版權所有。</p>
       </footer>
     </div>
   );

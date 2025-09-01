@@ -10,7 +10,7 @@ const Logo = ({ className }: { className?: string }) => (
     strokeLinecap="round"
     strokeLinejoin="round"
     className={cn("text-primary", className)}
-    aria-label="FinLit Classroom Logo"
+    aria-label="南梓實小虛擬銀行 Logo"
   >
     <defs>
       <linearGradient id="logo-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
