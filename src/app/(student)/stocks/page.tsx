@@ -216,7 +216,11 @@ export default function StocksPage() {
                         ${stock.price.toFixed(2)}
                       </TableCell>
                       <TableCell className="text-right">
-                          <span className={cn("flex items-center justify-end gap-1", stock.change < 0 && "text-destructive")}>
+                          <span className={cn(
+                            "flex items-center justify-end gap-1",
+                            stock.change > 0 && "text-destructive",
+                            stock.change < 0 && "text-success",
+                          )}>
                               {stock.change > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
                               {Math.abs(stock.change).toFixed(2)} ({Math.abs(stock.changePercent).toFixed(2)}%)
                           </span>
@@ -261,7 +265,11 @@ export default function StocksPage() {
                                           <TableCell className="text-right">{item.shares}</TableCell>
                                           <TableCell className="text-right">${item.currentValue.toFixed(2)}</TableCell>
                                           <TableCell className="text-right">
-                                              <span className={cn("flex items-center justify-end gap-1", item.totalGain < 0 && "text-destructive")}>
+                                              <span className={cn(
+                                                "flex items-center justify-end gap-1",
+                                                item.totalGain > 0 && "text-destructive",
+                                                item.totalGain < 0 && "text-success",
+                                              )}>
                                                   {item.totalGain >= 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
                                                   ${Math.abs(item.totalGain).toFixed(2)} ({item.totalGainPercent.toFixed(2)}%)
                                               </span>
