@@ -32,3 +32,4 @@ export type PortfolioItem = {
   totalGain: number;
   totalGainPercent: number;
 };
+

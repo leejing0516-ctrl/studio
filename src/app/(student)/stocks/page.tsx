@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState } from "react";
+import { useState, useContext } from "react";
 import {
   Card,
   CardContent,
@@ -20,8 +19,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { stocks, portfolio } from "@/lib/placeholder-data";
-import type { Stock } from "@/lib/types";
+import { stocks as marketStocks } from "@/lib/placeholder-data";
+import type { Stock, PortfolioItem } from "@/lib/types";
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Area, AreaChart, XAxis, YAxis } from "recharts"
@@ -37,6 +36,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { StudentDataContext } from "@/context/StudentDataContext";
 
 const portfolioHistory = [
   { date: "2024-01-01", value: 2000 },
@@ -58,32 +58,120 @@ export default function StocksPage() {
   const [isTradeDialogOpen, setIsTradeDialogOpen] = useState(false);
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
   const [tradeType, setTradeType] = useState<"buy" | "sell">("buy");
-  const [tradeAmount, setTradeAmount] = useState(0);
+  const [tradeShares, setTradeShares] = useState(0);
   const { toast } = useToast();
+  const { studentData, setStudentData } = useContext(StudentDataContext);
 
   const handleTradeClick = (stock: Stock, type: "buy" | "sell") => {
     setSelectedStock(stock);
     setTradeType(type);
     setIsTradeDialogOpen(true);
-    setTradeAmount(0);
+    setTradeShares(0);
   };
 
   const handleConfirmTrade = () => {
-    if (selectedStock && tradeAmount > 0) {
-      // 在此處處理交易邏輯
+    if (!selectedStock || tradeShares <= 0) {
       toast({
-        title: `交易成功！`,
-        description: `您已成功${tradeType === 'buy' ? '買入' : '賣出'} ${tradeAmount} 股 ${selectedStock.name}。`,
+        title: "交易失敗",
+        description: "請輸入有效的股數。",
+        variant: "destructive",
       });
-      setIsTradeDialogOpen(false);
-    } else {
-        toast({
-            title: "交易失敗",
-            description: "請輸入有效的股數。",
-            variant: "destructive"
-        })
+      return;
     }
+
+    const totalCost = tradeShares * selectedStock.price;
+
+    if (tradeType === "buy") {
+      if (studentData.points < totalCost) {
+        toast({
+          title: "點數不足",
+          description: `您需要 ${totalCost.toLocaleString()} 點才能完成此交易。`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setStudentData((prevData) => {
+        const newPoints = prevData.points - totalCost;
+        const existingHolding = prevData.portfolio.find(
+          (item) => item.ticker === selectedStock.ticker
+        );
+
+        let newPortfolio: PortfolioItem[];
+
+        if (existingHolding) {
+          newPortfolio = prevData.portfolio.map((item) => {
+            if (item.ticker === selectedStock.ticker) {
+              const newShares = item.shares + tradeShares;
+              const newTotalCost = item.avgCost * item.shares + totalCost;
+              const newAvgCost = newTotalCost / newShares;
+              return { ...item, shares: newShares, avgCost: newAvgCost };
+            }
+            return item;
+          });
+        } else {
+          newPortfolio = [
+            ...prevData.portfolio,
+            {
+              ticker: selectedStock.ticker,
+              name: selectedStock.name,
+              shares: tradeShares,
+              avgCost: selectedStock.price,
+              currentValue: 0, // This will be updated in the portfolio view
+              totalGain: 0,
+              totalGainPercent: 0,
+            },
+          ];
+        }
+
+        return { ...prevData, points: newPoints, portfolio: newPortfolio };
+      });
+
+      toast({
+        title: "買入成功！",
+        description: `您已成功買入 ${tradeShares} 股 ${selectedStock.name}。`,
+      });
+    } else { // Sell
+      const holding = studentData.portfolio.find(item => item.ticker === selectedStock.ticker);
+
+      if (!holding || holding.shares < tradeShares) {
+        toast({
+          title: "持股不足",
+          description: `您沒有足夠的 ${selectedStock.name} 股份可供出售。`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setStudentData((prevData) => {
+        const newPoints = prevData.points + totalCost;
+        const newPortfolio = prevData.portfolio.map(item => {
+          if (item.ticker === selectedStock.ticker) {
+            return { ...item, shares: item.shares - tradeShares };
+          }
+          return item;
+        }).filter(item => item.shares > 0); // Remove if shares are zero
+
+        return { ...prevData, points: newPoints, portfolio: newPortfolio };
+      });
+
+      toast({
+        title: "賣出成功！",
+        description: `您已成功賣出 ${tradeShares} 股 ${selectedStock.name}。`,
+      });
+    }
+
+    setIsTradeDialogOpen(false);
   };
+  
+  const portfolioWithValue = studentData.portfolio.map(item => {
+    const marketInfo = marketStocks.find(s => s.ticker === item.ticker);
+    const currentValue = marketInfo ? marketInfo.price * item.shares : 0;
+    const totalCost = item.avgCost * item.shares;
+    const totalGain = currentValue - totalCost;
+    const totalGainPercent = totalCost > 0 ? (totalGain / totalCost) * 100 : 0;
+    return { ...item, currentValue, totalGain, totalGainPercent };
+  });
 
   return (
     <>
@@ -108,11 +196,11 @@ export default function StocksPage() {
                     <TableHead className="text-right">價格</TableHead>
                     <TableHead className="text-right">變動</TableHead>
                     <TableHead className="text-right">市值</TableHead>
-                    <TableHead className="text-right w-[150px]">操作</TableHead>
+                    <TableHead className="text-right w-[200px]">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {stocks.map((stock) => (
+                  {marketStocks.map((stock) => (
                     <TableRow key={stock.ticker}>
                       <TableCell>
                         <div className="font-medium">{stock.ticker}</div>
@@ -129,8 +217,8 @@ export default function StocksPage() {
                       </TableCell>
                       <TableCell className="text-right">{stock.marketCap}</TableCell>
                       <TableCell className="text-right">
-                        <Button size="sm" variant="outline" className="mr-2" onClick={() => handleTradeClick(stock, "buy")}>買入</Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleTradeClick(stock, "sell")}>賣出</Button>
+                        <Button size="sm" className="mr-2" onClick={() => handleTradeClick(stock, "buy")}>買入</Button>
+                        <Button size="sm" variant="outline" onClick={() => handleTradeClick(stock, "sell")}>賣出</Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -145,7 +233,7 @@ export default function StocksPage() {
                   <Card>
                       <CardHeader>
                           <CardTitle>我的投資組合</CardTitle>
-                          <CardDescription>您目前的持股。</CardDescription>
+                          <CardDescription>您目前的持股。您有 {studentData.points.toLocaleString()} 點數可用。</CardDescription>
                       </CardHeader>
                       <CardContent>
                           <Table>
@@ -153,12 +241,12 @@ export default function StocksPage() {
                                   <TableRow>
                                       <TableHead>股票</TableHead>
                                       <TableHead className="text-right">股數</TableHead>
-                                      <TableHead className="text-right">價值</TableHead>
+                                      <TableHead className="text-right">目前價值</TableHead>
                                       <TableHead className="text-right">總損益</TableHead>
                                   </TableRow>
                               </TableHeader>
                               <TableBody>
-                                  {portfolio.map((item) => (
+                                  {portfolioWithValue.length > 0 ? portfolioWithValue.map((item) => (
                                       <TableRow key={item.ticker}>
                                           <TableCell>
                                               <div className="font-medium">{item.ticker}</div>
@@ -173,7 +261,11 @@ export default function StocksPage() {
                                               </span>
                                           </TableCell>
                                       </TableRow>
-                                  ))}
+                                  )) : (
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="text-center h-24">您目前沒有任何持股。</TableCell>
+                                    </TableRow>
+                                  )}
                               </TableBody>
                           </Table>
                       </CardContent>
@@ -212,6 +304,7 @@ export default function StocksPage() {
           <DialogHeader>
             <DialogTitle>{tradeType === 'buy' ? '買入' : '賣出'}股票</DialogTitle>
             <DialogDescription>
+              {tradeType === 'buy' ? `您目前有 ${studentData.points.toLocaleString()} 點數。` : ''}
               {tradeType === 'buy' ? '買入' : '賣出'} {selectedStock?.name} ({selectedStock?.ticker})。
             </DialogDescription>
           </DialogHeader>
@@ -223,8 +316,8 @@ export default function StocksPage() {
               <Input
                 id="shares"
                 type="number"
-                value={tradeAmount}
-                onChange={(e) => setTradeAmount(parseInt(e.target.value, 10) || 0)}
+                value={tradeShares}
+                onChange={(e) => setTradeShares(parseInt(e.target.value, 10) || 0)}
                 className="col-span-3"
                 min="0"
               />
@@ -235,7 +328,7 @@ export default function StocksPage() {
             </div>
              <div className="grid grid-cols-4 items-center gap-4">
                 <p className="text-right font-bold col-span-1">總計</p>
-                <p className="col-span-3 font-bold">${(tradeAmount * (selectedStock?.price || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="col-span-3 font-bold">{(tradeShares * (selectedStock?.price || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 點數</p>
             </div>
           </div>
           <DialogFooter>

@@ -1,10 +1,12 @@
 "use client";
 
+import { useContext } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Coins, Trophy, Wallet, BarChart as BarChartIcon } from "lucide-react";
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Bar, BarChart, XAxis, YAxis } from "recharts"
 import RewardSuggestion from "@/components/reward-suggestion";
+import { StudentDataContext } from "@/context/StudentDataContext";
 
 const pointsData = [
   { month: "一月", points: 186 },
@@ -23,10 +25,10 @@ const chartConfig: ChartConfig = {
 } satisfies ChartConfig
 
 export default function StudentDashboardPage() {
-  const totalPoints = 2389;
-  const portfolioValue = 2780.00;
-  const cashBalance = 1250.50;
-  const totalAssets = portfolioValue + cashBalance;
+  const { studentData } = useContext(StudentDataContext);
+
+  const portfolioValue = studentData.portfolio.reduce((acc, item) => acc + item.currentValue, 0);
+  const totalAssets = portfolioValue + studentData.points;
   const stockPerformance = "上週透過投資科技股獲利 5%。";
 
   return (
@@ -39,9 +41,9 @@ export default function StudentDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {totalPoints.toLocaleString()}
+              {studentData.points.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground">自上週以來 +201</p>
+            <p className="text-xs text-muted-foreground">可用於交易或兌換獎勵</p>
           </CardContent>
         </Card>
         <Card>
@@ -60,7 +62,7 @@ export default function StudentDashboardPage() {
             <BarChartIcon className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${portfolioValue.toLocaleString()}</div>
+            <div className="text-2xl font-bold">${portfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
             <p className="text-xs text-muted-foreground">本月 +5.2%</p>
           </CardContent>
         </Card>
@@ -70,8 +72,8 @@ export default function StudentDashboardPage() {
             <Wallet className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalAssets.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">投資組合 + 現金餘額</p>
+            <div className="text-2xl font-bold">${totalAssets.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            <p className="text-xs text-muted-foreground">投資組合 + 點數</p>
           </CardContent>
         </Card>
       </div>
@@ -108,7 +110,7 @@ export default function StudentDashboardPage() {
             <CardDescription>根據您的活動獲得個人化的獎勵建議。</CardDescription>
           </CardHeader>
           <CardContent className="flex-grow flex items-center justify-center">
-            <RewardSuggestion studentPoints={totalPoints} stockMarketPerformance={stockPerformance} />
+            <RewardSuggestion studentPoints={studentData.points} stockMarketPerformance={stockPerformance} />
           </CardContent>
         </Card>
       </div>
