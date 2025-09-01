@@ -4,7 +4,6 @@ import { useState, useContext } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
-import { rewards as initialRewards } from "@/lib/placeholder-data";
 import type { Reward } from "@/lib/types";
 import { Coins, ShoppingCart } from "lucide-react";
 import {
@@ -19,13 +18,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { StudentDataContext } from "@/context/StudentDataContext";
+import { RewardContext } from "@/context/RewardContext";
 
 export default function RewardsPage() {
-  const [rewards, setRewards] = useState(initialRewards);
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const { toast } = useToast();
   const { studentData, setStudentData } = useContext(StudentDataContext);
+  const { rewards, setRewards } = useContext(RewardContext);
 
   const handleRedeemClick = (reward: Reward) => {
     if (studentData.points < reward.cost) {

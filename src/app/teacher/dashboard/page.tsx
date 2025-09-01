@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useContext } from "react";
 import {
   Card,
   CardContent,
@@ -20,15 +20,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { students, rewards as initialRewards } from "@/lib/placeholder-data";
+import { students } from "@/lib/placeholder-data";
 import type { Reward } from "@/lib/types";
 import { PlusCircle, Edit, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { RewardContext } from "@/context/RewardContext";
 
 export default function TeacherDashboardPage() {
-  const [rewards, setRewards] = useState<Reward[]>(initialRewards);
+  const { rewards, setRewards } = useContext(RewardContext);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingReward, setEditingReward] = useState<Reward | null>(null);
@@ -45,7 +46,7 @@ export default function TeacherDashboardPage() {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const newReward: Reward = {
-      id: rewards.length + 1,
+      id: rewards.length > 0 ? Math.max(...rewards.map(r => r.id)) + 1 : 1,
       name: formData.get("name") as string,
       description: formData.get("description") as string,
       cost: Number(formData.get("cost")),
