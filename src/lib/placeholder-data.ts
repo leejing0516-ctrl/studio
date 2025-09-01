@@ -7,14 +7,14 @@ export const portfolio = [
 ];
 
 export const students: Student[] = [
-  { id: "S001", name: "愛麗絲·強森", points: 1250, avatar: "https://picsum.photos/seed/alice/100", password: "password123", portfolio: [
+  { id: "S001", name: "愛麗絲·強森", points: 1250, avatar: "https://picsum.photos/seed/alice/100", password: "001", portfolio: [
       { ticker: "EDU", name: "學習公司", shares: 10, avgCost: 140.00 },
       { ticker: "SCI", name: "科學解決方案", shares: 5, avgCost: 220.00 },
   ], redeemedRewards: [] },
-  { id: "S002", name: "鮑伯·威廉斯", points: 800, avatar: "https://picsum.photos/seed/bob/100", password: "password123", portfolio: [
+  { id: "S002", name: "鮑伯·威廉斯", points: 800, avatar: "https://picsum.photos/seed/bob/100", password: "001", portfolio: [
       { ticker: "TECH", name: "創新有限責任公司", shares: 2, avgCost: 560.00 },
   ], redeemedRewards: [] },
-  { id: "S003", name: "查理·布朗", points: 1500, avatar: "https://picsum.photos/seed/charlie/100", password: "password123", portfolio: [], redeemedRewards: [] },
+  { id: "S003", name: "查理·布朗", points: 1500, avatar: "https://picsum.photos/seed/charlie/100", password: "001", portfolio: [], redeemedRewards: [] },
 ];
 
 export const rewards: Reward[] = [
