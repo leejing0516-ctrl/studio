@@ -53,16 +53,6 @@ export default function StudentDashboardPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">班級排名</CardTitle>
-            <Trophy className="h-4 w-4 text-accent" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">#3</div>
-            <p className="text-xs text-muted-foreground">班級前 10%</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">投資組合價值</CardTitle>
             <BarChartIcon className="h-4 w-4 text-accent" />
           </CardHeader>
@@ -79,6 +69,16 @@ export default function StudentDashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold">${totalAssets.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
             <p className="text-xs text-muted-foreground">投資組合 + 點數</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">班級排名</CardTitle>
+            <Trophy className="h-4 w-4 text-accent" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">#3</div>
+            <p className="text-xs text-muted-foreground">班級前 10%</p>
           </CardContent>
         </Card>
       </div>
