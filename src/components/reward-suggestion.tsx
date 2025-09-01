@@ -39,7 +39,7 @@ export default function RewardSuggestion({ studentPoints, stockMarketPerformance
     if (result.success && result.data) {
       setSuggestions(result.data.suggestedRewards);
     } else {
-      setError(result.error || "An unknown error occurred.");
+      setError(result.error || "發生未知錯誤。");
     }
     setIsLoading(false);
   };
@@ -52,27 +52,27 @@ export default function RewardSuggestion({ studentPoints, stockMarketPerformance
         ) : (
           <Wand2 className="mr-2 h-4 w-4" />
         )}
-        Ask AI Advisor
+        詢問 AI 顧問
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Personalized Suggestions</DialogTitle>
+            <DialogTitle>個人化建議</DialogTitle>
             <DialogDescription>
-              Based on your points and market performance, here are some rewards you might like!
+              根據您的積分和市場表現，這裡有一些您可能會喜歡的獎勵！
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 min-h-[150px] flex items-center justify-center">
             {isLoading ? (
                 <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-8 w-8 animate-spin" />
-                    <p>Thinking...</p>
+                    <p>思考中...</p>
                 </div>
             ) : error ? (
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
+                <AlertTitle>錯誤</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             ) : (
@@ -87,7 +87,7 @@ export default function RewardSuggestion({ studentPoints, stockMarketPerformance
             )}
           </div>
           <DialogFooter>
-            <Button onClick={() => setIsOpen(false)}>Close</Button>
+            <Button onClick={() => setIsOpen(false)}>關閉</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

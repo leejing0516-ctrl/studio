@@ -25,14 +25,14 @@ export default function RewardsPage() {
               <CardDescription>{reward.description}</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
-               <p className="text-sm text-muted-foreground">Only {reward.stock} left in stock!</p>
+               <p className="text-sm text-muted-foreground">庫存只剩下 {reward.stock} 件！</p>
             </CardContent>
             <CardFooter className="flex justify-between items-center bg-muted/50 p-4 mt-auto">
               <div className="flex items-center gap-2 font-bold text-lg text-primary">
                 <Coins className="h-5 w-5" />
                 <span>{reward.cost.toLocaleString()}</span>
               </div>
-              <Button disabled={reward.stock === 0}>Redeem</Button>
+              <Button disabled={reward.stock === 0}>兌換</Button>
             </CardFooter>
           </Card>
         ))}

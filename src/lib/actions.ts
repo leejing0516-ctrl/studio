@@ -7,7 +7,7 @@ export async function getRewardSuggestions(input: RewardSuggestionInput) {
         const result = await suggestRewards(input);
         return { success: true, data: result };
     } catch (error) {
-        console.error("AI Error:", error);
-        return { success: false, error: "Failed to get reward suggestions." };
+        console.error("AI 錯誤:", error);
+        return { success: false, error: "無法取得獎勵建議。" };
     }
 }

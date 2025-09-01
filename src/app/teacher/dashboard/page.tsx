@@ -34,8 +34,8 @@ export default function TeacherDashboardPage() {
 
   const handleAwardPoints = (studentName: string) => {
     toast({
-        title: "Points Awarded!",
-        description: `You have successfully awarded points to ${studentName}.`
+        title: "點數已發送！",
+        description: `您已成功發送點數給 ${studentName}。`
     })
   }
 
@@ -53,8 +53,8 @@ export default function TeacherDashboardPage() {
     setRewards([...rewards, newReward]);
     setIsAddDialogOpen(false);
     toast({
-        title: "Reward Added",
-        description: `${newReward.name} has been added to the store.`
+        title: "已新增獎勵",
+        description: `${newReward.name} 已被新增至商店。`
     })
   };
 
@@ -63,8 +63,8 @@ export default function TeacherDashboardPage() {
     setRewards(rewards.filter(reward => reward.id !== id));
     if(rewardToDelete){
         toast({
-            title: "Reward Removed",
-            description: `${rewardToDelete.name} has been removed.`,
+            title: "已移除獎勵",
+            description: `${rewardToDelete.name} 已被移除。`,
             variant: "destructive"
         })
     }
@@ -73,25 +73,25 @@ export default function TeacherDashboardPage() {
   return (
     <Tabs defaultValue="students" className="animate-in fade-in-0 duration-500">
       <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="students">Manage Students</TabsTrigger>
-        <TabsTrigger value="rewards">Manage Rewards</TabsTrigger>
+        <TabsTrigger value="students">管理學生</TabsTrigger>
+        <TabsTrigger value="rewards">管理獎勵</TabsTrigger>
       </TabsList>
       <TabsContent value="students" className="mt-6">
         <Card>
           <CardHeader>
-            <CardTitle>Award Points</CardTitle>
+            <CardTitle>發送點數</CardTitle>
             <CardDescription>
-              Select a student and award them points for their achievements.
+              選擇一位學生並根據他們的成就發送點數。
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Current Points</TableHead>
-                  <TableHead className="w-[150px]">Points to Award</TableHead>
-                  <TableHead className="text-right w-[100px]">Action</TableHead>
+                  <TableHead>學生</TableHead>
+                  <TableHead>目前點數</TableHead>
+                  <TableHead className="w-[150px]">要發送的點數</TableHead>
+                  <TableHead className="text-right w-[100px]">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -108,10 +108,10 @@ export default function TeacherDashboardPage() {
                     </TableCell>
                     <TableCell>{student.points.toLocaleString()}</TableCell>
                     <TableCell>
-                      <Input type="number" placeholder="e.g. 50" aria-label={`Points for ${student.name}`} />
+                      <Input type="number" placeholder="例如 50" aria-label={`給 ${student.name} 的點數`} />
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button size="sm" onClick={() => handleAwardPoints(student.name)}>Award</Button>
+                      <Button size="sm" onClick={() => handleAwardPoints(student.name)}>發送</Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -124,24 +124,24 @@ export default function TeacherDashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Reward Inventory</CardTitle>
+              <CardTitle>獎勵庫存</CardTitle>
               <CardDescription>
-                Add, edit, or remove rewards from the student store.
+                從學生商店中新增、編輯或移除獎勵。
               </CardDescription>
             </div>
             <Button onClick={() => setIsAddDialogOpen(true)}>
                 <PlusCircle className="mr-2 h-4 w-4" />
-                Add Reward
+                新增獎勵
             </Button>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Reward</TableHead>
-                  <TableHead>Cost</TableHead>
-                  <TableHead>Stock</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>獎勵</TableHead>
+                  <TableHead>費用</TableHead>
+                  <TableHead>庫存</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -170,42 +170,42 @@ export default function TeacherDashboardPage() {
         <DialogContent className="sm:max-w-[425px]">
             <form onSubmit={handleAddReward}>
           <DialogHeader>
-            <DialogTitle>Add New Reward</DialogTitle>
+            <DialogTitle>新增獎勵</DialogTitle>
             <DialogDescription>
-              Fill in the details for the new reward item.
+              填寫新獎勵項目的詳細資訊。
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="name" className="text-right">
-                Name
+                名稱
               </Label>
               <Input id="name" name="name" className="col-span-3" required/>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="description" className="text-right">
-                Description
+                描述
               </Label>
               <Input id="description" name="description" className="col-span-3" required/>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="cost" className="text-right">
-                Cost
+                費用
               </Label>
               <Input id="cost" name="cost" type="number" className="col-span-3" required/>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="stock" className="text-right">
-                Stock
+                庫存
               </Label>
               <Input id="stock" name="stock" type="number" className="col-span-3" required/>
             </div>
           </div>
           <DialogFooter>
             <DialogClose asChild>
-                <Button type="button" variant="secondary">Cancel</Button>
+                <Button type="button" variant="secondary">取消</Button>
             </DialogClose>
-            <Button type="submit">Add Reward</Button>
+            <Button type="submit">新增獎勵</Button>
           </DialogFooter>
           </form>
         </DialogContent>

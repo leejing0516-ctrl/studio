@@ -10,10 +10,10 @@ export default function HomePage() {
       <header className="mb-12 text-center animate-in fade-in slide-in-from-top duration-700">
         <Logo className="h-16 w-auto mx-auto mb-4" />
         <h1 className="text-4xl md:text-5xl font-bold font-headline text-foreground">
-          Welcome to FinLit Classroom
+          歡迎來到 FinLit 教室
         </h1>
         <p className="text-lg text-muted-foreground mt-2 max-w-2xl mx-auto">
-          Your gateway to financial literacy, where learning about money is rewarding and fun!
+          您通往金融素養的門戶，在這裡學習金錢知識既有回報又充滿樂趣！
         </p>
       </header>
 
@@ -24,16 +24,16 @@ export default function HomePage() {
               <div className="p-3 bg-primary/10 rounded-full">
                 <User className="h-8 w-8 text-primary" />
               </div>
-              <CardTitle className="text-2xl">Student Portal</CardTitle>
+              <CardTitle className="text-2xl">學生入口</CardTitle>
             </div>
             <CardDescription>
-              Access your dashboard, check your points, trade on the stock market, and redeem amazing rewards.
+              訪問您的儀表板、查看您的積分、在股票市場上交易並兌換驚人的獎勵。
             </CardDescription>
           </CardHeader>
           <CardFooter>
             <Link href="/dashboard" className="w-full">
               <Button className="w-full">
-                Enter as Student <ArrowRight className="ml-2 h-4 w-4" />
+                以學生身份進入 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
           </CardFooter>
@@ -44,23 +44,23 @@ export default function HomePage() {
               <div className="p-3 bg-accent/10 rounded-full">
                 <School className="h-8 w-8 text-accent" />
               </div>
-              <CardTitle className="text-2xl">Teacher Portal</CardTitle>
+              <CardTitle className="text-2xl">老師入口</CardTitle>
             </div>
             <CardDescription>
-              Manage your classroom, award points to students, and stock the reward store with new items.
+              管理您的教室、獎勵學生積分以及為獎勵商店補貨。
             </CardDescription>
           </CardHeader>
           <CardFooter>
             <Link href="/teacher/dashboard" className="w-full">
               <Button className="w-full" variant="outline">
-                Enter as Teacher <ArrowRight className="ml-2 h-4 w-4" />
+                以老師身份進入 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
           </CardFooter>
         </Card>
       </div>
       <footer className="text-center mt-12 text-muted-foreground text-sm">
-        <p>&copy; {new Date().getFullYear()} FinLit Classroom. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} FinLit 教室. 版權所有。</p>
       </footer>
     </div>
   );

@@ -16,7 +16,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/componentsui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { stocks, portfolio } from "@/lib/placeholder-data";
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
@@ -34,7 +34,7 @@ const portfolioHistory = [
 
 const chartConfig: ChartConfig = {
   value: {
-    label: "Value",
+    label: "價值",
     color: "hsl(var(--primary))",
   },
 } satisfies ChartConfig;
@@ -43,26 +43,26 @@ export default function StocksPage() {
   return (
     <Tabs defaultValue="market" className="grid gap-6 animate-in fade-in-0 duration-500">
       <TabsList>
-        <TabsTrigger value="market">Market</TabsTrigger>
-        <TabsTrigger value="portfolio">My Portfolio</TabsTrigger>
+        <TabsTrigger value="market">市場</TabsTrigger>
+        <TabsTrigger value="portfolio">我的投資組合</TabsTrigger>
       </TabsList>
       <TabsContent value="market">
         <Card>
           <CardHeader>
-            <CardTitle>Virtual Stock Market</CardTitle>
+            <CardTitle>虛擬股票市場</CardTitle>
             <CardDescription>
-              Invest your points in our simulated market. Buy low, sell high!
+              用您的積分投資我們的模擬市場。低買高賣！
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Company</TableHead>
-                  <TableHead className="text-right">Price</TableHead>
-                  <TableHead className="text-right">Change</TableHead>
-                  <TableHead className="text-right">Market Cap</TableHead>
-                  <TableHead className="text-right w-[150px]">Actions</TableHead>
+                  <TableHead>公司</TableHead>
+                  <TableHead className="text-right">價格</TableHead>
+                  <TableHead className="text-right">變動</TableHead>
+                  <TableHead className="text-right">市值</TableHead>
+                  <TableHead className="text-right w-[150px]">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -83,8 +83,8 @@ export default function StocksPage() {
                     </TableCell>
                     <TableCell className="text-right">{stock.marketCap}</TableCell>
                     <TableCell className="text-right">
-                      <Button size="sm" variant="outline" className="mr-2">Buy</Button>
-                      <Button size="sm" variant="ghost">Sell</Button>
+                      <Button size="sm" variant="outline" className="mr-2">買入</Button>
+                      <Button size="sm" variant="ghost">賣出</Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -98,17 +98,17 @@ export default function StocksPage() {
             <div className="md:col-span-2">
                 <Card>
                     <CardHeader>
-                        <CardTitle>My Portfolio</CardTitle>
-                        <CardDescription>Your current stock holdings.</CardDescription>
+                        <CardTitle>我的投資組合</CardTitle>
+                        <CardDescription>您目前的持股。</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Stock</TableHead>
-                                    <TableHead className="text-right">Shares</TableHead>
-                                    <TableHead className="text-right">Value</TableHead>
-                                    <TableHead className="text-right">Total Gain/Loss</TableHead>
+                                    <TableHead>股票</TableHead>
+                                    <TableHead className="text-right">股數</TableHead>
+                                    <TableHead className="text-right">價值</TableHead>
+                                    <TableHead className="text-right">總損益</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -136,8 +136,8 @@ export default function StocksPage() {
             <div className="md:col-span-1">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Portfolio History</CardTitle>
-                        <CardDescription>Total value over the last 6 months.</CardDescription>
+                        <CardTitle>投資組合歷史</CardTitle>
+                        <CardDescription>過去 6 個月的總價值。</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <ChartContainer config={chartConfig} className="h-[300px] w-full">
@@ -148,7 +148,7 @@ export default function StocksPage() {
                                         <stop offset="95%" stopColor="var(--color-value)" stopOpacity={0.1} />
                                     </linearGradient>
                                 </defs>
-                                <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short' })} />
+                                <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => new Date(value).toLocaleDateString('zh-TW', { month: 'short' })} />
                                 <YAxis tickLine={false} axisLine={false} tickMargin={8} domain={['dataMin - 100', 'dataMax + 100']} hide />
                                 <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
                                 <Area type="monotone" dataKey="value" stroke="var(--color-value)" fill="url(#fillValue)" strokeWidth={2} />

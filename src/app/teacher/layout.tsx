@@ -40,7 +40,7 @@ export default function TeacherLayout({
   const pathname = usePathname();
 
   const navItems = [
-    { href: "/teacher/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/teacher/dashboard", label: "儀表板", icon: LayoutDashboard },
   ];
 
   return (
@@ -50,7 +50,7 @@ export default function TeacherLayout({
           <div className="flex items-center gap-2">
             <Logo className="size-8" />
             <span className="text-lg font-semibold group-data-[collapsible=icon]:hidden">
-              FinLit Classroom
+              FinLit 教室
             </span>
           </div>
         </SidebarHeader>
@@ -83,23 +83,23 @@ export default function TeacherLayout({
                   <AvatarFallback>AT</AvatarFallback>
                 </Avatar>
                 <div className="text-left group-data-[collapsible=icon]:hidden">
-                  <p className="font-semibold">Dr. Turing</p>
-                  <p className="text-xs text-muted-foreground">Teacher</p>
+                  <p className="font-semibold">圖靈博士</p>
+                  <p className="text-xs text-muted-foreground">老師</p>
                 </div>
                 <ChevronDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56 mb-2" side="top" align="start">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuLabel>我的帳號</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
                 <Settings className="mr-2 size-4" />
-                <span>Settings</span>
+                <span>設定</span>
               </DropdownMenuItem>
               <Link href="/">
                 <DropdownMenuItem>
                   <LogOut className="mr-2 size-4" />
-                  <span>Log out</span>
+                  <span>登出</span>
                 </DropdownMenuItem>
               </Link>
             </DropdownMenuContent>
@@ -110,7 +110,7 @@ export default function TeacherLayout({
         <header className="flex h-14 items-center justify-between border-b bg-background/50 backdrop-blur-sm px-4 md:px-6 sticky top-0 z-20">
             <SidebarTrigger className="md:hidden" />
             <h1 className="text-lg font-semibold md:text-xl capitalize">
-                Teacher Dashboard
+                教師儀表板
             </h1>
         </header>
         <main className="flex-1 p-4 md:p-6">{children}</main>
