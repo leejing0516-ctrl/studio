@@ -1,11 +1,9 @@
 import type { Student, Reward, Stock, PortfolioItem } from "./types";
 
 export const students: Student[] = [
-  { id: 1, name: "愛麗絲·強森", points: 1250, avatar: "https://picsum.photos/seed/alice/100" },
-  { id: 2, name: "鮑伯·威廉斯", points: 800, avatar: "https://picsum.photos/seed/bob/100" },
-  { id: 3, name: "查理·布朗", points: 1500, avatar: "https://picsum.photos/seed/charlie/100" },
-  { id: 4, name: "黛安娜·米勒", points: 950, avatar: "https://picsum.photos/seed/diana/100" },
-  { id: 5, name: "伊森·戴維斯", points: 2000, avatar: "https://picsum.photos/seed/ethan/100" },
+  { id: "S001", name: "愛麗絲·強森", points: 1250, avatar: "https://picsum.photos/seed/alice/100", password: "password123" },
+  { id: "S002", name: "鮑伯·威廉斯", points: 800, avatar: "https://picsum.photos/seed/bob/100", password: "password123" },
+  { id: "S003", name: "查理·布朗", points: 1500, avatar: "https://picsum.photos/seed/charlie/100", password: "password123" },
 ];
 
 export const rewards: Reward[] = [

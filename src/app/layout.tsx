@@ -3,6 +3,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { StudentDataProvider } from "@/context/StudentDataContext";
 import { RewardProvider } from "@/context/RewardContext";
+import { StudentManagementProvider } from "@/context/StudentManagementContext";
 
 export const metadata: Metadata = {
   title: "FinLit Classroom",
@@ -25,12 +26,14 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <StudentDataProvider>
-          <RewardProvider>
-            {children}
-            <Toaster />
-          </RewardProvider>
-        </StudentDataProvider>
+        <StudentManagementProvider>
+          <StudentDataProvider>
+            <RewardProvider>
+              {children}
+              <Toaster />
+            </RewardProvider>
+          </StudentDataProvider>
+        </StudentManagementProvider>
       </body>
     </html>
   );
