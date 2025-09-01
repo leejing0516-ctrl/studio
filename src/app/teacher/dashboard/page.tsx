@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Reward, Student } from "@/lib/types";
+import type { Reward, Student, Teacher } from "@/lib/types";
 import { PlusCircle, Edit, Trash2, KeyRound, Bell } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -31,7 +31,7 @@ import { AppDataContext } from "@/context/AppDataContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function TeacherDashboardPage() {
-  const { rewards, setRewards, students, setStudents, classes } = useContext(AppDataContext);
+  const { rewards, setRewards, students, setStudents, classes, teachers, setTeachers } = useContext(AppDataContext);
 
   const [role, setRole] = useState<string | null>(null);
   const [teacherClassId, setTeacherClassId] = useState<string | null>(null);
@@ -63,6 +63,10 @@ export default function TeacherDashboardPage() {
   const [isAddStudentDialogOpen, setIsAddStudentDialogOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
+
+  const [isEditTeacherDialogOpen, setIsEditTeacherDialogOpen] = useState(false);
+  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
+
 
   const { toast } = useToast();
   
@@ -109,7 +113,7 @@ export default function TeacherDashboardPage() {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const newReward: Reward = {
-      id: rewards.length > 0 ? Math.max(...rewards.map(r => r.id)) + 1 : 1,
+      id: rewards.length > 0 ? Math.max(...rewards.map(r => parseInt(r.id.toString()))) + 1 : 1,
       name: formData.get("name") as string,
       description: formData.get("description") as string,
       cost: Number(formData.get("cost")),
@@ -217,6 +221,29 @@ export default function TeacherDashboardPage() {
     });
   }
 
+  const handleEditTeacherClick = (teacher: Teacher) => {
+    setEditingTeacher(teacher);
+    setIsEditTeacherDialogOpen(true);
+  }
+
+  const handleUpdateTeacher = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingTeacher) return;
+    const formData = new FormData(event.currentTarget);
+    const name = formData.get("name") as string;
+
+    setTeachers(currentTeachers => currentTeachers.map(t => 
+        t.id === editingTeacher.id ? { ...t, name } : t
+    ));
+
+    setIsEditTeacherDialogOpen(false);
+    setEditingTeacher(null);
+    toast({
+        title: "已更新教師資訊",
+        description: "教師姓名已成功更新。"
+    });
+  }
+
 
   return (
     <div className="flex flex-col gap-6">
@@ -241,8 +268,9 @@ export default function TeacherDashboardPage() {
       </Card>
     )}
     <Tabs defaultValue="students" className="animate-in fade-in-0 duration-500">
-      <TabsList className="grid w-full grid-cols-4">
+      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-5' : 'grid-cols-4'}`}>
         <TabsTrigger value="students">管理學生</TabsTrigger>
+        {role === 'admin' && <TabsTrigger value="teachers">管理老師</TabsTrigger>}
         <TabsTrigger value="points">發送點數</TabsTrigger>
         <TabsTrigger value="rewards">管理獎勵</TabsTrigger>
         <TabsTrigger value="requests">
@@ -302,6 +330,40 @@ export default function TeacherDashboardPage() {
             </CardContent>
         </Card>
       </TabsContent>
+      {role === 'admin' && (
+        <TabsContent value="teachers" className="mt-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>教師名單</CardTitle>
+                    <CardDescription>編輯班級導師的資訊。</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>姓名</TableHead>
+                                <TableHead>班級</TableHead>
+                                <TableHead className="text-right">操作</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {teachers.filter(t => t.role === 'teacher').map(teacher => (
+                                <TableRow key={teacher.id}>
+                                    <TableCell>{teacher.name}</TableCell>
+                                    <TableCell>{classes.find(c => c.id === teacher.classId)?.name || 'N/A'}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="ghost" size="icon" onClick={() => handleEditTeacherClick(teacher)}>
+                                            <Edit className="h-4 w-4" />
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        </TabsContent>
+      )}
       <TabsContent value="points" className="mt-6">
         <Card>
           <CardHeader>
@@ -591,7 +653,32 @@ export default function TeacherDashboardPage() {
           </form>
         </DialogContent>
       </Dialog>
+      <Dialog open={isEditTeacherDialogOpen} onOpenChange={setIsEditTeacherDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+            <form onSubmit={handleUpdateTeacher}>
+          <DialogHeader>
+            <DialogTitle>編輯老師資訊</DialogTitle>
+            <DialogDescription>
+              更新「{editingTeacher?.name}」的詳細資訊。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-teacher-name" className="text-right">
+                姓名
+              </Label>
+              <Input id="edit-teacher-name" name="name" defaultValue={editingTeacher?.name} className="col-span-3" required/>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+                <Button type="button" variant="secondary" onClick={() => setEditingTeacher(null)}>取消</Button>
+            </DialogClose>
+            <Button type="submit">儲存變更</Button>
+          </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-

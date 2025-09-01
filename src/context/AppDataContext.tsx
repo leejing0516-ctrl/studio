@@ -38,6 +38,7 @@ interface AppDataContextType {
   setRewards: React.Dispatch<React.SetStateAction<Reward[]>>;
   classes: Class[];
   teachers: Teacher[];
+  setTeachers: React.Dispatch<React.SetStateAction<Teacher[]>>;
 }
 
 const defaultState: AppDataContextType = {
@@ -46,7 +47,8 @@ const defaultState: AppDataContextType = {
   rewards: initialRewards,
   setRewards: () => {},
   classes: initialClasses,
-  teachers: initialTeachers
+  teachers: initialTeachers,
+  setTeachers: () => {},
 };
 
 export const AppDataContext = createContext<AppDataContextType>(defaultState);
@@ -54,9 +56,8 @@ export const AppDataContext = createContext<AppDataContextType>(defaultState);
 export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [students, setStudents] = useState<Student[]>(() => getFromStorage('students', initialStudents));
   const [rewards, setRewards] = useState<Reward[]>(() => getFromStorage('rewards', initialRewards));
-  
+  const [teachers, setTeachers] = useState<Teacher[]>(() => getFromStorage('teachers', initialTeachers));
   const classes = initialClasses;
-  const teachers = initialTeachers;
 
   useEffect(() => {
     setInStorage('students', students);
@@ -66,8 +67,12 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     setInStorage('rewards', rewards);
   }, [rewards]);
 
+  useEffect(() => {
+    setInStorage('teachers', teachers);
+  }, [teachers]);
+
   return (
-    <AppDataContext.Provider value={{ students, setStudents, rewards, setRewards, classes, teachers }}>
+    <AppDataContext.Provider value={{ students, setStudents, rewards, setRewards, classes, teachers, setTeachers }}>
       {children}
     </AppDataContext.Provider>
   );

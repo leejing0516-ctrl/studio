@@ -13,10 +13,10 @@ export const classes: Class[] = [
 ];
 
 export const teachers: Teacher[] = [
-    { id: "principal", name: "圖靈校長", role: "admin" },
-    { id: "teacher6A", name: "高老師 (六年甲班)", role: "teacher", classId: "6A" },
-    { id: "teacher6B", name: "李老師 (六年乙班)", role: "teacher", classId: "6B" },
-    { id: "teacher5A", name: "王老師 (五年甲班)", role: "teacher", classId: "5A" },
+    { id: "principal", name: "李志軒校長", role: "admin" },
+    { id: "teacher6A", name: "高老師", role: "teacher", classId: "6A" },
+    { id: "teacher6B", name: "李老師", role: "teacher", classId: "6B" },
+    { id: "teacher5A", name: "王老師", role: "teacher", classId: "5A" },
     // Add other teachers as needed
 ];
 

@@ -51,4 +51,5 @@ export type Teacher = {
     name: string;
     role: 'teacher' | 'admin'; // admin is the principal
     classId?: string; // classId for teachers, undefined for principal
+    password?: string; // Optional password field
 }
