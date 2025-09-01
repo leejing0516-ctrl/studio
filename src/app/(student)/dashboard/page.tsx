@@ -1,9 +1,9 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Coins, Trophy, Wallet, BarChart } from "lucide-react";
+import { Coins, Trophy, Wallet, BarChart as BarChartIcon } from "lucide-react";
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { Bar, BarChart as RechartsBarChart, XAxis, YAxis } from "recharts"
+import { Bar, BarChart, XAxis, YAxis } from "recharts"
 import RewardSuggestion from "@/components/reward-suggestion";
 
 const pointsData = [
@@ -57,7 +57,7 @@ export default function StudentDashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">投資組合價值</CardTitle>
-            <BarChart className="h-4 w-4 text-accent" />
+            <BarChartIcon className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">${portfolioValue.toLocaleString()}</div>
@@ -84,7 +84,7 @@ export default function StudentDashboardPage() {
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[250px] w-full">
-              <RechartsBarChart accessibilityLayer data={pointsData} margin={{ top: 20, right: 20, left: -10, bottom: 0 }}>
+              <BarChart accessibilityLayer data={pointsData} margin={{ top: 20, right: 20, left: -10, bottom: 0 }}>
                 <XAxis
                   dataKey="month"
                   tickLine={false}
@@ -98,7 +98,7 @@ export default function StudentDashboardPage() {
                   content={<ChartTooltipContent hideLabel />}
                 />
                 <Bar dataKey="points" fill="var(--color-points)" radius={8} />
-              </RechartsBarChart>
+              </BarChart>
             </ChartContainer>
           </CardContent>
         </Card>
