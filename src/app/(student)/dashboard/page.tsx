@@ -76,6 +76,10 @@ export default function StudentDashboardPage() {
 
   return (
     <div className="grid gap-6 animate-in fade-in-0 duration-500">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight">你好, {currentStudent.name}!</h1>
+        <p className="text-muted-foreground">歡迎回到您的儀表板。這是您今天的財務狀況概覽。</p>
+      </div>
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
