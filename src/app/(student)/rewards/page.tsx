@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useContext } from "react";
@@ -18,16 +19,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { StudentDataContext } from "@/context/StudentDataContext";
-import { RewardContext } from "@/context/RewardContext";
-import { StudentManagementContext } from "@/context/StudentManagementContext";
+import { AppDataContext } from "@/context/AppDataContext";
 
 export default function RewardsPage() {
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const { toast } = useToast();
   const { studentData } = useContext(StudentDataContext);
-  const { students, setStudents } = useContext(StudentManagementContext);
-  const { rewards, setRewards } = useContext(RewardContext);
+  const { students, setStudents, rewards, setRewards } = useContext(AppDataContext);
 
   const handleRedeemClick = (reward: Reward) => {
     if (studentData.points < reward.cost) {
@@ -63,20 +62,22 @@ export default function RewardsPage() {
         status: 'collected' as const,
       };
 
-      const updatedStudent = {
-          ...studentData.student,
-          points: newPoints,
-          redeemedRewards: [...(studentData.student.redeemedRewards || []), newRedeemedReward],
-      };
+      // Find the student in the global list and update them
+      setStudents(currentStudents => 
+        currentStudents.map(s => {
+            if (s.id === studentData.student?.id && s.classId === studentData.student?.classId) {
+                return {
+                    ...s,
+                    points: newPoints,
+                    redeemedRewards: [...(s.redeemedRewards || []), newRedeemedReward],
+                };
+            }
+            return s;
+        })
+      );
       
-      // Update global student list (StudentManagementContext)
-      // This is the "source of truth" now
-      setStudents(students.map(s => 
-        s.id === studentData.student?.id ? updatedStudent : s
-      ));
-      
-      // Update reward stock (RewardContext)
-      setRewards(rewards.map(r =>
+      // Update reward stock
+      setRewards(currentRewards => currentRewards.map(r =>
         r.id === selectedReward.id ? { ...r, stock: r.stock - 1 } : r
       ));
 

@@ -1,6 +1,7 @@
+
 "use client";
 
-import { createContext, useState, ReactNode } from 'react';
+import { createContext, useState, ReactNode, useEffect } from 'react';
 import type { Student } from '@/lib/types';
 import { students as initialStudents } from '@/lib/placeholder-data';
 
@@ -9,13 +10,25 @@ interface StudentManagementContextType {
   setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
 }
 
-export const StudentManagementContext = createContext<StudentManagementContextType>({
+const defaultState: StudentManagementContextType = {
   students: initialStudents,
   setStudents: () => {},
-});
+};
+
+export const StudentManagementContext = createContext<StudentManagementContextType>(defaultState);
 
 export const StudentManagementProvider = ({ children }: { children: ReactNode }) => {
-  const [students, setStudents] = useState<Student[]>(initialStudents);
+  const [students, setStudents] = useState<Student[]>(() => {
+    if (typeof window !== 'undefined') {
+      const savedStudents = localStorage.getItem('students');
+      return savedStudents ? JSON.parse(savedStudents) : initialStudents;
+    }
+    return initialStudents;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('students', JSON.stringify(students));
+  }, [students]);
 
   return (
     <StudentManagementContext.Provider value={{ students, setStudents }}>

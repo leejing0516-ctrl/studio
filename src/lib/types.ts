@@ -1,3 +1,4 @@
+
 export type RedeemedRewardItem = {
   redemptionId: string; // A unique ID for this specific instance of the reward
   reward: Reward;
@@ -5,8 +6,9 @@ export type RedeemedRewardItem = {
 };
 
 export type Student = {
-  id: string;
+  id: string; // Student ID within the class
   name: string;
+  classId: string; // Links to the Class object
   points: number;
   avatar: string;
   password?: string;
@@ -38,3 +40,15 @@ export type PortfolioItem = {
   shares: number;
   avgCost: number;
 };
+
+export type Class = {
+    id: string;
+    name: string;
+}
+
+export type Teacher = {
+    id: string;
+    name: string;
+    role: 'teacher' | 'admin'; // admin is the principal
+    classId?: string; // classId for teachers, undefined for principal
+}

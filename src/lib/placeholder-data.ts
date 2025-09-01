@@ -1,20 +1,39 @@
-import type { Student, Reward, Stock } from "./types";
 
-export const portfolio = [
-    { ticker: "EDU", name: "學習公司", shares: 10, avgCost: 140.00 },
-    { ticker: "SCI", name: "科學解決方案", shares: 5, avgCost: 220.00 },
-    { ticker: "TECH", name: "創新有限責任公司", shares: 2, avgCost: 560.00 },
+import type { Student, Reward, Stock, Class, Teacher } from "./types";
+
+export const TEACHER_PASSWORD = "teacherpassword"; // Shared password for all teachers for simplicity
+
+export const classes: Class[] = [
+    { id: "6A", name: "六年甲班" },
+    { id: "6B", name: "六年乙班" },
+    { id: "5A", name: "五年甲班" },
+    { id: "5B", name: "五年乙班" },
+    { id: "4A", name: "四年甲班" },
+    { id: "4B", "name": "四年乙班" },
+];
+
+export const teachers: Teacher[] = [
+    { id: "principal", name: "圖靈校長", role: "admin" },
+    { id: "teacher6A", name: "高老師 (六年甲班)", role: "teacher", classId: "6A" },
+    { id: "teacher6B", name: "李老師 (六年乙班)", role: "teacher", classId: "6B" },
+    { id: "teacher5A", name: "王老師 (五年甲班)", role: "teacher", classId: "5A" },
+    // Add other teachers as needed
 ];
 
 export const students: Student[] = [
-  { id: "S001", name: "愛麗絲·強森", points: 1250, avatar: "https://picsum.photos/seed/alice/100", password: "001", portfolio: [
+  // Class 6A
+  { id: "S001", name: "愛麗絲·強森", classId: "6A", points: 1250, avatar: "https://picsum.photos/seed/alice/100", password: "001", portfolio: [
       { ticker: "EDU", name: "學習公司", shares: 10, avgCost: 140.00 },
       { ticker: "SCI", name: "科學解決方案", shares: 5, avgCost: 220.00 },
   ], redeemedRewards: [] },
-  { id: "S002", name: "鮑伯·威廉斯", points: 800, avatar: "https://picsum.photos/seed/bob/100", password: "001", portfolio: [
+  { id: "S002", name: "鮑伯·威廉斯", classId: "6A", points: 800, avatar: "https://picsum.photos/seed/bob/100", password: "001", portfolio: [
       { ticker: "TECH", name: "創新有限責任公司", shares: 2, avgCost: 560.00 },
   ], redeemedRewards: [] },
-  { id: "S003", name: "查理·布朗", points: 1500, avatar: "https://picsum.photos/seed/charlie/100", password: "001", portfolio: [], redeemedRewards: [] },
+  // Class 6B
+  { id: "S003", name: "查理·布朗", classId: "6B", points: 1500, avatar: "https://picsum.photos/seed/charlie/100", password: "001", portfolio: [], redeemedRewards: [] },
+  { id: "S004", name: "黛安娜·普林斯", classId: "6B", points: 2500, avatar: "https://picsum.photos/seed/diana/100", password: "001", portfolio: [], redeemedRewards: [] },
+   // Class 5A
+  { id: "S005", name: "伊森·韓特", classId: "5A", points: 950, avatar: "https://picsum.photos/seed/ethan/100", password: "001", portfolio: [], redeemedRewards: [] },
 ];
 
 export const rewards: Reward[] = [

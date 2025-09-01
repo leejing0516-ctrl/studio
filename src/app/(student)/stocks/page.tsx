@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useContext } from "react";
@@ -37,7 +38,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { StudentDataContext } from "@/context/StudentDataContext";
-import { StudentManagementContext } from "@/context/StudentManagementContext";
+import { AppDataContext } from "@/context/AppDataContext";
 
 const portfolioHistory = [
   { date: "2024-01-01", value: 2000 },
@@ -62,9 +63,9 @@ export default function StocksPage() {
   const [tradeShares, setTradeShares] = useState(0);
   const { toast } = useToast();
   const { studentData } = useContext(StudentDataContext);
-  const { students, setStudents } = useContext(StudentManagementContext);
+  const { students, setStudents } = useContext(AppDataContext);
   
-  const currentStudent = students.find(s => s.id === studentData.student?.id) || studentData.student;
+  const currentStudent = students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId) || studentData.student;
 
 
   const handleTradeClick = (stock: Stock, type: "buy" | "sell") => {
@@ -73,6 +74,13 @@ export default function StocksPage() {
     setIsTradeDialogOpen(true);
     setTradeShares(0);
   };
+  
+  const updateStudentInGlobalList = (updatedStudent: any) => {
+    setStudents(currentStudents => currentStudents.map(s => 
+        (s.id === updatedStudent.id && s.classId === updatedStudent.classId) ? updatedStudent : s
+    ));
+  };
+
 
   const handleConfirmTrade = () => {
     if (!selectedStock || tradeShares <= 0 || !currentStudent) {
@@ -126,7 +134,7 @@ export default function StocksPage() {
       }
       
       const updatedStudent = { ...currentStudent, points: newPoints, portfolio: newPortfolio };
-      setStudents(students.map(s => s.id === currentStudent.id ? updatedStudent : s));
+      updateStudentInGlobalList(updatedStudent);
       toast({
         title: "買入成功！",
         description: `您已成功買入 ${tradeShares} 股 ${selectedStock.name}。`,
@@ -152,7 +160,7 @@ export default function StocksPage() {
         }).filter(item => item.shares > 0);
 
       const updatedStudent = { ...currentStudent, points: newPoints, portfolio: newPortfolio };
-      setStudents(students.map(s => s.id === currentStudent.id ? updatedStudent : s));
+      updateStudentInGlobalList(updatedStudent);
       toast({
         title: "賣出成功！",
         description: `您已成功賣出 ${tradeShares} 股 ${selectedStock.name}。`,

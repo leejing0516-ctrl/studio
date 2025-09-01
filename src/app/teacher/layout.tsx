@@ -1,7 +1,9 @@
+
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
 import {
   SidebarProvider,
   Sidebar,
@@ -38,10 +40,34 @@ export default function TeacherLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [teacherName, setTeacherName] = useState<string | null>(null);
+  const [teacherRole, setTeacherRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    const name = localStorage.getItem('teacherName');
+    const role = localStorage.getItem('teacherRole');
+    setTeacherName(name);
+    setTeacherRole(role);
+    if (!name) {
+      router.push('/');
+    }
+  }, [router]);
+  
+  const handleLogout = () => {
+    localStorage.removeItem('teacherName');
+    localStorage.removeItem('teacherRole');
+    localStorage.removeItem('teacherClassId');
+    router.push('/');
+  }
 
   const navItems = [
     { href: "/teacher/dashboard", label: "儀表板", icon: LayoutDashboard },
   ];
+
+  if (!teacherName) {
+    return <div>載入中...</div>; // Or a proper loading screen
+  }
 
   return (
     <SidebarProvider>
@@ -80,12 +106,12 @@ export default function TeacherLayout({
                 className="w-full justify-start gap-2 p-2 group-data-[collapsible=icon]:justify-center"
               >
                 <Avatar className="size-8">
-                  <AvatarImage src="https://picsum.photos/101" data-ai-hint="teacher avatar" />
-                  <AvatarFallback>圖靈</AvatarFallback>
+                  <AvatarImage src={`https://picsum.photos/seed/${teacherName}/100`} data-ai-hint="teacher avatar" />
+                  <AvatarFallback>{teacherName?.slice(0, 2)}</AvatarFallback>
                 </Avatar>
                 <div className="text-left group-data-[collapsible=icon]:hidden">
-                  <p className="font-semibold">圖靈博士</p>
-                  <p className="text-xs text-muted-foreground">老師</p>
+                  <p className="font-semibold">{teacherName}</p>
+                  <p className="text-xs text-muted-foreground">{teacherRole === 'admin' ? '校長' : '老師'}</p>
                 </div>
                 <ChevronDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
               </Button>
@@ -97,12 +123,10 @@ export default function TeacherLayout({
                 <Settings className="mr-2 size-4" />
                 <span>設定</span>
               </DropdownMenuItem>
-              <Link href="/">
-                <DropdownMenuItem>
-                  <LogOut className="mr-2 size-4" />
-                  <span>登出</span>
-                </DropdownMenuItem>
-              </Link>
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 size-4" />
+                <span>登出</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </SidebarFooter>

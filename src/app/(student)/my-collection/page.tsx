@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useContext } from "react";
@@ -6,31 +7,32 @@ import Image from "next/image";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { Gem, Hourglass, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { StudentManagementContext } from "@/context/StudentManagementContext";
+import { AppDataContext } from "@/context/AppDataContext";
 import { useToast } from "@/hooks/use-toast";
 import type { RedeemedRewardItem, Student } from "@/lib/types";
 
 export default function MyCollectionPage() {
   const { studentData } = useContext(StudentDataContext);
-  const { students, setStudents } = useContext(StudentManagementContext);
+  const { students, setStudents } = useContext(AppDataContext);
   const { toast } = useToast();
   
-  const currentStudent = students.find(s => s.id === studentData.student?.id);
+  const currentStudent = students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId);
 
   const handleUseReward = (redemption: RedeemedRewardItem) => {
     if (!currentStudent) return;
 
-    const updatedStudent: Student = {
-        ...currentStudent,
-        redeemedRewards: currentStudent.redeemedRewards.map(r => 
-            r.redemptionId === redemption.redemptionId ? { ...r, status: 'pending_use' as const } : r
-        ),
-    };
-
-    // Update global student list (StudentManagementContext)
-    setStudents(students.map(s => 
-        s.id === currentStudent.id ? updatedStudent : s
-    ));
+    // Update the student in the global list
+    setStudents(currentStudents => currentStudents.map(s => {
+        if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
+            return {
+                ...s,
+                redeemedRewards: s.redeemedRewards.map(r => 
+                    r.redemptionId === redemption.redemptionId ? { ...r, status: 'pending_use' as const } : r
+                ),
+            };
+        }
+        return s;
+    }));
 
     toast({
         title: "已提出使用請求",

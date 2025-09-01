@@ -1,7 +1,8 @@
+
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useContext, useEffect } from "react";
 import {
   SidebarProvider,
@@ -36,7 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { StudentDataContext } from "@/context/StudentDataContext";
-import { StudentManagementContext } from "@/context/StudentManagementContext";
+import { AppDataContext } from "@/context/AppDataContext";
 
 export default function StudentLayout({
   children,
@@ -44,17 +45,24 @@ export default function StudentLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { studentData, setStudentData } = useContext(StudentDataContext);
-  const { students } = useContext(StudentManagementContext);
+  const { students } = useContext(AppDataContext);
 
-  // This effect ensures that the local student data (in StudentDataContext)
-  // is always in sync with the global student list (the source of truth).
   useEffect(() => {
-    if (studentData.student) {
-        const latestStudentData = students.find(s => s.id === studentData.student?.id);
-        if (latestStudentData) {
-            // This was the source of the bug. It was not carrying over the redeemedRewards.
-            // By setting the full student object, we ensure all data is preserved.
+    // If there's no student data on page load (e.g., after a refresh), redirect to login
+    if (!studentData.student) {
+      router.push('/');
+      return;
+    }
+
+    // Sync student data from the "source of truth" (AppDataContext)
+    const latestStudentData = students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId);
+    if (latestStudentData) {
+        const studentJson = JSON.stringify(studentData.student);
+        const latestStudentJson = JSON.stringify(latestStudentData);
+        // Only update if the data is actually different to avoid infinite loops
+        if (studentJson !== latestStudentJson) {
             setStudentData({ 
                 student: latestStudentData,
                 points: latestStudentData.points,
@@ -62,11 +70,19 @@ export default function StudentLayout({
                 redeemedRewards: latestStudentData.redeemedRewards,
             });
         }
+    } else {
+        // If student is not found in the global list (e.g., removed by teacher), log out
+        router.push('/');
     }
-  }, [students, studentData.student, setStudentData]);
+  }, [students, studentData.student, setStudentData, router]);
 
 
   const student = studentData.student;
+  
+  const handleLogout = () => {
+    setStudentData({ student: null, points: 0, portfolio: [], redeemedRewards: [] });
+    router.push('/');
+  }
 
   const navItems = [
     { href: "/dashboard", label: "儀表板", icon: LayoutDashboard },
@@ -74,6 +90,10 @@ export default function StudentLayout({
     { href: "/rewards", label: "獎勵商店", icon: Gift },
     { href: "/stocks", label: "股票市場", icon: LineChart },
   ];
+
+  if (!student) {
+      return null; // Or a loading spinner, as the useEffect will redirect
+  }
 
   return (
     <SidebarProvider>
@@ -129,12 +149,10 @@ export default function StudentLayout({
                 <Settings className="mr-2 size-4" />
                 <span>設定</span>
               </DropdownMenuItem>
-              <Link href="/">
-                <DropdownMenuItem>
-                  <LogOut className="mr-2 size-4" />
-                  <span>登出</span>
-                </DropdownMenuItem>
-              </Link>
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 size-4" />
+                <span>登出</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </SidebarFooter>

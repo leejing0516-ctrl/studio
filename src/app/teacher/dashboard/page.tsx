@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useContext } from "react";
+import { useState, useContext, useEffect, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -25,13 +26,35 @@ import { PlusCircle, Edit, Trash2, KeyRound, Bell } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { RewardContext } from "@/context/RewardContext";
-import { StudentManagementContext } from "@/context/StudentManagementContext";
 import { Badge } from "@/components/ui/badge";
+import { AppDataContext } from "@/context/AppDataContext";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function TeacherDashboardPage() {
-  const { rewards, setRewards } = useContext(RewardContext);
-  const { students, setStudents } = useContext(StudentManagementContext);
+  const { rewards, setRewards, students, setStudents, classes } = useContext(AppDataContext);
+
+  const [role, setRole] = useState<string | null>(null);
+  const [teacherClassId, setTeacherClassId] = useState<string | null>(null);
+  const [selectedClassId, setSelectedClassId] = useState<string>('');
+
+  useEffect(() => {
+    const storedRole = localStorage.getItem('teacherRole');
+    const storedClassId = localStorage.getItem('teacherClassId');
+    setRole(storedRole);
+    setTeacherClassId(storedClassId);
+    if (storedRole === 'admin') {
+      setSelectedClassId(classes[0]?.id || '');
+    } else {
+      setSelectedClassId(storedClassId || '');
+    }
+  }, [classes]);
+
+  const studentsInView = useMemo(() => {
+    if (role === 'admin') {
+      return students.filter(s => s.classId === selectedClassId);
+    }
+    return students.filter(s => s.classId === teacherClassId);
+  }, [role, students, selectedClassId, teacherClassId]);
 
   const [isAddRewardDialogOpen, setIsAddRewardDialogOpen] = useState(false);
   const [isEditRewardDialogOpen, setIsEditRewardDialogOpen] = useState(false);
@@ -43,14 +66,14 @@ export default function TeacherDashboardPage() {
 
   const { toast } = useToast();
   
-  const pendingRequests = students.flatMap(student => 
+  const pendingRequests = useMemo(() => studentsInView.flatMap(student => 
     student.redeemedRewards
         .filter(r => r.status === 'pending_use')
         .map(r => ({ student, redemption: r }))
-  );
+  ), [studentsInView]);
 
   const handleApproveUsage = (studentId: string, redemptionId: string) => {
-    setStudents(students.map(student => {
+    setStudents(currentStudents => currentStudents.map(student => {
         if (student.id === studentId) {
             return {
                 ...student,
@@ -74,7 +97,7 @@ export default function TeacherDashboardPage() {
       });
       return;
     }
-    setStudents(students.map(s => s.id === studentId ? { ...s, points: s.points + pointsToAdd } : s));
+    setStudents(currentStudents => currentStudents.map(s => s.id === studentId ? { ...s, points: s.points + pointsToAdd } : s));
     const student = students.find(s => s.id === studentId);
     toast({
         title: "點數已發送！",
@@ -93,7 +116,7 @@ export default function TeacherDashboardPage() {
       stock: Number(formData.get("stock")),
       image: `https://picsum.photos/seed/${Math.random()}/600/400`,
     };
-    setRewards([...rewards, newReward]);
+    setRewards(currentRewards => [...currentRewards, newReward]);
     setIsAddRewardDialogOpen(false);
     toast({
         title: "已新增獎勵",
@@ -119,7 +142,7 @@ export default function TeacherDashboardPage() {
       stock: Number(formData.get("stock")),
     };
     
-    setRewards(rewards.map(r => (r.id === updatedReward.id ? updatedReward : r)));
+    setRewards(currentRewards => currentRewards.map(r => (r.id === updatedReward.id ? updatedReward : r)));
     setIsEditRewardDialogOpen(false);
     setEditingReward(null);
     toast({
@@ -130,7 +153,7 @@ export default function TeacherDashboardPage() {
 
   const handleDeleteReward = (id: number) => {
     const rewardToDelete = rewards.find(r => r.id === id);
-    setRewards(rewards.filter(reward => reward.id !== id));
+    setRewards(currentRewards => currentRewards.filter(reward => reward.id !== id));
     if(rewardToDelete){
         toast({
             title: "已移除獎勵",
@@ -147,10 +170,10 @@ export default function TeacherDashboardPage() {
     const name = formData.get("name") as string;
     const password = formData.get("password") as string;
 
-    if (students.some(s => s.id === id)) {
+    if (students.some(s => s.id === id && s.classId === selectedClassId)) {
         toast({
             title: "新增學生失敗",
-            description: `編號 ${id} 已存在。`,
+            description: `編號 ${id} 在此班級已存在。`,
             variant: "destructive",
         });
         return;
@@ -159,13 +182,14 @@ export default function TeacherDashboardPage() {
     const newStudent: Student = {
         id,
         name,
+        classId: selectedClassId,
         password,
         points: 0,
         avatar: `https://picsum.photos/seed/${id}/100`,
         portfolio: [],
         redeemedRewards: [],
     };
-    setStudents([...students, newStudent]);
+    setStudents(currentStudents => [...currentStudents, newStudent]);
     setIsAddStudentDialogOpen(false);
     toast({
         title: "已新增學生",
@@ -184,7 +208,7 @@ export default function TeacherDashboardPage() {
     const formData = new FormData(event.currentTarget);
     const newPassword = formData.get("new-password") as string;
 
-    setStudents(students.map(s => s.id === editingStudent.id ? { ...s, password: newPassword } : s));
+    setStudents(currentStudents => currentStudents.map(s => s.id === editingStudent.id ? { ...s, password: newPassword } : s));
     setIsResetPasswordDialogOpen(false);
     setEditingStudent(null);
     toast({
@@ -195,7 +219,27 @@ export default function TeacherDashboardPage() {
 
 
   return (
-    <>
+    <div className="flex flex-col gap-6">
+    {role === 'admin' && (
+      <Card>
+        <CardHeader>
+          <CardTitle>班級選擇</CardTitle>
+          <CardDescription>身為校長，您可以選擇要檢視或管理的班級。</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Select onValueChange={setSelectedClassId} value={selectedClassId}>
+            <SelectTrigger className="w-[280px]">
+              <SelectValue placeholder="請選擇班級" />
+            </SelectTrigger>
+            <SelectContent>
+              {classes.map(c => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+    )}
     <Tabs defaultValue="students" className="animate-in fade-in-0 duration-500">
       <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="students">管理學生</TabsTrigger>
@@ -233,7 +277,7 @@ export default function TeacherDashboardPage() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {students.map((student) => (
+                    {studentsInView.map((student) => (
                     <TableRow key={student.id}>
                         <TableCell className="font-mono">{student.id}</TableCell>
                         <TableCell className="flex items-center gap-4">
@@ -277,7 +321,7 @@ export default function TeacherDashboardPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {students.map((student) => (
+                {studentsInView.map((student) => (
                   <TableRow key={student.id}>
                     <TableCell className="flex items-center gap-4">
                       <Avatar>
@@ -535,7 +579,7 @@ export default function TeacherDashboardPage() {
               <Label htmlFor="new-password" className="text-right">
                 新密碼
               </Label>
-              <Input id="new-password" name="password" type="password" className="col-span-3" required/>
+              <Input id="new-password" name="new-password" type="password" className="col-span-3" required/>
             </div>
           </div>
           <DialogFooter>
@@ -547,6 +591,7 @@ export default function TeacherDashboardPage() {
           </form>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }
+

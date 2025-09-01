@@ -1,9 +1,10 @@
+
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { StudentDataProvider } from "@/context/StudentDataContext";
-import { RewardProvider } from "@/context/RewardContext";
-import { StudentManagementProvider } from "@/context/StudentManagementContext";
+import { AppDataProvider } from "@/context/AppDataContext";
+
 
 export const metadata: Metadata = {
   title: "南梓實小虛擬銀行",
@@ -26,14 +27,12 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <StudentManagementProvider>
+        <AppDataProvider>
           <StudentDataProvider>
-            <RewardProvider>
               {children}
               <Toaster />
-            </RewardProvider>
           </StudentDataProvider>
-        </StudentManagementProvider>
+        </AppDataProvider>
       </body>
     </html>
   );

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useContext, useMemo } from "react";
@@ -8,7 +9,7 @@ import { Bar, BarChart, XAxis, YAxis } from "recharts"
 import RewardSuggestion from "@/components/reward-suggestion";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { stocks as marketStocks } from "@/lib/placeholder-data";
-import { StudentManagementContext } from "@/context/StudentManagementContext";
+import { AppDataContext } from "@/context/AppDataContext";
 
 const pointsData = [
   { month: "一月", points: 186 },
@@ -28,12 +29,12 @@ const chartConfig: ChartConfig = {
 
 export default function StudentDashboardPage() {
   const { studentData } = useContext(StudentDataContext);
-  const { students } = useContext(StudentManagementContext);
+  const { students } = useContext(AppDataContext);
   
   // Find the most up-to-date student info from the source of truth
   const currentStudent = useMemo(() => 
-    students.find(s => s.id === studentData.student?.id)
-  , [students, studentData.student?.id]);
+    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId)
+  , [students, studentData.student?.id, studentData.student?.classId]);
 
   const portfolioValue = useMemo(() => {
     if (!currentStudent) return 0;
@@ -47,7 +48,10 @@ export default function StudentDashboardPage() {
   const { rank, percentile } = useMemo(() => {
     if (!currentStudent) return { rank: 0, percentile: 0 };
     
-    const studentsWithAssets = students.map(student => {
+    // Filter students in the same class
+    const studentsInClass = students.filter(s => s.classId === currentStudent.classId);
+
+    const studentsWithAssets = studentsInClass.map(student => {
       const studentPortfolioValue = student.portfolio.reduce((acc, item) => {
         const marketInfo = marketStocks.find(s => s.ticker === item.ticker);
         const currentValue = marketInfo ? marketInfo.price * item.shares : 0;
@@ -60,7 +64,7 @@ export default function StudentDashboardPage() {
     studentsWithAssets.sort((a, b) => b.totalAssets - a.totalAssets);
 
     const studentRank = studentsWithAssets.findIndex(s => s.id === currentStudent.id) + 1;
-    const studentPercentile = students.length > 0 ? ((students.length - studentRank) / (students.length -1) ) * 100 : 100;
+    const studentPercentile = studentsInClass.length > 1 ? ((studentsInClass.length - studentRank) / (studentsInClass.length - 1) ) * 100 : 100;
     
     return { rank: studentRank, percentile: studentPercentile };
   }, [students, currentStudent]);
