@@ -44,6 +44,28 @@ export default function StudentDashboardPage() {
     }, 0);
   }, [currentStudent]);
 
+  const { rank, percentile } = useMemo(() => {
+    if (!currentStudent) return { rank: 0, percentile: 0 };
+    
+    const studentsWithAssets = students.map(student => {
+      const studentPortfolioValue = student.portfolio.reduce((acc, item) => {
+        const marketInfo = marketStocks.find(s => s.ticker === item.ticker);
+        const currentValue = marketInfo ? marketInfo.price * item.shares : 0;
+        return acc + currentValue;
+      }, 0);
+      const totalAssets = student.points + studentPortfolioValue;
+      return { ...student, totalAssets };
+    });
+
+    studentsWithAssets.sort((a, b) => b.totalAssets - a.totalAssets);
+
+    const studentRank = studentsWithAssets.findIndex(s => s.id === currentStudent.id) + 1;
+    const studentPercentile = students.length > 0 ? ((students.length - studentRank) / (students.length -1) ) * 100 : 100;
+    
+    return { rank: studentRank, percentile: studentPercentile };
+  }, [students, currentStudent]);
+
+
   const totalPoints = currentStudent?.points || 0;
   const totalAssets = portfolioValue + totalPoints;
   const stockPerformance = "上週透過投資科技股獲利 5%。";
@@ -93,8 +115,8 @@ export default function StudentDashboardPage() {
             <Trophy className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">#3</div>
-            <p className="text-xs text-muted-foreground">班級前 10%</p>
+            <div className="text-2xl font-bold">#{rank}</div>
+            <p className="text-xs text-muted-foreground">班級前 {100 - Math.floor(percentile)}%</p>
           </CardContent>
         </Card>
       </div>
