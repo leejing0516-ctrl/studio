@@ -7,6 +7,7 @@ import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "
 import { Bar, BarChart, XAxis, YAxis } from "recharts"
 import RewardSuggestion from "@/components/reward-suggestion";
 import { StudentDataContext } from "@/context/StudentDataContext";
+import { stocks as marketStocks } from "@/lib/placeholder-data";
 
 const pointsData = [
   { month: "一月", points: 186 },
@@ -27,7 +28,11 @@ const chartConfig: ChartConfig = {
 export default function StudentDashboardPage() {
   const { studentData } = useContext(StudentDataContext);
 
-  const portfolioValue = studentData.portfolio.reduce((acc, item) => acc + item.currentValue, 0);
+  const portfolioValue = studentData.portfolio.reduce((acc, item) => {
+      const marketInfo = marketStocks.find(s => s.ticker === item.ticker);
+      const currentValue = marketInfo ? marketInfo.price * item.shares : 0;
+      return acc + currentValue;
+  }, 0);
   const totalAssets = portfolioValue + studentData.points;
   const stockPerformance = "上週透過投資科技股獲利 5%。";
 
