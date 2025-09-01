@@ -30,6 +30,8 @@ import { useToast } from "@/hooks/use-toast";
 export default function TeacherDashboardPage() {
   const [rewards, setRewards] = useState<Reward[]>(initialRewards);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingReward, setEditingReward] = useState<Reward | null>(null);
   const { toast } = useToast();
 
   const handleAwardPoints = (studentName: string) => {
@@ -57,6 +59,33 @@ export default function TeacherDashboardPage() {
         description: `${newReward.name} 已被新增至商店。`
     })
   };
+  
+  const handleEditClick = (reward: Reward) => {
+    setEditingReward(reward);
+    setIsEditDialogOpen(true);
+  };
+  
+  const handleUpdateReward = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingReward) return;
+
+    const formData = new FormData(event.currentTarget);
+    const updatedReward: Reward = {
+      ...editingReward,
+      name: formData.get("name") as string,
+      description: formData.get("description") as string,
+      cost: Number(formData.get("cost")),
+      stock: Number(formData.get("stock")),
+    };
+    
+    setRewards(rewards.map(r => (r.id === updatedReward.id ? updatedReward : r)));
+    setIsEditDialogOpen(false);
+    setEditingReward(null);
+    toast({
+        title: "已更新獎勵",
+        description: `${updatedReward.name} 的資訊已更新。`
+    })
+  }
 
   const handleDeleteReward = (id: number) => {
     const rewardToDelete = rewards.find(r => r.id === id);
@@ -71,6 +100,7 @@ export default function TeacherDashboardPage() {
   }
 
   return (
+    <>
     <Tabs defaultValue="students" className="animate-in fade-in-0 duration-500">
       <TabsList className="grid w-full grid-cols-2">
         <TabsTrigger value="students">管理學生</TabsTrigger>
@@ -151,7 +181,7 @@ export default function TeacherDashboardPage() {
                     <TableCell>{reward.cost.toLocaleString()}</TableCell>
                     <TableCell>{reward.stock}</TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" className="mr-2">
+                      <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleEditClick(reward)}>
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteReward(reward.id)}>
@@ -165,7 +195,7 @@ export default function TeacherDashboardPage() {
           </CardContent>
         </Card>
       </TabsContent>
-
+      </Tabs>
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
             <form onSubmit={handleAddReward}>
@@ -177,28 +207,28 @@ export default function TeacherDashboardPage() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
+              <Label htmlFor="add-name" className="text-right">
                 名稱
               </Label>
-              <Input id="name" name="name" className="col-span-3" required/>
+              <Input id="add-name" name="name" className="col-span-3" required/>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">
+              <Label htmlFor="add-description" className="text-right">
                 描述
               </Label>
-              <Input id="description" name="description" className="col-span-3" required/>
+              <Input id="add-description" name="description" className="col-span-3" required/>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="cost" className="text-right">
+              <Label htmlFor="add-cost" className="text-right">
                 費用
               </Label>
-              <Input id="cost" name="cost" type="number" className="col-span-3" required/>
+              <Input id="add-cost" name="cost" type="number" className="col-span-3" required/>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="stock" className="text-right">
+              <Label htmlFor="add-stock" className="text-right">
                 庫存
               </Label>
-              <Input id="stock" name="stock" type="number" className="col-span-3" required/>
+              <Input id="add-stock" name="stock" type="number" className="col-span-3" required/>
             </div>
           </div>
           <DialogFooter>
@@ -210,6 +240,50 @@ export default function TeacherDashboardPage() {
           </form>
         </DialogContent>
       </Dialog>
-    </Tabs>
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+            <form onSubmit={handleUpdateReward}>
+          <DialogHeader>
+            <DialogTitle>編輯獎勵</DialogTitle>
+            <DialogDescription>
+              更新「{editingReward?.name}」的詳細資訊。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-name" className="text-right">
+                名稱
+              </Label>
+              <Input id="edit-name" name="name" defaultValue={editingReward?.name} className="col-span-3" required/>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-description" className="text-right">
+                描述
+              </Label>
+              <Input id="edit-description" name="description" defaultValue={editingReward?.description} className="col-span-3" required/>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-cost" className="text-right">
+                費用
+              </Label>
+              <Input id="edit-cost" name="cost" type="number" defaultValue={editingReward?.cost} className="col-span-3" required/>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-stock" className="text-right">
+                庫存
+              </Label>
+              <Input id="edit-stock" name="stock" type="number" defaultValue={editingReward?.stock} className="col-span-3" required/>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+                <Button type="button" variant="secondary" onClick={() => setEditingReward(null)}>取消</Button>
+            </DialogClose>
+            <Button type="submit">儲存變更</Button>
+          </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
