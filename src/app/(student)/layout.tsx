@@ -53,10 +53,13 @@ export default function StudentLayout({
     if (studentData.student) {
         const latestStudentData = students.find(s => s.id === studentData.student?.id);
         if (latestStudentData) {
+            // This was the source of the bug. It was not carrying over the redeemedRewards.
+            // By setting the full student object, we ensure all data is preserved.
             setStudentData({ 
                 student: latestStudentData,
                 points: latestStudentData.points,
                 portfolio: latestStudentData.portfolio,
+                redeemedRewards: latestStudentData.redeemedRewards,
             });
         }
     }

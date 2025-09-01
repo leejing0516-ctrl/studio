@@ -35,6 +35,7 @@ export default function HomePage() {
           student: student,
           points: student.points,
           portfolio: student.portfolio || [],
+          redeemedRewards: student.redeemedRewards || [],
       });
       router.push('/dashboard');
     } else {
