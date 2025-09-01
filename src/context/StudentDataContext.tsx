@@ -32,16 +32,36 @@ export const StudentDataProvider = ({ children }: { children: ReactNode }) => {
 
   const updateStudentData = (updatedData: Partial<StudentData>) => {
     setStudentData(prevData => {
-        const newStudent = updatedData.student !== undefined ? updatedData.student : prevData.student;
-        const newPoints = updatedData.points !== undefined ? updatedData.points : prevData.points;
-        const newPortfolio = updatedData.portfolio !== undefined ? updatedData.portfolio : prevData.portfolio;
-        const newRedeemedRewards = newStudent?.redeemedRewards !== undefined ? newStudent.redeemedRewards : prevData.student?.redeemedRewards || [];
+      // Start with the previous data
+      const newData = { ...prevData };
 
-        return {
-            ...prevData,
-            ...updatedData,
-            student: newStudent ? { ...newStudent, points: newPoints, portfolio: newPortfolio, redeemedRewards: newRedeemedRewards } : null,
-        }
+      // Update points if provided
+      if (updatedData.points !== undefined) {
+        newData.points = updatedData.points;
+      }
+      
+      // Update portfolio if provided
+      if (updatedData.portfolio !== undefined) {
+        newData.portfolio = updatedData.portfolio;
+      }
+      
+      // Update student object if provided
+      if (updatedData.student !== undefined) {
+          newData.student = updatedData.student;
+      }
+
+      // Ensure the student object within newData is kept in sync
+      if (newData.student) {
+          newData.student = {
+              ...newData.student,
+              points: newData.points,
+              portfolio: newData.portfolio,
+              // Make sure redeemedRewards are carried over
+              redeemedRewards: updatedData.student?.redeemedRewards || newData.student.redeemedRewards || []
+          };
+      }
+      
+      return newData;
     });
   };
 
