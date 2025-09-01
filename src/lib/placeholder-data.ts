@@ -10,6 +10,7 @@ export const classes: Class[] = [
     { id: "5B", name: "五年乙班" },
     { id: "4A", name: "四年甲班" },
     { id: "4B", "name": "四年乙班" },
+    { id: "3A", "name": "三年甲班" },
 ];
 
 export const teachers: Teacher[] = [
@@ -17,7 +18,9 @@ export const teachers: Teacher[] = [
     { id: "teacher6A", name: "高老師", role: "teacher", classId: "6A" },
     { id: "teacher6B", name: "李老師", role: "teacher", classId: "6B" },
     { id: "teacher5A", name: "王老師", role: "teacher", classId: "5A" },
-    // Add other teachers as needed
+    { id: "teacher5B", name: "陳老師", role: "teacher", classId: "5B" },
+    { id: "teacher4A", name: "林老師", role: "teacher", classId: "4A" },
+    { id: "teacherUnassigned", name: "吳老師", role: "teacher", classId: null },
 ];
 
 export const students: Student[] = [
@@ -52,3 +55,5 @@ export const stocks: Stock[] = [
     { ticker: "ART", name: "創意公司", price: 45.30, change: 0.25, changePercent: 0.55, marketCap: "3000億" },
     { ticker: "TECH", name: "創新有限責任公司", price: 550.00, change: -12.30, changePercent: -2.18, marketCap: "5.5兆" },
 ];
+
+    

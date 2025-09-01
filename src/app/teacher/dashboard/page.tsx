@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Reward, Student, Teacher } from "@/lib/types";
+import type { Reward, Student, Teacher, Class } from "@/lib/types";
 import { PlusCircle, Edit, Trash2, KeyRound, Bell } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -31,7 +31,7 @@ import { AppDataContext } from "@/context/AppDataContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function TeacherDashboardPage() {
-  const { rewards, setRewards, students, setStudents, classes, teachers, setTeachers } = useContext(AppDataContext);
+  const { rewards, setRewards, students, setStudents, classes, setClasses, teachers, setTeachers } = useContext(AppDataContext);
 
   const [role, setRole] = useState<string | null>(null);
   const [teacherClassId, setTeacherClassId] = useState<string | null>(null);
@@ -64,17 +64,22 @@ export default function TeacherDashboardPage() {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
 
+  const [isAddTeacherDialogOpen, setIsAddTeacherDialogOpen] = useState(false);
   const [isEditTeacherDialogOpen, setIsEditTeacherDialogOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
-
+  
+  const [isAddClassDialogOpen, setIsAddClassDialogOpen] = useState(false);
 
   const { toast } = useToast();
   
-  const pendingRequests = useMemo(() => studentsInView.flatMap(student => 
-    student.redeemedRewards
+  const pendingRequests = useMemo(() => students.flatMap(student => 
+    (student.redeemedRewards || [])
         .filter(r => r.status === 'pending_use')
         .map(r => ({ student, redemption: r }))
-  ), [studentsInView]);
+  ).filter(({student}) => {
+      if (role === 'admin') return student.classId === selectedClassId;
+      return student.classId === teacherClassId;
+  }), [students, role, selectedClassId, teacherClassId]);
 
   const handleApproveUsage = (studentId: string, redemptionId: string) => {
     setStudents(currentStudents => currentStudents.map(student => {
@@ -220,6 +225,36 @@ export default function TeacherDashboardPage() {
         description: `${editingStudent.name} 的密碼已更新。`
     });
   }
+  
+  const handleAddTeacher = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const id = formData.get("id") as string;
+    const name = formData.get("name") as string;
+    const classId = formData.get("classId") as string;
+
+    if (teachers.some(t => t.id === id)) {
+        toast({
+            title: "新增老師失敗",
+            description: `ID 為 ${id} 的老師已存在。`,
+            variant: "destructive",
+        });
+        return;
+    }
+    
+    const newTeacher: Teacher = {
+        id,
+        name,
+        classId: classId || null,
+        role: 'teacher',
+    };
+    setTeachers(current => [...current, newTeacher]);
+    setIsAddTeacherDialogOpen(false);
+    toast({
+        title: "已新增老師",
+        description: `已成功新增老師 ${name}。`
+    });
+  }
 
   const handleEditTeacherClick = (teacher: Teacher) => {
     setEditingTeacher(teacher);
@@ -231,18 +266,48 @@ export default function TeacherDashboardPage() {
     if (!editingTeacher) return;
     const formData = new FormData(event.currentTarget);
     const name = formData.get("name") as string;
+    const classId = formData.get("classId") as string;
 
     setTeachers(currentTeachers => currentTeachers.map(t => 
-        t.id === editingTeacher.id ? { ...t, name } : t
+        t.id === editingTeacher.id ? { ...t, name, classId: classId || null } : t
     ));
 
     setIsEditTeacherDialogOpen(false);
     setEditingTeacher(null);
     toast({
         title: "已更新教師資訊",
-        description: "教師姓名已成功更新。"
+        description: "教師資訊已成功更新。"
     });
   }
+  
+  const handleAddClass = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const id = formData.get("id") as string;
+    const name = formData.get("name") as string;
+
+    if (classes.some(c => c.id === id)) {
+        toast({
+            title: "新增班級失敗",
+            description: `ID 為 ${id} 的班級已存在。`,
+            variant: "destructive",
+        });
+        return;
+    }
+
+    const newClass: Class = { id, name };
+    setClasses(current => [...current, newClass]);
+    setIsAddClassDialogOpen(false);
+    toast({
+        title: "已新增班級",
+        description: `已成功新增班級 ${name}。`
+    });
+  };
+  
+  const unassignedClasses = useMemo(() => {
+    const assignedClassIds = teachers.map(t => t.classId).filter(Boolean);
+    return classes.filter(c => !assignedClassIds.includes(c.id));
+  }, [classes, teachers]);
 
 
   return (
@@ -269,24 +334,25 @@ export default function TeacherDashboardPage() {
     )}
     <Tabs defaultValue="students" className="animate-in fade-in-0 duration-500">
       <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-5' : 'grid-cols-4'}`}>
-        <TabsTrigger value="students">管理學生</TabsTrigger>
-        {role === 'admin' && <TabsTrigger value="teachers">管理老師</TabsTrigger>}
+        <TabsTrigger value="students">學生管理</TabsTrigger>
+        {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
         <TabsTrigger value="points">發送點數</TabsTrigger>
-        <TabsTrigger value="rewards">管理獎勵</TabsTrigger>
+        <TabsTrigger value="rewards">獎勵管理</TabsTrigger>
         <TabsTrigger value="requests">
-            獎勵使用請求
+            使用請求
             {pendingRequests.length > 0 && (
                 <Badge variant="destructive" className="ml-2">{pendingRequests.length}</Badge>
             )}
         </TabsTrigger>
       </TabsList>
+      
       <TabsContent value="students" className="mt-6">
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                     <CardTitle>學生名單</CardTitle>
                     <CardDescription>
-                        新增、編輯或移除學生。
+                        新增、編輯或移除目前所選班級的學生。
                     </CardDescription>
                 </div>
                 <Button onClick={() => setIsAddStudentDialogOpen(true)}>
@@ -330,17 +396,25 @@ export default function TeacherDashboardPage() {
             </CardContent>
         </Card>
       </TabsContent>
+
       {role === 'admin' && (
-        <TabsContent value="teachers" className="mt-6">
+        <TabsContent value="teachers" className="mt-6 space-y-6">
             <Card>
-                <CardHeader>
-                    <CardTitle>教師名單</CardTitle>
-                    <CardDescription>編輯班級導師的資訊。</CardDescription>
+                <CardHeader  className="flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle>教師名單</CardTitle>
+                        <CardDescription>新增、編輯或指派班級導師。</CardDescription>
+                    </div>
+                    <Button onClick={() => setIsAddTeacherDialogOpen(true)}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        新增老師
+                    </Button>
                 </CardHeader>
                 <CardContent>
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                <TableHead>ID</TableHead>
                                 <TableHead>姓名</TableHead>
                                 <TableHead>班級</TableHead>
                                 <TableHead className="text-right">操作</TableHead>
@@ -349,8 +423,9 @@ export default function TeacherDashboardPage() {
                         <TableBody>
                             {teachers.filter(t => t.role === 'teacher').map(teacher => (
                                 <TableRow key={teacher.id}>
+                                    <TableCell>{teacher.id}</TableCell>
                                     <TableCell>{teacher.name}</TableCell>
-                                    <TableCell>{classes.find(c => c.id === teacher.classId)?.name || 'N/A'}</TableCell>
+                                    <TableCell>{classes.find(c => c.id === teacher.classId)?.name || '未指派'}</TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="icon" onClick={() => handleEditTeacherClick(teacher)}>
                                             <Edit className="h-4 w-4" />
@@ -362,8 +437,41 @@ export default function TeacherDashboardPage() {
                     </Table>
                 </CardContent>
             </Card>
+             <Card>
+                <CardHeader  className="flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle>班級列表</CardTitle>
+                        <CardDescription>新增或管理系統中的班級。</CardDescription>
+                    </div>
+                     <Button onClick={() => setIsAddClassDialogOpen(true)}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        新增班級
+                    </Button>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>班級 ID</TableHead>
+                                <TableHead>班級名稱</TableHead>
+                                <TableHead>班級導師</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {classes.map(c => (
+                                <TableRow key={c.id}>
+                                    <TableCell>{c.id}</TableCell>
+                                    <TableCell>{c.name}</TableCell>
+                                    <TableCell>{teachers.find(t => t.classId === c.id)?.name || 'N/A'}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
         </TabsContent>
       )}
+      
       <TabsContent value="points" className="mt-6">
         <Card>
           <CardHeader>
@@ -501,6 +609,8 @@ export default function TeacherDashboardPage() {
         </Card>
       </TabsContent>
     </Tabs>
+
+    {/* Dialogs for Rewards */}
     <Dialog open={isAddRewardDialogOpen} onOpenChange={setIsAddRewardDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
             <form onSubmit={handleAddReward}>
@@ -589,13 +699,15 @@ export default function TeacherDashboardPage() {
           </form>
         </DialogContent>
       </Dialog>
+      
+      {/* Dialogs for Students */}
       <Dialog open={isAddStudentDialogOpen} onOpenChange={setIsAddStudentDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
             <form onSubmit={handleAddStudent}>
           <DialogHeader>
             <DialogTitle>新增學生</DialogTitle>
             <DialogDescription>
-              為您的教室建立新的學生帳號。
+              在「{classes.find(c => c.id === selectedClassId)?.name}」建立新的學生帳號。
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -653,6 +765,45 @@ export default function TeacherDashboardPage() {
           </form>
         </DialogContent>
       </Dialog>
+      
+      {/* Dialogs for Teachers and Classes (Admin only) */}
+       <Dialog open={isAddTeacherDialogOpen} onOpenChange={setIsAddTeacherDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <form onSubmit={handleAddTeacher}>
+            <DialogHeader>
+              <DialogTitle>新增老師</DialogTitle>
+              <DialogDescription>建立新的老師帳號並選擇指派的班級。</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="teacher-id" className="text-right">老師 ID</Label>
+                    <Input id="teacher-id" name="id" className="col-span-3" required />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="teacher-name" className="text-right">姓名</Label>
+                    <Input id="teacher-name" name="name" className="col-span-3" required />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="teacher-class" className="text-right">班級</Label>
+                    <Select name="classId">
+                        <SelectTrigger className="col-span-3">
+                            <SelectValue placeholder="選擇一個未指派的班級" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {unassignedClasses.map(c => (
+                                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+            <DialogFooter>
+                <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
+                <Button type="submit">新增老師</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
       <Dialog open={isEditTeacherDialogOpen} onOpenChange={setIsEditTeacherDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
             <form onSubmit={handleUpdateTeacher}>
@@ -669,6 +820,22 @@ export default function TeacherDashboardPage() {
               </Label>
               <Input id="edit-teacher-name" name="name" defaultValue={editingTeacher?.name} className="col-span-3" required/>
             </div>
+             <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-teacher-class" className="text-right">班級</Label>
+                <Select name="classId" defaultValue={editingTeacher?.classId || ''}>
+                    <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="選擇班級" />
+                    </SelectTrigger>
+                    <SelectContent>
+                         <SelectItem value="">未指派</SelectItem>
+                        {classes.map(c => (
+                            <SelectItem key={c.id} value={c.id} disabled={unassignedClasses.every(uc => uc.id !== c.id) && c.id !== editingTeacher?.classId}>
+                                {c.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
           </div>
           <DialogFooter>
             <DialogClose asChild>
@@ -679,6 +846,40 @@ export default function TeacherDashboardPage() {
           </form>
         </DialogContent>
       </Dialog>
+      <Dialog open={isAddClassDialogOpen} onOpenChange={setIsAddClassDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+            <form onSubmit={handleAddClass}>
+          <DialogHeader>
+            <DialogTitle>新增班級</DialogTitle>
+            <DialogDescription>
+              建立一個新的班級。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="class-id" className="text-right">
+                班級 ID
+              </Label>
+              <Input id="class-id" name="id" placeholder="例如 3A" className="col-span-3" required/>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="class-name" className="text-right">
+                班級名稱
+              </Label>
+              <Input id="class-name" name="name" placeholder="例如 三年甲班" className="col-span-3" required/>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+                <Button type="button" variant="secondary">取消</Button>
+            </DialogClose>
+            <Button type="submit">新增班級</Button>
+          </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
+    
