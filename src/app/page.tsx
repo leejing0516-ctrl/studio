@@ -30,7 +30,7 @@ export default function HomePage() {
         title: "登入成功！",
         description: `歡迎回來，${student.name}！`,
       });
-      // 儲存完整學生資料到 Context，包括投資組合
+      // 儲存完整學生資料到 Context，包括投資組合和已兌換獎勵
       setStudentData({
           student: student,
           points: student.points,

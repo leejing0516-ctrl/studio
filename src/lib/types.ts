@@ -5,6 +5,7 @@ export type Student = {
   avatar: string;
   password?: string;
   portfolio: PortfolioItem[];
+  redeemedRewards: Reward[];
 };
 
 export type Reward = {

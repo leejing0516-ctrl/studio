@@ -35,11 +35,12 @@ export const StudentDataProvider = ({ children }: { children: ReactNode }) => {
         const newStudent = updatedData.student !== undefined ? updatedData.student : prevData.student;
         const newPoints = updatedData.points !== undefined ? updatedData.points : prevData.points;
         const newPortfolio = updatedData.portfolio !== undefined ? updatedData.portfolio : prevData.portfolio;
+        const newRedeemedRewards = newStudent?.redeemedRewards !== undefined ? newStudent.redeemedRewards : prevData.student?.redeemedRewards || [];
 
         return {
             ...prevData,
             ...updatedData,
-            student: newStudent ? { ...newStudent, points: newPoints, portfolio: newPortfolio } : null,
+            student: newStudent ? { ...newStudent, points: newPoints, portfolio: newPortfolio, redeemedRewards: newRedeemedRewards } : null,
         }
     });
   };
