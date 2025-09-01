@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
@@ -18,22 +18,48 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { StudentDataContext } from "@/context/StudentDataContext";
 
 export default function RewardsPage() {
   const [rewards, setRewards] = useState(initialRewards);
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const { toast } = useToast();
+  const { studentData, setStudentData } = useContext(StudentDataContext);
 
   const handleRedeemClick = (reward: Reward) => {
+    if (studentData.points < reward.cost) {
+        toast({
+            title: "點數不足",
+            description: `您需要 ${reward.cost.toLocaleString()} 點來兌換此獎勵。`,
+            variant: "destructive",
+        });
+        return;
+    }
     setSelectedReward(reward);
     setIsConfirmOpen(true);
   };
 
   const handleConfirmRedeem = () => {
     if (selectedReward) {
-      // 在此處處理兌換邏輯
-      // 例如：更新獎勵庫存
+      if (studentData.points < selectedReward.cost) {
+        toast({
+            title: "點數不足",
+            description: `您需要 ${selectedReward.cost.toLocaleString()} 點來兌換此獎勵。`,
+            variant: "destructive",
+        });
+        setIsConfirmOpen(false);
+        setSelectedReward(null);
+        return;
+      }
+      
+      // 更新學生點數
+      setStudentData(prevData => ({
+        ...prevData,
+        points: prevData.points - selectedReward.cost,
+      }));
+      
+      // 更新獎勵庫存
       const updatedRewards = rewards.map(r =>
         r.id === selectedReward.id ? { ...r, stock: r.stock - 1 } : r
       );
@@ -76,7 +102,7 @@ export default function RewardsPage() {
                   <Coins className="h-5 w-5" />
                   <span>{reward.cost.toLocaleString()}</span>
                 </div>
-                <Button onClick={() => handleRedeemClick(reward)} disabled={reward.stock === 0}>
+                <Button onClick={() => handleRedeemClick(reward)} disabled={reward.stock === 0 || studentData.points < reward.cost}>
                   <ShoppingCart className="mr-2"/>
                   兌換
                 </Button>
