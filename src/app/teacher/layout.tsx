@@ -58,15 +58,16 @@ export default function TeacherLayout({
           <SidebarMenu>
             {navItems.map((item) => (
               <SidebarMenuItem key={item.href}>
-                <Link href={item.href} legacyBehavior passHref>
-                  <SidebarMenuButton
-                    isActive={pathname.startsWith(item.href)}
-                    tooltip={item.label}
-                  >
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith(item.href)}
+                  tooltip={item.label}
+                >
+                  <Link href={item.href}>
                     <item.icon />
                     <span>{item.label}</span>
-                  </SidebarMenuButton>
-                </Link>
+                  </Link>
+                </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
           </SidebarMenu>
@@ -80,7 +81,7 @@ export default function TeacherLayout({
               >
                 <Avatar className="size-8">
                   <AvatarImage src="https://picsum.photos/101" data-ai-hint="teacher avatar" />
-                  <AvatarFallback>AT</AvatarFallback>
+                  <AvatarFallback>圖靈</AvatarFallback>
                 </Avatar>
                 <div className="text-left group-data-[collapsible=icon]:hidden">
                   <p className="font-semibold">圖靈博士</p>

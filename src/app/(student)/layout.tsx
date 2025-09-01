@@ -62,15 +62,16 @@ export default function StudentLayout({
           <SidebarMenu>
             {navItems.map((item) => (
               <SidebarMenuItem key={item.href}>
-                <Link href={item.href} legacyBehavior passHref>
-                  <SidebarMenuButton
-                    isActive={pathname === item.href}
-                    tooltip={item.label}
-                  >
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === item.href}
+                  tooltip={item.label}
+                >
+                  <Link href={item.href}>
                     <item.icon />
                     <span>{item.label}</span>
-                  </SidebarMenuButton>
-                </Link>
+                  </Link>
+                </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
           </SidebarMenu>
@@ -84,7 +85,7 @@ export default function StudentLayout({
               >
                 <Avatar className="size-8">
                   <AvatarImage src="https://picsum.photos/100" data-ai-hint="student avatar" />
-                  <AvatarFallback>JD</AvatarFallback>
+                  <AvatarFallback>珍·多伊</AvatarFallback>
                 </Avatar>
                 <div className="text-left group-data-[collapsible=icon]:hidden">
                   <p className="font-semibold">珍·多伊</p>
