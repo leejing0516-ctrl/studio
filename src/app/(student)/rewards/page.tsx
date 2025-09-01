@@ -52,10 +52,23 @@ export default function RewardsPage() {
         });
       } else {
         const newPoints = studentData.points - selectedReward.cost;
-        const newRedeemedRewards = [...(studentData.student.redeemedRewards || []), selectedReward];
+        
+        const newRedeemedReward = {
+          redemptionId: `${selectedReward.id}-${Date.now()}`,
+          reward: selectedReward,
+          status: 'collected' as const,
+        };
+
+        const newRedeemedRewards = [...(studentData.student.redeemedRewards || []), newRedeemedReward];
         
         // 更新學生資料 (StudentDataContext)
-        updateStudentData({ points: newPoints, student: { ...studentData.student, redeemedRewards: newRedeemedRewards } });
+        updateStudentData({ 
+            points: newPoints, 
+            student: { 
+                ...studentData.student, 
+                redeemedRewards: newRedeemedRewards 
+            } 
+        });
         
         // 更新學生總名單 (StudentManagementContext)
         setStudents(students.map(s => 

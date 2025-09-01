@@ -1,3 +1,9 @@
+export type RedeemedRewardItem = {
+  redemptionId: string; // A unique ID for this specific instance of the reward
+  reward: Reward;
+  status: 'collected' | 'pending_use';
+};
+
 export type Student = {
   id: string;
   name: string;
@@ -5,7 +11,7 @@ export type Student = {
   avatar: string;
   password?: string;
   portfolio: PortfolioItem[];
-  redeemedRewards: Reward[];
+  redeemedRewards: RedeemedRewardItem[];
 };
 
 export type Reward = {

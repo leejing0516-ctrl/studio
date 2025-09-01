@@ -21,12 +21,13 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Reward, Student } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, KeyRound } from "lucide-react";
+import { PlusCircle, Edit, Trash2, KeyRound, Bell } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { RewardContext } from "@/context/RewardContext";
 import { StudentManagementContext } from "@/context/StudentManagementContext";
+import { Badge } from "@/components/ui/badge";
 
 export default function TeacherDashboardPage() {
   const { rewards, setRewards } = useContext(RewardContext);
@@ -41,6 +42,28 @@ export default function TeacherDashboardPage() {
   const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
 
   const { toast } = useToast();
+  
+  const pendingRequests = students.flatMap(student => 
+    student.redeemedRewards
+        .filter(r => r.status === 'pending_use')
+        .map(r => ({ student, redemption: r }))
+  );
+
+  const handleApproveUsage = (studentId: string, redemptionId: string) => {
+    setStudents(students.map(student => {
+        if (student.id === studentId) {
+            return {
+                ...student,
+                redeemedRewards: student.redeemedRewards.filter(r => r.redemptionId !== redemptionId)
+            };
+        }
+        return student;
+    }));
+    toast({
+        title: "已批准使用",
+        description: `您已批准了該學生的獎勵使用請求。`
+    });
+  };
 
   const handleAwardPoints = (studentId: string, pointsToAdd: number) => {
     if (!pointsToAdd || pointsToAdd <= 0) {
@@ -159,7 +182,7 @@ export default function TeacherDashboardPage() {
     event.preventDefault();
     if (!editingStudent) return;
     const formData = new FormData(event.currentTarget);
-    const newPassword = formData.get("password") as string;
+    const newPassword = formData.get("new-password") as string;
 
     setStudents(students.map(s => s.id === editingStudent.id ? { ...s, password: newPassword } : s));
     setIsResetPasswordDialogOpen(false);
@@ -174,10 +197,16 @@ export default function TeacherDashboardPage() {
   return (
     <>
     <Tabs defaultValue="students" className="animate-in fade-in-0 duration-500">
-      <TabsList className="grid w-full grid-cols-3">
+      <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="students">管理學生</TabsTrigger>
         <TabsTrigger value="points">發送點數</TabsTrigger>
         <TabsTrigger value="rewards">管理獎勵</TabsTrigger>
+        <TabsTrigger value="requests">
+            獎勵使用請求
+            {pendingRequests.length > 0 && (
+                <Badge variant="destructive" className="ml-2">{pendingRequests.length}</Badge>
+            )}
+        </TabsTrigger>
       </TabsList>
       <TabsContent value="students" className="mt-6">
         <Card>
@@ -325,8 +354,48 @@ export default function TeacherDashboardPage() {
           </CardContent>
         </Card>
       </TabsContent>
-      </Tabs>
-      <Dialog open={isAddRewardDialogOpen} onOpenChange={setIsAddRewardDialogOpen}>
+       <TabsContent value="requests" className="mt-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>獎勵使用請求</CardTitle>
+            <CardDescription>
+              批准學生提出的獎勵使用請求。批准後，獎勵將從學生的收藏中移除。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>學生</TableHead>
+                  <TableHead>獎勵名稱</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingRequests.length > 0 ? (
+                    pendingRequests.map(({ student, redemption }) => (
+                        <TableRow key={redemption.redemptionId}>
+                            <TableCell>{student.name}</TableCell>
+                            <TableCell>{redemption.reward.name}</TableCell>
+                            <TableCell className="text-right">
+                                <Button size="sm" onClick={() => handleApproveUsage(student.id, redemption.redemptionId)}>同意使用</Button>
+                            </TableCell>
+                        </TableRow>
+                    ))
+                ) : (
+                    <TableRow>
+                        <TableCell colSpan={3} className="text-center h-24">
+                            目前沒有待處理的請求。
+                        </TableCell>
+                    </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
+    <Dialog open={isAddRewardDialogOpen} onOpenChange={setIsAddRewardDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
             <form onSubmit={handleAddReward}>
           <DialogHeader>
