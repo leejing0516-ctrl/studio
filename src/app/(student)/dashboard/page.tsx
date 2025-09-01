@@ -1,6 +1,6 @@
 "use client";
 
-import { useContext } from "react";
+import { useContext, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Coins, Trophy, Wallet, BarChart as BarChartIcon } from "lucide-react";
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
@@ -8,6 +8,7 @@ import { Bar, BarChart, XAxis, YAxis } from "recharts"
 import RewardSuggestion from "@/components/reward-suggestion";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { stocks as marketStocks } from "@/lib/placeholder-data";
+import { StudentManagementContext } from "@/context/StudentManagementContext";
 
 const pointsData = [
   { month: "一月", points: 186 },
@@ -27,14 +28,29 @@ const chartConfig: ChartConfig = {
 
 export default function StudentDashboardPage() {
   const { studentData } = useContext(StudentDataContext);
+  const { students } = useContext(StudentManagementContext);
+  
+  // Find the most up-to-date student info from the source of truth
+  const currentStudent = useMemo(() => 
+    students.find(s => s.id === studentData.student?.id)
+  , [students, studentData.student?.id]);
 
-  const portfolioValue = studentData.portfolio.reduce((acc, item) => {
-      const marketInfo = marketStocks.find(s => s.ticker === item.ticker);
-      const currentValue = marketInfo ? marketInfo.price * item.shares : 0;
-      return acc + currentValue;
-  }, 0);
-  const totalAssets = portfolioValue + studentData.points;
+  const portfolioValue = useMemo(() => {
+    if (!currentStudent) return 0;
+    return currentStudent.portfolio.reduce((acc, item) => {
+        const marketInfo = marketStocks.find(s => s.ticker === item.ticker);
+        const currentValue = marketInfo ? marketInfo.price * item.shares : 0;
+        return acc + currentValue;
+    }, 0);
+  }, [currentStudent]);
+
+  const totalPoints = currentStudent?.points || 0;
+  const totalAssets = portfolioValue + totalPoints;
   const stockPerformance = "上週透過投資科技股獲利 5%。";
+
+  if (!currentStudent) {
+    return <div>載入中...</div>; // Or a more sophisticated loading state
+  }
 
   return (
     <div className="grid gap-6 animate-in fade-in-0 duration-500">
@@ -46,7 +62,7 @@ export default function StudentDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {studentData.points.toLocaleString()}
+              {totalPoints.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">可用於交易或兌換獎勵</p>
           </CardContent>
@@ -115,7 +131,7 @@ export default function StudentDashboardPage() {
             <CardDescription>根據您的活動獲得個人化的獎勵建議。</CardDescription>
           </CardHeader>
           <CardContent className="flex-grow flex items-center justify-center">
-            <RewardSuggestion studentPoints={studentData.points} stockMarketPerformance={stockPerformance} />
+            <RewardSuggestion studentPoints={totalPoints} stockMarketPerformance={stockPerformance} />
           </CardContent>
         </Card>
       </div>

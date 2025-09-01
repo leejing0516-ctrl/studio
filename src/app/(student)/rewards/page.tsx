@@ -25,7 +25,7 @@ export default function RewardsPage() {
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const { toast } = useToast();
-  const { studentData, updateStudentData } = useContext(StudentDataContext);
+  const { studentData } = useContext(StudentDataContext);
   const { students, setStudents } = useContext(StudentManagementContext);
   const { rewards, setRewards } = useContext(RewardContext);
 
@@ -43,49 +43,49 @@ export default function RewardsPage() {
   };
 
   const handleConfirmRedeem = () => {
-    if (selectedReward && studentData.student) {
-      if (studentData.points < selectedReward.cost) {
-        toast({
-            title: "點數不足",
-            description: `您需要 ${selectedReward.cost.toLocaleString()} 點來兌換此獎勵。`,
-            variant: "destructive",
-        });
-      } else {
-        const newPoints = studentData.points - selectedReward.cost;
-        
-        const newRedeemedReward = {
-          redemptionId: `${selectedReward.id}-${Date.now()}`,
-          reward: selectedReward,
-          status: 'collected' as const,
-        };
+    if (!selectedReward || !studentData.student) {
+        setIsConfirmOpen(false);
+        return;
+    };
 
-        const newRedeemedRewards = [...(studentData.student.redeemedRewards || []), newRedeemedReward];
-        
-        // 更新學生資料 (StudentDataContext)
-        updateStudentData({ 
-            points: newPoints, 
-            student: { 
-                ...studentData.student, 
-                redeemedRewards: newRedeemedRewards 
-            } 
-        });
-        
-        // 更新學生總名單 (StudentManagementContext)
-        setStudents(students.map(s => 
-          s.id === studentData.student?.id ? { ...s, points: newPoints, redeemedRewards: newRedeemedRewards } : s
-        ));
-        
-        // 更新獎勵庫存 (RewardContext)
-        setRewards(rewards.map(r =>
-          r.id === selectedReward.id ? { ...r, stock: r.stock - 1 } : r
-        ));
+    if (studentData.points < selectedReward.cost) {
+      toast({
+          title: "點數不足",
+          description: `您需要 ${selectedReward.cost.toLocaleString()} 點來兌換此獎勵。`,
+          variant: "destructive",
+      });
+    } else {
+      const newPoints = studentData.points - selectedReward.cost;
+      
+      const newRedeemedReward = {
+        redemptionId: `${selectedReward.id}-${Date.now()}`,
+        reward: selectedReward,
+        status: 'collected' as const,
+      };
 
-        toast({
-          title: "兌換成功！",
-          description: `您已成功兌換「${selectedReward.name}」。前往「我的收藏」查看！`,
-        });
-      }
+      const updatedStudent = {
+          ...studentData.student,
+          points: newPoints,
+          redeemedRewards: [...(studentData.student.redeemedRewards || []), newRedeemedReward],
+      };
+      
+      // Update global student list (StudentManagementContext)
+      // This is the "source of truth" now
+      setStudents(students.map(s => 
+        s.id === studentData.student?.id ? updatedStudent : s
+      ));
+      
+      // Update reward stock (RewardContext)
+      setRewards(rewards.map(r =>
+        r.id === selectedReward.id ? { ...r, stock: r.stock - 1 } : r
+      ));
+
+      toast({
+        title: "兌換成功！",
+        description: `您已成功兌換「${selectedReward.name}」。前往「我的收藏」查看！`,
+      });
     }
+    
     setIsConfirmOpen(false);
     setSelectedReward(null);
   };

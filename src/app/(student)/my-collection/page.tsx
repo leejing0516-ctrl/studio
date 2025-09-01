@@ -8,37 +8,29 @@ import { Gem, Hourglass, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StudentManagementContext } from "@/context/StudentManagementContext";
 import { useToast } from "@/hooks/use-toast";
-import type { RedeemedRewardItem } from "@/lib/types";
+import type { RedeemedRewardItem, Student } from "@/lib/types";
 
 export default function MyCollectionPage() {
-  const { studentData, updateStudentData } = useContext(StudentDataContext);
+  const { studentData } = useContext(StudentDataContext);
   const { students, setStudents } = useContext(StudentManagementContext);
   const { toast } = useToast();
+  
+  const currentStudent = students.find(s => s.id === studentData.student?.id);
 
   const handleUseReward = (redemption: RedeemedRewardItem) => {
-    if (!studentData.student) return;
+    if (!currentStudent) return;
 
-    // Update local student data (StudentDataContext)
-    const updatedRedeemedRewards = studentData.student.redeemedRewards.map(r => 
-        r.redemptionId === redemption.redemptionId ? { ...r, status: 'pending_use' as const } : r
-    );
-    updateStudentData({
-        student: {
-            ...studentData.student,
-            redeemedRewards: updatedRedeemedRewards
-        }
-    });
+    const updatedStudent: Student = {
+        ...currentStudent,
+        redeemedRewards: currentStudent.redeemedRewards.map(r => 
+            r.redemptionId === redemption.redemptionId ? { ...r, status: 'pending_use' as const } : r
+        ),
+    };
 
     // Update global student list (StudentManagementContext)
-    setStudents(students.map(s => {
-        if (s.id === studentData.student?.id) {
-            return {
-                ...s,
-                redeemedRewards: updatedRedeemedRewards,
-            };
-        }
-        return s;
-    }));
+    setStudents(students.map(s => 
+        s.id === currentStudent.id ? updatedStudent : s
+    ));
 
     toast({
         title: "已提出使用請求",
@@ -46,7 +38,7 @@ export default function MyCollectionPage() {
     });
   };
 
-  const redeemedRewards = studentData.student?.redeemedRewards || [];
+  const redeemedRewards = currentStudent?.redeemedRewards || [];
 
   return (
     <div className="animate-in fade-in-0 duration-500">

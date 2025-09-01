@@ -32,36 +32,25 @@ export const StudentDataProvider = ({ children }: { children: ReactNode }) => {
 
   const updateStudentData = (updatedData: Partial<StudentData>) => {
     setStudentData(prevData => {
-      // Start with the previous data
-      const newData = { ...prevData };
+      const newStudentState = { ...prevData, ...updatedData };
 
-      // Update points if provided
-      if (updatedData.points !== undefined) {
-        newData.points = updatedData.points;
+      // If any part of the student object is updated, we need to merge it
+      // with the existing student data to form a complete object.
+      if (updatedData.student) {
+        newStudentState.student = {
+          ...(prevData.student || {}),
+          ...updatedData.student,
+        } as Student;
       }
       
-      // Update portfolio if provided
-      if (updatedData.portfolio !== undefined) {
-        newData.portfolio = updatedData.portfolio;
-      }
-      
-      // Update student object if provided
-      if (updatedData.student !== undefined) {
-          newData.student = updatedData.student;
+      // Ensure the top-level points and portfolio are in sync with the student object inside.
+      // The student object is the source of truth.
+      if (newStudentState.student) {
+        newStudentState.points = newStudentState.student.points;
+        newStudentState.portfolio = newStudentState.student.portfolio;
       }
 
-      // Ensure the student object within newData is kept in sync
-      if (newData.student) {
-          newData.student = {
-              ...newData.student,
-              points: newData.points,
-              portfolio: newData.portfolio,
-              // Make sure redeemedRewards are carried over
-              redeemedRewards: updatedData.student?.redeemedRewards || newData.student.redeemedRewards || []
-          };
-      }
-      
-      return newData;
+      return newStudentState;
     });
   };
 

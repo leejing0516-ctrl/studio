@@ -61,8 +61,11 @@ export default function StocksPage() {
   const [tradeType, setTradeType] = useState<"buy" | "sell">("buy");
   const [tradeShares, setTradeShares] = useState(0);
   const { toast } = useToast();
-  const { studentData, updateStudentData } = useContext(StudentDataContext);
+  const { studentData } = useContext(StudentDataContext);
   const { students, setStudents } = useContext(StudentManagementContext);
+  
+  const currentStudent = students.find(s => s.id === studentData.student?.id) || studentData.student;
+
 
   const handleTradeClick = (stock: Stock, type: "buy" | "sell") => {
     setSelectedStock(stock);
@@ -72,20 +75,20 @@ export default function StocksPage() {
   };
 
   const handleConfirmTrade = () => {
-    if (!selectedStock || tradeShares <= 0 || !studentData.student) {
+    if (!selectedStock || tradeShares <= 0 || !currentStudent) {
       toast({
         title: "交易失敗",
         description: "請輸入有效的股數或重新登入。",
         variant: "destructive",
       });
+      setIsTradeDialogOpen(false);
       return;
     }
 
     const totalCost = tradeShares * selectedStock.price;
-    const currentStudentId = studentData.student.id;
 
     if (tradeType === "buy") {
-      if (studentData.points < totalCost) {
+      if (currentStudent.points < totalCost) {
         toast({
           title: "點數不足",
           description: `您需要 ${totalCost.toLocaleString()} 點才能完成此交易。`,
@@ -94,16 +97,14 @@ export default function StocksPage() {
         return;
       }
 
-      const newPoints = studentData.points - totalCost;
-      
-      const existingHolding = studentData.portfolio.find(
+      const newPoints = currentStudent.points - totalCost;
+      const existingHolding = currentStudent.portfolio.find(
         (item) => item.ticker === selectedStock.ticker
       );
       
       let newPortfolio: PortfolioItem[];
-
       if (existingHolding) {
-        newPortfolio = studentData.portfolio.map((item) => {
+        newPortfolio = currentStudent.portfolio.map((item) => {
           if (item.ticker === selectedStock.ticker) {
             const newShares = item.shares + tradeShares;
             const newTotalCost = item.avgCost * item.shares + totalCost;
@@ -114,7 +115,7 @@ export default function StocksPage() {
         });
       } else {
         newPortfolio = [
-          ...studentData.portfolio,
+          ...currentStudent.portfolio,
           {
             ticker: selectedStock.ticker,
             name: selectedStock.name,
@@ -123,21 +124,16 @@ export default function StocksPage() {
           },
         ];
       }
-
-      // Update local context for immediate UI feedback
-      updateStudentData({ points: newPoints, portfolio: newPortfolio });
       
-      // Update global context for persistence
-      setStudents(students.map(s => s.id === currentStudentId ? { ...s, points: newPoints, portfolio: newPortfolio } : s));
-
+      const updatedStudent = { ...currentStudent, points: newPoints, portfolio: newPortfolio };
+      setStudents(students.map(s => s.id === currentStudent.id ? updatedStudent : s));
       toast({
         title: "買入成功！",
         description: `您已成功買入 ${tradeShares} 股 ${selectedStock.name}。`,
       });
 
     } else { // Sell
-      const holding = studentData.portfolio.find(item => item.ticker === selectedStock.ticker);
-
+      const holding = currentStudent.portfolio.find(item => item.ticker === selectedStock.ticker);
       if (!holding || holding.shares < tradeShares) {
         toast({
           title: "持股不足",
@@ -147,20 +143,16 @@ export default function StocksPage() {
         return;
       }
 
-      const newPoints = studentData.points + totalCost;
-      const newPortfolio = studentData.portfolio.map(item => {
+      const newPoints = currentStudent.points + totalCost;
+      const newPortfolio = currentStudent.portfolio.map(item => {
           if (item.ticker === selectedStock.ticker) {
             return { ...item, shares: item.shares - tradeShares };
           }
           return item;
-        }).filter(item => item.shares > 0); // Remove if shares are zero
+        }).filter(item => item.shares > 0);
 
-      // Update local context for immediate UI feedback
-      updateStudentData({ points: newPoints, portfolio: newPortfolio });
-
-      // Update global context for persistence
-      setStudents(students.map(s => s.id === currentStudentId ? { ...s, points: newPoints, portfolio: newPortfolio } : s));
-
+      const updatedStudent = { ...currentStudent, points: newPoints, portfolio: newPortfolio };
+      setStudents(students.map(s => s.id === currentStudent.id ? updatedStudent : s));
       toast({
         title: "賣出成功！",
         description: `您已成功賣出 ${tradeShares} 股 ${selectedStock.name}。`,
@@ -170,7 +162,7 @@ export default function StocksPage() {
     setIsTradeDialogOpen(false);
   };
   
-  const portfolioWithValue = studentData.portfolio.map(item => {
+  const portfolioWithValue = (currentStudent?.portfolio || []).map(item => {
     const marketInfo = marketStocks.find(s => s.ticker === item.ticker);
     const currentValue = marketInfo ? marketInfo.price * item.shares : 0;
     const totalCost = item.avgCost * item.shares;
@@ -218,8 +210,7 @@ export default function StocksPage() {
                       <TableCell className="text-right">
                           <span className={cn(
                             "flex items-center justify-end gap-1",
-                            stock.change > 0 && "text-destructive",
-                            stock.change < 0 && "text-success",
+                            stock.change > 0 ? "text-destructive" : "text-success",
                           )}>
                               {stock.change > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
                               {Math.abs(stock.change).toFixed(2)} ({Math.abs(stock.changePercent).toFixed(2)}%)
@@ -243,7 +234,7 @@ export default function StocksPage() {
                   <Card>
                       <CardHeader>
                           <CardTitle>我的投資組合</CardTitle>
-                          <CardDescription>您目前的持股。您有 {studentData.points.toLocaleString()} 點數可用。</CardDescription>
+                          <CardDescription>您目前的持股。您有 {(currentStudent?.points || 0).toLocaleString()} 點數可用。</CardDescription>
                       </CardHeader>
                       <CardContent>
                           <Table>
@@ -267,8 +258,7 @@ export default function StocksPage() {
                                           <TableCell className="text-right">
                                               <span className={cn(
                                                 "flex items-center justify-end gap-1",
-                                                item.totalGain > 0 && "text-destructive",
-                                                item.totalGain < 0 && "text-success",
+                                                item.totalGain >= 0 ? "text-destructive" : "text-success",
                                               )}>
                                                   {item.totalGain >= 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
                                                   ${Math.abs(item.totalGain).toFixed(2)} ({item.totalGainPercent.toFixed(2)}%)
@@ -318,7 +308,7 @@ export default function StocksPage() {
           <DialogHeader>
             <DialogTitle>{tradeType === 'buy' ? '買入' : '賣出'}股票</DialogTitle>
             <DialogDescription>
-              {tradeType === 'buy' ? `您目前有 ${studentData.points.toLocaleString()} 點數。` : ''}
+              {tradeType === 'buy' ? `您目前有 ${(currentStudent?.points || 0).toLocaleString()} 點數。` : ''}
               {tradeType === 'buy' ? '買入' : '賣出'} {selectedStock?.name} ({selectedStock?.ticker})。
             </DialogDescription>
           </DialogHeader>

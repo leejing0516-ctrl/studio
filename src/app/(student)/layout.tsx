@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useContext } from "react";
+import { useContext, useEffect } from "react";
 import {
   SidebarProvider,
   Sidebar,
@@ -36,6 +36,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { StudentDataContext } from "@/context/StudentDataContext";
+import { StudentManagementContext } from "@/context/StudentManagementContext";
 
 export default function StudentLayout({
   children,
@@ -43,7 +44,25 @@ export default function StudentLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { studentData } = useContext(StudentDataContext);
+  const { studentData, setStudentData } = useContext(StudentDataContext);
+  const { students } = useContext(StudentManagementContext);
+
+  // This effect ensures that the local student data (in StudentDataContext)
+  // is always in sync with the global student list (the source of truth).
+  useEffect(() => {
+    if (studentData.student) {
+        const latestStudentData = students.find(s => s.id === studentData.student?.id);
+        if (latestStudentData) {
+            setStudentData({ 
+                student: latestStudentData,
+                points: latestStudentData.points,
+                portfolio: latestStudentData.portfolio,
+            });
+        }
+    }
+  }, [students, studentData.student, setStudentData]);
+
+
   const student = studentData.student;
 
   const navItems = [

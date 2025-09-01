@@ -30,7 +30,7 @@ export default function HomePage() {
         title: "登入成功！",
         description: `歡迎回來，${student.name}！`,
       });
-      // 儲存完整學生資料到 Context，包括投資組合和已兌換獎勵
+      // Store the complete student data in the Context upon login
       setStudentData({
           student: student,
           points: student.points,
