@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useContext } from "react";
 import {
   SidebarProvider,
   Sidebar,
@@ -33,6 +34,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { StudentDataContext } from "@/context/StudentDataContext";
 
 export default function StudentLayout({
   children,
@@ -40,6 +42,8 @@ export default function StudentLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { studentData } = useContext(StudentDataContext);
+  const student = studentData.student;
 
   const navItems = [
     { href: "/dashboard", label: "儀表板", icon: LayoutDashboard },
@@ -84,11 +88,11 @@ export default function StudentLayout({
                 className="w-full justify-start gap-2 p-2 group-data-[collapsible=icon]:justify-center"
               >
                 <Avatar className="size-8">
-                  <AvatarImage src="https://picsum.photos/100" data-ai-hint="student avatar" />
-                  <AvatarFallback>珍·多伊</AvatarFallback>
+                  <AvatarImage src={student?.avatar} data-ai-hint="student avatar" />
+                  <AvatarFallback>{student?.name.slice(0, 2)}</AvatarFallback>
                 </Avatar>
                 <div className="text-left group-data-[collapsible=icon]:hidden">
-                  <p className="font-semibold">珍·多伊</p>
+                  <p className="font-semibold">{student?.name || '學生'}</p>
                   <p className="text-xs text-muted-foreground">學生</p>
                 </div>
                 <ChevronDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />

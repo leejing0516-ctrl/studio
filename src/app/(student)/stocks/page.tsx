@@ -37,6 +37,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { StudentDataContext } from "@/context/StudentDataContext";
+import { StudentManagementContext } from "@/context/StudentManagementContext";
 
 const portfolioHistory = [
   { date: "2024-01-01", value: 2000 },
@@ -60,7 +61,8 @@ export default function StocksPage() {
   const [tradeType, setTradeType] = useState<"buy" | "sell">("buy");
   const [tradeShares, setTradeShares] = useState(0);
   const { toast } = useToast();
-  const { studentData, setStudentData } = useContext(StudentDataContext);
+  const { studentData, setStudentData, updateStudentPoints } = useContext(StudentDataContext);
+  const { students, setStudents } = useContext(StudentManagementContext);
 
   const handleTradeClick = (stock: Stock, type: "buy" | "sell") => {
     setSelectedStock(stock);
@@ -70,10 +72,10 @@ export default function StocksPage() {
   };
 
   const handleConfirmTrade = () => {
-    if (!selectedStock || tradeShares <= 0) {
+    if (!selectedStock || tradeShares <= 0 || !studentData.student) {
       toast({
         title: "交易失敗",
-        description: "請輸入有效的股數。",
+        description: "請輸入有效的股數或重新登入。",
         variant: "destructive",
       });
       return;
@@ -91,8 +93,11 @@ export default function StocksPage() {
         return;
       }
 
+      const newPoints = studentData.points - totalCost;
+      updateStudentPoints(newPoints);
+      setStudents(students.map(s => s.id === studentData.student?.id ? { ...s, points: newPoints } : s));
+
       setStudentData((prevData) => {
-        const newPoints = prevData.points - totalCost;
         const existingHolding = prevData.portfolio.find(
           (item) => item.ticker === selectedStock.ticker
         );
@@ -117,14 +122,14 @@ export default function StocksPage() {
               name: selectedStock.name,
               shares: tradeShares,
               avgCost: selectedStock.price,
-              currentValue: 0, // This will be updated in the portfolio view
+              currentValue: 0,
               totalGain: 0,
               totalGainPercent: 0,
             },
           ];
         }
 
-        return { ...prevData, points: newPoints, portfolio: newPortfolio };
+        return { ...prevData, portfolio: newPortfolio };
       });
 
       toast({
@@ -143,8 +148,11 @@ export default function StocksPage() {
         return;
       }
 
+      const newPoints = studentData.points + totalCost;
+      updateStudentPoints(newPoints);
+      setStudents(students.map(s => s.id === studentData.student?.id ? { ...s, points: newPoints } : s));
+
       setStudentData((prevData) => {
-        const newPoints = prevData.points + totalCost;
         const newPortfolio = prevData.portfolio.map(item => {
           if (item.ticker === selectedStock.ticker) {
             return { ...item, shares: item.shares - tradeShares };
@@ -152,7 +160,7 @@ export default function StocksPage() {
           return item;
         }).filter(item => item.shares > 0); // Remove if shares are zero
 
-        return { ...prevData, points: newPoints, portfolio: newPortfolio };
+        return { ...prevData, portfolio: newPortfolio };
       });
 
       toast({

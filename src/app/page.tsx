@@ -30,11 +30,11 @@ export default function HomePage() {
         title: "登入成功！",
         description: `歡迎回來，${student.name}！`,
       });
-      // Here you would typically set some global state or session
-      // For this prototype, we'll just set the current student data
+      // 儲存完整學生資料到 Context
       setStudentData({
+          student: student,
           points: student.points,
-          portfolio: [], // This should be fetched for the specific student
+          portfolio: [], // 這裡應從後端或 LocalStorage 取得該學生的投資組合
       });
       router.push('/dashboard');
     } else {

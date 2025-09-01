@@ -19,12 +19,14 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { RewardContext } from "@/context/RewardContext";
+import { StudentManagementContext } from "@/context/StudentManagementContext";
 
 export default function RewardsPage() {
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const { toast } = useToast();
-  const { studentData, setStudentData } = useContext(StudentDataContext);
+  const { studentData, updateStudentPoints } = useContext(StudentDataContext);
+  const { students, setStudents } = useContext(StudentManagementContext);
   const { rewards, setRewards } = useContext(RewardContext);
 
   const handleRedeemClick = (reward: Reward) => {
@@ -41,34 +43,33 @@ export default function RewardsPage() {
   };
 
   const handleConfirmRedeem = () => {
-    if (selectedReward) {
+    if (selectedReward && studentData.student) {
       if (studentData.points < selectedReward.cost) {
         toast({
             title: "點數不足",
             description: `您需要 ${selectedReward.cost.toLocaleString()} 點來兌換此獎勵。`,
             variant: "destructive",
         });
-        setIsConfirmOpen(false);
-        setSelectedReward(null);
-        return;
-      }
-      
-      // 更新學生點數
-      setStudentData(prevData => ({
-        ...prevData,
-        points: prevData.points - selectedReward.cost,
-      }));
-      
-      // 更新獎勵庫存
-      const updatedRewards = rewards.map(r =>
-        r.id === selectedReward.id ? { ...r, stock: r.stock - 1 } : r
-      );
-      setRewards(updatedRewards);
+      } else {
+        // 更新學生點數 (StudentDataContext)
+        const newPoints = studentData.points - selectedReward.cost;
+        updateStudentPoints(newPoints);
+        
+        // 更新學生總名單中的點數 (StudentManagementContext)
+        setStudents(students.map(s => 
+          s.id === studentData.student?.id ? { ...s, points: newPoints } : s
+        ));
+        
+        // 更新獎勵庫存
+        setRewards(rewards.map(r =>
+          r.id === selectedReward.id ? { ...r, stock: r.stock - 1 } : r
+        ));
 
-      toast({
-        title: "兌換成功！",
-        description: `您已成功兌換「${selectedReward.name}」。`,
-      });
+        toast({
+          title: "兌換成功！",
+          description: `您已成功兌換「${selectedReward.name}」。`,
+        });
+      }
     }
     setIsConfirmOpen(false);
     setSelectedReward(null);
