@@ -16,24 +16,22 @@
  * The `fill` attributes can be set to "currentColor" to inherit the primary
  * color from the application's theme.
  */
-export const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100.66 90.04">
+export const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 90">
     <defs>
-      <linearGradient id="teal-gradient-new" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="hsl(var(--primary))" />
-        <stop offset="100%" stop-color="hsl(var(--primary) / 0.8)" />
-      </linearGradient>
-      <linearGradient id="orange-gradient-new" x1="0%" y1="0%" x2="100%" y2="100%">
+      <linearGradient id="bank-roof-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stop-color="hsl(var(--accent))" />
-        <stop offset="100%" stop-color="hsl(var(--accent) / 0.8)" />
+        <stop offset="100%" stop-color="hsl(var(--accent) / 0.7)" />
+      </linearGradient>
+      <linearGradient id="bank-base-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="hsl(var(--primary) / 0.8)" />
+        <stop offset="100%" stop-color="hsl(var(--primary))" />
       </linearGradient>
     </defs>
-    <path
-      fill="url(#teal-gradient-new)"
-      d="M89.34,39.53a6.15,6.15,0,0,0-10.66,0L53,80.82a6.15,6.15,0,0,0,5.33,9.22H73a6.15,6.15,0,0,0,0-12.3H63.6L89.34,39.53Z"
-    />
-    <path
-      fill="url(#orange-gradient-new)"
-      d="m41.7,21.36c1.61-2.79.4-6.3-2.39-7.91L21.36,2.61a6.15,6.15,0,0,0-10.66,0L-5,39.53a6.15,6.15,0,0,0,5.33,9.22H21.36a6.15,6.15,0,0,0,0-12.3H16L36.37,6.15l10.69,19.45a6.15,6.15,0,0,0,10.66,0L78.64,62.52a6.15,6.15,0,0,0,5.33,9.22h11.36a6.15,6.15,0,1,0,0-12.3H89.3L63.56,21.36l-16.53-30.09a6.15,6.15,0,0,0-5.33-3.08Z"
-      transform="translate(5.33)"
-    />
+    <polygon fill="url(#bank-roof-gradient)" points="50,0 100,25 0,25" />
+    <rect fill="url(#bank-base-gradient)" y="25" width="100" height="15" />
+    <rect fill="hsl(var(--primary))" x="10" y="40" width="15" height="50" rx="2"/>
+    <rect fill="hsl(var(--primary))" x="32.5" y="40" width="15" height="50" rx="2"/>
+    <rect fill="hsl(var(--primary))" x="55" y="40" width="15" height="50" rx="2"/>
+    <rect fill="hsl(var(--primary))" x="77.5" y="40" width="15" height="50" rx="2"/>
   </svg>`;
+
