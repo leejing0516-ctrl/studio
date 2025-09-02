@@ -10,15 +10,17 @@ import RewardSuggestion from "@/components/reward-suggestion";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
 import { cn } from "@/lib/utils";
+import { addWeeks, format } from "date-fns";
+import { zhTW } from 'date-fns/locale';
 
-const pointsData = [
-  { week: "第一週", points: 45 },
-  { week: "第二週", points: 60 },
-  { week: "第三週", points: 35 },
-  { week: "第四週", points: 80 },
-  { week: "第五週", points: 55 },
-  { week: "第六週", points: 70 },
-];
+const startDate = new Date('2025-09-01');
+
+const pointsData = Array.from({ length: 6 }, (_, i) => ({
+  week: `第 ${i + 1} 週`,
+  points: [45, 60, 35, 80, 55, 70][i],
+  date: format(addWeeks(startDate, i), 'M月d日'),
+}));
+
 
 const chartConfig: ChartConfig = {
   points: {
@@ -154,7 +156,7 @@ export default function StudentDashboardPage() {
         <Card className="md:col-span-3">
           <CardHeader>
             <CardTitle>點數進度</CardTitle>
-            <CardDescription>您過去 6 週獲得的點數。</CardDescription>
+            <CardDescription>統計自 2025年9月1日 開始，六週內您獲得的點數。</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[250px] w-full">
@@ -164,6 +166,7 @@ export default function StudentDashboardPage() {
                   tickLine={false}
                   axisLine={false}
                   tickMargin={8}
+                  tickFormatter={(value, index) => `${value} (${pointsData[index].date})`}
                 />
                  <YAxis tickLine={false} axisLine={false} tickMargin={8} />
                 <ChartTooltip
