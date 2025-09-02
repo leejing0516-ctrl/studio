@@ -57,30 +57,16 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [sensitiveDataLoaded, setSensitiveDataLoaded] = useState(false);
 
-  // Generic fetch function
-  const fetchData = useCallback(async <T,>(collectionName: string, initialState: T[]): Promise<T[]> => {
+  // Generic fetch function - now only reads data
+  const fetchData = useCallback(async <T,>(collectionName: string): Promise<T[]> => {
       const collectionRef = collection(db, collectionName);
-      
-      // Check if collection exists by trying to get a metadata doc or a single doc
-      // Firestore doesn't have a direct "collection exists" check, so we check if it's empty
       const snapshot = await getDocs(collectionRef);
-
       if (snapshot.empty) {
-          // If the collection is empty, seed it with initial data
-          const batch = writeBatch(db);
-          initialState.forEach((item: any) => {
-              const docId = item.id ? String(item.id) : item.ticker;
-              const docRef = doc(db, collectionName, docId);
-              batch.set(docRef, item);
-          });
-          // Add a metadata doc to avoid re-seeding
-          batch.set(doc(db, collectionName, '--metadata--'), { seeded: true });
-          await batch.commit();
-          console.log(`Seeded ${collectionName} collection.`);
-          return initialState;
+          console.warn(`Firestore collection '${collectionName}' is empty. Please seed it manually if this is not expected.`);
+          return [];
       }
       return snapshot.docs
-        .filter(doc => doc.id !== '--metadata--') // Filter out metadata doc
+        .filter(doc => doc.id !== '--metadata--') // Filter out any metadata doc
         .map(doc => ({ ...doc.data() } as T));
   }, []);
   
@@ -89,8 +75,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     try {
         const [classesData, teachersData] = await Promise.all([
-            fetchData<Class>('classes', initialClasses),
-            fetchData<Teacher>('teachers', initialTeachers),
+            fetchData<Class>('classes'),
+            fetchData<Teacher>('teachers'),
         ]);
         setClassesState(classesData);
         setTeachersState(teachersData);
@@ -102,30 +88,27 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   }, [fetchData]);
 
   const loadSensitiveData = useCallback(async () => {
-    if (sensitiveDataLoaded) {
-        return { students, rewards, stocks };
-    }
+    // No need to check sensitiveDataLoaded here as it will be called explicitly
     console.log("Loading sensitive data...");
     setIsLoading(true);
     try {
         const [studentsData, rewardsData, stocksData] = await Promise.all([
-            fetchData<Student>('students', initialStudents),
-            fetchData<Reward>('rewards', initialRewards),
-            fetchData<Stock>('stocks', initialStocks),
+            fetchData<Student>('students'),
+            fetchData<Reward>('rewards'),
+            fetchData<Stock>('stocks'),
         ]);
         setStudentsState(studentsData);
         setRewardsState(rewardsData);
         setStocksState(stocksData);
-        setSensitiveDataLoaded(true);
+        setSensitiveDataLoaded(true); // Mark as loaded
         return { students: studentsData, rewards: rewardsData, stocks: stocksData };
     } catch (error) {
         console.error("Error loading sensitive data:", error);
-        // This will likely be a permission error if called prematurely, which is fine.
         return { students: [], rewards: [], stocks: [] };
     } finally {
         setIsLoading(false);
     }
-  }, [fetchData, sensitiveDataLoaded, students, rewards, stocks]);
+  }, [fetchData]);
 
 
   useEffect(() => {
