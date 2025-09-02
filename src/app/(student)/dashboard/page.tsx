@@ -142,13 +142,13 @@ export default function StudentDashboardPage() {
           </CardContent>
         </Card>
          {totalLoanAmount > 0 && (
-          <Card className="border-destructive">
+          <Card className="border-red-500">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">目前貸款</CardTitle>
-              <Landmark className="h-4 w-4 text-destructive" />
+              <Landmark className="h-4 w-4 text-red-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-destructive">
+              <div className="text-2xl font-bold text-red-500">
                 {totalLoanAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </div>
               <p className="text-xs text-muted-foreground">需在期限內償還</p>
