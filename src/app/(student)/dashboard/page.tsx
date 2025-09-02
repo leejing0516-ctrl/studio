@@ -13,12 +13,12 @@ import { AppDataContext } from "@/context/AppDataContext";
 import { cn } from "@/lib/utils";
 
 const pointsData = [
-  { month: "一月", points: 186 },
-  { month: "二月", points: 305 },
-  { month: "三月", points: 237 },
-  { month: "四月", points: 273 },
-  { month: "五月", points: 209 },
-  { month: "六月", points: 250 },
+  { week: "第一週", points: 45 },
+  { week: "第二週", points: 60 },
+  { week: "第三週", points: 35 },
+  { week: "第四週", points: 80 },
+  { week: "第五週", points: 55 },
+  { week: "第六週", points: 70 },
 ];
 
 const chartConfig: ChartConfig = {
@@ -155,17 +155,16 @@ export default function StudentDashboardPage() {
         <Card className="md:col-span-3">
           <CardHeader>
             <CardTitle>點數進度</CardTitle>
-            <CardDescription>您過去 6 個月獲得的點數。</CardDescription>
+            <CardDescription>您過去 6 週獲得的點數。</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[250px] w-full">
               <BarChart accessibilityLayer data={pointsData} margin={{ top: 20, right: 20, left: -10, bottom: 0 }}>
                 <XAxis
-                  dataKey="month"
+                  dataKey="week"
                   tickLine={false}
                   axisLine={false}
                   tickMargin={8}
-                  tickFormatter={(value) => value.slice(0, 3)}
                 />
                  <YAxis tickLine={false} axisLine={false} tickMargin={8} />
                 <ChartTooltip
