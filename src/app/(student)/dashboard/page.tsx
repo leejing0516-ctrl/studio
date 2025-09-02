@@ -5,13 +5,12 @@ import { useContext, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Coins, Trophy, Wallet, BarChart as BarChartIcon, Landmark } from "lucide-react";
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { Area, AreaChart, Bar, BarChart, XAxis, YAxis } from "recharts"
+import { Bar, BarChart, XAxis, YAxis } from "recharts"
 import RewardSuggestion from "@/components/reward-suggestion";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
 import { cn } from "@/lib/utils";
 import { subDays, format } from "date-fns";
-import { zhTW } from 'date-fns/locale';
 
 
 // 模擬今天的日期為 2025-09-07，以展示最近一週的數據
@@ -173,18 +172,12 @@ export default function StudentDashboardPage() {
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[250px] w-full">
-                <AreaChart accessibilityLayer data={pointsData} margin={{ left: -20, right: 10, top:10, bottom: 0}}>
-                    <defs>
-                        <linearGradient id="fillValue" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="var(--color-value)" stopOpacity={0.8} />
-                            <stop offset="95%" stopColor="var(--color-value)" stopOpacity={0.1} />
-                        </linearGradient>
-                    </defs>
+                <BarChart accessibilityLayer data={pointsData} margin={{ left: -20, right: 10, top:10, bottom: 0}}>
                     <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => value} />
-                    <YAxis tickLine={false} axisLine={false} tickMargin={8} domain={['dataMin - 10', 'dataMax + 10']} hide />
+                    <YAxis tickLine={false} axisLine={false} tickMargin={8} domain={['dataMin', 'dataMax + 10']} hide />
                     <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
-                    <Area type="monotone" dataKey="points" stroke="var(--color-value)" fill="url(#fillValue)" strokeWidth={2} />
-                </AreaChart>
+                    <Bar dataKey="points" fill="var(--color-value)" radius={4} />
+                </BarChart>
             </ChartContainer>
           </CardContent>
         </Card>
