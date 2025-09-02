@@ -116,6 +116,7 @@ export default function TeacherDashboardPage() {
   const [isAddTeacherDialogOpen, setIsAddTeacherDialogOpen] = useState(false);
   const [isEditTeacherDialogOpen, setIsEditTeacherDialogOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
+  const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
   
   const [isAddClassDialogOpen, setIsAddClassDialogOpen] = useState(false);
 
@@ -402,12 +403,22 @@ export default function TeacherDashboardPage() {
     event.preventDefault();
     if (!editingTeacher) return;
     const formData = new FormData(event.currentTarget);
+    const newId = formData.get("id") as string;
     const name = formData.get("name") as string;
     const classIdValue = formData.get("classId") as string;
     const newClassId = classIdValue === 'unassigned' ? null : classIdValue;
 
+    if (newId !== editingTeacher.id && teachers.some(t => t.id === newId)) {
+        toast({
+            title: "更新失敗",
+            description: `ID 為 ${newId} 的老師已存在。`,
+            variant: "destructive",
+        });
+        return;
+    }
+
     setTeachers(currentTeachers => currentTeachers.map(t => 
-        t.id === editingTeacher.id ? { ...t, name, classId: newClassId } : t
+        t.id === editingTeacher.id ? { ...t, id: newId, name, classId: newClassId } : t
     ));
 
     setIsEditTeacherDialogOpen(false);
@@ -417,6 +428,21 @@ export default function TeacherDashboardPage() {
         description: "教師資訊已成功更新。"
     });
   }
+  
+  const handleDeleteTeacherClick = (teacher: Teacher) => {
+    setTeacherToDelete(teacher);
+  };
+  
+  const handleConfirmDeleteTeacher = () => {
+    if (!teacherToDelete) return;
+    setTeachers(currentTeachers => currentTeachers.filter(t => t.id !== teacherToDelete.id));
+    toast({
+        title: "已刪除老師",
+        description: `已成功刪除老師 ${teacherToDelete.name}。`,
+        variant: "destructive",
+    });
+    setTeacherToDelete(null);
+  };
   
   const handleAddClass = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -728,6 +754,9 @@ export default function TeacherDashboardPage() {
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="icon" onClick={() => handleEditTeacherClick(teacher)}>
                                             <Edit className="h-4 w-4" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
+                                            <Trash2 className="h-4 w-4" />
                                         </Button>
                                     </TableCell>
                                 </TableRow>
@@ -1338,6 +1367,10 @@ export default function TeacherDashboardPage() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-teacher-id" className="text-right">老師 ID</Label>
+                <Input id="edit-teacher-id" name="id" defaultValue={editingTeacher?.id} className="col-span-3" required />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-teacher-name" className="text-right">
                 姓名
               </Label>
@@ -1369,6 +1402,20 @@ export default function TeacherDashboardPage() {
           </form>
         </DialogContent>
       </Dialog>
+       <AlertDialog open={!!teacherToDelete} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
+            <AlertDialogDescription>
+              您確定要刪除老師「{teacherToDelete?.name}」嗎？此操作將永久移除該老師的帳號且無法復原。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDeleteTeacher} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <Dialog open={isAddClassDialogOpen} onOpenChange={setIsAddClassDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
             <form onSubmit={handleAddClass}>
