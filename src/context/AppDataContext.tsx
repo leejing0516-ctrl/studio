@@ -21,7 +21,7 @@ const simulateStockUpdate = (currentStocks: Stock[]): Stock[] => {
         const fluctuation = (Math.random() - 0.5) * 2 * STOCK_PRICE_FLUCTUATION; // Random number between -0.05 and 0.05
         const newPrice = stock.price * (1 + fluctuation);
         const change = newPrice - stock.price;
-        const changePercent = (change / stock.price) * 100;
+        const changePercent = totalCost > 0 ? (change / stock.price) * 100 : 0;
         
         return {
             ...stock,
@@ -124,7 +124,9 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     // Check if it's a new day and past 5 PM Taiwan time (9 AM UTC)
     if (nowDate > lastUpdateDate && now.getUTCHours() >= STOCK_UPDATE_HOUR_UTC) {
         console.log("Simulating daily stock update...");
-        const updatedStocks = simulateStockUpdate(stocks);
+        // Pass the current state of stocks from storage to ensure consistency
+        const currentStocks = getFromStorage('stocks', initialStocks);
+        const updatedStocks = simulateStockUpdate(currentStocks);
         setStocks(updatedStocks);
         localStorage.setItem('lastStockUpdate', now.toISOString());
     }
