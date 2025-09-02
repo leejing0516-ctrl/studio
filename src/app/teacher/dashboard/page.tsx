@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useContext, useEffect, useMemo } from "react";
@@ -32,6 +33,7 @@ import { AppDataContext } from "@/context/AppDataContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import Papa from "papaparse";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
 interface StagedStudent {
@@ -379,7 +381,7 @@ export default function TeacherDashboardPage() {
     let toastMessage: { title: string, description: string, variant?: "default" | "destructive" } | null = null;
   
     setStudents(currentStudents => {
-      return currentStudents.map(student => {
+      const updatedStudents = currentStudents.map(student => {
         if (student.id === studentId && student.classId === classId) {
           const targetLoan = student.loans.find(l => l.id === loanId);
           if (!targetLoan) return student;
@@ -404,6 +406,7 @@ export default function TeacherDashboardPage() {
         }
         return student;
       });
+      return updatedStudents;
     });
   
     if (toastMessage) {
@@ -424,6 +427,7 @@ export default function TeacherDashboardPage() {
     Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
+        encoding: "utf-8",
         complete: (results) => {
             const parsedData: StagedStudent[] = results.data.map((row: any) => {
                 const student: StagedStudent = { id: '', name: '', password: '', status: 'valid', errors: [] };
@@ -1249,3 +1253,4 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
+
