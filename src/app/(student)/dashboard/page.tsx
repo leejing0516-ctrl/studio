@@ -111,7 +111,7 @@ export default function StudentDashboardPage() {
             <BarChartIcon className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${portfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            <div className="text-2xl font-bold">${portfolioValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
             <p className="text-xs text-muted-foreground">本月 +5.2%</p>
           </CardContent>
         </Card>
@@ -121,7 +121,7 @@ export default function StudentDashboardPage() {
             <Wallet className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalAssets.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            <div className="text-2xl font-bold">${totalAssets.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
             <p className="text-xs text-muted-foreground">投資組合 + 點數</p>
           </CardContent>
         </Card>
