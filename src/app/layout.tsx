@@ -2,8 +2,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
-import { StudentDataProvider } from "@/context/StudentDataContext";
 import { AppDataProvider } from "@/context/AppDataContext";
+import { StudentDataProvider } from "@/context/StudentDataContext";
 
 
 export const metadata: Metadata = {

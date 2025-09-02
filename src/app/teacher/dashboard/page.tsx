@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useContext, useEffect, useMemo } from "react";
@@ -24,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Reward, Student, Teacher, Class, Loan } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, KeyRound, Bell, Landmark, Check, X, Upload, Download } from "lucide-react";
+import { PlusCircle, Edit, Trash2, KeyRound, Bell, Landmark, Check, X, Upload, Download, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -35,7 +34,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -56,7 +54,7 @@ interface StagedStudent {
 }
 
 export default function TeacherDashboardPage() {
-  const { rewards, setRewards, students, setStudents, classes, setClasses, teachers, setTeachers } = useContext(AppDataContext);
+  const { rewards, setRewards, students, setStudents, classes, setClasses, teachers, setTeachers, isLoading } = useContext(AppDataContext);
 
   const [role, setRole] = useState<string | null>(null);
   const [teacherClassId, setTeacherClassId] = useState<string | null>(null);
@@ -75,11 +73,13 @@ export default function TeacherDashboardPage() {
     setRole(storedRole);
     setTeacherClassId(storedClassId);
     if (storedRole === 'admin') {
-      setSelectedClassId(classes[0]?.id || '');
+      if(classes.length > 0 && !selectedClassId) {
+          setSelectedClassId(classes[0].id);
+      }
     } else {
       setSelectedClassId(storedClassId || '');
     }
-  }, [classes]);
+  }, [classes, selectedClassId]);
 
   const studentsInView = useMemo(() => {
     if (role === 'admin') {
@@ -528,7 +528,14 @@ export default function TeacherDashboardPage() {
     const assignedClassIds = teachers.map(t => t.classId).filter(Boolean);
     return classes.filter(c => !assignedClassIds.includes(c.id));
   }, [classes, teachers]);
-
+  
+  if (isLoading) {
+      return (
+        <div className="flex items-center justify-center h-full">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+      )
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -623,9 +630,25 @@ export default function TeacherDashboardPage() {
                            <Button variant="ghost" size="icon" onClick={() => handleResetPasswordClick(student)}>
                                 <KeyRound className="h-4 w-4" />
                            </Button>
-                           <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStudentClick(student)}>
-                                <Trash2 className="h-4 w-4" />
-                           </Button>
+                           <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                   <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                        <Trash2 className="h-4 w-4" />
+                                   </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            您確定要刪除學生「{student.name}」嗎？此操作將永久移除該學生的所有資料且無法復原。
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>取消</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleConfirmDeleteStudent()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                           </AlertDialog>
                         </TableCell>
                     </TableRow>
                     ))}
@@ -1301,7 +1324,3 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
-
-
-
-    

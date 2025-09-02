@@ -2,13 +2,12 @@
 "use client";
 
 import { useState, useContext } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, School, ArrowRight } from "lucide-react";
+import { User, School, ArrowRight, Loader2 } from "lucide-react";
 import Logo from "@/components/logo";
 import { useToast } from "@/hooks/use-toast";
 import { StudentDataContext } from '@/context/StudentDataContext';
@@ -25,7 +24,7 @@ export default function HomePage() {
   const [teacherId, setTeacherId] = useState('');
   const router = useRouter();
   const { toast } = useToast();
-  const { students, classes, teachers } = useContext(AppDataContext);
+  const { students, classes, teachers, isLoading, initializeAppData } = useContext(AppDataContext);
   const { setStudentData } = useContext(StudentDataContext);
 
   const handleStudentLogin = (e: React.FormEvent) => {
@@ -84,6 +83,15 @@ export default function HomePage() {
         });
     }
   };
+
+  if (isLoading) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+            <p className="text-muted-foreground">正在從雲端同步資料...</p>
+        </div>
+      )
+  }
 
 
   return (

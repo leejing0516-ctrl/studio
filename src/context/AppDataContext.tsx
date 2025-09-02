@@ -1,7 +1,7 @@
 
 "use client";
 
-import { createContext, useState, ReactNode, useEffect } from 'react';
+import { createContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import type { Student, Reward, Class, Teacher, Stock } from '@/lib/types';
 import { 
     students as initialStudents, 
@@ -10,130 +10,144 @@ import {
     teachers as initialTeachers,
     stocks as initialStocks
 } from '@/lib/placeholder-data';
-
-// --- Stock Simulation Logic ---
-
-const STOCK_UPDATE_HOUR_UTC = 9; // 5 PM in Taiwan (UTC+8) is 9 AM UTC.
-const STOCK_PRICE_FLUCTUATION = 0.05; // +/- 5%
-
-const simulateStockUpdate = (currentStocks: Stock[]): Stock[] => {
-    return currentStocks.map(stock => {
-        const fluctuation = (Math.random() - 0.5) * 2 * STOCK_PRICE_FLUCTUATION; // Random number between -0.05 and 0.05
-        const newPrice = stock.price * (1 + fluctuation);
-        const change = newPrice - stock.price;
-        const changePercent = totalCost > 0 ? (change / stock.price) * 100 : 0;
-        
-        return {
-            ...stock,
-            price: parseFloat(newPrice.toFixed(2)),
-            change: parseFloat(change.toFixed(2)),
-            changePercent: parseFloat(changePercent.toFixed(2)),
-        };
-    });
-};
+import { db } from '@/lib/firebase';
+import { collection, doc, getDocs, writeBatch, setDoc } from 'firebase/firestore';
 
 
-// --- End Stock Simulation Logic ---
-
-
-// Helper function to get data from localStorage
-const getFromStorage = <T,>(key: string, fallback: T): T => {
-    if (typeof window === 'undefined') {
-        return fallback;
-    }
-    const stored = localStorage.getItem(key);
-    try {
-        return stored ? JSON.parse(stored) : fallback;
-    } catch (e) {
-        console.error(`Error parsing ${key} from localStorage`, e);
-        return fallback;
-    }
-};
-
-// Helper function to set data to localStorage
-const setInStorage = <T,>(key: string, value: T) => {
-    if (typeof window !== 'undefined') {
-        localStorage.setItem(key, JSON.stringify(value));
-    }
-};
+// --- Cloud-based Data Management ---
 
 interface AppDataContextType {
   students: Student[];
-  setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
+  setStudents: (newStudents: Student[] | ((prev: Student[]) => Student[])) => Promise<void>;
   rewards: Reward[];
-  setRewards: React.Dispatch<React.SetStateAction<Reward[]>>;
+  setRewards: (newRewards: Reward[] | ((prev: Reward[]) => Reward[])) => Promise<void>;
   stocks: Stock[];
-  setStocks: React.Dispatch<React.SetStateAction<Stock[]>>;
+  setStocks: (newStocks: Stock[] | ((prev: Stock[]) => Stock[])) => Promise<void>;
   classes: Class[];
-  setClasses: React.Dispatch<React.SetStateAction<Class[]>>;
+  setClasses: (newClasses: Class[] | ((prev: Class[]) => Class[])) => Promise<void>;
   teachers: Teacher[];
-  setTeachers: React.Dispatch<React.SetStateAction<Teacher[]>>;
+  setTeachers: (newTeachers: Teacher[] | ((prev: Teacher[]) => Teacher[])) => Promise<void>;
+  isLoading: boolean;
+  initializeAppData: () => Promise<void>;
 }
 
 const defaultState: AppDataContextType = {
-  students: initialStudents,
-  setStudents: () => {},
-  rewards: initialRewards,
-  setRewards: () => {},
-  stocks: initialStocks,
-  setStocks: () => {},
-  classes: initialClasses,
-  setClasses: () => {},
-  teachers: initialTeachers,
-  setTeachers: () => {},
+  students: [],
+  setStudents: async () => {},
+  rewards: [],
+  setRewards: async () => {},
+  stocks: [],
+  setStocks: async () => {},
+  classes: [],
+  setClasses: async () => {},
+  teachers: [],
+  setTeachers: async () => {},
+  isLoading: true,
+  initializeAppData: async () => {},
 };
 
 export const AppDataContext = createContext<AppDataContextType>(defaultState);
 
 export const AppDataProvider = ({ children }: { children: ReactNode }) => {
-  const [students, setStudents] = useState<Student[]>(() => getFromStorage('students', initialStudents));
-  const [rewards, setRewards] = useState<Reward[]>(() => getFromStorage('rewards', initialRewards));
-  const [stocks, setStocks] = useState<Stock[]>(() => getFromStorage('stocks', initialStocks));
-  const [teachers, setTeachers] = useState<Teacher[]>(() => getFromStorage('teachers', initialTeachers));
-  const [classes, setClasses] = useState<Class[]>(() => getFromStorage('classes', initialClasses));
+  const [students, setStudentsState] = useState<Student[]>([]);
+  const [rewards, setRewardsState] = useState<Reward[]>([]);
+  const [stocks, setStocksState] = useState<Stock[]>([]);
+  const [teachers, setTeachersState] = useState<Teacher[]>([]);
+  const [classes, setClassesState] = useState<Class[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    setInStorage('students', students);
-  }, [students]);
-
-  useEffect(() => {
-    setInStorage('rewards', rewards);
-  }, [rewards]);
+  // Generic fetch function
+  const fetchData = useCallback(async <T,>(collectionName: string, initialState: T[]): Promise<T[]> => {
+      const collectionRef = collection(db, collectionName);
+      const snapshot = await getDocs(collectionRef);
+      if (snapshot.empty) {
+          // If the collection is empty, seed it with initial data
+          const batch = writeBatch(db);
+          initialState.forEach((item: any) => {
+              const docId = item.id ? String(item.id) : item.ticker;
+              const docRef = doc(db, collectionName, docId);
+              batch.set(docRef, item);
+          });
+          await batch.commit();
+          console.log(`Seeded ${collectionName} collection.`);
+          return initialState;
+      }
+      return snapshot.docs.map(doc => ({ ...doc.data() } as T));
+  }, []);
   
-  useEffect(() => {
-    setInStorage('stocks', stocks);
-  }, [stocks]);
-
-  useEffect(() => {
-    setInStorage('teachers', teachers);
-  }, [teachers]);
-
-  useEffect(() => {
-    setInStorage('classes', classes);
-  }, [classes]);
-  
-  // Effect for stock simulation
-  useEffect(() => {
-    const lastUpdateStr = localStorage.getItem('lastStockUpdate');
-    const lastUpdate = lastUpdateStr ? new Date(lastUpdateStr) : new Date(0);
-    const now = new Date();
-
-    const lastUpdateDate = new Date(lastUpdate.getFullYear(), lastUpdate.getMonth(), lastUpdate.getDate());
-    const nowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
-    // Check if it's a new day and past 5 PM Taiwan time (9 AM UTC)
-    if (nowDate > lastUpdateDate && now.getUTCHours() >= STOCK_UPDATE_HOUR_UTC) {
-        console.log("Simulating daily stock update...");
-        // Pass the current state of stocks from storage to ensure consistency
-        const currentStocks = getFromStorage('stocks', initialStocks);
-        const updatedStocks = simulateStockUpdate(currentStocks);
-        setStocks(updatedStocks);
-        localStorage.setItem('lastStockUpdate', now.toISOString());
+  // App initialization function
+  const initializeAppData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+        const [studentsData, rewardsData, stocksData, classesData, teachersData] = await Promise.all([
+            fetchData<Student>('students', initialStudents),
+            fetchData<Reward>('rewards', initialRewards),
+            fetchData<Stock>('stocks', initialStocks),
+            fetchData<Class>('classes', initialClasses),
+            fetchData<Teacher>('teachers', initialTeachers),
+        ]);
+        setStudentsState(studentsData);
+        setRewardsState(rewardsData);
+        setStocksState(stocksData);
+        setClassesState(classesData);
+        setTeachersState(teachersData);
+    } catch (error) {
+        console.error("Error initializing app data from Firestore:", error);
+        // Optionally handle error state here
+    } finally {
+        setIsLoading(false);
     }
-  }, []); // Run only once on initial load
+  }, [fetchData]);
+
+
+  useEffect(() => {
+    initializeAppData();
+  }, [initializeAppData]);
+
+  // Generic update function
+  const createUpdater = <T extends { id?: string | number; ticker?: string }>(
+    collectionName: string, 
+    setter: React.Dispatch<React.SetStateAction<T[]>>
+  ) => async (newData: T[] | ((prev: T[]) => T[])) => {
+    setter(prevData => {
+        const updatedData = typeof newData === 'function' ? newData(prevData) : newData;
+        
+        const batch = writeBatch(db);
+        updatedData.forEach(item => {
+            const docId = item.id ? String(item.id) : item.ticker;
+            if (docId) {
+                const docRef = doc(db, collectionName, docId);
+                batch.set(docRef, item);
+            }
+        });
+        
+        batch.commit().catch(e => console.error(`Failed to update ${collectionName}`, e));
+
+        return updatedData;
+    });
+  };
+
+  const setStudents = createUpdater<Student>('students', setStudentsState);
+  const setRewards = createUpdater<Reward>('rewards', setRewardsState);
+  const setStocks = createUpdater<Stock>('stocks', setStocksState);
+  const setClasses = createUpdater<Class>('classes', setClassesState);
+  const setTeachers = createUpdater<Teacher>('teachers', setTeachersState);
+
+
+  // NOTE: Stock simulation logic should be moved to a server-side function (e.g., Firebase Cloud Function)
+  // that runs on a schedule (e.g., daily at 5 PM). The client-side simulation is removed to ensure data consistency.
+  // The function would read from Firestore, update prices, and write them back.
 
   return (
-    <AppDataContext.Provider value={{ students, setStudents, rewards, setRewards, stocks, setStocks, classes, setClasses, teachers, setTeachers }}>
+    <AppDataContext.Provider value={{ 
+        students, setStudents, 
+        rewards, setRewards, 
+        stocks, setStocks, 
+        classes, setClasses, 
+        teachers, setTeachers,
+        isLoading,
+        initializeAppData,
+    }}>
       {children}
     </AppDataContext.Provider>
   );
