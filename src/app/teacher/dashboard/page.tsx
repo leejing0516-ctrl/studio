@@ -245,7 +245,7 @@ export default function TeacherDashboardPage() {
     const newTeacher: Teacher = {
         id,
         name,
-        classId: classId || null,
+        classId: classId === 'unassigned' ? null : classId,
         role: 'teacher',
     };
     setTeachers(current => [...current, newTeacher]);
@@ -266,10 +266,11 @@ export default function TeacherDashboardPage() {
     if (!editingTeacher) return;
     const formData = new FormData(event.currentTarget);
     const name = formData.get("name") as string;
-    const classId = formData.get("classId") as string;
+    const classIdValue = formData.get("classId") as string;
+    const newClassId = classIdValue === 'unassigned' ? null : classIdValue;
 
     setTeachers(currentTeachers => currentTeachers.map(t => 
-        t.id === editingTeacher.id ? { ...t, name, classId: classId || null } : t
+        t.id === editingTeacher.id ? { ...t, name, classId: newClassId } : t
     ));
 
     setIsEditTeacherDialogOpen(false);
@@ -785,11 +786,12 @@ export default function TeacherDashboardPage() {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="teacher-class" className="text-right">班級</Label>
-                    <Select name="classId">
+                    <Select name="classId" defaultValue="unassigned">
                         <SelectTrigger className="col-span-3">
                             <SelectValue placeholder="選擇一個未指派的班級" />
                         </SelectTrigger>
                         <SelectContent>
+                            <SelectItem value="unassigned">未指派</SelectItem>
                             {unassignedClasses.map(c => (
                                 <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                             ))}
@@ -822,12 +824,12 @@ export default function TeacherDashboardPage() {
             </div>
              <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-teacher-class" className="text-right">班級</Label>
-                <Select name="classId" defaultValue={editingTeacher?.classId || ''}>
+                <Select name="classId" defaultValue={editingTeacher?.classId || 'unassigned'}>
                     <SelectTrigger className="col-span-3">
                         <SelectValue placeholder="選擇班級" />
                     </SelectTrigger>
                     <SelectContent>
-                         <SelectItem value="">未指派</SelectItem>
+                         <SelectItem value="unassigned">未指派</SelectItem>
                         {classes.map(c => (
                             <SelectItem key={c.id} value={c.id} disabled={unassignedClasses.every(uc => uc.id !== c.id) && c.id !== editingTeacher?.classId}>
                                 {c.name}
