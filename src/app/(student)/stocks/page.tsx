@@ -66,11 +66,26 @@ export default function StocksPage() {
   const { students, setStudents } = useContext(AppDataContext);
   
   const currentStudent = students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId) || studentData.student;
+  
+  const studentHolding = selectedStock ? currentStudent?.portfolio.find(item => item.ticker === selectedStock.ticker) : null;
 
 
   const handleTradeClick = (stock: Stock, type: "buy" | "sell") => {
     setSelectedStock(stock);
     setTradeType(type);
+    
+    if (type === 'sell') {
+      const holding = currentStudent?.portfolio.find(item => item.ticker === stock.ticker);
+      if (!holding || holding.shares === 0) {
+        toast({
+          title: "無法賣出",
+          description: `您並未持有任何 ${stock.name} 的股份。`,
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
     setIsTradeDialogOpen(true);
     setTradeShares(0);
   };
@@ -145,7 +160,7 @@ export default function StocksPage() {
       if (!holding || holding.shares < tradeShares) {
         toast({
           title: "持股不足",
-          description: `您沒有足夠的 ${selectedStock.name} 股份可供出售。`,
+          description: `您沒有足夠的 ${selectedStock.name} 股份可供出售。您目前持有 ${holding?.shares || 0} 股。`,
           variant: "destructive",
         });
         return;
@@ -218,9 +233,9 @@ export default function StocksPage() {
                       <TableCell className="text-right">
                           <span className={cn(
                             "flex items-center justify-end gap-1",
-                            stock.change > 0 ? "text-destructive" : "text-success",
+                            stock.change < 0 ? "text-destructive" : "text-success",
                           )}>
-                              {stock.change > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                              {stock.change < 0 ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />}
                               {Math.abs(stock.change).toFixed(2)} ({Math.abs(stock.changePercent).toFixed(2)}%)
                           </span>
                       </TableCell>
@@ -266,9 +281,9 @@ export default function StocksPage() {
                                           <TableCell className="text-right">
                                               <span className={cn(
                                                 "flex items-center justify-end gap-1",
-                                                item.totalGain >= 0 ? "text-destructive" : "text-success",
+                                                item.totalGain < 0 ? "text-destructive" : "text-success",
                                               )}>
-                                                  {item.totalGain >= 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                                                  {item.totalGain < 0 ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />}
                                                   ${Math.abs(item.totalGain).toFixed(2)} ({item.totalGainPercent.toFixed(2)}%)
                                               </span>
                                           </TableCell>
@@ -316,7 +331,10 @@ export default function StocksPage() {
           <DialogHeader>
             <DialogTitle>{tradeType === 'buy' ? '買入' : '賣出'}股票</DialogTitle>
             <DialogDescription>
-              {tradeType === 'buy' ? `您目前有 ${(currentStudent?.points || 0).toLocaleString()} 點數。` : ''}
+               {tradeType === 'buy'
+                ? `您目前有 ${(currentStudent?.points || 0).toLocaleString()} 點數。`
+                : `您目前持有 ${studentHolding?.shares || 0} 股。`
+               }
               {tradeType === 'buy' ? '買入' : '賣出'} {selectedStock?.name} ({selectedStock?.ticker})。
             </DialogDescription>
           </DialogHeader>
@@ -332,6 +350,7 @@ export default function StocksPage() {
                 onChange={(e) => setTradeShares(parseInt(e.target.value, 10) || 0)}
                 className="col-span-3"
                 min="0"
+                max={tradeType === 'sell' ? studentHolding?.shares : undefined}
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
