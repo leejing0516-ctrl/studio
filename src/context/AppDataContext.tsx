@@ -29,6 +29,7 @@ interface AppDataContextType {
   setTeachers: (newTeachers: Teacher[] | ((prev: Teacher[]) => Teacher[])) => Promise<void>;
   isLoading: boolean;
   loadSensitiveData: () => Promise<{students: Student[], rewards: Reward[], stocks: Stock[]}>;
+  seedInitialData: () => Promise<void>;
 }
 
 const defaultState: AppDataContextType = {
@@ -44,6 +45,7 @@ const defaultState: AppDataContextType = {
   setTeachers: async () => {},
   isLoading: true,
   loadSensitiveData: async () => ({ students: [], rewards: [], stocks: [] }),
+  seedInitialData: async () => {},
 };
 
 export const AppDataContext = createContext<AppDataContextType>(defaultState);
@@ -55,19 +57,57 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [teachers, setTeachersState] = useState<Teacher[]>([]);
   const [classes, setClassesState] = useState<Class[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [sensitiveDataLoaded, setSensitiveDataLoaded] = useState(false);
-
-  // Generic fetch function - now only reads data
+  
+  // Generic fetch function
   const fetchData = useCallback(async <T,>(collectionName: string): Promise<T[]> => {
       const collectionRef = collection(db, collectionName);
       const snapshot = await getDocs(collectionRef);
-      if (snapshot.empty) {
-          console.warn(`Firestore collection '${collectionName}' is empty. Please seed it manually if this is not expected.`);
-          return [];
-      }
+      // It's okay for collections to be empty initially.
       return snapshot.docs
-        .filter(doc => doc.id !== '--metadata--') // Filter out any metadata doc
         .map(doc => ({ ...doc.data() } as T));
+  }, []);
+  
+  const seedInitialData = useCallback(async () => {
+    console.log("Checking if initial data seeding is necessary...");
+    const collectionsToSeed = [
+        { name: 'classes', data: initialClasses, setter: setClassesState },
+        { name: 'teachers', data: initialTeachers, setter: setTeachersState },
+        { name: 'rewards', data: initialRewards, setter: setRewardsState },
+        { name: 'stocks', data: initialStocks, setter: setStocksState },
+        { name: 'students', data: initialStudents, setter: setStudentsState },
+    ];
+
+    const batch = writeBatch(db);
+    let writesPending = false;
+
+    for (const { name, data, setter } of collectionsToSeed) {
+        const collectionRef = collection(db, name);
+        const snapshot = await getDocs(collectionRef);
+        if (snapshot.empty && data.length > 0) {
+            console.log(`Seeding collection: ${name}`);
+            writesPending = true;
+            data.forEach((item: any) => {
+                const docId = item.id ? String(item.id) : (item.ticker || null);
+                if (docId) {
+                    const docRef = doc(db, name, docId);
+                    batch.set(docRef, { ...item });
+                }
+            });
+            // Also update the local state immediately
+            setter(data as any);
+        }
+    }
+
+    if (writesPending) {
+        try {
+            await batch.commit();
+            console.log("Initial data successfully seeded to Firestore.");
+        } catch (error) {
+            console.error("Error seeding data to Firestore:", error);
+        }
+    } else {
+        console.log("No seeding necessary, data already exists.");
+    }
   }, []);
   
   // App initialization function
@@ -88,7 +128,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   }, [fetchData]);
 
   const loadSensitiveData = useCallback(async () => {
-    // No need to check sensitiveDataLoaded here as it will be called explicitly
     console.log("Loading sensitive data...");
     setIsLoading(true);
     try {
@@ -100,7 +139,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         setStudentsState(studentsData);
         setRewardsState(rewardsData);
         setStocksState(stocksData);
-        setSensitiveDataLoaded(true); // Mark as loaded
         return { students: studentsData, rewards: rewardsData, stocks: stocksData };
     } catch (error) {
         console.error("Error loading sensitive data:", error);
@@ -126,22 +164,27 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         const updatedData = typeof newData === 'function' ? newData(prevData) : newData;
         
         const batch = writeBatch(db);
+        const deletionIds = new Set(prevData.map(p => p.id ? String(p.id) : p.ticker));
+        
         updatedData.forEach(item => {
-            // Determine the document ID, preferring 'id' over 'ticker'
             const docId = item.id ? String(item.id) : (item.ticker || null);
             if (docId) {
                 const docRef = doc(db, collectionName, docId);
-                // Ensure plain objects are written to Firestore
                 batch.set(docRef, { ...item });
+                deletionIds.delete(docId);
             } else {
                 console.warn(`Skipping item in ${collectionName} due to missing id/ticker:`, item);
             }
         });
+
+        // Delete items that are in prevData but not in updatedData
+        deletionIds.forEach(idToDelete => {
+             const docRef = doc(db, collectionName, idToDelete);
+             batch.delete(docRef);
+        });
         
-        // Asynchronously commit the batch and handle potential errors
         batch.commit().catch(e => console.error(`Failed to update ${collectionName}`, e));
 
-        // Return the new state for React to render
         return updatedData;
     });
   };
@@ -162,6 +205,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         teachers, setTeachers,
         isLoading,
         loadSensitiveData,
+        seedInitialData,
     }}>
       {children}
     </AppDataContext.Provider>

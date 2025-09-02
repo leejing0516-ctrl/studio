@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ export default function HomePage() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const { students, classes, teachers, isLoading, loadSensitiveData } = useContext(AppDataContext);
+  const { students, classes, teachers, isLoading, loadSensitiveData, seedInitialData } = useContext(AppDataContext);
   const { setStudentData } = useContext(StudentDataContext);
 
   const handleStudentLogin = async (e: React.FormEvent) => {
@@ -41,22 +41,9 @@ export default function HomePage() {
         return;
     }
     
-    // NOTE: In a real app, you'd fetch the student from the DB to verify
-    // For this prototype, we assume `students` is loaded for login,
-    // but a better approach would be an API endpoint for auth.
-    // We'll load sensitive data if it's not already there.
-    const studentDataAvailable = students.length > 0;
-    if (!studentDataAvailable) {
-        await loadSensitiveData(); // Load data on demand
-    }
-
-    // Now we can check against the loaded student data
-    // This is a bit of a hack for the prototype. In prod, you'd have an auth service.
-    // We need to get the latest state of students after loading
-    const student = (await (async () => {
-        const { students: updatedStudents } = await loadSensitiveData();
-        return updatedStudents.find(s => s.classId === classId && s.id === studentId && s.password === studentPassword);
-    })());
+    // Load sensitive data on demand for login verification
+    const { students: allStudents } = await loadSensitiveData();
+    const student = allStudents.find(s => s.classId === classId && s.id === studentId && s.password === studentPassword);
     
     if (student) {
       toast({
@@ -70,6 +57,10 @@ export default function HomePage() {
           redeemedRewards: student.redeemedRewards || [],
           loans: student.loans || [],
       });
+      // Simulate auth persistence
+      localStorage.setItem('studentId', student.id);
+      localStorage.setItem('studentClassId', student.classId);
+      localStorage.setItem('userRole', 'student');
       router.push('/dashboard');
     } else {
       toast({
@@ -86,8 +77,10 @@ export default function HomePage() {
     setIsLoggingIn(true);
     const teacher = teachers.find(t => t.id === teacherId);
 
-    // Using a shared password for simplicity as requested
+    // Using a shared password for simplicity
     if (teacher && teacherPassword === TEACHER_PASSWORD) {
+        // Seed initial data if necessary, after a teacher logs in.
+        await seedInitialData();
         // Load all necessary data for the teacher dashboard
         await loadSensitiveData();
         
@@ -96,6 +89,8 @@ export default function HomePage() {
             description: `歡迎，${teacher.name}！`,
         });
         // Store teacher role for access control
+        localStorage.setItem('userRole', 'teacher');
+        localStorage.setItem('teacherId', teacher.id);
         localStorage.setItem('teacherRole', teacher.role);
         localStorage.setItem('teacherClassId', teacher.classId || 'admin');
         localStorage.setItem('teacherName', teacher.name);
@@ -110,7 +105,7 @@ export default function HomePage() {
     setIsLoggingIn(false);
   };
 
-  if (isLoading) {
+  if (isLoading && classes.length === 0 && teachers.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
             <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
@@ -238,7 +233,7 @@ export default function HomePage() {
             <CardFooter>
               <Button type="submit" className="w-full" variant="outline" disabled={isLoggingIn}>
                 {isLoggingIn ? <Loader2 className="animate-spin" /> : "以老師身份進入"}
-                {!isLoggingIn && <ArrowRight className="ml-2 h-4 w-4" />}
+                {!isLoggingIn && <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </CardFooter>
           </form>
