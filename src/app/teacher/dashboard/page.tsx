@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Reward, Student, Teacher, Class, Loan } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, KeyRound, Bell, Landmark, Check, X, Upload, Download, Loader2 } from "lucide-react";
+import { PlusCircle, Edit, Trash2, KeyRound, Bell, Landmark, Check, X, Upload, Download, Loader2, Users } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -66,6 +66,10 @@ export default function TeacherDashboardPage() {
   const [stagedStudents, setStagedStudents] = useState<StagedStudent[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+
+  // State for Batch Award Points
+  const [isBatchAwardDialogOpen, setIsBatchAwardDialogOpen] = useState(false);
+  const [batchAwardAmount, setBatchAwardAmount] = useState<number | ''>('');
 
 
   useEffect(() => {
@@ -158,6 +162,39 @@ export default function TeacherDashboardPage() {
         description: `您已成功發送 ${pointsToAdd.toLocaleString()} 點給 ${student?.name}。`
     })
   }
+
+  const handleBatchAwardPoints = () => {
+    const pointsToAdd = Number(batchAwardAmount);
+    if (!pointsToAdd || pointsToAdd <= 0) {
+      toast({
+        title: "無效的點數",
+        description: "請輸入一個正數。",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const studentIdsInView = studentsInView.map(s => s.id);
+    
+    setStudents(currentStudents => 
+      currentStudents.map(student => {
+        if (student.classId === selectedClassId && studentIdsInView.includes(student.id)) {
+          return { ...student, points: student.points + pointsToAdd };
+        }
+        return student;
+      })
+    );
+
+    const className = classes.find(c => c.id === selectedClassId)?.name || '此班級';
+    toast({
+        title: "批次發放成功！",
+        description: `您已成功發送 ${pointsToAdd.toLocaleString()} 點給 ${className} 的所有學生。`
+    });
+
+    setIsBatchAwardDialogOpen(false);
+    setBatchAwardAmount('');
+  };
+
 
   const handleAddReward = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -736,11 +773,17 @@ export default function TeacherDashboardPage() {
       
       <TabsContent value="points" className="mt-6">
         <Card>
-          <CardHeader>
-            <CardTitle>發送點數</CardTitle>
-            <CardDescription>
-              選擇一位學生並根據他們的成就發送點數。
-            </CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+                <CardTitle>發送點數</CardTitle>
+                <CardDescription>
+                選擇一位學生並根據他們的成就發送點數。
+                </CardDescription>
+            </div>
+            <Button onClick={() => setIsBatchAwardDialogOpen(true)}>
+                <Users className="mr-2 h-4 w-4" />
+                全班批次發放
+            </Button>
           </CardHeader>
           <CardContent>
             <Table>
@@ -920,6 +963,42 @@ export default function TeacherDashboardPage() {
         </Card>
       </TabsContent>
     </Tabs>
+
+    {/* Dialog for Batch Awarding Points */}
+    <Dialog open={isBatchAwardDialogOpen} onOpenChange={setIsBatchAwardDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+                <DialogTitle>全班批次發放點數</DialogTitle>
+                <DialogDescription>
+                    為「{classes.find(c => c.id === selectedClassId)?.name}」的所有學生發送相同數量的點數。此操作無法復原。
+                </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="batch-award-amount" className="text-right">
+                        點數
+                    </Label>
+                    <Input 
+                        id="batch-award-amount" 
+                        name="batch-award-amount" 
+                        type="number" 
+                        className="col-span-3"
+                        placeholder="要發送的點數量"
+                        value={batchAwardAmount}
+                        onChange={(e) => setBatchAwardAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                        required 
+                    />
+                </div>
+            </div>
+            <DialogFooter>
+                <DialogClose asChild>
+                    <Button type="button" variant="secondary">取消</Button>
+                </DialogClose>
+                <Button type="button" onClick={handleBatchAwardPoints}>確認發放</Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+
 
     {/* Dialogs for Rewards */}
     <Dialog open={isAddRewardDialogOpen} onOpenChange={setIsAddRewardDialogOpen}>
@@ -1325,3 +1404,4 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
+
