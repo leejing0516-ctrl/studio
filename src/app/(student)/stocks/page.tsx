@@ -233,7 +233,7 @@ export default function StocksPage() {
                       <TableCell className="text-right">
                           <span className={cn(
                             "flex items-center justify-end gap-1",
-                            stock.change < 0 ? "text-destructive" : "text-success",
+                            stock.change > 0 ? "text-destructive" : "text-success",
                           )}>
                               {stock.change < 0 ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />}
                               {Math.abs(stock.change).toFixed(2)} ({Math.abs(stock.changePercent).toFixed(2)}%)
@@ -281,7 +281,7 @@ export default function StocksPage() {
                                           <TableCell className="text-right">
                                               <span className={cn(
                                                 "flex items-center justify-end gap-1",
-                                                item.totalGain < 0 ? "text-destructive" : "text-success",
+                                                item.totalGain > 0 ? "text-destructive" : "text-success",
                                               )}>
                                                   {item.totalGain < 0 ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />}
                                                   ${Math.abs(item.totalGain).toFixed(2)} ({item.totalGainPercent.toFixed(2)}%)
