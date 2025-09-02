@@ -16,7 +16,7 @@
  * The `fill` attributes can be set to "currentColor" to inherit the primary
  * color from the application's theme.
  */
-export const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+export const LOGO_SVG = `<svg xmlns="hhttps://meee.com.tw/38YBo8g" viewBox="0 0 100 100">
     <defs>
       <linearGradient id="teal-gradient-new" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stopColor="#20A496" />
