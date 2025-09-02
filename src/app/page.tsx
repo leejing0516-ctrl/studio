@@ -233,7 +233,7 @@ export default function HomePage() {
             <CardFooter>
               <Button type="submit" className="w-full" variant="outline" disabled={isLoggingIn}>
                 {isLoggingIn ? <Loader2 className="animate-spin" /> : "以老師身份進入"}
-                {!isLoggingIn && <ArrowRight className="ml-2 h-4 w-4" />
+                {!isLoggingIn && <ArrowRight className="ml-2 h-4 w-4" />}
               </Button>
             </CardFooter>
           </form>
