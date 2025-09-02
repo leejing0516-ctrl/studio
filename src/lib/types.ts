@@ -1,4 +1,5 @@
 
+
 export type RedeemedRewardItem = {
   redemptionId: string; // A unique ID for this specific instance of the reward
   reward: Reward;
@@ -65,4 +66,8 @@ export type Teacher = {
     password?: string; // Optional password field
 }
 
-    
+export type PlatformConfig = {
+    id: 'main';
+    platformLogoUrl?: string;
+    sponsorLogoUrl?: string;
+}

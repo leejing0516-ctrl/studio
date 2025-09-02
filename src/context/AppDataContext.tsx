@@ -2,7 +2,7 @@
 "use client";
 
 import { createContext, useState, ReactNode, useEffect, useCallback } from 'react';
-import type { Student, Reward, Class, Teacher, Stock } from '@/lib/types';
+import type { Student, Reward, Class, Teacher, Stock, PlatformConfig } from '@/lib/types';
 import { 
     students as initialStudents, 
     rewards as initialRewards,
@@ -11,7 +11,7 @@ import {
     stocks as initialStocks
 } from '@/lib/placeholder-data';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDocs, writeBatch, setDoc, getDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, writeBatch, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 
 
 // --- Cloud-based Data Management ---
@@ -27,6 +27,8 @@ interface AppDataContextType {
   setClasses: (newClasses: Class[] | ((prev: Class[]) => Class[])) => Promise<void>;
   teachers: Teacher[];
   setTeachers: (newTeachers: Teacher[] | ((prev: Teacher[]) => Teacher[])) => Promise<void>;
+  platformConfig: PlatformConfig | null;
+  setPlatformConfig: (newConfig: Partial<PlatformConfig>) => Promise<void>;
   isLoading: boolean;
   loadSensitiveData: () => Promise<{students: Student[], rewards: Reward[], stocks: Stock[]}>;
   seedInitialData: () => Promise<void>;
@@ -43,6 +45,8 @@ const defaultState: AppDataContextType = {
   setClasses: async () => {},
   teachers: [],
   setTeachers: async () => {},
+  platformConfig: null,
+  setPlatformConfig: async () => {},
   isLoading: true,
   loadSensitiveData: async () => ({ students: [], rewards: [], stocks: [] }),
   seedInitialData: async () => {},
@@ -56,6 +60,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [stocks, setStocksState] = useState<Stock[]>([]);
   const [teachers, setTeachersState] = useState<Teacher[]>([]);
   const [classes, setClassesState] = useState<Class[]>([]);
+  const [platformConfig, setPlatformConfigState] = useState<PlatformConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
   // Generic fetch function
@@ -119,6 +124,14 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     try {
         const dataWasSeeded = await seedInitialData();
+        
+        let configData: PlatformConfig | null = null;
+        const configDocRef = doc(db, 'config', 'main');
+        const configSnap = await getDoc(configDocRef);
+        if (configSnap.exists()) {
+            configData = configSnap.data() as PlatformConfig;
+        }
+        setPlatformConfigState(configData);
 
         // If data was just seeded, the state is already up-to-date.
         // Otherwise, fetch from Firestore.
@@ -204,6 +217,16 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const setStocks = createUpdater<Stock>('stocks', setStocksState);
   const setClasses = createUpdater<Class>('classes', setClassesState);
   const setTeachers = createUpdater<Teacher>('teachers', setTeachersState);
+  
+  const setPlatformConfig = async (newConfig: Partial<PlatformConfig>) => {
+    setPlatformConfigState(prev => ({ ...(prev || { id: 'main' }), ...newConfig }));
+    const configDocRef = doc(db, 'config', 'main');
+    try {
+        await setDoc(configDocRef, newConfig, { merge: true });
+    } catch(e) {
+        console.error("Failed to update platform config:", e);
+    }
+  }
 
 
   return (
@@ -213,6 +236,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         stocks, setStocks, 
         classes, setClasses, 
         teachers, setTeachers,
+        platformConfig, setPlatformConfig,
         isLoading,
         loadSensitiveData,
         seedInitialData,

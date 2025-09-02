@@ -1,3 +1,4 @@
+
 /**
  * This file contains configurable settings for the application.
  *
@@ -17,4 +18,3 @@
  * color from the application's theme.
  */
 export const LOGO_SVG = ``;
-

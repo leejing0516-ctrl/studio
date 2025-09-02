@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useContext, useEffect } from "react";
+import Image from "next/image";
 import {
   SidebarProvider,
   Sidebar,
@@ -48,7 +49,7 @@ export default function StudentLayout({
   const pathname = usePathname();
   const router = useRouter();
   const { studentData, setStudentData } = useContext(StudentDataContext);
-  const { students } = useContext(AppDataContext);
+  const { students, platformConfig } = useContext(AppDataContext);
 
   useEffect(() => {
     // If there's no student data on page load (e.g., after a refresh), redirect to login
@@ -161,13 +162,32 @@ export default function StudentLayout({
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <header className="flex h-14 items-center justify-between border-b bg-background/50 backdrop-blur-sm px-4 md:px-6 sticky top-0 z-20">
-            <SidebarTrigger className="md:hidden" />
-            <h1 className="text-lg font-semibold md:text-xl capitalize">
-                {pathname.split("/").pop()?.replace('-', ' ') || '儀表板'}
-            </h1>
-        </header>
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+        <div className="flex flex-col min-h-svh">
+            <header className="flex h-14 items-center justify-between border-b bg-background/50 backdrop-blur-sm px-4 md:px-6 sticky top-0 z-20">
+                <SidebarTrigger className="md:hidden" />
+                <h1 className="text-lg font-semibold md:text-xl capitalize">
+                    {pathname.split("/").pop()?.replace('-', ' ') || '儀表板'}
+                </h1>
+            </header>
+            <main className="flex-1 p-4 md:p-6">{children}</main>
+             <footer className="text-center p-4 text-muted-foreground text-sm border-t">
+                {platformConfig?.sponsorLogoUrl ? (
+                    <div className="flex flex-col items-center gap-2">
+                        <span className="text-xs">贊助單位</span>
+                        <div className="relative h-12 w-48">
+                            <Image 
+                                src={platformConfig.sponsorLogoUrl}
+                                alt="Sponsor Logo"
+                                fill
+                                className="object-contain"
+                            />
+                        </div>
+                    </div>
+                ) : (
+                    <p>&copy; {new Date().getFullYear()} 南梓實小虛擬銀行. 版權所有。</p>
+                )}
+            </footer>
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );

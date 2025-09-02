@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useContext, useEffect, useMemo } from "react";
+import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -23,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Reward, Student, Teacher, Class, Loan } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, KeyRound, Bell, Landmark, Check, X, Upload, Download, Loader2, Users } from "lucide-react";
+import { PlusCircle, Edit, Trash2, KeyRound, Bell, Landmark, Check, X, Upload, Download, Loader2, Users, Settings } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -54,8 +55,24 @@ interface StagedStudent {
     errors: string[];
 }
 
+const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
+
+
 export default function TeacherDashboardPage() {
-  const { rewards, setRewards, students, setStudents, classes, setClasses, teachers, setTeachers, isLoading } = useContext(AppDataContext);
+  const { 
+    rewards, setRewards, 
+    students, setStudents, 
+    classes, setClasses, 
+    teachers, setTeachers, 
+    isLoading, platformConfig, setPlatformConfig 
+  } = useContext(AppDataContext);
 
   const [role, setRole] = useState<string | null>(null);
   const [teacherClassId, setTeacherClassId] = useState<string | null>(null);
@@ -71,6 +88,13 @@ export default function TeacherDashboardPage() {
   const [isBatchAwardDialogOpen, setIsBatchAwardDialogOpen] = useState(false);
   const [batchAwardAmount, setBatchAwardAmount] = useState<number | ''>('');
 
+  // State for Platform Settings
+  const [platformLogoFile, setPlatformLogoFile] = useState<File | null>(null);
+  const [platformLogoPreview, setPlatformLogoPreview] = useState<string | null>(platformConfig?.platformLogoUrl || null);
+  const [sponsorLogoFile, setSponsorLogoFile] = useState<File | null>(null);
+  const [sponsorLogoPreview, setSponsorLogoPreview] = useState<string | null>(platformConfig?.sponsorLogoUrl || null);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+
 
   useEffect(() => {
     const storedRole = localStorage.getItem('teacherRole');
@@ -85,6 +109,11 @@ export default function TeacherDashboardPage() {
       setSelectedClassId(storedClassId || '');
     }
   }, [classes, selectedClassId]);
+
+  useEffect(() => {
+    setPlatformLogoPreview(platformConfig?.platformLogoUrl || null);
+    setSponsorLogoPreview(platformConfig?.sponsorLogoUrl || null);
+  }, [platformConfig]);
 
   const studentsInView = useMemo(() => {
     if (role === 'admin') {
@@ -586,7 +615,45 @@ export default function TeacherDashboardPage() {
     setStagedStudents([]);
     setFile(null);
   };
+  
+  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'platform' | 'sponsor') => {
+    const file = e.target.files?.[0];
+    if (file) {
+        if (type === 'platform') {
+            setPlatformLogoFile(file);
+            setPlatformLogoPreview(URL.createObjectURL(file));
+        } else {
+            setSponsorLogoFile(file);
+            setSponsorLogoPreview(URL.createObjectURL(file));
+        }
+    }
+  };
 
+  const handleSaveSettings = async () => {
+    setIsSavingSettings(true);
+    try {
+        let platformLogoUrl = platformConfig?.platformLogoUrl;
+        let sponsorLogoUrl = platformConfig?.sponsorLogoUrl;
+
+        if (platformLogoFile) {
+            platformLogoUrl = await fileToDataUrl(platformLogoFile);
+        }
+        if (sponsorLogoFile) {
+            sponsorLogoUrl = await fileToDataUrl(sponsorLogoFile);
+        }
+        
+        await setPlatformConfig({ platformLogoUrl, sponsorLogoUrl });
+
+        toast({ title: "設定已儲存", description: "平台設定已成功更新。" });
+    } catch (error) {
+        console.error("Error saving settings:", error);
+        toast({ title: "儲存失敗", description: "儲存平台設定時發生錯誤。", variant: "destructive" });
+    } finally {
+        setIsSavingSettings(false);
+        setPlatformLogoFile(null);
+        setSponsorLogoFile(null);
+    }
+  };
 
   const unassignedClasses = useMemo(() => {
     const assignedClassIds = teachers.map(t => t.classId).filter(Boolean);
@@ -624,7 +691,7 @@ export default function TeacherDashboardPage() {
       </Card>
     )}
     <Tabs defaultValue="students" className="animate-in fade-in-0 duration-500">
-      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-6' : 'grid-cols-5'}`}>
+      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-7' : 'grid-cols-5'}`}>
         <TabsTrigger value="students">學生管理</TabsTrigger>
         {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
         <TabsTrigger value="points">發送點數</TabsTrigger>
@@ -641,6 +708,7 @@ export default function TeacherDashboardPage() {
                 <Badge variant="destructive" className="ml-2">{loanRequests.length}</Badge>
             )}
         </TabsTrigger>
+        {role === 'admin' && <TabsTrigger value="settings">平台設定</TabsTrigger>}
       </TabsList>
       
       <TabsContent value="students" className="mt-6">
@@ -723,6 +791,7 @@ export default function TeacherDashboardPage() {
       </TabsContent>
 
       {role === 'admin' && (
+        <>
         <TabsContent value="teachers" className="mt-6 space-y-6">
             <Card>
                 <CardHeader  className="flex flex-row items-center justify-between">
@@ -798,6 +867,54 @@ export default function TeacherDashboardPage() {
                 </CardContent>
             </Card>
         </TabsContent>
+
+        <TabsContent value="settings" className="mt-6 space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>平台 Logo 設定</CardTitle>
+                    <CardDescription>上傳平台 Logo。此 Logo 將顯示在登入頁面和側邊欄中。建議使用透明背景的 PNG 檔案。</CardDescription>
+                </CardHeader>
+                <CardContent className="flex items-center gap-6">
+                     <div className="w-32 h-32 bg-muted rounded-md flex items-center justify-center">
+                        {platformLogoPreview ? (
+                            <Image src={platformLogoPreview} alt="Logo Preview" width={128} height={128} className="object-contain rounded-md" />
+                        ) : (
+                            <span className="text-xs text-muted-foreground">預覽</span>
+                        )}
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="logo-upload">上傳 Logo (PNG)</Label>
+                        <Input id="logo-upload" type="file" accept="image/png" onChange={(e) => handleLogoFileChange(e, 'platform')} className="max-w-xs" />
+                    </div>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle>贊助商 Logo 設定</CardTitle>
+                    <CardDescription>上傳贊助商 Logo。此 Logo 將顯示在頁面底部的頁尾區域。建議使用透明背景的 PNG 檔案。</CardDescription>
+                </CardHeader>
+                 <CardContent className="flex items-center gap-6">
+                    <div className="w-48 h-24 bg-muted rounded-md flex items-center justify-center">
+                        {sponsorLogoPreview ? (
+                            <Image src={sponsorLogoPreview} alt="Sponsor Logo Preview" width={192} height={96} className="object-contain" />
+                        ) : (
+                             <span className="text-xs text-muted-foreground">預覽</span>
+                        )}
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="sponsor-logo-upload">上傳贊助商 Logo (PNG)</Label>
+                        <Input id="sponsor-logo-upload" type="file" accept="image/png" onChange={(e) => handleLogoFileChange(e, 'sponsor')} className="max-w-xs"/>
+                    </div>
+                </CardContent>
+            </Card>
+             <div className="flex justify-end">
+                <Button onClick={handleSaveSettings} disabled={isSavingSettings}>
+                    {isSavingSettings && <Loader2 className="mr-2 animate-spin" />}
+                    儲存設定
+                </Button>
+            </div>
+        </TabsContent>
+        </>
       )}
       
       <TabsContent value="points" className="mt-6">
@@ -1451,4 +1568,3 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
-

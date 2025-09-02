@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useContext, useEffect } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,7 @@ export default function HomePage() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const { students, classes, teachers, isLoading, loadSensitiveData, seedInitialData } = useContext(AppDataContext);
+  const { students, classes, teachers, isLoading, loadSensitiveData, seedInitialData, platformConfig } = useContext(AppDataContext);
   const { setStudentData } = useContext(StudentDataContext);
 
   const handleStudentLogin = async (e: React.FormEvent) => {
@@ -240,18 +241,22 @@ export default function HomePage() {
         </Card>
       </div>
       <footer className="text-center mt-12 text-muted-foreground text-sm">
-        <p>&copy; {new Date().getFullYear()} 南梓實小虛擬銀行. 版權所有。</p>
+        {platformConfig?.sponsorLogoUrl ? (
+            <div className="flex flex-col items-center gap-2">
+                <span className="text-xs">贊助單位</span>
+                <div className="relative h-12 w-48">
+                    <Image 
+                        src={platformConfig.sponsorLogoUrl}
+                        alt="Sponsor Logo"
+                        fill
+                        className="object-contain"
+                    />
+                </div>
+            </div>
+        ) : (
+            <p>&copy; {new Date().getFullYear()} 南梓實小虛擬銀行. 版權所有。</p>
+        )}
       </footer>
     </div>
   );
 }
-    
-    
-
-    
-
-
-
-    
-
-    
