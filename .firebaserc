@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "finlit-classroom"
-  }
+    "default": "finlit-classroom",
+    "staging": "finlit-classroom"
+  },
+  "targets": {},
+  "etags": {}
 }
