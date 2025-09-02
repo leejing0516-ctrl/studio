@@ -123,7 +123,7 @@ export default function TeacherDashboardPage() {
     const student = students.find(s => s.id === studentId && s.classId === selectedClassId);
     toast({
         title: "點數已發送！",
-        description: `您已成功發送 ${pointsToAdd} 點給 ${student?.name}。`
+        description: `您已成功發送 ${pointsToAdd.toLocaleString()} 點給 ${student?.name}。`
     })
   }
 
@@ -359,43 +359,38 @@ export default function TeacherDashboardPage() {
   };
 
   const handleLoanDecision = (studentId: string, classId: string, loanId: string, decision: 'approve' | 'reject') => {
-    let studentName: string | undefined;
-    let loanAmount: number | undefined;
-
+    let toastMessage: { title: string, description: string, variant?: "default" | "destructive" } | null = null;
+  
     setStudents(currentStudents => {
-      const newStudents = currentStudents.map(student => {
+      return currentStudents.map(student => {
         if (student.id === studentId && student.classId === classId) {
           const targetLoan = student.loans.find(l => l.id === loanId);
           if (!targetLoan) return student;
-
-          studentName = student.name;
-          loanAmount = targetLoan.amount;
-
+  
           let updatedStudent = { ...student };
           if (decision === 'approve') {
             updatedStudent.points += targetLoan.amount;
             updatedStudent.loans = student.loans.map(l => l.id === loanId ? { ...l, status: 'active' as const } : l);
+            toastMessage = {
+              title: "貸款已批准",
+              description: `已將 ${targetLoan.amount.toLocaleString()} 點數撥款給 ${student.name}。`
+            };
           } else {
             updatedStudent.loans = student.loans.map(l => l.id === loanId ? { ...l, status: 'rejected' as const } : l);
+            toastMessage = {
+              title: "貸款已拒絕",
+              description: `已拒絕 ${student.name} 的貸款申請。`,
+              variant: "destructive"
+            };
           }
           return updatedStudent;
         }
         return student;
       });
-      return newStudents;
     });
-
-    if (decision === 'approve' && studentName && loanAmount) {
-        toast({
-            title: "貸款已批准",
-            description: `已將 ${loanAmount} 點數撥款給 ${studentName}。`
-        });
-    } else if (decision === 'reject' && studentName) {
-        toast({
-            title: "貸款已拒絕",
-            description: `已拒絕 ${studentName} 的貸款申請。`,
-            variant: "destructive"
-        });
+  
+    if (toastMessage) {
+      toast(toastMessage);
     }
   };
   

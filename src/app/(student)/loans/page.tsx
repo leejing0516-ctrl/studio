@@ -26,6 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 
 const LOAN_LIMIT = 500;
 const DAILY_INTEREST_RATE = 1; // 1 point per day
@@ -49,7 +50,7 @@ export default function LoansPage() {
     e.preventDefault();
     if (!repaymentDate || !currentStudent) return;
     if (loanAmount <= 0 || loanAmount > LOAN_LIMIT) {
-        toast({ title: "無效的金額", description: `貸款金額必須介於 1 至 ${LOAN_LIMIT} 之間。`, variant: "destructive" });
+        toast({ title: "無效的金額", description: `貸款金額必須介於 1 至 ${LOAN_LIMIT.toLocaleString()} 之間。`, variant: "destructive" });
         return;
     }
     if (!loanReason) {
@@ -90,7 +91,7 @@ export default function LoansPage() {
     
     const totalRepayment = loanToRepay.amount + loanToRepay.interest;
     if (currentStudent.points < totalRepayment) {
-        toast({ title: "點數不足", description: `您需要 ${totalRepayment} 點來償還此筆貸款。`, variant: "destructive" });
+        toast({ title: "點數不足", description: `您需要 ${totalRepayment.toLocaleString()} 點來償還此筆貸款。`, variant: "destructive" });
         setIsConfirmRepayOpen(false);
         return;
     }
@@ -106,7 +107,7 @@ export default function LoansPage() {
         return s;
     }));
 
-    toast({ title: "還款成功！", description: `您已成功償還 ${totalRepayment} 點。` });
+    toast({ title: "還款成功！", description: `您已成功償還 ${totalRepayment.toLocaleString()} 點。` });
     setIsConfirmRepayOpen(false);
     setLoanToRepay(null);
   };
@@ -119,7 +120,7 @@ export default function LoansPage() {
             <Hourglass className="mx-auto h-12 w-12 text-amber-500" />
             <CardTitle className="mt-4 text-amber-800">貸款審核中</CardTitle>
             <CardDescription className="mt-2 text-amber-700">
-                您有一筆 {pendingLoan.amount} 點的貸款正在等待老師批准。
+                您有一筆 {pendingLoan.amount.toLocaleString()} 點的貸款正在等待老師批准。
             </CardDescription>
         </Card>
       );
@@ -171,11 +172,11 @@ export default function LoansPage() {
             <form onSubmit={handleLoanRequest}>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2"><Landmark/> 信用貸款申請</CardTitle>
-                    <CardDescription>需要點數應急嗎？您可以申請最高 {LOAN_LIMIT} 點的短期貸款。每日利息為 {DAILY_INTEREST_RATE} 點。</CardDescription>
+                    <CardDescription>需要點數應急嗎？您可以申請最高 {LOAN_LIMIT.toLocaleString()} 點的短期貸款。每日利息為 {DAILY_INTEREST_RATE.toLocaleString()} 點。</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="amount">貸款金額 (上限 {LOAN_LIMIT} 點)</Label>
+                        <Label htmlFor="amount">貸款金額 (上限 {LOAN_LIMIT.toLocaleString()} 點)</Label>
                         <Input id="amount" type="number" value={loanAmount} onChange={e => setLoanAmount(Number(e.target.value))} max={LOAN_LIMIT} min="1" required/>
                     </div>
                     <div className="space-y-2">
@@ -232,7 +233,7 @@ export default function LoansPage() {
                         <div key={loan.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                             <div>
                                 <p className="font-semibold">
-                                    {loan.status === 'repaid' ? `已償還 ${loan.amount} 點` : `已拒絕 ${loan.amount} 點`}
+                                    {loan.status === 'repaid' ? `已償還 ${loan.amount.toLocaleString()} 點` : `已拒絕 ${loan.amount.toLocaleString()} 點`}
                                 </p>
                                 <p className="text-sm text-muted-foreground">
                                     申請日期: {format(new Date(loan.requestDate), 'yyyy-MM-dd')}
@@ -263,7 +264,7 @@ export default function LoansPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>確認還款？</AlertDialogTitle>
             <AlertDialogDescription>
-              您確定要花費 {(loanToRepay?.amount || 0) + (loanToRepay?.interest || 0)} 點來償還此筆貸款嗎？
+              您確定要花費 {((loanToRepay?.amount || 0) + (loanToRepay?.interest || 0)).toLocaleString()} 點來償還此筆貸款嗎？
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
