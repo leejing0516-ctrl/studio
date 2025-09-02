@@ -20,7 +20,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { stocks as marketStocks } from "@/lib/placeholder-data";
 import type { Stock, PortfolioItem } from "@/lib/types";
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
@@ -63,7 +62,7 @@ export default function StocksPage() {
   const [tradeShares, setTradeShares] = useState(0);
   const { toast } = useToast();
   const { studentData } = useContext(StudentDataContext);
-  const { students, setStudents } = useContext(AppDataContext);
+  const { students, setStudents, stocks: marketStocks } = useContext(AppDataContext);
   
   const currentStudent = students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId) || studentData.student;
   

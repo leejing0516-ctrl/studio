@@ -8,7 +8,6 @@ import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "
 import { Bar, BarChart, XAxis, YAxis } from "recharts"
 import RewardSuggestion from "@/components/reward-suggestion";
 import { StudentDataContext } from "@/context/StudentDataContext";
-import { stocks as marketStocks } from "@/lib/placeholder-data";
 import { AppDataContext } from "@/context/AppDataContext";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +29,7 @@ const chartConfig: ChartConfig = {
 
 export default function StudentDashboardPage() {
   const { studentData } = useContext(StudentDataContext);
-  const { students } = useContext(AppDataContext);
+  const { students, stocks: marketStocks } = useContext(AppDataContext);
   
   // Find the most up-to-date student info from the source of truth
   const currentStudent = useMemo(() => 
@@ -44,7 +43,7 @@ export default function StudentDashboardPage() {
         const currentValue = marketInfo ? marketInfo.price * item.shares : 0;
         return acc + currentValue;
     }, 0);
-  }, [currentStudent]);
+  }, [currentStudent, marketStocks]);
   
   const totalLoanAmount = useMemo(() => {
       if (!currentStudent || !currentStudent.loans) return 0;
@@ -75,7 +74,7 @@ export default function StudentDashboardPage() {
     const studentPercentile = studentsInClass.length > 1 ? ((studentsInClass.length - studentRank) / (studentsInClass.length - 1) ) * 100 : 100;
     
     return { rank: studentRank, percentile: studentPercentile };
-  }, [students, currentStudent]);
+  }, [students, currentStudent, marketStocks]);
 
 
   const totalPoints = currentStudent?.points || 0;
