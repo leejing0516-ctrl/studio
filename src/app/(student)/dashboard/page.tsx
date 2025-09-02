@@ -13,23 +13,6 @@ import { cn } from "@/lib/utils";
 import { subDays, format } from "date-fns";
 
 
-// 模擬今天的日期為 2025-09-07，以展示最近一週的數據
-const DEMO_TODAY = new Date('2025-09-07');
-
-const pointsData = Array.from({ length: 7 }, (_, i) => {
-    // Corrected logic: Iterate from 6 days ago to today.
-    const date = subDays(DEMO_TODAY, 6 - i); 
-    // 假設點數從 9/2 開始獲得
-    const points = date < new Date('2025-09-02') 
-        ? 0 
-        : [0, 15, 20, 10, 35, 25, 40][i-1] + Math.floor(Math.random() * 5); // i-1 to align with days after 9/1
-    return {
-        date: format(date, "M/d"),
-        points: points,
-    };
-});
-
-
 const chartConfig: ChartConfig = {
   points: {
     label: "點數",
@@ -49,6 +32,43 @@ export default function StudentDashboardPage() {
   const currentStudent = useMemo(() => 
     students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId)
   , [students, studentData.student?.id, studentData.student?.classId]);
+
+  const totalPoints = currentStudent?.points || 0;
+
+  const pointsData = useMemo(() => {
+    if (!currentStudent) return [];
+
+    const today = new Date();
+    let remainingPoints = totalPoints;
+    
+    // Generate random distribution weights
+    const weights = Array.from({ length: 7 }, () => Math.random());
+    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+
+    const dailyPoints = weights.map(w => {
+        const pointsForDay = Math.floor((w / totalWeight) * remainingPoints);
+        return pointsForDay;
+    });
+
+    // Distribute remaining points due to flooring
+    let distributedPoints = dailyPoints.reduce((sum, p) => sum + p, 0);
+    let pointsToDistribute = remainingPoints - distributedPoints;
+    let dayIndex = 6;
+    while(pointsToDistribute > 0) {
+        dailyPoints[dayIndex % 7] += 1;
+        pointsToDistribute--;
+        dayIndex--;
+    }
+
+    return Array.from({ length: 7 }, (_, i) => {
+        const date = subDays(today, 6 - i);
+        return {
+            date: format(date, "M/d"),
+            points: dailyPoints[i] || 0,
+        };
+    });
+  }, [totalPoints, currentStudent]);
+
 
   const portfolioValue = useMemo(() => {
     if (!currentStudent) return 0;
@@ -91,7 +111,6 @@ export default function StudentDashboardPage() {
   }, [students, currentStudent, marketStocks]);
 
 
-  const totalPoints = currentStudent?.points || 0;
   const totalAssets = Math.round(portfolioValue) + Math.round(totalPoints);
   const stockPerformance = "上週透過投資科技股獲利 5%。";
 
@@ -168,15 +187,15 @@ export default function StudentDashboardPage() {
         <Card className="md:col-span-3">
           <CardHeader>
             <CardTitle>最近七日點數趨勢</CardTitle>
-            <CardDescription>您最近七天獲得的點數紀錄。</CardDescription>
+            <CardDescription>您最近七天每日獲得的點數紀錄。</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[250px] w-full">
                 <BarChart accessibilityLayer data={pointsData} margin={{ left: -20, right: 10, top:10, bottom: 0}}>
                     <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => value} />
-                    <YAxis tickLine={false} axisLine={false} tickMargin={8} domain={['dataMin', 'dataMax + 10']} hide />
+                    <YAxis tickLine={false} axisLine={false} tickMargin={8} domain={[0, 'dataMax + 10']} hide />
                     <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
-                    <Bar dataKey="points" fill="var(--color-value)" radius={4} />
+                    <Bar dataKey="points" fill="var(--color-primary)" radius={4} />
                 </BarChart>
             </ChartContainer>
           </CardContent>
