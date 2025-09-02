@@ -18,9 +18,9 @@ import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
 
 
 export default function HomePage() {
-  const [userType, setUserType] = useState<'student' | 'teacher'>('student');
   const [studentId, setStudentId] = useState('');
-  const [password, setPassword] = useState('');
+  const [studentPassword, setStudentPassword] = useState('');
+  const [teacherPassword, setTeacherPassword] = useState('');
   const [classId, setClassId] = useState('');
   const [teacherId, setTeacherId] = useState('');
   const router = useRouter();
@@ -38,7 +38,7 @@ export default function HomePage() {
         });
         return;
     }
-    const student = students.find(s => s.classId === classId && s.id === studentId && s.password === password);
+    const student = students.find(s => s.classId === classId && s.id === studentId && s.password === studentPassword);
     if (student) {
       toast({
         title: "登入成功！",
@@ -66,7 +66,7 @@ export default function HomePage() {
     const teacher = teachers.find(t => t.id === teacherId);
 
     // Using a shared password for simplicity as requested
-    if (teacher && password === TEACHER_PASSWORD) {
+    if (teacher && teacherPassword === TEACHER_PASSWORD) {
         toast({
             title: "教師登入成功",
             description: `歡迎，${teacher.name}！`,
@@ -144,8 +144,8 @@ export default function HomePage() {
                   type="password" 
                   placeholder="請輸入您的密碼" 
                   required 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  value={studentPassword}
+                  onChange={(e) => setStudentPassword(e.target.value)}
                 />
               </div>
             </CardContent>
@@ -192,8 +192,8 @@ export default function HomePage() {
                     type="password" 
                     placeholder="請輸入您的密碼" 
                     required 
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    value={teacherPassword}
+                    onChange={(e) => setTeacherPassword(e.target.value)}
                   />
                 </div>
             </CardContent>
