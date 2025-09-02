@@ -69,5 +69,5 @@ export type Teacher = {
 export type PlatformConfig = {
     id: 'main';
     platformLogoUrl?: string;
-    sponsorLogoUrl?: string;
+    sponsorLogoUrls?: (string | null)[];
 }

@@ -241,16 +241,20 @@ export default function HomePage() {
         </Card>
       </div>
       <footer className="text-center mt-12 text-muted-foreground text-sm">
-        {platformConfig?.sponsorLogoUrl ? (
-            <div className="flex flex-col items-center gap-2">
+        {platformConfig?.sponsorLogoUrls && platformConfig.sponsorLogoUrls.some(url => url) ? (
+            <div className="flex flex-col items-center gap-4">
                 <span className="text-xs">贊助單位</span>
-                <div className="relative h-12 w-48">
-                    <Image 
-                        src={platformConfig.sponsorLogoUrl}
-                        alt="Sponsor Logo"
-                        fill
-                        className="object-contain"
-                    />
+                <div className="flex flex-wrap justify-center items-center gap-8">
+                    {platformConfig.sponsorLogoUrls.map((url, index) => url && (
+                        <div key={index} className="relative h-12 w-36">
+                            <Image 
+                                src={url}
+                                alt={`Sponsor Logo ${index + 1}`}
+                                fill
+                                className="object-contain"
+                            />
+                        </div>
+                    ))}
                 </div>
             </div>
         ) : (

@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Reward, Student, Teacher, Class, Loan } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, KeyRound, Bell, Landmark, Check, X, Upload, Download, Loader2, Users, Settings } from "lucide-react";
+import { PlusCircle, Edit, Trash2, KeyRound, Bell, Landmark, Check, X, Upload, Download, Loader2, Users, Settings, ImageOff } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -91,8 +91,8 @@ export default function TeacherDashboardPage() {
   // State for Platform Settings
   const [platformLogoFile, setPlatformLogoFile] = useState<File | null>(null);
   const [platformLogoPreview, setPlatformLogoPreview] = useState<string | null>(platformConfig?.platformLogoUrl || null);
-  const [sponsorLogoFile, setSponsorLogoFile] = useState<File | null>(null);
-  const [sponsorLogoPreview, setSponsorLogoPreview] = useState<string | null>(platformConfig?.sponsorLogoUrl || null);
+  const [sponsorLogoFiles, setSponsorLogoFiles] = useState<(File | null)[]>(Array(4).fill(null));
+  const [sponsorLogoPreviews, setSponsorLogoPreviews] = useState<(string | null)[]>(platformConfig?.sponsorLogoUrls || Array(4).fill(null));
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
 
@@ -112,7 +112,7 @@ export default function TeacherDashboardPage() {
 
   useEffect(() => {
     setPlatformLogoPreview(platformConfig?.platformLogoUrl || null);
-    setSponsorLogoPreview(platformConfig?.sponsorLogoUrl || null);
+    setSponsorLogoPreviews(platformConfig?.sponsorLogoUrls || Array(4).fill(null));
   }, [platformConfig]);
 
   const studentsInView = useMemo(() => {
@@ -616,33 +616,68 @@ export default function TeacherDashboardPage() {
     setFile(null);
   };
   
-  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'platform' | 'sponsor') => {
+  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'platform') => {
     const file = e.target.files?.[0];
     if (file) {
-        if (type === 'platform') {
-            setPlatformLogoFile(file);
-            setPlatformLogoPreview(URL.createObjectURL(file));
-        } else {
-            setSponsorLogoFile(file);
-            setSponsorLogoPreview(URL.createObjectURL(file));
-        }
+        setPlatformLogoFile(file);
+        setPlatformLogoPreview(URL.createObjectURL(file));
     }
   };
+
+  const handleSponsorLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        setSponsorLogoFiles(prev => {
+            const newFiles = [...prev];
+            newFiles[index] = file;
+            return newFiles;
+        });
+        setSponsorLogoPreviews(prev => {
+            const newPreviews = [...prev];
+            newPreviews[index] = URL.createObjectURL(file);
+            return newPreviews;
+        });
+    }
+  };
+  
+  const handleRemoveSponsorLogo = (index: number) => {
+      setSponsorLogoFiles(prev => {
+        const newFiles = [...prev];
+        newFiles[index] = null;
+        return newFiles;
+      });
+      setSponsorLogoPreviews(prev => {
+        const newPreviews = [...prev];
+        newPreviews[index] = null;
+        return newPreviews;
+      });
+  }
 
   const handleSaveSettings = async () => {
     setIsSavingSettings(true);
     try {
         let platformLogoUrl = platformConfig?.platformLogoUrl;
-        let sponsorLogoUrl = platformConfig?.sponsorLogoUrl;
-
         if (platformLogoFile) {
             platformLogoUrl = await fileToDataUrl(platformLogoFile);
         }
-        if (sponsorLogoFile) {
-            sponsorLogoUrl = await fileToDataUrl(sponsorLogoFile);
+
+        const newSponsorUrls = [...(platformConfig?.sponsorLogoUrls || Array(4).fill(null))];
+        for(let i = 0; i < sponsorLogoFiles.length; i++) {
+            const file = sponsorLogoFiles[i];
+            if (file) {
+                newSponsorUrls[i] = await fileToDataUrl(file);
+            } else {
+                 // Check if the preview was removed
+                 if (sponsorLogoPreviews[i] === null) {
+                    newSponsorUrls[i] = null;
+                }
+            }
         }
         
-        await setPlatformConfig({ platformLogoUrl, sponsorLogoUrl });
+        await setPlatformConfig({ 
+            platformLogoUrl, 
+            sponsorLogoUrls: newSponsorUrls 
+        });
 
         toast({ title: "設定已儲存", description: "平台設定已成功更新。" });
     } catch (error) {
@@ -651,7 +686,7 @@ export default function TeacherDashboardPage() {
     } finally {
         setIsSavingSettings(false);
         setPlatformLogoFile(null);
-        setSponsorLogoFile(null);
+        setSponsorLogoFiles(Array(4).fill(null));
     }
   };
 
@@ -891,20 +926,32 @@ export default function TeacherDashboardPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>贊助商 Logo 設定</CardTitle>
-                    <CardDescription>上傳贊助商 Logo。此 Logo 將顯示在頁面底部的頁尾區域。建議使用透明背景的 PNG 檔案。</CardDescription>
+                    <CardDescription>上傳最多四個贊助商 Logo。這些 Logo 將顯示在頁面底部的頁尾區域。建議使用透明背景的 PNG 檔案，並確保所有 Logo 寬度一致。</CardDescription>
                 </CardHeader>
-                 <CardContent className="flex items-center gap-6">
-                    <div className="w-48 h-24 bg-muted rounded-md flex items-center justify-center">
-                        {sponsorLogoPreview ? (
-                            <Image src={sponsorLogoPreview} alt="Sponsor Logo Preview" width={192} height={96} className="object-contain" />
-                        ) : (
-                             <span className="text-xs text-muted-foreground">預覽</span>
-                        )}
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="sponsor-logo-upload">上傳贊助商 Logo (PNG)</Label>
-                        <Input id="sponsor-logo-upload" type="file" accept="image/png" onChange={(e) => handleLogoFileChange(e, 'sponsor')} className="max-w-xs"/>
-                    </div>
+                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                    {Array.from({ length: 4 }).map((_, index) => (
+                        <div key={index} className="flex items-center gap-4">
+                            <div className="w-48 h-24 bg-muted rounded-md flex items-center justify-center relative group">
+                                {sponsorLogoPreviews[index] ? (
+                                    <>
+                                      <Image src={sponsorLogoPreviews[index]!} alt={`Sponsor Logo ${index + 1} Preview`} fill className="object-contain p-2" />
+                                      <Button variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleRemoveSponsorLogo(index)}>
+                                        <X className="h-4 w-4" />
+                                      </Button>
+                                    </>
+                                ) : (
+                                    <div className="flex flex-col items-center gap-1 text-muted-foreground">
+                                        <ImageOff className="h-6 w-6"/>
+                                        <span className="text-xs">位置 {index + 1}</span>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor={`sponsor-logo-upload-${index}`}>上傳 Logo {index + 1}</Label>
+                                <Input id={`sponsor-logo-upload-${index}`} type="file" accept="image/png" onChange={(e) => handleSponsorLogoFileChange(e, index)} className="max-w-xs"/>
+                            </div>
+                        </div>
+                    ))}
                 </CardContent>
             </Card>
              <div className="flex justify-end">
