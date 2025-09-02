@@ -11,7 +11,7 @@ import {
     stocks as initialStocks
 } from '@/lib/placeholder-data';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDocs, writeBatch, setDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, writeBatch, setDoc, getDoc } from 'firebase/firestore';
 
 
 // --- Cloud-based Data Management ---
@@ -28,7 +28,7 @@ interface AppDataContextType {
   teachers: Teacher[];
   setTeachers: (newTeachers: Teacher[] | ((prev: Teacher[]) => Teacher[])) => Promise<void>;
   isLoading: boolean;
-  initializeAppData: () => Promise<void>;
+  loadSensitiveData: () => Promise<{students: Student[], rewards: Reward[], stocks: Stock[]}>;
 }
 
 const defaultState: AppDataContextType = {
@@ -43,7 +43,7 @@ const defaultState: AppDataContextType = {
   teachers: [],
   setTeachers: async () => {},
   isLoading: true,
-  initializeAppData: async () => {},
+  loadSensitiveData: async () => ({ students: [], rewards: [], stocks: [] }),
 };
 
 export const AppDataContext = createContext<AppDataContextType>(defaultState);
@@ -55,11 +55,16 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [teachers, setTeachersState] = useState<Teacher[]>([]);
   const [classes, setClassesState] = useState<Class[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sensitiveDataLoaded, setSensitiveDataLoaded] = useState(false);
 
   // Generic fetch function
   const fetchData = useCallback(async <T,>(collectionName: string, initialState: T[]): Promise<T[]> => {
       const collectionRef = collection(db, collectionName);
+      
+      // Check if collection exists by trying to get a metadata doc or a single doc
+      // Firestore doesn't have a direct "collection exists" check, so we check if it's empty
       const snapshot = await getDocs(collectionRef);
+
       if (snapshot.empty) {
           // If the collection is empty, seed it with initial data
           const batch = writeBatch(db);
@@ -68,61 +73,92 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
               const docRef = doc(db, collectionName, docId);
               batch.set(docRef, item);
           });
+          // Add a metadata doc to avoid re-seeding
+          batch.set(doc(db, collectionName, '--metadata--'), { seeded: true });
           await batch.commit();
           console.log(`Seeded ${collectionName} collection.`);
           return initialState;
       }
-      return snapshot.docs.map(doc => ({ ...doc.data() } as T));
+      return snapshot.docs
+        .filter(doc => doc.id !== '--metadata--') // Filter out metadata doc
+        .map(doc => ({ ...doc.data() } as T));
   }, []);
   
   // App initialization function
-  const initializeAppData = useCallback(async () => {
+  const initializePublicData = useCallback(async () => {
     setIsLoading(true);
     try {
-        const [studentsData, rewardsData, stocksData, classesData, teachersData] = await Promise.all([
-            fetchData<Student>('students', initialStudents),
-            fetchData<Reward>('rewards', initialRewards),
-            fetchData<Stock>('stocks', initialStocks),
+        const [classesData, teachersData] = await Promise.all([
             fetchData<Class>('classes', initialClasses),
             fetchData<Teacher>('teachers', initialTeachers),
         ]);
-        setStudentsState(studentsData);
-        setRewardsState(rewardsData);
-        setStocksState(stocksData);
         setClassesState(classesData);
         setTeachersState(teachersData);
     } catch (error) {
-        console.error("Error initializing app data from Firestore:", error);
-        // Optionally handle error state here
+        console.error("Error initializing public data from Firestore:", error);
     } finally {
         setIsLoading(false);
     }
   }, [fetchData]);
 
+  const loadSensitiveData = useCallback(async () => {
+    if (sensitiveDataLoaded) {
+        return { students, rewards, stocks };
+    }
+    console.log("Loading sensitive data...");
+    setIsLoading(true);
+    try {
+        const [studentsData, rewardsData, stocksData] = await Promise.all([
+            fetchData<Student>('students', initialStudents),
+            fetchData<Reward>('rewards', initialRewards),
+            fetchData<Stock>('stocks', initialStocks),
+        ]);
+        setStudentsState(studentsData);
+        setRewardsState(rewardsData);
+        setStocksState(stocksData);
+        setSensitiveDataLoaded(true);
+        return { students: studentsData, rewards: rewardsData, stocks: stocksData };
+    } catch (error) {
+        console.error("Error loading sensitive data:", error);
+        // This will likely be a permission error if called prematurely, which is fine.
+        return { students: [], rewards: [], stocks: [] };
+    } finally {
+        setIsLoading(false);
+    }
+  }, [fetchData, sensitiveDataLoaded, students, rewards, stocks]);
+
 
   useEffect(() => {
-    initializeAppData();
-  }, [initializeAppData]);
+    // Only load public data on initial load
+    initializePublicData();
+  }, [initializePublicData]);
 
   // Generic update function
   const createUpdater = <T extends { id?: string | number; ticker?: string }>(
     collectionName: string, 
     setter: React.Dispatch<React.SetStateAction<T[]>>
   ) => async (newData: T[] | ((prev: T[]) => T[])) => {
+    // Use a function for the setter to get the most up-to-date previous state
     setter(prevData => {
         const updatedData = typeof newData === 'function' ? newData(prevData) : newData;
         
         const batch = writeBatch(db);
         updatedData.forEach(item => {
-            const docId = item.id ? String(item.id) : item.ticker;
+            // Determine the document ID, preferring 'id' over 'ticker'
+            const docId = item.id ? String(item.id) : (item.ticker || null);
             if (docId) {
                 const docRef = doc(db, collectionName, docId);
-                batch.set(docRef, item);
+                // Ensure plain objects are written to Firestore
+                batch.set(docRef, { ...item });
+            } else {
+                console.warn(`Skipping item in ${collectionName} due to missing id/ticker:`, item);
             }
         });
         
+        // Asynchronously commit the batch and handle potential errors
         batch.commit().catch(e => console.error(`Failed to update ${collectionName}`, e));
 
+        // Return the new state for React to render
         return updatedData;
     });
   };
@@ -134,10 +170,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const setTeachers = createUpdater<Teacher>('teachers', setTeachersState);
 
 
-  // NOTE: Stock simulation logic should be moved to a server-side function (e.g., Firebase Cloud Function)
-  // that runs on a schedule (e.g., daily at 5 PM). The client-side simulation is removed to ensure data consistency.
-  // The function would read from Firestore, update prices, and write them back.
-
   return (
     <AppDataContext.Provider value={{ 
         students, setStudents, 
@@ -146,7 +178,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         classes, setClasses, 
         teachers, setTeachers,
         isLoading,
-        initializeAppData,
+        loadSensitiveData,
     }}>
       {children}
     </AppDataContext.Provider>

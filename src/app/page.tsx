@@ -22,22 +22,42 @@ export default function HomePage() {
   const [teacherPassword, setTeacherPassword] = useState('');
   const [classId, setClassId] = useState('');
   const [teacherId, setTeacherId] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const { students, classes, teachers, isLoading, initializeAppData } = useContext(AppDataContext);
+  const { students, classes, teachers, isLoading, loadSensitiveData } = useContext(AppDataContext);
   const { setStudentData } = useContext(StudentDataContext);
 
-  const handleStudentLogin = (e: React.FormEvent) => {
+  const handleStudentLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoggingIn(true);
     if (!classId) {
         toast({
             title: "登入失敗",
             description: "請選擇您的班級。",
             variant: "destructive",
         });
+        setIsLoggingIn(false);
         return;
     }
-    const student = students.find(s => s.classId === classId && s.id === studentId && s.password === studentPassword);
+    
+    // NOTE: In a real app, you'd fetch the student from the DB to verify
+    // For this prototype, we assume `students` is loaded for login,
+    // but a better approach would be an API endpoint for auth.
+    // We'll load sensitive data if it's not already there.
+    const studentDataAvailable = students.length > 0;
+    if (!studentDataAvailable) {
+        await loadSensitiveData(); // Load data on demand
+    }
+
+    // Now we can check against the loaded student data
+    // This is a bit of a hack for the prototype. In prod, you'd have an auth service.
+    // We need to get the latest state of students after loading
+    const student = (await (async () => {
+        const { students: updatedStudents } = await loadSensitiveData();
+        return updatedStudents.find(s => s.classId === classId && s.id === studentId && s.password === studentPassword);
+    })());
+    
     if (student) {
       toast({
         title: "登入成功！",
@@ -58,14 +78,19 @@ export default function HomePage() {
         variant: "destructive",
       });
     }
+    setIsLoggingIn(false);
   };
   
-  const handleTeacherLogin = (e: React.FormEvent) => {
+  const handleTeacherLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoggingIn(true);
     const teacher = teachers.find(t => t.id === teacherId);
 
     // Using a shared password for simplicity as requested
     if (teacher && teacherPassword === TEACHER_PASSWORD) {
+        // Load all necessary data for the teacher dashboard
+        await loadSensitiveData();
+        
         toast({
             title: "教師登入成功",
             description: `歡迎，${teacher.name}！`,
@@ -82,6 +107,7 @@ export default function HomePage() {
             variant: "destructive",
         });
     }
+    setIsLoggingIn(false);
   };
 
   if (isLoading) {
@@ -124,7 +150,7 @@ export default function HomePage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                  <Label htmlFor="class-select">班級</Label>
-                 <Select onValueChange={setClassId} value={classId}>
+                 <Select onValueChange={setClassId} value={classId} disabled={isLoggingIn}>
                     <SelectTrigger id="class-select">
                         <SelectValue placeholder="請選擇班級" />
                     </SelectTrigger>
@@ -143,6 +169,7 @@ export default function HomePage() {
                   required 
                   value={studentId}
                   onChange={(e) => setStudentId(e.target.value)}
+                  disabled={isLoggingIn}
                 />
               </div>
               <div className="space-y-2">
@@ -154,12 +181,14 @@ export default function HomePage() {
                   required 
                   value={studentPassword}
                   onChange={(e) => setStudentPassword(e.target.value)}
+                  disabled={isLoggingIn}
                 />
               </div>
             </CardContent>
             <CardFooter>
-              <Button type="submit" className="w-full">
-                登入 <ArrowRight className="ml-2 h-4 w-4" />
+              <Button type="submit" className="w-full" disabled={isLoggingIn}>
+                {isLoggingIn ? <Loader2 className="animate-spin" /> : "登入"}
+                {!isLoggingIn && <ArrowRight className="ml-2 h-4 w-4" />}
               </Button>
             </CardFooter>
           </form>
@@ -182,7 +211,7 @@ export default function HomePage() {
             <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="teacher-id">教師帳號</Label>
-                  <Select onValueChange={setTeacherId} value={teacherId}>
+                  <Select onValueChange={setTeacherId} value={teacherId} disabled={isLoggingIn}>
                      <SelectTrigger id="teacher-id-select">
                          <SelectValue placeholder="請選擇您的帳號" />
                      </SelectTrigger>
@@ -202,12 +231,14 @@ export default function HomePage() {
                     required 
                     value={teacherPassword}
                     onChange={(e) => setTeacherPassword(e.target.value)}
+                    disabled={isLoggingIn}
                   />
                 </div>
             </CardContent>
             <CardFooter>
-              <Button type="submit" className="w-full" variant="outline">
-                以老師身份進入 <ArrowRight className="ml-2 h-4 w-4" />
+              <Button type="submit" className="w-full" variant="outline" disabled={isLoggingIn}>
+                {isLoggingIn ? <Loader2 className="animate-spin" /> : "以老師身份進入"}
+                {!isLoggingIn && <ArrowRight className="ml-2 h-4 w-4" />}
               </Button>
             </CardFooter>
           </form>
