@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext } from "react";
+import { useState, useContext, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -38,15 +38,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
+import { subMonths, format } from "date-fns";
 
-const portfolioHistory = [
-  { date: "2024-01-01", value: 2000 },
-  { date: "2024-02-01", value: 2200 },
-  { date: "2024-03-01", value: 2150 },
-  { date: "2024-04-01", value: 2500 },
-  { date: "2024-05-01", value: 2400 },
-  { date: "2024-06-01", value: 2780 },
-];
 
 const chartConfig: ChartConfig = {
   value: {
@@ -67,6 +60,33 @@ export default function StocksPage() {
   const currentStudent = students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId) || studentData.student;
   
   const studentHolding = selectedStock ? currentStudent?.portfolio.find(item => item.ticker === selectedStock.ticker) : null;
+
+  const portfolioHistory = useMemo(() => {
+    if (!currentStudent) return [];
+
+    const history = Array.from({ length: 6 }).map((_, i) => {
+        const date = subMonths(new Date(), 5 - i);
+        let totalValue = 0;
+
+        currentStudent.portfolio.forEach(holding => {
+            const marketInfo = marketStocks.find(s => s.ticker === holding.ticker);
+            if (marketInfo) {
+                // Simulate historical price: simple linear volatility for visual effect
+                const volatility = (holding.ticker.charCodeAt(0) % 10) / 50; // 0 to 0.18
+                const priceModifier = 1 - (5 - i) * 0.05 + volatility * ((5 - i) % 3 - 1);
+                const historicalPrice = marketInfo.price * priceModifier;
+                totalValue += historicalPrice * holding.shares;
+            }
+        });
+        
+        return {
+            date: format(date, "yyyy-MM"),
+            value: Math.round(totalValue),
+        };
+    });
+
+    return history;
+  }, [currentStudent, marketStocks]);
 
 
   const handleTradeClick = (stock: Stock, type: "buy" | "sell") => {
@@ -372,3 +392,5 @@ export default function StocksPage() {
     </>
   );
 }
+
+    
