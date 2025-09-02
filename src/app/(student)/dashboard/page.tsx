@@ -5,27 +5,32 @@ import { useContext, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Coins, Trophy, Wallet, BarChart as BarChartIcon, Landmark } from "lucide-react";
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { Bar, BarChart, XAxis, YAxis } from "recharts"
+import { Area, AreaChart, Bar, BarChart, XAxis, YAxis } from "recharts"
 import RewardSuggestion from "@/components/reward-suggestion";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
 import { cn } from "@/lib/utils";
-import { addWeeks, format } from "date-fns";
+import { subDays, format } from "date-fns";
 import { zhTW } from 'date-fns/locale';
 
-const startDate = new Date('2025-09-01');
 
-const pointsData = Array.from({ length: 6 }, (_, i) => ({
-  week: `第 ${i + 1} 週`,
-  points: [45, 60, 35, 80, 55, 70][i],
-  date: format(addWeeks(startDate, i), 'M月d日'),
-}));
+const pointsData = Array.from({ length: 7 }, (_, i) => {
+    const date = subDays(new Date(), 6 - i);
+    return {
+        date: format(date, "M/d"),
+        points: [15, 20, 10, 35, 25, 40, 55][i] + Math.floor(Math.random() * 10),
+    };
+});
 
 
 const chartConfig: ChartConfig = {
   points: {
     label: "點數",
     color: "hsl(var(--primary))",
+  },
+  value: {
+    label: "價值",
+    color: "hsl(var(--accent))",
   },
 } satisfies ChartConfig
 
@@ -155,26 +160,23 @@ export default function StudentDashboardPage() {
       <div className="grid md:grid-cols-5 gap-6">
         <Card className="md:col-span-3">
           <CardHeader>
-            <CardTitle>點數進度</CardTitle>
-            <CardDescription>統計自 2025年9月1日 開始，六週內您獲得的點數。</CardDescription>
+            <CardTitle>最近七日點數趨勢</CardTitle>
+            <CardDescription>您最近七天獲得的點數紀錄。</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[250px] w-full">
-              <BarChart accessibilityLayer data={pointsData} margin={{ top: 20, right: 20, left: -10, bottom: 0 }}>
-                <XAxis
-                  dataKey="week"
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  tickFormatter={(value, index) => `${value} (${pointsData[index].date})`}
-                />
-                 <YAxis tickLine={false} axisLine={false} tickMargin={8} />
-                <ChartTooltip
-                  cursor={false}
-                  content={<ChartTooltipContent hideLabel />}
-                />
-                <Bar dataKey="points" fill="var(--color-points)" radius={8} />
-              </BarChart>
+                <AreaChart accessibilityLayer data={pointsData} margin={{ left: -20, right: 10, top:10, bottom: 0}}>
+                    <defs>
+                        <linearGradient id="fillValue" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="var(--color-value)" stopOpacity={0.8} />
+                            <stop offset="95%" stopColor="var(--color-value)" stopOpacity={0.1} />
+                        </linearGradient>
+                    </defs>
+                    <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => value} />
+                    <YAxis tickLine={false} axisLine={false} tickMargin={8} domain={['dataMin - 10', 'dataMax + 10']} hide />
+                    <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+                    <Area type="monotone" dataKey="points" stroke="var(--color-value)" fill="url(#fillValue)" strokeWidth={2} />
+                </AreaChart>
             </ChartContainer>
           </CardContent>
         </Card>

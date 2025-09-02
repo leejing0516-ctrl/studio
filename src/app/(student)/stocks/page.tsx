@@ -68,7 +68,7 @@ export default function StocksPage() {
         const date = subMonths(new Date(), 5 - i);
         let totalValue = 0;
 
-        currentStudent.portfolio.forEach(holding => {
+        (currentStudent.portfolio || []).forEach(holding => {
             const marketInfo = marketStocks.find(s => s.ticker === holding.ticker);
             if (marketInfo) {
                 // Simulate historical price: simple linear volatility for visual effect
@@ -252,9 +252,9 @@ export default function StocksPage() {
                       <TableCell className="text-right">
                           <span className={cn(
                             "flex items-center justify-end gap-1",
-                            stock.change > 0 ? "text-destructive" : "text-success",
+                            stock.change < 0 ? "text-destructive" : "text-success",
                           )}>
-                              {stock.change > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                              {stock.change < 0 ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />}
                               {Math.abs(stock.change).toFixed(2)} ({Math.abs(stock.changePercent).toFixed(2)}%)
                           </span>
                       </TableCell>
@@ -300,9 +300,9 @@ export default function StocksPage() {
                                           <TableCell className="text-right">
                                               <span className={cn(
                                                 "flex items-center justify-end gap-1",
-                                                item.totalGain > 0 ? "text-destructive" : "text-success",
+                                                item.totalGain < 0 ? "text-destructive" : "text-success",
                                               )}>
-                                                  {item.totalGain > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                                                  {item.totalGain < 0 ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />}
                                                   ${Math.abs(item.totalGain).toFixed(2)} ({item.totalGainPercent.toFixed(2)}%)
                                               </span>
                                           </TableCell>
