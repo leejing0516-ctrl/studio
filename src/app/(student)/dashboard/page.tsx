@@ -38,22 +38,14 @@ export default function StudentDashboardPage() {
   const pointsData = useMemo(() => {
     if (!currentStudent) return [];
     
-    // Simulate a scenario for demonstration
-    const today = new Date("2025-09-04T00:00:00");
-    const startDate = new Date("2025-09-02T00:00:00");
-
-    const dailyPoints = [0, 0, 0, 0, 0, Math.floor(totalPoints * 0.4), Math.floor(totalPoints * 0.6)];
+    // Simulate a scenario for demonstration where today is 9/2
+    const today = new Date("2025-09-02T00:00:00");
 
     return Array.from({ length: 7 }, (_, i) => {
         const date = subDays(today, 6 - i);
-        let pointsForDay = 0;
-        if (date >= startDate) {
-           // Find the index relative to the last 7 days
-           pointsForDay = dailyPoints[i];
-        } else {
-           pointsForDay = 0;
-        }
-
+        // Only show points on the "today" date (9/2)
+        const pointsForDay = (i === 6) ? totalPoints : 0;
+        
         return {
             date: format(date, "M/d"),
             points: pointsForDay,
@@ -187,7 +179,7 @@ export default function StudentDashboardPage() {
                     <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => value} />
                     <YAxis tickLine={false} axisLine={false} tickMargin={8} domain={[0, 'dataMax + 10']} hide />
                     <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
-                    <Bar dataKey="points" fill="var(--color-accent)" radius={4} />
+                    <Bar dataKey="points" fill="hsl(var(--accent))" radius={4} />
                 </BarChart>
             </ChartContainer>
           </CardContent>
