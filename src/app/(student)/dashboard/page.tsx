@@ -14,11 +14,18 @@ import { subDays, format } from "date-fns";
 import { zhTW } from 'date-fns/locale';
 
 
+// 模擬今天的日期為 2025-09-07，以展示最近一週的數據
+const DEMO_TODAY = new Date('2025-09-07');
+
 const pointsData = Array.from({ length: 7 }, (_, i) => {
-    const date = subDays(new Date(), 6 - i);
+    const date = subDays(DEMO_TODAY, 6 - i);
+    // 假設點數從 9/2 開始獲得
+    const points = date < new Date('2025-09-02') 
+        ? 0 
+        : [0, 15, 20, 10, 35, 25, 40][i-1] + Math.floor(Math.random() * 5);
     return {
         date: format(date, "M/d"),
-        points: [15, 20, 10, 35, 25, 40, 55][i] + Math.floor(Math.random() * 10),
+        points: points,
     };
 });
 
