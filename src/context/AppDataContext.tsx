@@ -79,22 +79,25 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
     const batch = writeBatch(db);
     let writesPending = false;
+    let dataUpdated = false;
 
     for (const { name, data, setter } of collectionsToSeed) {
-        const collectionRef = collection(db, name);
-        const snapshot = await getDocs(collectionRef);
-        if (snapshot.empty && data.length > 0) {
+        const docRef = doc(db, "seeded", name);
+        const docSnap = await getDoc(docRef);
+
+        if (!docSnap.exists() && data.length > 0) {
             console.log(`Seeding collection: ${name}`);
             writesPending = true;
             data.forEach((item: any) => {
                 const docId = item.id ? String(item.id) : (item.ticker || null);
                 if (docId) {
-                    const docRef = doc(db, name, docId);
-                    batch.set(docRef, { ...item });
+                    const itemDocRef = doc(db, name, docId);
+                    batch.set(itemDocRef, { ...item });
                 }
             });
-            // Also update the local state immediately
+            batch.set(docRef, { seeded: true, date: new Date() });
             setter(data as any);
+            dataUpdated = true;
         }
     }
 
@@ -108,24 +111,31 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     } else {
         console.log("No seeding necessary, data already exists.");
     }
+    return dataUpdated;
   }, []);
   
   // App initialization function
   const initializePublicData = useCallback(async () => {
     setIsLoading(true);
     try {
-        const [classesData, teachersData] = await Promise.all([
-            fetchData<Class>('classes'),
-            fetchData<Teacher>('teachers'),
-        ]);
-        setClassesState(classesData);
-        setTeachersState(teachersData);
+        const dataWasSeeded = await seedInitialData();
+
+        // If data was just seeded, the state is already up-to-date.
+        // Otherwise, fetch from Firestore.
+        if (!dataWasSeeded) {
+            const [classesData, teachersData] = await Promise.all([
+                fetchData<Class>('classes'),
+                fetchData<Teacher>('teachers'),
+            ]);
+            setClassesState(classesData);
+            setTeachersState(teachersData);
+        }
     } catch (error) {
         console.error("Error initializing public data from Firestore:", error);
     } finally {
         setIsLoading(false);
     }
-  }, [fetchData]);
+  }, [fetchData, seedInitialData]);
 
   const loadSensitiveData = useCallback(async () => {
     console.log("Loading sensitive data...");
