@@ -18,11 +18,12 @@ import { zhTW } from 'date-fns/locale';
 const DEMO_TODAY = new Date('2025-09-07');
 
 const pointsData = Array.from({ length: 7 }, (_, i) => {
-    const date = subDays(DEMO_TODAY, 6 - i);
+    // Corrected logic: Iterate from 6 days ago to today.
+    const date = subDays(DEMO_TODAY, 6 - i); 
     // 假設點數從 9/2 開始獲得
     const points = date < new Date('2025-09-02') 
         ? 0 
-        : [0, 15, 20, 10, 35, 25, 40][i-1] + Math.floor(Math.random() * 5);
+        : [0, 15, 20, 10, 35, 25, 40][i-1] + Math.floor(Math.random() * 5); // i-1 to align with days after 9/1
     return {
         date: format(date, "M/d"),
         points: points,
