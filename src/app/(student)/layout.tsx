@@ -26,6 +26,7 @@ import {
   LogOut,
   ChevronDown,
   Package,
+  Landmark,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -68,6 +69,7 @@ export default function StudentLayout({
                 points: latestStudentData.points,
                 portfolio: latestStudentData.portfolio,
                 redeemedRewards: latestStudentData.redeemedRewards,
+                loans: latestStudentData.loans,
             });
         }
     } else {
@@ -80,7 +82,7 @@ export default function StudentLayout({
   const student = studentData.student;
   
   const handleLogout = () => {
-    setStudentData({ student: null, points: 0, portfolio: [], redeemedRewards: [] });
+    setStudentData({ student: null, points: 0, portfolio: [], redeemedRewards: [], loans: [] });
     router.push('/');
   }
 
@@ -89,6 +91,7 @@ export default function StudentLayout({
     { href: "/my-collection", label: "我的收藏", icon: Package },
     { href: "/rewards", label: "獎勵商店", icon: Gift },
     { href: "/stocks", label: "股票市場", icon: LineChart },
+    { href: "/loans", label: "信用貸款", icon: Landmark },
   ];
 
   if (!student) {

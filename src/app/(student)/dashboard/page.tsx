@@ -3,13 +3,14 @@
 
 import { useContext, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Coins, Trophy, Wallet, BarChart as BarChartIcon } from "lucide-react";
+import { Coins, Trophy, Wallet, BarChart as BarChartIcon, Landmark } from "lucide-react";
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Bar, BarChart, XAxis, YAxis } from "recharts"
 import RewardSuggestion from "@/components/reward-suggestion";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { stocks as marketStocks } from "@/lib/placeholder-data";
 import { AppDataContext } from "@/context/AppDataContext";
+import { cn } from "@/lib/utils";
 
 const pointsData = [
   { month: "一月", points: 186 },
@@ -43,6 +44,13 @@ export default function StudentDashboardPage() {
         const currentValue = marketInfo ? marketInfo.price * item.shares : 0;
         return acc + currentValue;
     }, 0);
+  }, [currentStudent]);
+  
+  const totalLoanAmount = useMemo(() => {
+      if (!currentStudent || !currentStudent.loans) return 0;
+      return currentStudent.loans
+        .filter(l => l.status === 'active' || l.status === 'overdue')
+        .reduce((acc, loan) => acc + loan.amount, 0);
   }, [currentStudent]);
 
   const { rank, percentile } = useMemo(() => {
@@ -84,7 +92,7 @@ export default function StudentDashboardPage() {
         <h1 className="text-2xl font-bold tracking-tight">你好, {currentStudent.name}!</h1>
         <p className="text-muted-foreground">歡迎回到您的儀表板。這是您今天的財務狀況概覽。</p>
       </div>
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className={cn("grid md:grid-cols-2 gap-6", totalLoanAmount > 0 ? "lg:grid-cols-5" : "lg:grid-cols-4")}>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">總點數</CardTitle>
@@ -117,6 +125,20 @@ export default function StudentDashboardPage() {
             <p className="text-xs text-muted-foreground">投資組合 + 點數</p>
           </CardContent>
         </Card>
+         {totalLoanAmount > 0 && (
+          <Card className="border-destructive">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">目前貸款</CardTitle>
+              <Landmark className="h-4 w-4 text-destructive" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-destructive">
+                {totalLoanAmount.toLocaleString()}
+              </div>
+              <p className="text-xs text-muted-foreground">需在期限內償還</p>
+            </CardContent>
+          </Card>
+        )}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">班級排名</CardTitle>

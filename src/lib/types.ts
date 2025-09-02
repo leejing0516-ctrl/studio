@@ -5,6 +5,16 @@ export type RedeemedRewardItem = {
   status: 'collected' | 'pending_use';
 };
 
+export type Loan = {
+  id: string;
+  amount: number;
+  reason: string;
+  requestDate: string; // ISO date string
+  repaymentDate: string; // ISO date string
+  status: 'pending' | 'active' | 'repaid' | 'rejected' | 'overdue';
+  interest: number;
+}
+
 export type Student = {
   id: string; // Student ID within the class
   name: string;
@@ -14,6 +24,7 @@ export type Student = {
   password?: string;
   portfolio: PortfolioItem[];
   redeemedRewards: RedeemedRewardItem[];
+  loans: Loan[];
 };
 
 export type Reward = {

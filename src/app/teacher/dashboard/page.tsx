@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
+  CardFooter,
 } from "@/components/ui/card";
 import {
   Table,
@@ -21,14 +22,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Reward, Student, Teacher, Class } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, KeyRound, Bell } from "lucide-react";
+import type { Reward, Student, Teacher, Class, Loan } from "@/lib/types";
+import { PlusCircle, Edit, Trash2, KeyRound, Bell, Landmark, Check, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { AppDataContext } from "@/context/AppDataContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { format } from "date-fns";
 
 export default function TeacherDashboardPage() {
   const { rewards, setRewards, students, setStudents, classes, setClasses, teachers, setTeachers } = useContext(AppDataContext);
@@ -55,6 +57,16 @@ export default function TeacherDashboardPage() {
     }
     return students.filter(s => s.classId === teacherClassId);
   }, [role, students, selectedClassId, teacherClassId]);
+  
+  const loanRequests = useMemo(() => students.flatMap(student => 
+      (student.loans || [])
+          .filter(l => l.status === 'pending')
+          .map(l => ({ student, loan: l }))
+  ).filter(({student}) => {
+      if (role === 'admin') return student.classId === selectedClassId;
+      return student.classId === teacherClassId;
+  }), [students, role, selectedClassId, teacherClassId]);
+
 
   const [isAddRewardDialogOpen, setIsAddRewardDialogOpen] = useState(false);
   const [isEditRewardDialogOpen, setIsEditRewardDialogOpen] = useState(false);
@@ -198,6 +210,7 @@ export default function TeacherDashboardPage() {
         avatar: `https://picsum.photos/seed/${id}/100`,
         portfolio: [],
         redeemedRewards: [],
+        loans: [],
     };
     setStudents(currentStudents => [...currentStudents, newStudent]);
     setIsAddStudentDialogOpen(false);
@@ -344,6 +357,34 @@ export default function TeacherDashboardPage() {
         description: `已成功新增班級 ${name}。`
     });
   };
+
+  const handleLoanDecision = (studentId: string, classId: string, loanId: string, decision: 'approve' | 'reject') => {
+    setStudents(currentStudents => currentStudents.map(student => {
+      if (student.id === studentId && student.classId === classId) {
+        const targetLoan = student.loans.find(l => l.id === loanId);
+        if (!targetLoan) return student;
+
+        let updatedStudent = { ...student };
+        if (decision === 'approve') {
+          updatedStudent.points += targetLoan.amount;
+          updatedStudent.loans = student.loans.map(l => l.id === loanId ? { ...l, status: 'active' as const } : l);
+          toast({
+              title: "貸款已批准",
+              description: `已將 ${targetLoan.amount} 點數撥款給 ${student.name}。`
+          });
+        } else {
+          updatedStudent.loans = student.loans.map(l => l.id === loanId ? { ...l, status: 'rejected' as const } : l);
+          toast({
+              title: "貸款已拒絕",
+              description: `已拒絕 ${student.name} 的貸款申請。`,
+              variant: "destructive"
+          });
+        }
+        return updatedStudent;
+      }
+      return student;
+    }));
+  };
   
   const unassignedClasses = useMemo(() => {
     const assignedClassIds = teachers.map(t => t.classId).filter(Boolean);
@@ -374,7 +415,7 @@ export default function TeacherDashboardPage() {
       </Card>
     )}
     <Tabs defaultValue="students" className="animate-in fade-in-0 duration-500">
-      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-5' : 'grid-cols-4'}`}>
+      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-6' : 'grid-cols-5'}`}>
         <TabsTrigger value="students">學生管理</TabsTrigger>
         {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
         <TabsTrigger value="points">發送點數</TabsTrigger>
@@ -383,6 +424,12 @@ export default function TeacherDashboardPage() {
             使用請求
             {pendingRequests.length > 0 && (
                 <Badge variant="destructive" className="ml-2">{pendingRequests.length}</Badge>
+            )}
+        </TabsTrigger>
+         <TabsTrigger value="loans">
+            貸款申請
+            {loanRequests.length > 0 && (
+                <Badge variant="destructive" className="ml-2">{loanRequests.length}</Badge>
             )}
         </TabsTrigger>
       </TabsList>
@@ -644,6 +691,55 @@ export default function TeacherDashboardPage() {
                     <TableRow>
                         <TableCell colSpan={3} className="text-center h-24">
                             目前沒有待處理的請求。
+                        </TableCell>
+                    </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </TabsContent>
+       <TabsContent value="loans" className="mt-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>貸款申請</CardTitle>
+            <CardDescription>
+              審核學生的貸款申請。批准後點數將直接撥款。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>學生</TableHead>
+                  <TableHead>申請金額</TableHead>
+                  <TableHead>還款期限</TableHead>
+                  <TableHead>理由</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loanRequests.length > 0 ? (
+                    loanRequests.map(({ student, loan }) => (
+                        <TableRow key={loan.id}>
+                            <TableCell>{student.name}</TableCell>
+                            <TableCell>{loan.amount.toLocaleString()} 點</TableCell>
+                            <TableCell>{format(new Date(loan.repaymentDate), 'yyyy-MM-dd')}</TableCell>
+                            <TableCell className="max-w-[200px] truncate">{loan.reason}</TableCell>
+                            <TableCell className="text-right space-x-2">
+                                <Button size="sm" variant="outline" className="text-success hover:text-success hover:bg-success/10 border-success/50 hover:border-success" onClick={() => handleLoanDecision(student.id, student.classId, loan.id, 'approve')}>
+                                  <Check className="mr-2"/>批准
+                                </Button>
+                                <Button size="sm" variant="outline" className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/50 hover:border-destructive" onClick={() => handleLoanDecision(student.id, student.classId, loan.id, 'reject')}>
+                                  <X className="mr-2"/>拒絕
+                                </Button>
+                            </TableCell>
+                        </TableRow>
+                    ))
+                ) : (
+                    <TableRow>
+                        <TableCell colSpan={5} className="text-center h-24">
+                            目前沒有待處理的貸款申請。
                         </TableCell>
                     </TableRow>
                 )}

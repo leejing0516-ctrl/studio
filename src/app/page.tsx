@@ -49,6 +49,7 @@ export default function HomePage() {
           points: student.points,
           portfolio: student.portfolio || [],
           redeemedRewards: student.redeemedRewards || [],
+          loans: student.loans || [],
       });
       router.push('/dashboard');
     } else {
