@@ -26,6 +26,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Reward, Student, Teacher, Class, Loan } from "@/lib/types";
 import { PlusCircle, Edit, Trash2, KeyRound, Bell, Landmark, Check, X, Upload, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -94,6 +105,7 @@ export default function TeacherDashboardPage() {
   const [isAddStudentDialogOpen, setIsAddStudentDialogOpen] = useState(false);
   const [isEditStudentDialogOpen, setIsEditStudentDialogOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
 
   const [isAddTeacherDialogOpen, setIsAddTeacherDialogOpen] = useState(false);
@@ -276,6 +288,21 @@ export default function TeacherDashboardPage() {
         description: `已成功更新學生 ${newName} 的資訊。`
     });
   }
+  
+  const handleDeleteStudentClick = (student: Student) => {
+    setStudentToDelete(student);
+  };
+  
+  const handleConfirmDeleteStudent = () => {
+    if (!studentToDelete) return;
+    setStudents(currentStudents => currentStudents.filter(s => s.id !== studentToDelete.id || s.classId !== studentToDelete.classId));
+    toast({
+        title: "已刪除學生",
+        description: `已成功刪除學生 ${studentToDelete.name}。`,
+        variant: "destructive",
+    });
+    setStudentToDelete(null);
+  };
 
 
   const handleResetPasswordClick = (student: Student) => {
@@ -551,7 +578,7 @@ export default function TeacherDashboardPage() {
                 <div>
                     <CardTitle>學生名單</CardTitle>
                     <CardDescription>
-                        新增、編輯或批次匯入目前所選班級的學生。
+                        新增、編輯、刪除或批次匯入目前所選班級的學生。
                     </CardDescription>
                 </div>
                  <div className="flex gap-2">
@@ -595,6 +622,9 @@ export default function TeacherDashboardPage() {
                            </Button>
                            <Button variant="ghost" size="icon" onClick={() => handleResetPasswordClick(student)}>
                                 <KeyRound className="h-4 w-4" />
+                           </Button>
+                           <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStudentClick(student)}>
+                                <Trash2 className="h-4 w-4" />
                            </Button>
                         </TableCell>
                     </TableRow>
@@ -1109,6 +1139,21 @@ export default function TeacherDashboardPage() {
           </form>
         </DialogContent>
       </Dialog>
+      
+      <AlertDialog open={!!studentToDelete} onOpenChange={(open) => !open && setStudentToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
+            <AlertDialogDescription>
+              您確定要刪除學生「{studentToDelete?.name}」嗎？此操作將永久移除該學生的所有資料且無法復原。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setStudentToDelete(null)}>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDeleteStudent} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={isResetPasswordDialogOpen} onOpenChange={setIsResetPasswordDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
