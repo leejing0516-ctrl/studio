@@ -61,6 +61,7 @@ export default function TeacherDashboardPage() {
   const [editingReward, setEditingReward] = useState<Reward | null>(null);
 
   const [isAddStudentDialogOpen, setIsAddStudentDialogOpen] = useState(false);
+  const [isEditStudentDialogOpen, setIsEditStudentDialogOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
 
@@ -81,9 +82,9 @@ export default function TeacherDashboardPage() {
       return student.classId === teacherClassId;
   }), [students, role, selectedClassId, teacherClassId]);
 
-  const handleApproveUsage = (studentId: string, redemptionId: string) => {
+  const handleApproveUsage = (studentId: string, classId: string, redemptionId: string) => {
     setStudents(currentStudents => currentStudents.map(student => {
-        if (student.id === studentId) {
+        if (student.id === studentId && student.classId === classId) {
             return {
                 ...student,
                 redeemedRewards: student.redeemedRewards.filter(r => r.redemptionId !== redemptionId)
@@ -106,8 +107,8 @@ export default function TeacherDashboardPage() {
       });
       return;
     }
-    setStudents(currentStudents => currentStudents.map(s => s.id === studentId ? { ...s, points: s.points + pointsToAdd } : s));
-    const student = students.find(s => s.id === studentId);
+    setStudents(currentStudents => currentStudents.map(s => (s.id === studentId && s.classId === selectedClassId) ? { ...s, points: s.points + pointsToAdd } : s));
+    const student = students.find(s => s.id === studentId && s.classId === selectedClassId);
     toast({
         title: "點數已發送！",
         description: `您已成功發送 ${pointsToAdd} 點給 ${student?.name}。`
@@ -205,6 +206,45 @@ export default function TeacherDashboardPage() {
         description: `已成功新增學生 ${name}。`
     });
   }
+  
+  const handleEditStudentClick = (student: Student) => {
+    setEditingStudent(student);
+    setIsEditStudentDialogOpen(true);
+  }
+
+  const handleUpdateStudent = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingStudent) return;
+
+    const formData = new FormData(event.currentTarget);
+    const newId = formData.get("id") as string;
+    const newName = formData.get("name") as string;
+    
+    // Check if the new ID already exists for another student in the same class
+    if (newId !== editingStudent.id && students.some(s => s.id === newId && s.classId === editingStudent.classId)) {
+        toast({
+            title: "更新失敗",
+            description: `編號 ${newId} 已被此班級的其他學生使用。`,
+            variant: "destructive",
+        });
+        return;
+    }
+
+    setStudents(currentStudents => currentStudents.map(s => {
+        if (s.id === editingStudent.id && s.classId === editingStudent.classId) {
+            return { ...s, id: newId, name: newName };
+        }
+        return s;
+    }));
+    
+    setIsEditStudentDialogOpen(false);
+    setEditingStudent(null);
+    toast({
+        title: "學生資訊已更新",
+        description: `已成功更新學生 ${newName} 的資訊。`
+    });
+  }
+
 
   const handleResetPasswordClick = (student: Student) => {
     setEditingStudent(student);
@@ -217,7 +257,7 @@ export default function TeacherDashboardPage() {
     const formData = new FormData(event.currentTarget);
     const newPassword = formData.get("new-password") as string;
 
-    setStudents(currentStudents => currentStudents.map(s => s.id === editingStudent.id ? { ...s, password: newPassword } : s));
+    setStudents(currentStudents => currentStudents.map(s => (s.id === editingStudent.id && s.classId === editingStudent.classId) ? { ...s, password: newPassword } : s));
     setIsResetPasswordDialogOpen(false);
     setEditingStudent(null);
     toast({
@@ -386,6 +426,9 @@ export default function TeacherDashboardPage() {
                         </TableCell>
                         <TableCell>{student.points.toLocaleString()}</TableCell>
                         <TableCell className="text-right">
+                           <Button variant="ghost" size="icon" onClick={() => handleEditStudentClick(student)}>
+                                <Edit className="h-4 w-4" />
+                           </Button>
                            <Button variant="ghost" size="icon" onClick={() => handleResetPasswordClick(student)}>
                                 <KeyRound className="h-4 w-4" />
                            </Button>
@@ -593,7 +636,7 @@ export default function TeacherDashboardPage() {
                             <TableCell>{student.name}</TableCell>
                             <TableCell>{redemption.reward.name}</TableCell>
                             <TableCell className="text-right">
-                                <Button size="sm" onClick={() => handleApproveUsage(student.id, redemption.redemptionId)}>同意使用</Button>
+                                <Button size="sm" onClick={() => handleApproveUsage(student.id, student.classId, redemption.redemptionId)}>同意使用</Button>
                             </TableCell>
                         </TableRow>
                     ))
@@ -713,22 +756,22 @@ export default function TeacherDashboardPage() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="student-id" className="text-right">
+              <Label htmlFor="student-add-id" className="text-right">
                 編號
               </Label>
-              <Input id="student-id" name="id" className="col-span-3" required/>
+              <Input id="student-add-id" name="id" className="col-span-3" required/>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="student-name" className="text-right">
+              <Label htmlFor="student-add-name" className="text-right">
                 姓名
               </Label>
-              <Input id="student-name" name="name" className="col-span-3" required/>
+              <Input id="student-add-name" name="name" className="col-span-3" required/>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="student-password" className="text-right">
+              <Label htmlFor="student-add-password" className="text-right">
                 密碼
               </Label>
-              <Input id="student-password" name="password" type="password" className="col-span-3" required/>
+              <Input id="student-add-password" name="password" type="password" className="col-span-3" required/>
             </div>
           </div>
           <DialogFooter>
@@ -740,6 +783,40 @@ export default function TeacherDashboardPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={isEditStudentDialogOpen} onOpenChange={setIsEditStudentDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+            <form onSubmit={handleUpdateStudent}>
+          <DialogHeader>
+            <DialogTitle>編輯學生資訊</DialogTitle>
+            <DialogDescription>
+              更新「{editingStudent?.name}」的詳細資訊。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="student-edit-id" className="text-right">
+                編號
+              </Label>
+              <Input id="student-edit-id" name="id" defaultValue={editingStudent?.id} className="col-span-3" required/>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="student-edit-name" className="text-right">
+                姓名
+              </Label>
+              <Input id="student-edit-name" name="name" defaultValue={editingStudent?.name} className="col-span-3" required/>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+                <Button type="button" variant="secondary" onClick={() => setEditingStudent(null)}>取消</Button>
+            </DialogClose>
+            <Button type="submit">儲存變更</Button>
+          </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={isResetPasswordDialogOpen} onOpenChange={setIsResetPasswordDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
             <form onSubmit={handleConfirmResetPassword}>
@@ -883,5 +960,3 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
-
-    
