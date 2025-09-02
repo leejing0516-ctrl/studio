@@ -1041,6 +1041,9 @@ export default function TeacherDashboardPage() {
                     上傳一個 CSV 檔案來批次新增學生到「{classes.find(c => c.id === selectedClassId)?.name}」。
                     檔案必須包含 `id`, `name`, 和 `password` 這三個欄位。
                 </DialogDescription>
+                 <p className="text-sm text-destructive font-medium">
+                    重要提示：為避免亂碼，請務必將您的 CSV 檔案另存為 `UTF-8` 編碼格式後再上傳。
+                 </p>
                  <a href="/students-template.csv" download className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1 w-fit">
                     <Download className="h-3 w-3" />
                     下載 CSV 範本
