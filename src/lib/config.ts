@@ -16,23 +16,5 @@
  * The `fill` attributes can be set to "currentColor" to inherit the primary
  * color from the application's theme.
  */
-export const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 180">
-    <defs>
-      <linearGradient id="bank-roof-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="hsl(var(--accent))" />
-        <stop offset="100%" stop-color="hsl(var(--accent) / 0.7)" />
-      </linearGradient>
-      <linearGradient id="bank-base-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stop-color="hsl(var(--primary) / 0.8)" />
-        <stop offset="100%" stop-color="hsl(var(--primary))" />
-      </linearGradient>
-    </defs>
-    <g transform="translate(0, 45)">
-      <polygon fill="url(#bank-roof-gradient)" points="50,0 100,25 0,25" />
-      <rect fill="url(#bank-base-gradient)" y="25" width="100" height="15" />
-      <rect fill="hsl(var(--primary))" x="10" y="40" width="15" height="50" rx="2"/>
-      <rect fill="hsl(var(--primary))" x="32.5" y="40" width="15" height="50" rx="2"/>
-      <rect fill="hsl(var(--primary))" x="55" y="40" width="15" height="50" rx="2"/>
-      <rect fill="hsl(var(--primary))" x="77.5" y="40" width="15" height="50" rx="2"/>
-    </g>
-  </svg>`;
+export const LOGO_SVG = ``;
+
