@@ -100,7 +100,7 @@ export default function StudentDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {totalPoints.toLocaleString()}
+              {totalPoints.toLocaleString(undefined, { maximumFractionDigits: 0 })}
             </div>
             <p className="text-xs text-muted-foreground">可用於交易或兌換獎勵</p>
           </CardContent>
@@ -133,7 +133,7 @@ export default function StudentDashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-destructive">
-                {totalLoanAmount.toLocaleString()}
+                {totalLoanAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </div>
               <p className="text-xs text-muted-foreground">需在期限內償還</p>
             </CardContent>
