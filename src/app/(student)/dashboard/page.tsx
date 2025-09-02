@@ -79,7 +79,7 @@ export default function StudentDashboardPage() {
 
 
   const totalPoints = currentStudent?.points || 0;
-  const totalAssets = portfolioValue + totalPoints;
+  const totalAssets = Math.round(portfolioValue) + Math.round(totalPoints);
   const stockPerformance = "上週透過投資科技股獲利 5%。";
 
   if (!currentStudent) {
