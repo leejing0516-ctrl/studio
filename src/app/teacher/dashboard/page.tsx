@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Reward, Student, Teacher, Class, Loan } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, KeyRound, Bell, Landmark, Check, X } from "lucide-react";
+import { PlusCircle, Edit, Trash2, KeyRound, Bell, Landmark, Check, X, Upload, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +31,16 @@ import { Badge } from "@/components/ui/badge";
 import { AppDataContext } from "@/context/AppDataContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
+import Papa from "papaparse";
+
+
+interface StagedStudent {
+    id: string;
+    name: string;
+    password?: string;
+    status: 'valid' | 'duplicate' | 'invalid';
+    errors: string[];
+}
 
 export default function TeacherDashboardPage() {
   const { rewards, setRewards, students, setStudents, classes, setClasses, teachers, setTeachers } = useContext(AppDataContext);
@@ -38,6 +48,13 @@ export default function TeacherDashboardPage() {
   const [role, setRole] = useState<string | null>(null);
   const [teacherClassId, setTeacherClassId] = useState<string | null>(null);
   const [selectedClassId, setSelectedClassId] = useState<string>('');
+
+  // States for CSV import
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [stagedStudents, setStagedStudents] = useState<StagedStudent[]>([]);
+  const [file, setFile] = useState<File | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+
 
   useEffect(() => {
     const storedRole = localStorage.getItem('teacherRole');
@@ -394,6 +411,88 @@ export default function TeacherDashboardPage() {
     }
   };
   
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    if (selectedFile) {
+        setFile(selectedFile);
+        parseCsvFile(selectedFile);
+    }
+  };
+
+  const parseCsvFile = (file: File) => {
+    setStagedStudents([]);
+    Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+            const parsedData: StagedStudent[] = results.data.map((row: any) => {
+                const student: StagedStudent = { id: '', name: '', password: '', status: 'valid', errors: [] };
+                
+                if (row.id && typeof row.id === 'string' && row.id.trim()) {
+                    student.id = row.id.trim();
+                } else {
+                    student.status = 'invalid';
+                    student.errors.push('缺少或無效的 ID');
+                }
+
+                if (row.name && typeof row.name === 'string' && row.name.trim()) {
+                    student.name = row.name.trim();
+                } else {
+                    student.status = 'invalid';
+                    student.errors.push('缺少或無效的姓名');
+                }
+                
+                if (row.password && typeof row.password === 'string' && row.password.trim()) {
+                    student.password = row.password.trim();
+                } else {
+                    student.status = 'invalid';
+                    student.errors.push('缺少或無效的密碼');
+                }
+
+                if (student.status === 'valid' && students.some(s => s.id === student.id && s.classId === selectedClassId)) {
+                    student.status = 'duplicate';
+                }
+
+                return student;
+            });
+            setStagedStudents(parsedData);
+        },
+        error: (error: any) => {
+            toast({ title: 'CSV 解析失敗', description: error.message, variant: 'destructive' });
+        }
+    });
+  }
+  
+  const handleConfirmImport = () => {
+    setIsImporting(true);
+    const validStudentsToImport = stagedStudents.filter(s => s.status === 'valid');
+    
+    const newStudents: Student[] = validStudentsToImport.map(s => ({
+        id: s.id,
+        name: s.name,
+        password: s.password!,
+        classId: selectedClassId,
+        points: 0,
+        avatar: `https://picsum.photos/seed/${s.id}/100`,
+        portfolio: [],
+        redeemedRewards: [],
+        loans: [],
+    }));
+
+    setStudents(current => [...current, ...newStudents]);
+
+    toast({
+        title: "匯入成功",
+        description: `已成功匯入 ${newStudents.length} 位學生。`
+    });
+
+    setIsImporting(false);
+    setIsImportDialogOpen(false);
+    setStagedStudents([]);
+    setFile(null);
+  };
+
+
   const unassignedClasses = useMemo(() => {
     const assignedClassIds = teachers.map(t => t.classId).filter(Boolean);
     return classes.filter(c => !assignedClassIds.includes(c.id));
@@ -448,13 +547,19 @@ export default function TeacherDashboardPage() {
                 <div>
                     <CardTitle>學生名單</CardTitle>
                     <CardDescription>
-                        新增、編輯或移除目前所選班級的學生。
+                        新增、編輯或批次匯入目前所選班級的學生。
                     </CardDescription>
                 </div>
-                <Button onClick={() => setIsAddStudentDialogOpen(true)}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    新增學生
-                </Button>
+                 <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}>
+                        <Upload className="mr-2 h-4 w-4" />
+                        批次匯入
+                    </Button>
+                    <Button onClick={() => setIsAddStudentDialogOpen(true)}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        新增學生
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent>
                 <Table>
@@ -885,6 +990,86 @@ export default function TeacherDashboardPage() {
             <Button type="submit">新增學生</Button>
           </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isImportDialogOpen} onOpenChange={(open) => {
+            if (!open) {
+                setFile(null);
+                setStagedStudents([]);
+            }
+            setIsImportDialogOpen(open);
+        }}>
+        <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+                <DialogTitle>批次匯入學生</DialogTitle>
+                <DialogDescription>
+                    上傳一個 CSV 檔案來批次新增學生到「{classes.find(c => c.id === selectedClassId)?.name}」。
+                    檔案必須包含 `id`, `name`, 和 `password` 這三個欄位。
+                </DialogDescription>
+                 <a href="/students-template.csv" download className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1 w-fit">
+                    <Download className="h-3 w-3" />
+                    下載 CSV 範本
+                 </a>
+            </DialogHeader>
+             <div className="py-4 space-y-4">
+                <div className="grid w-full max-w-sm items-center gap-1.5">
+                    <Label htmlFor="csv-file">上傳 CSV 檔案</Label>
+                    <Input id="csv-file" type="file" accept=".csv" onChange={handleFileChange} />
+                </div>
+
+                {stagedStudents.length > 0 && (
+                    <div className="space-y-2">
+                        <h3 className="font-semibold">匯入預覽</h3>
+                        <Card className="max-h-64 overflow-y-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>ID</TableHead>
+                                        <TableHead>姓名</TableHead>
+                                        <TableHead>狀態</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {stagedStudents.map((student, index) => (
+                                        <TableRow key={index}>
+                                            <TableCell>{student.id}</TableCell>
+                                            <TableCell>{student.name}</TableCell>
+                                            <TableCell>
+                                                {student.status === 'valid' && <Badge variant="default">可匯入</Badge>}
+                                                {student.status === 'duplicate' && <Badge variant="secondary">ID 重複</Badge>}
+                                                {student.status === 'invalid' && (
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Badge variant="destructive">資料無效</Badge>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>{student.errors.join(', ')}</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </Card>
+                    </div>
+                )}
+            </div>
+            <DialogFooter>
+                <DialogClose asChild>
+                    <Button variant="secondary">取消</Button>
+                </DialogClose>
+                <Button 
+                    onClick={handleConfirmImport} 
+                    disabled={isImporting || stagedStudents.filter(s => s.status === 'valid').length === 0}
+                >
+                    {isImporting ? '匯入中...' : `確認匯入 ${stagedStudents.filter(s => s.status === 'valid').length} 位學生`}
+                </Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
 
