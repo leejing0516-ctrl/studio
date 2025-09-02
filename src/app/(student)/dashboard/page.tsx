@@ -10,13 +10,13 @@ import RewardSuggestion from "@/components/reward-suggestion";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
 import { cn } from "@/lib/utils";
-import { subDays, format } from "date-fns";
+import { subDays, format, parseISO } from "date-fns";
 
 
 const chartConfig: ChartConfig = {
   points: {
     label: "點數",
-    color: "hsl(var(--primary))",
+    color: "hsl(var(--accent))",
   },
   value: {
     label: "價值",
@@ -37,34 +37,26 @@ export default function StudentDashboardPage() {
 
   const pointsData = useMemo(() => {
     if (!currentStudent) return [];
-
-    const today = new Date();
-    let remainingPoints = totalPoints;
     
-    // Generate random distribution weights
-    const weights = Array.from({ length: 7 }, () => Math.random());
-    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+    // Simulate a scenario for demonstration
+    const today = new Date("2025-09-04T00:00:00");
+    const startDate = new Date("2025-09-02T00:00:00");
 
-    const dailyPoints = weights.map(w => {
-        const pointsForDay = Math.floor((w / totalWeight) * remainingPoints);
-        return pointsForDay;
-    });
-
-    // Distribute remaining points due to flooring
-    let distributedPoints = dailyPoints.reduce((sum, p) => sum + p, 0);
-    let pointsToDistribute = remainingPoints - distributedPoints;
-    let dayIndex = 6;
-    while(pointsToDistribute > 0) {
-        dailyPoints[dayIndex % 7] += 1;
-        pointsToDistribute--;
-        dayIndex--;
-    }
+    const dailyPoints = [0, 0, 0, 0, 0, Math.floor(totalPoints * 0.4), Math.floor(totalPoints * 0.6)];
 
     return Array.from({ length: 7 }, (_, i) => {
         const date = subDays(today, 6 - i);
+        let pointsForDay = 0;
+        if (date >= startDate) {
+           // Find the index relative to the last 7 days
+           pointsForDay = dailyPoints[i];
+        } else {
+           pointsForDay = 0;
+        }
+
         return {
             date: format(date, "M/d"),
-            points: dailyPoints[i] || 0,
+            points: pointsForDay,
         };
     });
   }, [totalPoints, currentStudent]);
@@ -195,7 +187,7 @@ export default function StudentDashboardPage() {
                     <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => value} />
                     <YAxis tickLine={false} axisLine={false} tickMargin={8} domain={[0, 'dataMax + 10']} hide />
                     <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
-                    <Bar dataKey="points" fill="var(--color-primary)" radius={4} />
+                    <Bar dataKey="points" fill="var(--color-accent)" radius={4} />
                 </BarChart>
             </ChartContainer>
           </CardContent>
@@ -213,3 +205,5 @@ export default function StudentDashboardPage() {
     </div>
   );
 }
+
+    
