@@ -37,20 +37,41 @@ export default function StudentDashboardPage() {
 
   const pointsData = useMemo(() => {
     if (!currentStudent) return [];
-    
-    // Simulate a scenario for demonstration where today is 9/2
-    const today = new Date("2025-09-02T00:00:00");
+    const today = new Date();
+    const data = [];
 
-    return Array.from({ length: 7 }, (_, i) => {
-        const date = subDays(today, 6 - i);
-        // Only show points on the "today" date (9/2)
-        const pointsForDay = (i === 6) ? totalPoints : 0;
-        
-        return {
-            date: format(date, "M/d"),
-            points: pointsForDay,
-        };
-    });
+    // Simulate the last 7 days of points data
+    let remainingPoints = totalPoints;
+    for (let i = 6; i >= 0; i--) {
+      const date = subDays(today, i);
+      let pointsForDay;
+
+      if (i === 0) {
+        // Today's points are what's left
+        pointsForDay = Math.max(0, remainingPoints);
+      } else {
+        // For previous days, generate a random portion of the remaining points
+        // This creates a more "natural" looking trend
+        const randomFactor = Math.random() * 0.4 + 0.1; // Take between 10% and 50%
+        pointsForDay = Math.floor(remainingPoints * randomFactor);
+        remainingPoints -= pointsForDay;
+      }
+      
+      data.push({
+        date: format(date, "M/d"),
+        points: pointsForDay,
+      });
+    }
+
+    // Ensure the total of the chart roughly matches totalPoints, redistributing any remainder
+    const simulatedTotal = data.reduce((acc, day) => acc + day.points, 0);
+    if (simulatedTotal !== totalPoints && data.length > 0) {
+        const difference = totalPoints - simulatedTotal;
+        data[data.length-1].points += difference;
+    }
+
+
+    return data;
   }, [totalPoints, currentStudent]);
 
 

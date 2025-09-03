@@ -1,7 +1,7 @@
 
 "use client";
 
-import { createContext, useState, ReactNode, useEffect, useCallback } from 'react';
+import { createContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
 import type { Student, Reward, Class, Teacher, Stock, PlatformConfig } from '@/lib/types';
 import { 
     students as initialStudents, 
@@ -62,6 +62,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [classes, setClassesState] = useState<Class[]>([]);
   const [platformConfig, setPlatformConfigState] = useState<PlatformConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const stockUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Generic fetch function
   const fetchData = useCallback(async <T,>(collectionName: string): Promise<T[]> => {
@@ -162,6 +163,28 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         setStudentsState(studentsData);
         setRewardsState(rewardsData);
         setStocksState(stocksData);
+
+        if (stockUpdateIntervalRef.current) {
+            clearInterval(stockUpdateIntervalRef.current);
+        }
+        stockUpdateIntervalRef.current = setInterval(() => {
+            setStocksState(prevStocks => {
+                if(prevStocks.length === 0) return [];
+                return prevStocks.map(stock => {
+                    const changePercent = (Math.random() - 0.5) * 0.05; // -2.5% to +2.5% change
+                    const newPrice = stock.price * (1 + changePercent);
+                    const change = newPrice - stock.price;
+                    
+                    return {
+                        ...stock,
+                        price: Math.max(0.01, newPrice), // Price doesn't go below 0.01
+                        change: change,
+                        changePercent: (change / stock.price) * 100,
+                    };
+                });
+            });
+        }, 15000); // Update every 15 seconds
+        
         return { students: studentsData, rewards: rewardsData, stocks: stocksData };
     } catch (error) {
         console.error("Error loading sensitive data:", error);
@@ -175,6 +198,13 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     // Only load public data on initial load
     initializePublicData();
+
+    // Cleanup interval on component unmount
+    return () => {
+        if (stockUpdateIntervalRef.current) {
+            clearInterval(stockUpdateIntervalRef.current);
+        }
+    };
   }, [initializePublicData]);
 
   // Generic update function
