@@ -290,6 +290,7 @@ export default function StocksPage() {
                                   <TableRow>
                                       <TableHead>股票</TableHead>
                                       <TableHead className="text-right">股數</TableHead>
+                                      <TableHead className="text-right">平均成本</TableHead>
                                       <TableHead className="text-right">目前價值</TableHead>
                                       <TableHead className="text-right">總損益</TableHead>
                                   </TableRow>
@@ -302,6 +303,7 @@ export default function StocksPage() {
                                               <div className="text-sm text-muted-foreground">{item.name}</div>
                                           </TableCell>
                                           <TableCell className="text-right">{item.shares}</TableCell>
+                                          <TableCell className="text-right">${item.avgCost.toFixed(2)}</TableCell>
                                           <TableCell className="text-right">${item.currentValue.toFixed(2)}</TableCell>
                                           <TableCell className="text-right">
                                               <span className={cn(
@@ -315,7 +317,7 @@ export default function StocksPage() {
                                       </TableRow>
                                   )) : (
                                     <TableRow>
-                                        <TableCell colSpan={4} className="text-center h-24">您目前沒有任何持股。</TableCell>
+                                        <TableCell colSpan={5} className="text-center h-24">您目前沒有任何持股。</TableCell>
                                     </TableRow>
                                   )}
                               </TableBody>
