@@ -30,6 +30,7 @@ interface AppDataContextType {
   platformConfig: PlatformConfig | null;
   setPlatformConfig: (newConfig: Partial<PlatformConfig>) => Promise<void>;
   isLoading: boolean;
+  isMarketOpen: boolean;
   loadSensitiveData: () => Promise<{students: Student[], rewards: Reward[], stocks: Stock[]}>;
   seedInitialData: () => Promise<void>;
 }
@@ -48,11 +49,20 @@ const defaultState: AppDataContextType = {
   platformConfig: null,
   setPlatformConfig: async () => {},
   isLoading: true,
+  isMarketOpen: false,
   loadSensitiveData: async () => ({ students: [], rewards: [], stocks: [] }),
   seedInitialData: async () => {},
 };
 
 export const AppDataContext = createContext<AppDataContextType>(defaultState);
+
+const checkMarketOpen = () => {
+    const now = new Date();
+    const day = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const hour = now.getHours();
+    // Monday to Friday (1-5), 9am to 2pm (9-13)
+    return day >= 1 && day <= 5 && hour >= 9 && hour < 14;
+};
 
 export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [students, setStudentsState] = useState<Student[]>([]);
@@ -62,6 +72,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [classes, setClassesState] = useState<Class[]>([]);
   const [platformConfig, setPlatformConfigState] = useState<PlatformConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMarketOpen, setIsMarketOpen] = useState(checkMarketOpen());
   const stockUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Generic fetch function
@@ -167,23 +178,29 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         if (stockUpdateIntervalRef.current) {
             clearInterval(stockUpdateIntervalRef.current);
         }
+        // This interval checks the market status and updates prices if it's open.
         stockUpdateIntervalRef.current = setInterval(() => {
-            setStocksState(prevStocks => {
-                if(prevStocks.length === 0) return [];
-                return prevStocks.map(stock => {
-                    const changePercent = (Math.random() - 0.5) * 0.05; // -2.5% to +2.5% change
-                    const newPrice = stock.price * (1 + changePercent);
-                    const change = newPrice - stock.price;
-                    
-                    return {
-                        ...stock,
-                        price: Math.max(0.01, newPrice), // Price doesn't go below 0.01
-                        change: change,
-                        changePercent: (change / stock.price) * 100,
-                    };
+            const marketOpen = checkMarketOpen();
+            setIsMarketOpen(marketOpen);
+
+            if (marketOpen) {
+                setStocksState(prevStocks => {
+                    if(prevStocks.length === 0) return [];
+                    return prevStocks.map(stock => {
+                        const changePercent = (Math.random() - 0.5) * 0.05; // -2.5% to +2.5% change
+                        const newPrice = stock.price * (1 + changePercent);
+                        const change = newPrice - stock.price;
+                        
+                        return {
+                            ...stock,
+                            price: Math.max(0.01, newPrice), // Price doesn't go below 0.01
+                            change: change,
+                            changePercent: (change / stock.price) * 100,
+                        };
+                    });
                 });
-            });
-        }, 7200000); // Update every 2 hours
+            }
+        }, 7200000); // Check every 2 hours
         
         return { students: studentsData, rewards: rewardsData, stocks: stocksData };
     } catch (error) {
@@ -268,6 +285,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         teachers, setTeachers,
         platformConfig, setPlatformConfig,
         isLoading,
+        isMarketOpen,
         loadSensitiveData,
         seedInitialData,
     }}>

@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Stock, PortfolioItem } from "@/lib/types";
-import { ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUp, ArrowDown, Briefcase } from "lucide-react";
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Area, AreaChart, XAxis, YAxis } from "recharts"
 import { cn } from "@/lib/utils";
@@ -39,6 +39,7 @@ import { useToast } from "@/hooks/use-toast";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
 import { subMonths, format } from "date-fns";
+import { Badge } from "@/components/ui/badge";
 
 
 const chartConfig: ChartConfig = {
@@ -55,7 +56,7 @@ export default function StocksPage() {
   const [tradeShares, setTradeShares] = useState(0);
   const { toast } = useToast();
   const { studentData } = useContext(StudentDataContext);
-  const { students, setStudents, stocks: marketStocks } = useContext(AppDataContext);
+  const { students, setStudents, stocks: marketStocks, isMarketOpen } = useContext(AppDataContext);
   
   const currentStudent = students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId) || studentData.student;
   
@@ -216,16 +217,21 @@ export default function StocksPage() {
   return (
     <>
       <Tabs defaultValue="market" className="grid gap-6 animate-in fade-in-0 duration-500">
-        <TabsList>
-          <TabsTrigger value="market">市場</TabsTrigger>
-          <TabsTrigger value="portfolio">我的投資組合</TabsTrigger>
-        </TabsList>
+        <div className="flex justify-between items-center">
+            <TabsList>
+            <TabsTrigger value="market">市場</TabsTrigger>
+            <TabsTrigger value="portfolio">我的投資組合</TabsTrigger>
+            </TabsList>
+             <Badge variant={isMarketOpen ? "default" : "destructive"} className="transition-all">
+                {isMarketOpen ? "股市開盤中" : "股市已收盤"}
+            </Badge>
+        </div>
         <TabsContent value="market">
           <Card>
             <CardHeader>
               <CardTitle>虛擬股票市場</CardTitle>
               <CardDescription>
-                用您的積分投資我們的模擬市場。低買高賣！
+                用您的積分投資我們的模擬市場。開盤時間為週一至週五，早上 9:00 至下午 2:00。
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -260,8 +266,8 @@ export default function StocksPage() {
                       </TableCell>
                       <TableCell className="text-right">{stock.marketCap}</TableCell>
                       <TableCell className="text-right">
-                        <Button size="sm" className="mr-2" onClick={() => handleTradeClick(stock, "buy")}>買入</Button>
-                        <Button size="sm" variant="outline" onClick={() => handleTradeClick(stock, "sell")}>賣出</Button>
+                        <Button size="sm" className="mr-2" onClick={() => handleTradeClick(stock, "buy")} disabled={!isMarketOpen}>買入</Button>
+                        <Button size="sm" variant="outline" onClick={() => handleTradeClick(stock, "sell")} disabled={!isMarketOpen}>賣出</Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -275,7 +281,7 @@ export default function StocksPage() {
               <div className="md:col-span-2">
                   <Card>
                       <CardHeader>
-                          <CardTitle>我的投資組合</CardTitle>
+                          <CardTitle className="flex items-center gap-2"><Briefcase />我的投資組合</CardTitle>
                           <CardDescription>您目前的持股。您有 {(currentStudent?.points || 0).toLocaleString()} 點數可用。</CardDescription>
                       </CardHeader>
                       <CardContent>
@@ -392,5 +398,3 @@ export default function StocksPage() {
     </>
   );
 }
-
-    
