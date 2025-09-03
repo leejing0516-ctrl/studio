@@ -183,7 +183,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                     };
                 });
             });
-        }, 15000); // Update every 15 seconds
+        }, 7200000); // Update every 2 hours
         
         return { students: studentsData, rewards: rewardsData, stocks: stocksData };
     } catch (error) {
