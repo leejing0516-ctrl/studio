@@ -207,11 +207,12 @@ export default function StocksPage() {
   
   const portfolioWithValue = (currentStudent?.portfolio || []).map(item => {
     const marketInfo = marketStocks.find(s => s.ticker === item.ticker);
-    const currentValue = marketInfo ? marketInfo.price * item.shares : 0;
+    const currentPrice = marketInfo ? marketInfo.price : 0;
+    const currentValue = currentPrice * item.shares;
     const totalCost = item.avgCost * item.shares;
     const totalGain = currentValue - totalCost;
     const totalGainPercent = totalCost > 0 ? (totalGain / totalCost) * 100 : 0;
-    return { ...item, currentValue, totalGain, totalGainPercent };
+    return { ...item, currentPrice, currentValue, totalGain, totalGainPercent };
   });
 
   return (
@@ -291,6 +292,7 @@ export default function StocksPage() {
                                       <TableHead>股票</TableHead>
                                       <TableHead className="text-right">股數</TableHead>
                                       <TableHead className="text-right">平均成本</TableHead>
+                                      <TableHead className="text-right">目前價格</TableHead>
                                       <TableHead className="text-right">目前價值</TableHead>
                                       <TableHead className="text-right">總損益</TableHead>
                                   </TableRow>
@@ -304,6 +306,7 @@ export default function StocksPage() {
                                           </TableCell>
                                           <TableCell className="text-right">{item.shares}</TableCell>
                                           <TableCell className="text-right">${item.avgCost.toFixed(2)}</TableCell>
+                                          <TableCell className="text-right">${item.currentPrice.toFixed(2)}</TableCell>
                                           <TableCell className="text-right">${item.currentValue.toFixed(2)}</TableCell>
                                           <TableCell className="text-right">
                                               <span className={cn(
@@ -317,7 +320,7 @@ export default function StocksPage() {
                                       </TableRow>
                                   )) : (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="text-center h-24">您目前沒有任何持股。</TableCell>
+                                        <TableCell colSpan={6} className="text-center h-24">您目前沒有任何持股。</TableCell>
                                     </TableRow>
                                   )}
                               </TableBody>
