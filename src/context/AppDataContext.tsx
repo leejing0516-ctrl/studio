@@ -80,11 +80,16 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   
   // Generic fetch function
   const fetchData = useCallback(async <T,>(collectionName: string): Promise<T[]> => {
-      const collectionRef = collection(db, collectionName);
-      const snapshot = await getDocs(collectionRef);
-      // It's okay for collections to be empty initially.
-      return snapshot.docs
-        .map(doc => ({ ...doc.data() } as T));
+      try {
+        const collectionRef = collection(db, collectionName);
+        const snapshot = await getDocs(collectionRef);
+        // It's okay for collections to be empty initially.
+        return snapshot.docs
+            .map(doc => ({ ...doc.data() } as T));
+      } catch (error) {
+        console.error(`Error fetching ${collectionName}:`, error);
+        return [];
+      }
   }, []);
   
   const seedInitialData = useCallback(async () => {
@@ -151,12 +156,18 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         // If data was just seeded, the state is already up-to-date.
         // Otherwise, fetch from Firestore.
         if (!dataWasSeeded) {
-            const [classesData, teachersData] = await Promise.all([
+            const [classesData, teachersData, stocksData] = await Promise.all([
                 fetchData<Class>('classes'),
                 fetchData<Teacher>('teachers'),
+                fetchData<Stock>('stocks'), // Stocks are public, load them here.
             ]);
             setClassesState(classesData);
             setTeachersState(teachersData);
+            setStocksState(stocksData);
+        } else {
+            // Even if seeded, fetch latest stock data if it's there
+             const stocksData = await fetchData<Stock>('stocks');
+             setStocksState(stocksData);
         }
     } catch (error) {
         console.error("Error initializing public data from Firestore:", error);
@@ -169,43 +180,16 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     console.log("Loading sensitive data...");
     setIsLoading(true);
     try {
-        const [studentsData, rewardsData, stocksData] = await Promise.all([
+        const [studentsData, rewardsData] = await Promise.all([
             fetchData<Student>('students'),
             fetchData<Reward>('rewards'),
-            fetchData<Stock>('stocks'),
         ]);
         setStudentsState(studentsData);
         setRewardsState(rewardsData);
-        setStocksState(stocksData);
-
-        if (stockUpdateIntervalRef.current) {
-            clearInterval(stockUpdateIntervalRef.current);
-        }
-        // This interval checks the market status and updates prices if it's open.
-        stockUpdateIntervalRef.current = setInterval(() => {
-            const marketOpen = checkMarketOpen();
-            setIsMarketOpen(marketOpen);
-
-            if (marketOpen) {
-                setStocksState(prevStocks => {
-                    if(prevStocks.length === 0) return [];
-                    return prevStocks.map(stock => {
-                        const changePercent = (Math.random() - 0.5) * 0.05; // -2.5% to +2.5% change
-                        const newPrice = stock.price * (1 + changePercent);
-                        const change = newPrice - stock.price;
-                        
-                        return {
-                            ...stock,
-                            price: Math.max(0.01, newPrice), // Price doesn't go below 0.01
-                            change: change,
-                            changePercent: (change / stock.price) * 100,
-                        };
-                    });
-                });
-            }
-        }, 7200000); // Check every 2 hours
-        
-        return { students: studentsData, rewards: rewardsData, stocks: stocksData };
+        // The stocks are already loaded publicly, we just return them
+        const currentStocks = await fetchData<Stock>('stocks');
+        setStocksState(currentStocks);
+        return { students: studentsData, rewards: rewardsData, stocks: currentStocks };
     } catch (error) {
         console.error("Error loading sensitive data:", error);
         return { students: [], rewards: [], stocks: [] };
@@ -216,8 +200,36 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
 
   useEffect(() => {
-    // Only load public data on initial load
     initializePublicData();
+    
+    // This interval checks the market status and updates prices if it's open.
+    if (stockUpdateIntervalRef.current) {
+        clearInterval(stockUpdateIntervalRef.current);
+    }
+    stockUpdateIntervalRef.current = setInterval(() => {
+        const marketOpen = checkMarketOpen();
+        setIsMarketOpen(marketOpen);
+
+        if (marketOpen) {
+            console.log("Market is open. Updating stock prices...");
+            setStocks(prevStocks => {
+                if(prevStocks.length === 0) return [];
+                const updatedStocks = prevStocks.map(stock => {
+                    const changePercent = (Math.random() - 0.5) * 0.05; // -2.5% to +2.5% change
+                    const newPrice = stock.price * (1 + changePercent);
+                    const change = newPrice - stock.price;
+                    
+                    return {
+                        ...stock,
+                        price: Math.max(0.01, newPrice), // Price doesn't go below 0.01
+                        change: change,
+                        changePercent: (change / stock.price) * 100,
+                    };
+                });
+                return updatedStocks;
+            });
+        }
+    }, 7200000); // Check every 2 hours
     
     // Daily updates for loans
     if (dailyUpdateIntervalRef.current) {
@@ -225,11 +237,13 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     }
     dailyUpdateIntervalRef.current = setInterval(() => {
         console.log("Running daily updates for loans...");
-        setStudentsState(prevStudents => {
+        setStudents(prevStudents => {
             const today = startOfDay(new Date());
             let hasChanges = false;
             
             const updatedStudents = prevStudents.map(student => {
+                if (!student.loans || student.loans.length === 0) return student;
+
                 let studentModified = false;
                 
                 const updatedLoans = student.loans.map(loan => {
@@ -264,14 +278,9 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 return student;
             });
             
-            if (hasChanges) {
-                // If there are changes, we want to persist them, but we need to call the async updater.
-                // The state will be eventually consistent. This immediate return provides a responsive UI.
-                setStudents(updatedStudents);
-                return updatedStudents;
-            }
-            
-            return prevStudents;
+            // This is a functional update for the state, but we return the original
+            // students if no changes were made to avoid a re-render.
+            return hasChanges ? updatedStudents : prevStudents;
         });
     }, 86400000); // 24 hours
 
@@ -296,24 +305,26 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         const updatedData = typeof newData === 'function' ? newData(prevData) : newData;
         
         const batch = writeBatch(db);
-        const deletionIds = new Set(prevData.map(p => p.id ? String(p.id) : p.ticker));
-        
+        const currentIds = new Set(updatedData.map(p => p.id ? String(p.id) : p.ticker));
+
         updatedData.forEach(item => {
             const docId = item.id ? String(item.id) : (item.ticker || null);
             if (docId) {
                 const docRef = doc(db, collectionName, docId);
                 batch.set(docRef, { ...item });
-                deletionIds.delete(docId);
             } else {
                 console.warn(`Skipping item in ${collectionName} due to missing id/ticker:`, item);
             }
         });
 
         // Delete items that are in prevData but not in updatedData
-        deletionIds.forEach(idToDelete => {
-             const docRef = doc(db, collectionName, idToDelete);
-             batch.delete(docRef);
-        });
+        prevData.forEach(item => {
+            const docId = item.id ? String(item.id) : (item.ticker || null);
+            if(docId && !currentIds.has(docId)) {
+                const docRef = doc(db, collectionName, docId);
+                batch.delete(docRef);
+            }
+        })
         
         batch.commit().catch(e => console.error(`Failed to update ${collectionName}`, e));
 
@@ -328,7 +339,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const setTeachers = createUpdater<Teacher>('teachers', setTeachersState);
   
   const setPlatformConfig = async (newConfig: Partial<PlatformConfig>) => {
-    setPlatformConfigState(prev => ({ ...(prev || { id: 'main' }), ...newConfig }));
+    const fullConfig = { ...(platformConfig || { id: 'main' }), ...newConfig };
+    setPlatformConfigState(fullConfig);
     const configDocRef = doc(db, 'config', 'main');
     try {
         await setDoc(configDocRef, newConfig, { merge: true });
