@@ -499,6 +499,7 @@ export default function TeacherDashboardPage() {
 
   const handleLoanDecision = (studentId: string, classId: string, loanId: string, decision: 'approve' | 'reject') => {
     let toastMessage: { title: string, description: string, variant?: "default" | "destructive" } | null = null;
+    const today = new Date().toISOString();
   
     setStudents(currentStudents => {
       const updatedStudents = currentStudents.map(student => {
@@ -509,7 +510,7 @@ export default function TeacherDashboardPage() {
           let updatedStudent = { ...student };
           if (decision === 'approve') {
             updatedStudent.points += targetLoan.amount;
-            updatedStudent.loans = student.loans.map(l => l.id === loanId ? { ...l, status: 'active' as const } : l);
+            updatedStudent.loans = student.loans.map(l => l.id === loanId ? { ...l, status: 'active' as const, approvalDate: today, lastInterestAccruedDate: today } : l);
             toastMessage = {
               title: "貸款已批准",
               description: `已將 ${targetLoan.amount.toLocaleString()} 點數撥款給 ${student.name}。`

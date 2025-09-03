@@ -27,9 +27,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { DAILY_INTEREST_RATE } from "@/lib/placeholder-data";
 
 const LOAN_LIMIT = 500;
-const DAILY_INTEREST_RATE = 1; // 1 point per day
 
 export default function LoansPage() {
   const { studentData } = useContext(StudentDataContext);
@@ -136,14 +136,14 @@ export default function LoansPage() {
               進行中的貸款
             </CardTitle>
             <CardDescription>
-                您目前有一筆進行中的貸款。請務必在期限內還款以維持良好信用。
+                您目前有一筆進行中的貸款。請務必在期限内還款以維持良好信用。
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                   <div><p className="text-muted-foreground">貸款金額</p><p className="font-bold text-lg">{activeLoan.amount.toLocaleString()} 點</p></div>
                   <div><p className="text-muted-foreground">累積利息</p><p className="font-bold text-lg">{activeLoan.interest.toLocaleString()} 點</p></div>
-                  <div><p className="text.muted-foreground">申請日期</p><p>{format(new Date(activeLoan.requestDate), 'yyyy-MM-dd')}</p></div>
+                  <div><p className="text.muted-foreground">批准日期</p><p>{activeLoan.approvalDate ? format(new Date(activeLoan.approvalDate), 'yyyy-MM-dd') : 'N/A'}</p></div>
                   <div><p className="text.muted-foreground">還款期限</p><p className={cn(isOverdue && "font-bold text-red-500")}>{format(new Date(activeLoan.repaymentDate), 'yyyy-MM-dd')}</p></div>
               </div>
               <CardFooter className="p-0 pt-4">

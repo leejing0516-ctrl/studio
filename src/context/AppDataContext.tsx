@@ -2,16 +2,18 @@
 "use client";
 
 import { createContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
-import type { Student, Reward, Class, Teacher, Stock, PlatformConfig } from '@/lib/types';
+import type { Student, Reward, Class, Teacher, Stock, PlatformConfig, Loan } from '@/lib/types';
 import { 
     students as initialStudents, 
     rewards as initialRewards,
     classes as initialClasses,
     teachers as initialTeachers,
-    stocks as initialStocks
+    stocks as initialStocks,
+    DAILY_INTEREST_RATE
 } from '@/lib/placeholder-data';
 import { db } from '@/lib/firebase';
 import { collection, doc, getDocs, writeBatch, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { isSameDay, startOfDay, differenceInCalendarDays, parseISO } from 'date-fns';
 
 
 // --- Cloud-based Data Management ---
@@ -74,6 +76,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isMarketOpen, setIsMarketOpen] = useState(checkMarketOpen());
   const stockUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const dailyUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Generic fetch function
   const fetchData = useCallback(async <T,>(collectionName: string): Promise<T[]> => {
@@ -215,11 +218,70 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     // Only load public data on initial load
     initializePublicData();
+    
+    // Daily updates for loans
+    if (dailyUpdateIntervalRef.current) {
+        clearInterval(dailyUpdateIntervalRef.current);
+    }
+    dailyUpdateIntervalRef.current = setInterval(() => {
+        console.log("Running daily updates for loans...");
+        setStudentsState(prevStudents => {
+            const today = startOfDay(new Date());
+            let hasChanges = false;
+            
+            const updatedStudents = prevStudents.map(student => {
+                let studentModified = false;
+                
+                const updatedLoans = student.loans.map(loan => {
+                    if (loan.status !== 'active' && loan.status !== 'overdue') {
+                        return loan;
+                    }
+                    
+                    const lastUpdate = startOfDay(loan.lastInterestAccruedDate ? parseISO(loan.lastInterestAccruedDate) : parseISO(loan.approvalDate!));
+                    const daysSinceLastUpdate = differenceInCalendarDays(today, lastUpdate);
+                    
+                    let updatedLoan = {...loan};
 
-    // Cleanup interval on component unmount
+                    if (daysSinceLastUpdate > 0) {
+                        updatedLoan.interest += daysSinceLastUpdate * DAILY_INTEREST_RATE;
+                        updatedLoan.lastInterestAccruedDate = today.toISOString();
+                        studentModified = true;
+                    }
+
+                    const repaymentDate = startOfDay(parseISO(loan.repaymentDate));
+                    if (today > repaymentDate && updatedLoan.status === 'active') {
+                        updatedLoan.status = 'overdue';
+                        studentModified = true;
+                    }
+
+                    return updatedLoan;
+                });
+                
+                if (studentModified) {
+                    hasChanges = true;
+                    return { ...student, loans: updatedLoans };
+                }
+                return student;
+            });
+            
+            if (hasChanges) {
+                // If there are changes, we want to persist them, but we need to call the async updater.
+                // The state will be eventually consistent. This immediate return provides a responsive UI.
+                setStudents(updatedStudents);
+                return updatedStudents;
+            }
+            
+            return prevStudents;
+        });
+    }, 86400000); // 24 hours
+
+    // Cleanup intervals on component unmount
     return () => {
         if (stockUpdateIntervalRef.current) {
             clearInterval(stockUpdateIntervalRef.current);
+        }
+        if (dailyUpdateIntervalRef.current) {
+            clearInterval(dailyUpdateIntervalRef.current);
         }
     };
   }, [initializePublicData]);

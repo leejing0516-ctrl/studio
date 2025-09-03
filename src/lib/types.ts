@@ -14,6 +14,8 @@ export type Loan = {
   repaymentDate: string; // ISO date string
   status: 'pending' | 'active' | 'repaid' | 'rejected' | 'overdue';
   interest: number;
+  approvalDate?: string; // ISO date string, set when loan is approved
+  lastInterestAccruedDate?: string; // ISO date string, last time interest was calculated
 }
 
 export type Student = {

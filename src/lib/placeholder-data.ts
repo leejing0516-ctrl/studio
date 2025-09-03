@@ -2,6 +2,7 @@
 import type { Student, Reward, Stock, Class, Teacher } from "./types";
 
 export const TEACHER_PASSWORD = "001"; // Shared password for all teachers for simplicity
+export const DAILY_INTEREST_RATE = 1; // 1 point per day
 
 export const classes: Class[] = [
     { id: "6A", name: "六年甲班" },
