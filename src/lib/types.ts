@@ -6,6 +6,11 @@ export type RedeemedRewardItem = {
   status: 'collected' | 'pending_use';
 };
 
+export type PointRecord = {
+    points: number;
+    date: string; // ISO date string of when the points were awarded
+}
+
 export type Loan = {
   id: string;
   amount: number;
@@ -28,6 +33,7 @@ export type Student = {
   portfolio: PortfolioItem[];
   redeemedRewards: RedeemedRewardItem[];
   loans: Loan[];
+  pointHistory: PointRecord[];
 };
 
 export type Reward = {
@@ -74,5 +80,3 @@ export type PlatformConfig = {
     sponsorLogoUrls?: (string | null)[];
     teacherPassword?: string;
 }
-
-    

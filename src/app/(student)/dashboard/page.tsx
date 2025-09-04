@@ -10,7 +10,7 @@ import RewardSuggestion from "@/components/reward-suggestion";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
 import { cn } from "@/lib/utils";
-import { subDays, format, parseISO } from "date-fns";
+import { subDays, format, parseISO, startOfDay, isWithinInterval } from "date-fns";
 
 
 const chartConfig: ChartConfig = {
@@ -37,42 +37,40 @@ export default function StudentDashboardPage() {
 
   const pointsData = useMemo(() => {
     if (!currentStudent) return [];
-    const today = new Date();
-    const data = [];
+    
+    const today = startOfDay(new Date());
+    const sevenDaysAgo = subDays(today, 6);
+    
+    const dailyPoints: { [key: string]: number } = {};
 
-    // Simulate the last 7 days of points data
-    let remainingPoints = totalPoints;
-    for (let i = 6; i >= 0; i--) {
-      const date = subDays(today, i);
-      let pointsForDay;
-
-      if (i === 0) {
-        // Today's points are what's left
-        pointsForDay = Math.max(0, remainingPoints);
-      } else {
-        // For previous days, generate a random portion of the remaining points
-        // This creates a more "natural" looking trend
-        const randomFactor = Math.random() * 0.4 + 0.1; // Take between 10% and 50%
-        pointsForDay = Math.floor(remainingPoints * randomFactor);
-        remainingPoints -= pointsForDay;
-      }
-      
-      data.push({
-        date: format(date, "M/d"),
-        points: pointsForDay,
-      });
+    // Initialize the last 7 days with 0 points
+    for (let i = 0; i < 7; i++) {
+        const date = subDays(today, i);
+        dailyPoints[format(date, "yyyy-MM-dd")] = 0;
     }
 
-    // Ensure the total of the chart roughly matches totalPoints, redistributing any remainder
-    const simulatedTotal = data.reduce((acc, day) => acc + day.points, 0);
-    if (simulatedTotal !== totalPoints && data.length > 0) {
-        const difference = totalPoints - simulatedTotal;
-        data[data.length-1].points += difference;
-    }
+    // Sum up points for each of the last 7 days from history
+    (currentStudent.pointHistory || []).forEach(record => {
+        const recordDate = startOfDay(parseISO(record.date));
+        if (isWithinInterval(recordDate, { start: sevenDaysAgo, end: today })) {
+            const dateKey = format(recordDate, "yyyy-MM-dd");
+            if (dailyPoints[dateKey] !== undefined) {
+                dailyPoints[dateKey] += record.points;
+            }
+        }
+    });
 
+    // Format for the chart, sorted by date
+    const chartData = Object.keys(dailyPoints)
+        .map(dateKey => ({
+            date: format(parseISO(dateKey), "M/d"),
+            points: dailyPoints[dateKey]
+        }))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        
+    return chartData;
 
-    return data;
-  }, [totalPoints, currentStudent]);
+  }, [currentStudent]);
 
 
   const portfolioValue = useMemo(() => {
@@ -192,7 +190,7 @@ export default function StudentDashboardPage() {
         <Card className="md:col-span-3">
           <CardHeader>
             <CardTitle>最近七日點數趨勢</CardTitle>
-            <CardDescription>您最近七天每日獲得的點數紀錄。</CardDescription>
+            <CardDescription>您最近七天每日從老師那裡獲得的點數紀錄。</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[250px] w-full">
@@ -218,5 +216,3 @@ export default function StudentDashboardPage() {
     </div>
   );
 }
-
-    

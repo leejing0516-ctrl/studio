@@ -196,7 +196,14 @@ export default function TeacherDashboardPage() {
       });
       return;
     }
-    setStudents(currentStudents => currentStudents.map(s => (s.id === studentId && s.classId === selectedClassId) ? { ...s, points: s.points + pointsToAdd } : s));
+    const today = new Date().toISOString();
+    setStudents(currentStudents => currentStudents.map(s => {
+        if (s.id === studentId && s.classId === selectedClassId) {
+            const newHistory = [...(s.pointHistory || []), { points: pointsToAdd, date: today }];
+            return { ...s, points: s.points + pointsToAdd, pointHistory: newHistory };
+        }
+        return s;
+    }));
     const student = students.find(s => s.id === studentId && s.classId === selectedClassId);
     toast({
         title: "點數已發送！",
@@ -216,11 +223,13 @@ export default function TeacherDashboardPage() {
     }
 
     const studentIdsInView = studentsInView.map(s => s.id);
+    const today = new Date().toISOString();
     
     setStudents(currentStudents => 
       currentStudents.map(student => {
         if (student.classId === selectedClassId && studentIdsInView.includes(student.id)) {
-          return { ...student, points: student.points + pointsToAdd };
+          const newHistory = [...(student.pointHistory || []), { points: pointsToAdd, date: today }];
+          return { ...student, points: student.points + pointsToAdd, pointHistory: newHistory };
         }
         return student;
       })
@@ -321,6 +330,7 @@ export default function TeacherDashboardPage() {
         portfolio: [],
         redeemedRewards: [],
         loans: [],
+        pointHistory: [],
     };
     setStudents(currentStudents => [...currentStudents, newStudent]);
     setIsAddStudentDialogOpen(false);
@@ -644,6 +654,7 @@ export default function TeacherDashboardPage() {
         portfolio: [],
         redeemedRewards: [],
         loans: [],
+        pointHistory: [],
     }));
 
     setStudents(current => [...current, ...newStudents]);
