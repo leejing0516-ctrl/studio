@@ -9,7 +9,8 @@ import {
     classes as initialClasses,
     teachers as initialTeachers,
     stocks as initialStocks,
-    DAILY_INTEREST_RATE
+    DAILY_INTEREST_RATE,
+    TEACHER_PASSWORD,
 } from '@/lib/placeholder-data';
 import { db } from '@/lib/firebase';
 import { collection, doc, getDocs, writeBatch, setDoc, getDoc, updateDoc } from 'firebase/firestore';
@@ -125,6 +126,17 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             dataUpdated = true;
         }
     }
+    
+    // Seed initial teacher password if not set
+    const configDocRef = doc(db, 'config', 'main');
+    const configSnap = await getDoc(configDocRef);
+    if (!configSnap.exists() || !configSnap.data().teacherPassword) {
+        writesPending = true;
+        batch.set(configDocRef, { teacherPassword: TEACHER_PASSWORD }, { merge: true });
+        setPlatformConfigState(prev => ({ ...(prev || { id: 'main' }), teacherPassword: TEACHER_PASSWORD }));
+        dataUpdated = true;
+    }
+
 
     if (writesPending) {
         try {

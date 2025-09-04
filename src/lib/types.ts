@@ -72,4 +72,5 @@ export type PlatformConfig = {
     id: 'main';
     platformLogoUrl?: string;
     sponsorLogoUrls?: (string | null)[];
+    teacherPassword?: string;
 }

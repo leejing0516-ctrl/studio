@@ -79,7 +79,9 @@ export default function HomePage() {
     const teacher = teachers.find(t => t.id === teacherId);
 
     // Using a shared password for simplicity
-    if (teacher && teacherPassword === TEACHER_PASSWORD) {
+    const masterPassword = platformConfig?.teacherPassword || TEACHER_PASSWORD;
+
+    if (teacher && teacherPassword === masterPassword) {
         // Seed initial data if necessary, after a teacher logs in.
         await seedInitialData();
         // Load all necessary data for the teacher dashboard

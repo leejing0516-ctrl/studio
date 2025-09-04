@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useState } from "react";
 import Image from "next/image";
 import {
   SidebarProvider,
@@ -28,6 +28,7 @@ import {
   ChevronDown,
   Package,
   Landmark,
+  KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,6 +41,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import type { Student } from "@/lib/types";
 
 export default function StudentLayout({
   children,
@@ -49,7 +55,14 @@ export default function StudentLayout({
   const pathname = usePathname();
   const router = useRouter();
   const { studentData, setStudentData } = useContext(StudentDataContext);
-  const { students, platformConfig } = useContext(AppDataContext);
+  const { students, setStudents } = useContext(AppDataContext);
+  const { toast } = useToast();
+
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     // If there's no student data on page load (e.g., after a refresh), redirect to login
@@ -87,6 +100,53 @@ export default function StudentLayout({
     router.push('/');
   }
 
+  const handleChangePassword = async () => {
+    if (!student) return;
+    setIsSaving(true);
+
+    if (newPassword !== confirmPassword) {
+        toast({ title: "密碼不符", description: "新密碼與確認密碼不相符。", variant: "destructive" });
+        setIsSaving(false);
+        return;
+    }
+
+    if (newPassword.length < 3) {
+        toast({ title: "密碼太短", description: "新密碼長度至少需要 3 個字元。", variant: "destructive" });
+        setIsSaving(false);
+        return;
+    }
+    
+    // In a real app, this should be a secure API call.
+    // For this prototype, we'll find the student and check the password.
+    const studentToUpdate = students.find(s => s.id === student.id && s.classId === student.classId);
+
+    if (studentToUpdate?.password !== currentPassword) {
+        toast({ title: "密碼錯誤", description: "您輸入的目前密碼不正確。", variant: "destructive" });
+        setIsSaving(false);
+        return;
+    }
+
+    try {
+        await setStudents(currentStudents => currentStudents.map(s => {
+            if (s.id === student.id && s.classId === student.classId) {
+                return { ...s, password: newPassword };
+            }
+            return s;
+        }));
+        
+        toast({ title: "密碼已更新", description: "您的密碼已成功更新。" });
+        setIsSettingsOpen(false);
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+    } catch(e) {
+        toast({ title: "更新失敗", description: "更新密碼時發生錯誤。", variant: "destructive" });
+    } finally {
+        setIsSaving(false);
+    }
+
+  };
+
   const navItems = [
     { href: "/dashboard", label: "儀表板", icon: LayoutDashboard },
     { href: "/my-collection", label: "我的收藏", icon: Package },
@@ -100,6 +160,7 @@ export default function StudentLayout({
   }
 
   return (
+    <>
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader>
@@ -149,7 +210,7 @@ export default function StudentLayout({
             <DropdownMenuContent className="w-56 mb-2" side="top" align="start">
               <DropdownMenuLabel>我的帳號</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setIsSettingsOpen(true)}>
                 <Settings className="mr-2 size-4" />
                 <span>設定</span>
               </DropdownMenuItem>
@@ -176,5 +237,37 @@ export default function StudentLayout({
         </div>
       </SidebarInset>
     </SidebarProvider>
+
+    <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+            <DialogTitle>帳號設定</DialogTitle>
+            <DialogDescription>修改您的登入密碼。</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+                <Label htmlFor="current-password">目前密碼</Label>
+                <Input id="current-password" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="new-password">新密碼</Label>
+                <Input id="new-password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="confirm-password">確認新密碼</Label>
+                <Input id="confirm-password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
+            </div>
+        </div>
+        <DialogFooter>
+            <DialogClose asChild>
+                <Button variant="secondary">取消</Button>
+            </DialogClose>
+            <Button onClick={handleChangePassword} disabled={isSaving}>
+                {isSaving ? "儲存中..." : "儲存變更"}
+            </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
