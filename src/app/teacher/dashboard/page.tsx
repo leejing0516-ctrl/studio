@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useContext, useEffect, useMemo } from "react";
@@ -148,6 +149,8 @@ export default function TeacherDashboardPage() {
   const [isEditTeacherDialogOpen, setIsEditTeacherDialogOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
+  const [isResetTeacherPasswordDialogOpen, setIsResetTeacherPasswordDialogOpen] = useState(false);
+  const [teacherToResetPassword, setTeacherToResetPassword] = useState<Teacher | null>(null);
   
   const [isAddClassDialogOpen, setIsAddClassDialogOpen] = useState(false);
 
@@ -469,6 +472,36 @@ export default function TeacherDashboardPage() {
   
   const handleDeleteTeacherClick = (teacher: Teacher) => {
     setTeacherToDelete(teacher);
+  };
+
+  const handleResetTeacherPasswordClick = (teacher: Teacher) => {
+    setTeacherToResetPassword(teacher);
+    setIsResetTeacherPasswordDialogOpen(true);
+  };
+
+  const handleConfirmResetTeacherPassword = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!teacherToResetPassword) return;
+
+    const formData = new FormData(event.currentTarget);
+    const newPassword = formData.get("new-password") as string;
+
+    if (newPassword.length < 3) {
+      toast({ title: "密碼太短", description: "新密碼長度至少需要 3 個字元。", variant: "destructive" });
+      return;
+    }
+
+    setTeachers(currentTeachers => currentTeachers.map(t => 
+        t.id === teacherToResetPassword.id ? { ...t, password: newPassword } : t
+    ));
+
+    toast({
+        title: "教師密碼已更新",
+        description: `老師 ${teacherToResetPassword.name} 的密碼已成功重設。`
+    });
+
+    setIsResetTeacherPasswordDialogOpen(false);
+    setTeacherToResetPassword(null);
   };
   
   const handleConfirmDeleteTeacher = () => {
@@ -935,9 +968,28 @@ export default function TeacherDashboardPage() {
                                         <Button variant="ghost" size="icon" onClick={() => handleEditTeacherClick(teacher)}>
                                             <Edit className="h-4 w-4" />
                                         </Button>
-                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
-                                            <Trash2 className="h-4 w-4" />
+                                        <Button variant="ghost" size="icon" onClick={() => handleResetTeacherPasswordClick(teacher)}>
+                                            <KeyRound className="h-4 w-4" />
                                         </Button>
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        您確定要刪除老師「{teacher.name}」嗎？此操作將永久移除該老師的帳號且無法復原。
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>取消</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => handleConfirmDeleteTeacher()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -1460,7 +1512,7 @@ export default function TeacherDashboardPage() {
                     檔案必須包含 `id`, `name`, 和 `password` 這三個欄位。
                 </DialogDescription>
                  <p className="text-sm text-destructive font-medium">
-                    重要提示：為避免亂碼，請務必將您的 CSV 檔案另存為 `UTF-8` 編碼格式後再上傳。
+                    重要提示：為避免乱碼，請務必將您的 CSV 檔案另存為 `UTF-8` 編碼格式後再上傳。
                  </p>
                  <a href="/students-template.csv" download className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1 w-fit">
                     <Download className="h-3 w-3" />
@@ -1685,6 +1737,28 @@ export default function TeacherDashboardPage() {
             </DialogClose>
             <Button type="submit">儲存變更</Button>
           </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isResetTeacherPasswordDialogOpen} onOpenChange={setIsResetTeacherPasswordDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <form onSubmit={handleConfirmResetTeacherPassword}>
+            <DialogHeader>
+              <DialogTitle>重設教師密碼</DialogTitle>
+              <DialogDescription>為老師「{teacherToResetPassword?.name}」設定一組新密碼。</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="new-password" className="text-right">新密碼</Label>
+                <Input id="new-password" name="new-password" type="password" className="col-span-3" required />
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="secondary" onClick={() => setTeacherToResetPassword(null)}>取消</Button>
+              </DialogClose>
+              <Button type="submit">儲存密碼</Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
