@@ -76,12 +76,22 @@ export default function HomePage() {
   const handleTeacherLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoggingIn(true);
+
+    // Load sensitive data to get the latest teacher passwords
+    await loadSensitiveData();
+
     const teacher = teachers.find(t => t.id === teacherId);
 
-    // Using a shared password for simplicity
-    const masterPassword = platformConfig?.teacherPassword || TEACHER_PASSWORD;
+    if (!teacher) {
+        toast({ title: "登入失敗", description: "找不到該教師帳號。", variant: "destructive" });
+        setIsLoggingIn(false);
+        return;
+    }
 
-    if (teacher && teacherPassword === masterPassword) {
+    // Use individual password if it exists, otherwise fall back to the default platform password.
+    const correctPassword = teacher.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
+
+    if (teacherPassword === correctPassword) {
         // Seed initial data if necessary, after a teacher logs in.
         await seedInitialData();
         // Load all necessary data for the teacher dashboard
@@ -266,3 +276,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    

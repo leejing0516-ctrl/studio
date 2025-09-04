@@ -48,8 +48,9 @@ export default function TeacherLayout({
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
-  const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
+  const { teachers, setTeachers, platformConfig, setPlatformConfig } = useContext(AppDataContext);
 
+  const [teacherId, setTeacherId] = useState<string | null>(null);
   const [teacherName, setTeacherName] = useState<string | null>(null);
   const [teacherRole, setTeacherRole] = useState<string | null>(null);
   
@@ -61,8 +62,10 @@ export default function TeacherLayout({
 
 
   useEffect(() => {
+    const id = localStorage.getItem('teacherId');
     const name = localStorage.getItem('teacherName');
     const role = localStorage.getItem('teacherRole');
+    setTeacherId(id);
     setTeacherName(name);
     setTeacherRole(role);
     if (!name) {
@@ -82,6 +85,12 @@ export default function TeacherLayout({
   const handleChangePassword = async () => {
     setIsSaving(true);
     
+    if (!teacherId) {
+        toast({ title: "錯誤", description: "無法識別您的身份，請重新登入。", variant: "destructive" });
+        setIsSaving(false);
+        return;
+    }
+    
     if (newPassword !== confirmPassword) {
         toast({ title: "密碼不符", description: "新密碼與確認密碼不相符。", variant: "destructive" });
         setIsSaving(false);
@@ -93,22 +102,45 @@ export default function TeacherLayout({
         return;
     }
 
-    const storedPassword = platformConfig?.teacherPassword || TEACHER_PASSWORD;
+    const teacherToUpdate = teachers.find(t => t.id === teacherId);
+    if (!teacherToUpdate) {
+        toast({ title: "錯誤", description: "找不到您的帳號資訊。", variant: "destructive" });
+        setIsSaving(false);
+        return;
+    }
+
+    const storedPassword = teacherToUpdate.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
     if (currentPassword !== storedPassword) {
         toast({ title: "密碼錯誤", description: "您輸入的目前密碼不正確。", variant: "destructive" });
         setIsSaving(false);
         return;
     }
+    
+    // Admins can change the default password for new teachers
+    if (teacherRole === 'admin' && teacherId === 'principal') {
+        try {
+          await setPlatformConfig({ teacherPassword: newPassword });
+          toast({ title: "預設密碼已更新", description: "未來新建立的教師帳號將使用此新密碼作為預設密碼。" });
+        } catch(e) {
+          toast({ title: "預設密碼更新失敗", description: "更新預設密碼時發生錯誤。", variant: "destructive" });
+        }
+    }
+
 
     try {
-      await setPlatformConfig({ teacherPassword: newPassword });
-      toast({ title: "密碼已更新", description: "所有教師的登入密碼已成功更新。" });
+      await setTeachers(currentTeachers => currentTeachers.map(t => {
+          if (t.id === teacherId) {
+              return { ...t, password: newPassword };
+          }
+          return t;
+      }));
+      toast({ title: "密碼已更新", description: "您的登入密碼已成功更新。" });
       setIsSettingsOpen(false);
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch(e) {
-      toast({ title: "更新失敗", description: "更新密碼時發生錯誤。", variant: "destructive" });
+      toast({ title: "更新失敗", description: "更新您的密碼時發生錯誤。", variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
@@ -201,7 +233,9 @@ export default function TeacherLayout({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
             <DialogTitle>帳號設定</DialogTitle>
-            <DialogDescription>修改所有教師及校長的登入密碼。此為共用密碼。</DialogDescription>
+            <DialogDescription>
+                {teacherRole === 'admin' ? '修改您的登入密碼。您也可以修改未來新教師註冊時的「預設密碼」。' : '修改您的個人登入密碼。'}
+            </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
             <div className="space-y-2">
@@ -230,3 +264,5 @@ export default function TeacherLayout({
     </>
   );
 }
+
+    

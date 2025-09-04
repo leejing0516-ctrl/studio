@@ -15,13 +15,13 @@ export const classes: Class[] = [
 ];
 
 export const teachers: Teacher[] = [
-    { id: "principal", name: "李志軒校長", role: "admin" },
-    { id: "teacher6A", name: "高老師", role: "teacher", classId: "6A" },
-    { id: "teacher6B", name: "李老師", role: "teacher", classId: "6B" },
-    { id: "teacher5A", name: "王老師", role: "teacher", classId: "5A" },
-    { id: "teacher5B", name: "陳老師", role: "teacher", classId: "5B" },
-    { id: "teacher4A", name: "林老師", role: "teacher", classId: "4A" },
-    { id: "teacherUnassigned", name: "吳老師", role: "teacher", classId: null },
+    { id: "principal", name: "李志軒校長", role: "admin", password: TEACHER_PASSWORD },
+    { id: "teacher6A", name: "高老師", role: "teacher", classId: "6A", password: TEACHER_PASSWORD },
+    { id: "teacher6B", name: "李老師", role: "teacher", classId: "6B", password: TEACHER_PASSWORD },
+    { id: "teacher5A", name: "王老師", role: "teacher", classId: "5A", password: TEACHER_PASSWORD },
+    { id: "teacher5B", name: "陳老師", role: "teacher", classId: "5B", password: TEACHER_PASSWORD },
+    { id: "teacher4A", name: "林老師", role: "teacher", classId: "4A", password: TEACHER_PASSWORD },
+    { id: "teacherUnassigned", name: "吳老師", role: "teacher", classId: null, password: TEACHER_PASSWORD },
 ];
 
 export const students: Student[] = [
@@ -56,5 +56,7 @@ export const stocks: Stock[] = [
     { ticker: "ART", name: "創意公司", price: 45.30, change: 0.25, changePercent: 0.55, marketCap: "3000億" },
     { ticker: "TECH", name: "創新有限責任公司", price: 550.00, change: -12.30, changePercent: -2.18, marketCap: "5.5兆" },
 ];
+
+    
 
     

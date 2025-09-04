@@ -65,7 +65,7 @@ export type Teacher = {
     name: string;
     role: 'teacher' | 'admin'; // admin is the principal
     classId?: string | null; // classId for teachers, null for unassigned, undefined for admin
-    password?: string; // Optional password field
+    password?: string; 
 }
 
 export type PlatformConfig = {
@@ -74,3 +74,5 @@ export type PlatformConfig = {
     sponsorLogoUrls?: (string | null)[];
     teacherPassword?: string;
 }
+
+    

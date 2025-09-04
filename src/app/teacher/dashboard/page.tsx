@@ -45,6 +45,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { format } from "date-fns";
 import Papa from "papaparse";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
 
 
 interface StagedStudent {
@@ -421,6 +422,7 @@ export default function TeacherDashboardPage() {
         name,
         classId: classId === 'unassigned' ? null : classId,
         role: 'teacher',
+        password: platformConfig?.teacherPassword || TEACHER_PASSWORD,
     };
     setTeachers(current => [...current, newTeacher]);
     setIsAddTeacherDialogOpen(false);
