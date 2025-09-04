@@ -148,7 +148,7 @@ export default function HomePage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                  <Label htmlFor="class-select">班級</Label>
-                 <Select onValueChange={setClassId} value={classId} disabled={isLoggingIn}>
+                 <Select onValueChange={(value) => setClassId(value)} value={classId} disabled={isLoggingIn}>
                     <SelectTrigger id="class-select">
                         <SelectValue placeholder="請選擇班級" />
                     </SelectTrigger>
@@ -209,7 +209,7 @@ export default function HomePage() {
             <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="teacher-id">教師帳號</Label>
-                  <Select onValueChange={setTeacherId} value={teacherId} disabled={isLoggingIn}>
+                  <Select onValueChange={(value) => setTeacherId(value)} value={teacherId} disabled={isLoggingIn}>
                      <SelectTrigger id="teacher-id-select">
                          <SelectValue placeholder="請選擇您的帳號" />
                      </SelectTrigger>
