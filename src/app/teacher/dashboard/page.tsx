@@ -2545,7 +2545,7 @@ export default function TeacherDashboardPage() {
           </form>
         </DialogContent>
       </Dialog>
-      <Dialog open={isEditChallengeDialogOpen} onOpenChange={(open) => {if (!open) setEditingChallenge(null)}}>
+      <Dialog open={isEditChallengeDialogOpen} onOpenChange={setIsEditChallengeDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <form onSubmit={handleUpdateChallenge}>
             <DialogHeader>
@@ -2567,7 +2567,10 @@ export default function TeacherDashboardPage() {
               </div>
             </div>
             <DialogFooter>
-              <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
+                <Button type="button" variant="secondary" onClick={() => {
+                    setIsEditChallengeDialogOpen(false);
+                    setEditingChallenge(null);
+                }}>取消</Button>
               <Button type="submit">儲存變更</Button>
             </DialogFooter>
           </form>
