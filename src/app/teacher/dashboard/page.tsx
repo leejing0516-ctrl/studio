@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Reward, Student, Teacher, Class, Loan, Stock } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, KeyRound, Bell, Landmark, Check, X, Upload, Download, Loader2, Users, Settings, ImageOff, LineChart, Banknote, ShieldPlus, Coins } from "lucide-react";
+import { PlusCircle, Edit, Trash2, KeyRound, Bell, Landmark, Check, X, Upload, Download, Loader2, Users, Settings, ImageOff, LineChart, Banknote, ShieldPlus, Coins, School } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -153,6 +153,13 @@ export default function TeacherDashboardPage() {
   const [isAddRewardDialogOpen, setIsAddRewardDialogOpen] = useState(false);
   const [isEditRewardDialogOpen, setIsEditRewardDialogOpen] = useState(false);
   const [editingReward, setEditingReward] = useState<Reward | null>(null);
+  
+  const rewardsInView = useMemo(() => {
+      if (role === 'admin') {
+          return rewards.filter(r => r.scope === 'school');
+      }
+      return rewards.filter(r => r.scope === 'class' && r.providerId === teacherId);
+  }, [rewards, role, teacherId]);
 
   const [isAddStudentDialogOpen, setIsAddStudentDialogOpen] = useState(false);
   const [isEditStudentDialogOpen, setIsEditStudentDialogOpen] = useState(false);
@@ -177,14 +184,18 @@ export default function TeacherDashboardPage() {
 
   const { toast } = useToast();
   
-  const pendingRequests = useMemo(() => students.flatMap(student => 
-    (student.redeemedRewards || [])
-        .filter(r => r.status === 'pending_use')
-        .map(r => ({ student, redemption: r }))
-  ).filter(({student}) => {
-      if (role === 'admin') return student.classId === selectedClassId;
-      return student.classId === teacherClassId;
-  }), [students, role, selectedClassId, teacherClassId]);
+  const pendingRequests = useMemo(() => {
+    return students.flatMap(student => 
+        (student.redeemedRewards || [])
+            .filter(r => r.status === 'pending_use')
+            .map(redemption => ({ student, redemption }))
+    ).filter(({ redemption }) => {
+        if (role === 'admin') {
+            return redemption.reward.scope === 'school' || student.classId === selectedClassId;
+        }
+        return redemption.reward.providerId === teacherId;
+    });
+  }, [students, role, selectedClassId, teacherId]);
 
   const handleApproveUsage = (studentId: string, classId: string, redemptionId: string) => {
     setStudents(currentStudents => currentStudents.map(student => {
@@ -276,6 +287,8 @@ export default function TeacherDashboardPage() {
 
   const handleAddReward = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!teacherId) return;
+
     const formData = new FormData(event.currentTarget);
     const newReward: Reward = {
       id: rewards.length > 0 ? Math.max(...rewards.map(r => parseInt(r.id.toString()))) + 1 : 1,
@@ -284,6 +297,8 @@ export default function TeacherDashboardPage() {
       cost: Number(formData.get("cost")),
       stock: Number(formData.get("stock")),
       image: `https://picsum.photos/seed/${Math.random()}/600/400`,
+      scope: role === 'admin' ? 'school' : 'class',
+      providerId: role === 'admin' ? 'school_admin' : teacherId,
     };
     setRewards(currentRewards => [...currentRewards, newReward]);
     setIsAddRewardDialogOpen(false);
@@ -903,6 +918,101 @@ export default function TeacherDashboardPage() {
       )
   }
 
+  const RewardsManagementTab = () => {
+    const rewardsInView = useMemo(() => {
+        if (role === 'admin') {
+            return rewards.filter(r => r.scope === 'school');
+        }
+        return rewards.filter(r => r.scope === 'class' && r.providerId === teacherId);
+    }, [rewards, role, teacherId]);
+
+    const AllClassRewards = () => (
+      <Card>
+        <CardHeader>
+          <CardTitle>所有班級獎勵</CardTitle>
+          <CardDescription>查看所有班級老師建立的獎勵。</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>獎勵</TableHead>
+                <TableHead>費用</TableHead>
+                <TableHead>庫存</TableHead>
+                <TableHead>提供者</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rewards.filter(r => r.scope === 'class').map((reward) => (
+                <TableRow key={reward.id}>
+                  <TableCell className="font-medium">{reward.name}</TableCell>
+                  <TableCell>{reward.cost.toLocaleString()}</TableCell>
+                  <TableCell>{reward.stock}</TableCell>
+                  <TableCell>{teachers.find(t => t.id === reward.providerId)?.name || '未知'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    );
+
+    return (
+        <div className="space-y-6">
+            <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                <CardTitle>{role === 'admin' ? '學校獎勵庫存' : '我的班級獎勵'}</CardTitle>
+                <CardDescription>
+                    {role === 'admin' ? '新增、編輯或移除全校性的獎勵。' : '新增、編輯或移除您班級專屬的獎勵。'}
+                </CardDescription>
+                </div>
+                <Button onClick={() => setIsAddRewardDialogOpen(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    新增獎勵
+                </Button>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>獎勵</TableHead>
+                    <TableHead>費用</TableHead>
+                    <TableHead>庫存</TableHead>
+                    <TableHead>類型</TableHead>
+                    <TableHead className="text-right">操作</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {rewardsInView.map((reward) => (
+                    <TableRow key={reward.id}>
+                        <TableCell className="font-medium">{reward.name}</TableCell>
+                        <TableCell>{reward.cost.toLocaleString()}</TableCell>
+                        <TableCell>{reward.stock}</TableCell>
+                        <TableCell>
+                            <Badge variant={reward.scope === 'school' ? 'default' : 'secondary'}>
+                                {reward.scope === 'school' ? '學校' : '班級'}
+                            </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleEditRewardClick(reward)}>
+                            <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteReward(reward.id)}>
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                        </TableCell>
+                    </TableRow>
+                    ))}
+                </TableBody>
+                </Table>
+            </CardContent>
+            </Card>
+            {role === 'admin' && <AllClassRewards />}
+        </div>
+    );
+  };
+
   return (
     <div className="flex flex-col gap-6">
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1250,7 +1360,7 @@ export default function TeacherDashboardPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>贊助商 Logo 設定</CardTitle>
-                    <CardDescription>上傳最多四個贊助商 Logo。這些 Logo 將顯示在頁面底部的頁尾區域。建議使用透明背景的 PNG 檔案，並確保所有 Logo 寬度一致。</CardDescription>
+                    <CardDescription>上傳最多四個贊助商 Logo。這些 Logo 將顯示在頁面底部的頁尾区域。建議使用透明背景的 PNG 檔案，並確保所有 Logo 寬度一致。</CardDescription>
                 </CardHeader>
                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                     {Array.from({ length: 4 }).map((_, index) => (
@@ -1346,49 +1456,7 @@ export default function TeacherDashboardPage() {
         </Card>
       </TabsContent>
       <TabsContent value="rewards" className="mt-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>獎勵庫存</CardTitle>
-              <CardDescription>
-                從學生商店中新增、編輯或移除獎勵。
-              </CardDescription>
-            </div>
-            <Button onClick={() => setIsAddRewardDialogOpen(true)}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                新增獎勵
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>獎勵</TableHead>
-                  <TableHead>費用</TableHead>
-                  <TableHead>庫存</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rewards.map((reward) => (
-                  <TableRow key={reward.id}>
-                    <TableCell className="font-medium">{reward.name}</TableCell>
-                    <TableCell>{reward.cost.toLocaleString()}</TableCell>
-                    <TableCell>{reward.stock}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleEditRewardClick(reward)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteReward(reward.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+          <RewardsManagementTab />
       </TabsContent>
        <TabsContent value="requests" className="mt-6">
         <Card>
@@ -1403,7 +1471,9 @@ export default function TeacherDashboardPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>學生</TableHead>
+                   <TableHead>班級</TableHead>
                   <TableHead>獎勵名稱</TableHead>
+                   <TableHead>類型</TableHead>
                   <TableHead className="text-right">操作</TableHead>
                 </TableRow>
               </TableHeader>
@@ -1412,7 +1482,13 @@ export default function TeacherDashboardPage() {
                     pendingRequests.map(({ student, redemption }) => (
                         <TableRow key={redemption.redemptionId}>
                             <TableCell>{student.name}</TableCell>
+                            <TableCell>{classes.find(c => c.id === student.classId)?.name}</TableCell>
                             <TableCell>{redemption.reward.name}</TableCell>
+                            <TableCell>
+                                <Badge variant={redemption.reward.scope === 'school' ? 'default' : 'secondary'}>
+                                    {redemption.reward.scope === 'school' ? '學校' : '班級'}
+                                </Badge>
+                            </TableCell>
                             <TableCell className="text-right">
                                 <Button size="sm" onClick={() => handleApproveUsage(student.id, student.classId, redemption.redemptionId)}>同意使用</Button>
                             </TableCell>
@@ -1420,7 +1496,7 @@ export default function TeacherDashboardPage() {
                     ))
                 ) : (
                     <TableRow>
-                        <TableCell colSpan={3} className="text-center h-24">
+                        <TableCell colSpan={5} className="text-center h-24">
                             目前沒有待處理的請求。
                         </TableCell>
                     </TableRow>
@@ -1995,7 +2071,7 @@ export default function TeacherDashboardPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
             <AlertDialogDescription>
-              您確定要刪除老師「{teacherToDelete?.name}」嗎？此操作將永久移除該老師的帳號且無法復原。
+              您確定要刪除老師「{teacherToDelete?.name}」嗎？此操作將永久移除该老師的帳號且無法復原。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -1,12 +1,12 @@
 
 "use client";
 
-import { useState, useContext } from "react";
+import { useState, useContext, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import type { Reward } from "@/lib/types";
-import { Coins, ShoppingCart } from "lucide-react";
+import { Coins, ShoppingCart, School, Users } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,13 +20,21 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
+import { Badge } from "@/components/ui/badge";
 
 export default function RewardsPage() {
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const { toast } = useToast();
   const { studentData } = useContext(StudentDataContext);
-  const { students, setStudents, rewards, setRewards, platformConfig, setPlatformConfig } = useContext(AppDataContext);
+  const { students, setStudents, rewards, setRewards, platformConfig, setPlatformConfig, teachers, setTeachers } = useContext(AppDataContext);
+
+  const student = studentData.student;
+  
+  const availableRewards = useMemo(() => {
+    if (!student) return [];
+    return rewards.filter(reward => reward.scope === 'school' || (reward.scope === 'class' && reward.providerId === student.classId));
+  }, [rewards, student]);
 
   const handleRedeemClick = (reward: Reward) => {
     if (studentData.points < reward.cost) {
@@ -42,7 +50,7 @@ export default function RewardsPage() {
   };
 
   const handleConfirmRedeem = () => {
-    if (!selectedReward || !studentData.student) {
+    if (!selectedReward || !student) {
         setIsConfirmOpen(false);
         return;
     };
@@ -65,7 +73,7 @@ export default function RewardsPage() {
       // Find the student in the global list and update them
       setStudents(currentStudents => 
         currentStudents.map(s => {
-            if (s.id === studentData.student?.id && s.classId === studentData.student?.classId) {
+            if (s.id === student.id && s.classId === student.classId) {
                 return {
                     ...s,
                     points: newPoints,
@@ -81,9 +89,15 @@ export default function RewardsPage() {
         r.id === selectedReward.id ? { ...r, stock: r.stock - 1 } : r
       ));
       
-      // Return points to the central bank
-      if (platformConfig?.schoolFunds !== undefined) {
-          setPlatformConfig({ schoolFunds: platformConfig.schoolFunds + selectedReward.cost });
+      // Return points to the provider
+      if (selectedReward.scope === 'school') {
+        if (platformConfig?.schoolFunds !== undefined) {
+            setPlatformConfig({ schoolFunds: platformConfig.schoolFunds + selectedReward.cost });
+        }
+      } else {
+        setTeachers(currentTeachers => currentTeachers.map(t =>
+            t.id === selectedReward.providerId ? { ...t, pointBalance: (t.pointBalance || 0) + selectedReward.cost } : t
+        ));
       }
 
       toast({
@@ -100,7 +114,7 @@ export default function RewardsPage() {
     <>
       <div className="grid gap-6 animate-in fade-in-0 duration-500">
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {rewards.map((reward) => (
+          {availableRewards.map((reward) => (
             <Card key={reward.id} className="flex flex-col overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1 duration-300">
               <div className="relative h-48 w-full">
                 <Image
@@ -111,6 +125,13 @@ export default function RewardsPage() {
                   data-ai-hint="reward item"
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 />
+                 <Badge 
+                    className="absolute top-2 right-2" 
+                    variant={reward.scope === 'school' ? 'default' : 'secondary'}
+                >
+                    {reward.scope === 'school' ? <School className="mr-1.5" /> : <Users className="mr-1.5" />}
+                    {reward.scope === 'school' ? '學校' : '班級'}
+                </Badge>
               </div>
               <CardHeader>
                 <CardTitle>{reward.name}</CardTitle>

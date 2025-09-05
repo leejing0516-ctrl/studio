@@ -43,6 +43,8 @@ export type Reward = {
   cost: number;
   image: string;
   stock: number;
+  scope: 'school' | 'class';
+  providerId: string; // 'school_admin' or teacher's id
 };
 
 export type Stock = {
