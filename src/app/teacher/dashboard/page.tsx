@@ -193,13 +193,16 @@ export default function TeacherDashboardPage() {
         (student.redeemedRewards || [])
             .filter(r => r.status === 'pending_use')
             .map(redemption => ({ student, redemption }))
-    ).filter(({ redemption }) => {
+    ).filter(({ redemption, student }) => {
+        const teacherForStudent = teachers.find(t => t.classId === student.classId);
         if (role === 'admin') {
-            return redemption.reward.scope === 'school' || student.classId === selectedClassId;
+            // Admin sees school rewards and rewards for the selected class
+            return redemption.reward.scope === 'school' || (redemption.reward.providerId === teacherForStudent?.id && student.classId === selectedClassId);
         }
+        // Teacher only sees requests for their own rewards
         return redemption.reward.providerId === teacherId;
     });
-  }, [students, role, selectedClassId, teacherId]);
+  }, [students, role, selectedClassId, teacherId, teachers]);
 
   const handleApproveUsage = (studentId: string, classId: string, redemptionId: string) => {
     setStudents(currentStudents => currentStudents.map(student => {
@@ -636,42 +639,49 @@ export default function TeacherDashboardPage() {
   };
 
   const handleLoanDecision = (studentId: string, classId: string, loanId: string, decision: 'approve' | 'reject') => {
-    let toastMessage: { title: string, description: string, variant?: "default" | "destructive" } | null = null;
     const today = new Date().toISOString();
   
-    setStudents(currentStudents => {
-      const updatedStudents = currentStudents.map(student => {
-        if (student.id === studentId && student.classId === classId) {
-          const targetLoan = student.loans.find(l => l.id === loanId);
-          if (!targetLoan) return student;
+    // Find the teacher for the student's class
+    const teacherForClass = teachers.find(t => t.classId === classId);
   
-          let updatedStudent = { ...student };
-          if (decision === 'approve') {
-            updatedStudent.points += targetLoan.amount;
-            updatedStudent.loans = student.loans.map(l => l.id === loanId ? { ...l, status: 'active' as const, approvalDate: today, lastInterestAccruedDate: today } : l);
-            toastMessage = {
-              title: "貸款已批准",
-              description: `已將 ${targetLoan.amount.toLocaleString()} 點數撥款給 ${student.name}。`
-            };
-          } else {
-            updatedStudent.loans = student.loans.map(l => l.id === loanId ? { ...l, status: 'rejected' as const } : l);
-            toastMessage = {
-              title: "貸款已拒絕",
-              description: `已拒絕 ${student.name} 的貸款申請。`,
-              variant: "destructive"
-            };
-          }
-          return updatedStudent;
+    if (decision === 'approve' && (!teacherForClass || !teacherId)) {
+        toast({ title: "錯誤", description: "找不到對應的老師來處理此貸款。", variant: "destructive" });
+        return;
+    }
+  
+    const targetLoanAmount = students.find(s => s.id === studentId && s.classId === classId)?.loans.find(l => l.id === loanId)?.amount || 0;
+  
+    if (decision === 'approve') {
+        const approvingTeacher = teachers.find(t => t.id === teacherId);
+        if (!approvingTeacher || (approvingTeacher.pointBalance || 0) < targetLoanAmount) {
+            toast({ title: "貸款批准失敗", description: "您的點數餘額不足以批准此筆貸款。", variant: "destructive" });
+            return;
+        }
+    
+        // Deduct points from teacher's balance
+        setTeachers(currentTeachers => currentTeachers.map(t => 
+            t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - targetLoanAmount } : t
+        ));
+    }
+  
+    // Update student's loan status and points
+    setStudents(currentStudents => currentStudents.map(student => {
+        if (student.id === studentId && student.classId === classId) {
+            let updatedStudent = { ...student };
+            if (decision === 'approve') {
+                updatedStudent.points += targetLoanAmount;
+                updatedStudent.loans = student.loans.map(l => l.id === loanId ? { ...l, status: 'active' as const, approvalDate: today, lastInterestAccruedDate: today } : l);
+                toast({ title: "貸款已批准", description: `已將 ${targetLoanAmount.toLocaleString()} 點數撥款給 ${student.name}。` });
+            } else {
+                updatedStudent.loans = student.loans.map(l => l.id === loanId ? { ...l, status: 'rejected' as const } : l);
+                toast({ title: "貸款已拒絕", description: `已拒絕 ${student.name} 的貸款申請。`, variant: "destructive" });
+            }
+            return updatedStudent;
         }
         return student;
-      });
-      return updatedStudents;
-    });
-  
-    if (toastMessage) {
-      toast(toastMessage);
-    }
+    }));
   };
+  
   
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -1042,9 +1052,25 @@ export default function TeacherDashboardPage() {
                         <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleEditRewardClick(reward)}>
                             <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteReward(reward.id)}>
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        您確定要刪除獎勵「{reward.name}」嗎？此操作無法復原。
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>取消</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteReward(reward.id)} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                         </TableCell>
                     </TableRow>
                     ))}
@@ -1068,7 +1094,7 @@ export default function TeacherDashboardPage() {
                 <CardDescription>身為校長，您可以選擇要檢視或管理的班級。</CardDescription>
             </CardHeader>
             <CardContent>
-                <Select onValuechange={setSelectedClassId} value={selectedClassId}>
+                <Select onValueChange={setSelectedClassId} value={selectedClassId}>
                 <SelectTrigger className="w-full md:w-[280px]">
                     <SelectValue placeholder="請選擇班級" />
                 </SelectTrigger>
@@ -1273,7 +1299,7 @@ export default function TeacherDashboardPage() {
                                                 <TooltipTrigger asChild>
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
                                                                 <Trash2 className="h-4 w-4" />
                                                             </Button>
                                                         </AlertDialogTrigger>
@@ -1369,9 +1395,25 @@ export default function TeacherDashboardPage() {
                                         <Button variant="ghost" size="icon" onClick={() => handleEditStockClick(stock)}>
                                             <Edit className="h-4 w-4" />
                                         </Button>
-                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStockClick(stock)}>
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                         <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        您確定要刪除股票「{stock.name}」嗎？此操作將永久移除該股票，並從所有學生的投資組合中移除此持股。此操作無法復原。
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel onClick={() => setStockToDelete(null)}>取消</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => handleConfirmDeleteStock()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -2139,7 +2181,7 @@ export default function TeacherDashboardPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDeleteTeacher} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+            <AlertDialogAction onClick={() => handleConfirmDeleteTeacher()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -2209,7 +2251,7 @@ export default function TeacherDashboardPage() {
             </form>
         </DialogContent>
     </Dialog>
-    <Dialog open={isEditStockDialogOpen} onOpenChange={setIsEditStockDialogOpen}>
+    <Dialog open={isEditStockDialogOpen} onOpenChange={(open) => { if(!open) setEditingStock(null) }}>
         <DialogContent className="sm:max-w-[425px]">
             <form onSubmit={handleUpdateStock}>
                 <DialogHeader>
@@ -2258,5 +2300,7 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
+
+    
 
     
