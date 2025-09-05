@@ -109,6 +109,10 @@ export default function TeacherDashboardPage() {
   const [teacherToAllocate, setTeacherToAllocate] = useState<Teacher | null>(null);
   const [allocationAmount, setAllocationAmount] = useState<number | ''>('');
 
+  // State for Rewards
+  const [rewardImageFile, setRewardImageFile] = useState<File | null>(null);
+  const [rewardImagePreview, setRewardImagePreview] = useState<string | null>(null);
+
 
   useEffect(() => {
     const storedRole = localStorage.getItem('teacherRole');
@@ -284,46 +288,84 @@ export default function TeacherDashboardPage() {
     setBatchAwardAmount('');
   };
 
+  const handleRewardImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        setRewardImageFile(file);
+        setRewardImagePreview(URL.createObjectURL(file));
+    }
+  };
 
-  const handleAddReward = (event: React.FormEvent<HTMLFormElement>) => {
+
+  const handleAddReward = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!teacherId) return;
 
     const formData = new FormData(event.currentTarget);
+    const name = formData.get("name") as string;
+    const description = formData.get("description") as string;
+    const cost = Number(formData.get("cost"));
+    const stock = Number(formData.get("stock"));
+
+    let imageUrl = `https://picsum.photos/seed/${name.replace(/\s/g, '-')}/600/400`;
+
+    if (rewardImageFile) {
+        try {
+            imageUrl = await fileToDataUrl(rewardImageFile);
+        } catch (error) {
+            console.error("Error converting image to data URL", error);
+            toast({ title: "圖片上傳失敗", description: "無法處理您上傳的圖片，將使用預設圖片。", variant: "destructive" });
+        }
+    }
+
     const newReward: Reward = {
       id: rewards.length > 0 ? Math.max(...rewards.map(r => parseInt(r.id.toString()))) + 1 : 1,
-      name: formData.get("name") as string,
-      description: formData.get("description") as string,
-      cost: Number(formData.get("cost")),
-      stock: Number(formData.get("stock")),
-      image: `https://picsum.photos/seed/${Math.random()}/600/400`,
+      name,
+      description,
+      cost,
+      stock,
+      image: imageUrl,
       scope: role === 'admin' ? 'school' : 'class',
       providerId: role === 'admin' ? 'school_admin' : teacherId,
     };
+
     setRewards(currentRewards => [...currentRewards, newReward]);
     setIsAddRewardDialogOpen(false);
     toast({
         title: "已新增獎勵",
         description: `${newReward.name} 已被新增至商店。`
-    })
+    });
   };
   
   const handleEditRewardClick = (reward: Reward) => {
     setEditingReward(reward);
+    setRewardImagePreview(reward.image);
     setIsEditRewardDialogOpen(true);
   };
   
-  const handleUpdateReward = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleUpdateReward = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!editingReward) return;
 
     const formData = new FormData(event.currentTarget);
+    let imageUrl = editingReward.image;
+
+    if (rewardImageFile) {
+        try {
+            imageUrl = await fileToDataUrl(rewardImageFile);
+        } catch (error) {
+            console.error("Error converting image to data URL", error);
+            toast({ title: "圖片上傳失敗", description: "無法處理您上傳的圖片，將保留原圖片。", variant: "destructive" });
+        }
+    }
+
     const updatedReward: Reward = {
       ...editingReward,
       name: formData.get("name") as string,
       description: formData.get("description") as string,
       cost: Number(formData.get("cost")),
       stock: Number(formData.get("stock")),
+      image: imageUrl,
     };
     
     setRewards(currentRewards => currentRewards.map(r => (r.id === updatedReward.id ? updatedReward : r)));
@@ -986,7 +1028,10 @@ export default function TeacherDashboardPage() {
                 <TableBody>
                     {rewardsInView.map((reward) => (
                     <TableRow key={reward.id}>
-                        <TableCell className="font-medium">{reward.name}</TableCell>
+                        <TableCell className="font-medium flex items-center gap-4">
+                            <Image src={reward.image} alt={reward.name} width={40} height={40} className="rounded-md object-cover" />
+                            <span>{reward.name}</span>
+                        </TableCell>
                         <TableCell>{reward.cost.toLocaleString()}</TableCell>
                         <TableCell>{reward.stock}</TableCell>
                         <TableCell>
@@ -1024,7 +1069,7 @@ export default function TeacherDashboardPage() {
                 <CardDescription>身為校長，您可以選擇要檢視或管理的班級。</CardDescription>
             </CardHeader>
             <CardContent>
-                <Select onValueChange={setSelectedClassId} value={selectedClassId}>
+                <Select onValuechange={setSelectedClassId} value={selectedClassId}>
                 <SelectTrigger className="w-full md:w-[280px]">
                     <SelectValue placeholder="請選擇班級" />
                 </SelectTrigger>
@@ -1670,96 +1715,115 @@ export default function TeacherDashboardPage() {
         </DialogContent>
     </Dialog>
 
-
     {/* Dialogs for Rewards */}
-    <Dialog open={isAddRewardDialogOpen} onOpenChange={setIsAddRewardDialogOpen}>
+    <Dialog open={isAddRewardDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+            setRewardImageFile(null);
+            setRewardImagePreview(null);
+        }
+        setIsAddRewardDialogOpen(open);
+    }}>
         <DialogContent className="sm:max-w-[425px]">
             <form onSubmit={handleAddReward}>
-          <DialogHeader>
-            <DialogTitle>新增獎勵</DialogTitle>
-            <DialogDescription>
-              填寫新獎勵項目的詳細資訊。
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="add-name" className="text-right">
-                名稱
-              </Label>
-              <Input id="add-name" name="name" className="col-span-3" required/>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="add-description" className="text-right">
-                描述
-              </Label>
-              <Input id="add-description" name="description" className="col-span-3" required/>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="add-cost" className="text-right">
-                費用
-              </Label>
-              <Input id="add-cost" name="cost" type="number" className="col-span-3" required/>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="add-stock" className="text-right">
-                庫存
-              </Label>
-              <Input id="add-stock" name="stock" type="number" className="col-span-3" required/>
-            </div>
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-                <Button type="button" variant="secondary">取消</Button>
-            </DialogClose>
-            <Button type="submit">新增獎勵</Button>
-          </DialogFooter>
-          </form>
+                <DialogHeader>
+                    <DialogTitle>新增獎勵</DialogTitle>
+                    <DialogDescription>填寫新獎勵項目的詳細資訊。</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="space-y-2">
+                        <Label>獎勵圖片</Label>
+                        <div className="flex items-center gap-4">
+                            <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
+                                {rewardImagePreview ? (
+                                    <Image src={rewardImagePreview} alt="Reward preview" fill className="object-cover rounded-md" />
+                                ) : (
+                                    <ImageOff className="h-8 w-8 text-muted-foreground" />
+                                )}
+                            </div>
+                            <Input id="reward-image-upload" type="file" accept="image/*" onChange={handleRewardImageFileChange} className="max-w-xs" />
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="add-name">名稱</Label>
+                        <Input id="add-name" name="name" required />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="add-description">描述</Label>
+                        <Input id="add-description" name="description" required />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="add-cost">費用</Label>
+                            <Input id="add-cost" name="cost" type="number" required />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="add-stock">庫存</Label>
+                            <Input id="add-stock" name="stock" type="number" required />
+                        </div>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
+                    <Button type="submit">新增獎勵</Button>
+                </DialogFooter>
+            </form>
         </DialogContent>
-      </Dialog>
-      <Dialog open={isEditRewardDialogOpen} onOpenChange={setIsEditRewardDialogOpen}>
+    </Dialog>
+
+    <Dialog open={isEditRewardDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+            setEditingReward(null);
+            setRewardImageFile(null);
+            setRewardImagePreview(null);
+        }
+        setIsEditRewardDialogOpen(open);
+    }}>
         <DialogContent className="sm:max-w-[425px]">
             <form onSubmit={handleUpdateReward}>
-          <DialogHeader>
-            <DialogTitle>編輯獎勵</DialogTitle>
-            <DialogDescription>
-              更新「{editingReward?.name}」的詳細資訊。
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-name" className="text-right">
-                名稱
-              </Label>
-              <Input id="edit-name" name="name" defaultValue={editingReward?.name} className="col-span-3" required/>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-description" className="text-right">
-                描述
-              </Label>
-              <Input id="edit-description" name="description" defaultValue={editingReward?.description} className="col-span-3" required/>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-cost" className="text-right">
-                費用
-              </Label>
-              <Input id="edit-cost" name="cost" type="number" defaultValue={editingReward?.cost} className="col-span-3" required/>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-stock" className="text-right">
-                庫存
-              </Label>
-              <Input id="edit-stock" name="stock" type="number" defaultValue={editingReward?.stock} className="col-span-3" required/>
-            </div>
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-                <Button type="button" variant="secondary" onClick={() => setEditingReward(null)}>取消</Button>
-            </DialogClose>
-            <Button type="submit">儲存變更</Button>
-          </DialogFooter>
-          </form>
+                <DialogHeader>
+                    <DialogTitle>編輯獎勵</DialogTitle>
+                    <DialogDescription>更新「{editingReward?.name}」的詳細資訊。</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                     <div className="space-y-2">
+                        <Label>獎勵圖片</Label>
+                        <div className="flex items-center gap-4">
+                             <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
+                                {rewardImagePreview ? (
+                                    <Image src={rewardImagePreview} alt="Reward preview" fill className="object-cover rounded-md" />
+                                ) : (
+                                    <ImageOff className="h-8 w-8 text-muted-foreground" />
+                                )}
+                            </div>
+                            <Input id="edit-reward-image-upload" type="file" accept="image/*" onChange={handleRewardImageFileChange} className="max-w-xs" />
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="edit-name">名稱</Label>
+                        <Input id="edit-name" name="name" defaultValue={editingReward?.name} required />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="edit-description">描述</Label>
+                        <Input id="edit-description" name="description" defaultValue={editingReward?.description} required />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-cost">費用</Label>
+                            <Input id="edit-cost" name="cost" type="number" defaultValue={editingReward?.cost} required />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-stock">庫存</Label>
+                            <Input id="edit-stock" name="stock" type="number" defaultValue={editingReward?.stock} required />
+                        </div>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
+                    <Button type="submit">儲存變更</Button>
+                </DialogFooter>
+            </form>
         </DialogContent>
-      </Dialog>
+    </Dialog>
       
       {/* Dialogs for Students */}
       <Dialog open={isAddStudentDialogOpen} onOpenChange={setIsAddStudentDialogOpen}>
