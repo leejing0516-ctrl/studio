@@ -1,0 +1,90 @@
+
+"use client";
+
+import { useContext, useMemo } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Megaphone, GraduationCap } from "lucide-react";
+import { format } from "date-fns";
+import { AppDataContext } from "@/context/AppDataContext";
+import { StudentDataContext } from "@/context/StudentDataContext";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+
+export default function AnnouncementsPage() {
+    const { platformConfig, classes } = useContext(AppDataContext);
+    const { studentData } = useContext(StudentDataContext);
+
+    const schoolAnnouncements = useMemo(() => {
+        return (platformConfig?.announcements || [])
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [platformConfig]);
+
+    const classAnnouncements = useMemo(() => {
+        if (!studentData.student) return [];
+        const studentClass = classes.find(c => c.id === studentData.student!.classId);
+        return (studentClass?.announcements || [])
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [classes, studentData.student]);
+
+
+    const AnnouncementList = ({ announcements, type }: { announcements: any[], type: 'school' | 'class' }) => (
+         <Accordion type="single" collapsible className="w-full">
+            {announcements.map((ann, index) => (
+            <AccordionItem value={`item-${type}-${index}`} key={ann.id}>
+                <AccordionTrigger>
+                <div className="flex items-center gap-4 text-left">
+                    <span className="font-semibold">{ann.title}</span>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">{format(new Date(ann.date), "yyyy-MM-dd")}</span>
+                </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                <div className="prose prose-sm max-w-none text-foreground whitespace-pre-wrap">
+                    {ann.content}
+                </div>
+                </AccordionContent>
+            </AccordionItem>
+            ))}
+        </Accordion>
+    );
+
+    return (
+        <div className="animate-in fade-in-0 duration-500 space-y-8">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Megaphone />
+                        學校公告
+                    </CardTitle>
+                    <CardDescription>來自學校的最新消息與活動。</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {schoolAnnouncements.length > 0 ? (
+                        <AnnouncementList announcements={schoolAnnouncements} type="school" />
+                    ) : (
+                        <p className="text-muted-foreground text-center py-8">目前沒有學校公告。</p>
+                    )}
+                </CardContent>
+            </Card>
+
+            <Separator />
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <GraduationCap />
+                        班級公告
+                    </CardTitle>
+                    <CardDescription>來自您班級老師的最新消息。</CardDescription>
+                </CardHeader>
+                <CardContent>
+                     {classAnnouncements.length > 0 ? (
+                        <AnnouncementList announcements={classAnnouncements} type="class" />
+                    ) : (
+                        <p className="text-muted-foreground text-center py-8">目前沒有班級公告。</p>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
+    );
+}

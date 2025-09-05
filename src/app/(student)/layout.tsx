@@ -29,6 +29,7 @@ import {
   Package,
   Landmark,
   KeyRound,
+  Megaphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -149,6 +150,7 @@ export default function StudentLayout({
 
   const navItems = [
     { href: "/dashboard", label: "儀表板", icon: LayoutDashboard },
+    { href: "/announcements", label: "最新公告", icon: Megaphone },
     { href: "/my-collection", label: "我的收藏", icon: Package },
     { href: "/rewards", label: "獎勵商店", icon: Gift },
     { href: "/stocks", label: "股票市場", icon: LineChart },

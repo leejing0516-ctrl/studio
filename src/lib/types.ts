@@ -66,6 +66,7 @@ export type PortfolioItem = {
 export type Class = {
     id: string;
     name: string;
+    announcements: Announcement[];
 }
 
 export type Teacher = {

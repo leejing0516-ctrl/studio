@@ -10,7 +10,6 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-  CardFooter,
 } from "@/components/ui/card";
 import {
   Table,
@@ -22,11 +21,10 @@ import {
 } from "@/components/ui/table";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Reward, Student, Teacher, Class, Loan, Stock, Announcement } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, KeyRound, Bell, Landmark, Check, X, Upload, Download, Loader2, Users, Settings, ImageOff, LineChart, Banknote, ShieldPlus, Coins, School, Megaphone } from "lucide-react";
+import type { Reward, Student, Teacher, Class, Loan, Stock } from "@/lib/types";
+import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Settings, ImageOff, LineChart, Banknote, ShieldPlus, Coins, School } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -48,8 +46,6 @@ import { format } from "date-fns";
 import Papa from "papaparse";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-
 
 interface StagedStudent {
     id: string;
@@ -115,13 +111,6 @@ export default function TeacherDashboardPage() {
   const [rewardImageFile, setRewardImageFile] = useState<File | null>(null);
   const [rewardImagePreview, setRewardImagePreview] = useState<string | null>(null);
 
-  // State for Announcements
-  const [isAddAnnouncementDialogOpen, setIsAddAnnouncementDialogOpen] = useState(false);
-  const [isEditAnnouncementDialogOpen, setIsEditAnnouncementDialogOpen] = useState(false);
-  const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
-  const [announcementToDelete, setAnnouncementToDelete] = useState<Announcement | null>(null);
-
-
   useEffect(() => {
     const storedRole = localStorage.getItem('teacherRole');
     const storedTeacherId = localStorage.getItem('teacherId');
@@ -144,13 +133,6 @@ export default function TeacherDashboardPage() {
   }, [platformConfig]);
 
   const currentTeacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
-  
-  const announcements = useMemo(() => {
-    return (platformConfig?.announcements || [])
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [platformConfig]);
-
-  const recentAnnouncements = useMemo(() => announcements.slice(0, 3), [announcements]);
 
   const studentsInView = useMemo(() => {
     if (role === 'admin') {
@@ -646,7 +628,7 @@ export default function TeacherDashboardPage() {
         return;
     }
 
-    const newClass: Class = { id, name };
+    const newClass: Class = { id, name, announcements: [] };
     setClasses(current => [...current, newClass]);
     setIsAddClassDialogOpen(false);
     toast({
@@ -986,67 +968,6 @@ export default function TeacherDashboardPage() {
     toast({ title: "已刪除股票", description: `已從市場及所有投資組合中移除 ${stockToDelete.name}。`, variant: "destructive" });
     setStockToDelete(null);
   }
-
-  const handleAddAnnouncement = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const title = formData.get("title") as string;
-    const content = formData.get("content") as string;
-
-    const newAnnouncement: Announcement = {
-        id: `announcement-${Date.now()}`,
-        title,
-        content,
-        date: new Date().toISOString(),
-    };
-    
-    const currentAnnouncements = platformConfig?.announcements || [];
-    setPlatformConfig({ announcements: [...currentAnnouncements, newAnnouncement] });
-    
-    toast({ title: "公告已發布", description: "所有老師和學生現在都能看到這則新公告。" });
-    setIsAddAnnouncementDialogOpen(false);
-  };
-
-  const handleEditAnnouncementClick = (announcement: Announcement) => {
-    setEditingAnnouncement(announcement);
-    setIsEditAnnouncementDialogOpen(true);
-  };
-
-  const handleUpdateAnnouncement = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!editingAnnouncement) return;
-
-    const formData = new FormData(event.currentTarget);
-    const title = formData.get("title") as string;
-    const content = formData.get("content") as string;
-
-    const updatedAnnouncement: Announcement = {
-      ...editingAnnouncement,
-      title,
-      content,
-    };
-
-    const updatedAnnouncements = (platformConfig?.announcements || []).map(ann => 
-        ann.id === updatedAnnouncement.id ? updatedAnnouncement : ann
-    );
-    setPlatformConfig({ announcements: updatedAnnouncements });
-
-    toast({ title: "公告已更新" });
-    setIsEditAnnouncementDialogOpen(false);
-    setEditingAnnouncement(null);
-  };
-
-  const handleDeleteAnnouncementClick = (announcement: Announcement) => {
-    setAnnouncementToDelete(announcement);
-  };
-  
-  const handleConfirmDeleteAnnouncement = () => {
-      if (!announcementToDelete) return;
-      const updatedAnnouncements = (platformConfig?.announcements || []).filter(ann => ann.id !== announcementToDelete.id);
-      setPlatformConfig({ announcements: updatedAnnouncements });
-      toast({ title: "公告已刪除", variant: "destructive" });
-      setAnnouncementToDelete(null);
-  }
   
   if (isLoading) {
       return (
@@ -1224,7 +1145,7 @@ export default function TeacherDashboardPage() {
         )}
     </div>
     <Tabs defaultValue="students" className="animate-in fade-in-0 duration-500">
-      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-9' : 'grid-cols-5'}`}>
+      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-8' : 'grid-cols-4'}`}>
         <TabsTrigger value="students">學生管理</TabsTrigger>
         {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="stocks">股票管理</TabsTrigger>}
@@ -1242,7 +1163,6 @@ export default function TeacherDashboardPage() {
                 <Badge variant="destructive" className="ml-2">{loanRequests.length}</Badge>
             )}
         </TabsTrigger>
-        {role === 'admin' && <TabsTrigger value="announcements">銀行公告管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="settings">平台設定</TabsTrigger>}
       </TabsList>
       
@@ -1511,64 +1431,6 @@ export default function TeacherDashboardPage() {
             </Card>
         </TabsContent>
         
-        <TabsContent value="announcements" className="mt-6">
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                        <CardTitle>銀行公告管理</CardTitle>
-                        <CardDescription>新增、編輯或刪除全站公告。所有師生皆可看見。</CardDescription>
-                    </div>
-                    <Button onClick={() => setIsAddAnnouncementDialogOpen(true)}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        新增公告
-                    </Button>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="w-[200px]">發布日期</TableHead>
-                                <TableHead>標題</TableHead>
-                                <TableHead className="text-right">操作</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                           {announcements.map((ann) => (
-                             <TableRow key={ann.id}>
-                               <TableCell>{format(new Date(ann.date), "yyyy-MM-dd HH:mm")}</TableCell>
-                               <TableCell>{ann.title}</TableCell>
-                               <TableCell className="text-right">
-                                    <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleEditAnnouncementClick(ann)}>
-                                        <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteAnnouncementClick(ann)}>
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                    您確定要刪除公告「{ann.title}」嗎？此操作無法復原。
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel>取消</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => handleConfirmDeleteAnnouncement()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                               </TableCell>
-                             </TableRow>
-                           ))}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
-        </TabsContent>
-
         <TabsContent value="settings" className="mt-6 space-y-6">
             <Card>
                 <CardHeader>
@@ -2443,101 +2305,6 @@ export default function TeacherDashboardPage() {
             </AlertDialogFooter>
         </AlertDialogContent>
     </AlertDialog>
-
-    {/* Dialogs for Announcements (Admin only) */}
-    <Dialog open={isAddAnnouncementDialogOpen} onOpenChange={setIsAddAnnouncementDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
-            <form onSubmit={handleAddAnnouncement}>
-                <DialogHeader>
-                    <DialogTitle>新增銀行公告</DialogTitle>
-                    <DialogDescription>建立一則新的公告，發布後所有師生都將能看到。</DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="ann-title">標題</Label>
-                        <Input id="ann-title" name="title" required />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="ann-content">內容</Label>
-                        <Textarea id="ann-content" name="content" required rows={5} />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
-                    <Button type="submit">發布公告</Button>
-                </DialogFooter>
-            </form>
-        </DialogContent>
-    </Dialog>
-     <Dialog open={isEditAnnouncementDialogOpen} onOpenChange={(open) => {if (!open) setEditingAnnouncement(null)}}>
-        <DialogContent className="sm:max-w-lg">
-            <form onSubmit={handleUpdateAnnouncement}>
-                <DialogHeader>
-                    <DialogTitle>編輯銀行公告</DialogTitle>
-                    <DialogDescription>修改「{editingAnnouncement?.title}」的詳細內容。</DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="edit-ann-title">標題</Label>
-                        <Input id="edit-ann-title" name="title" defaultValue={editingAnnouncement?.title} required />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="edit-ann-content">內容</Label>
-                        <Textarea id="edit-ann-content" name="content" defaultValue={editingAnnouncement?.content} required rows={5} />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
-                    <Button type="submit">儲存變更</Button>
-                </DialogFooter>
-            </form>
-        </DialogContent>
-    </Dialog>
-    <AlertDialog open={!!announcementToDelete} onOpenChange={(open) => !open && setAnnouncementToDelete(null)}>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
-                <AlertDialogDescription>
-                    您確定要刪除公告「{announcementToDelete?.title}」嗎？此操作無法復原。
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setAnnouncementToDelete(null)}>取消</AlertDialogCancel>
-                <AlertDialogAction onClick={() => handleConfirmDeleteAnnouncement()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-    </AlertDialog>
-
-    {announcements.length > 0 && (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Megaphone />
-            銀行公告
-          </CardTitle>
-          <CardDescription>來自銀行的最新消息與活動。</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Accordion type="single" collapsible className="w-full">
-            {recentAnnouncements.map((ann, index) => (
-              <AccordionItem value={`item-${index}`} key={ann.id}>
-                <AccordionTrigger>
-                  <div className="flex items-center gap-4">
-                      <span className="font-semibold">{ann.title}</span>
-                      <span className="text-xs text-muted-foreground">{format(new Date(ann.date), "yyyy-MM-dd")}</span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div className="prose prose-sm max-w-none text-foreground whitespace-pre-wrap">
-                    {ann.content}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        </CardContent>
-      </Card>
-    )}
     </div>
   );
 }

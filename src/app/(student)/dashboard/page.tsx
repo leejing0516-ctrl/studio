@@ -3,7 +3,7 @@
 
 import { useContext, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Coins, Trophy, Wallet, BarChart as BarChartIcon, Landmark, Megaphone } from "lucide-react";
+import { Coins, Trophy, Wallet, BarChart as BarChartIcon, Landmark } from "lucide-react";
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Bar, BarChart, XAxis, YAxis } from "recharts"
 import RewardSuggestion from "@/components/reward-suggestion";
@@ -11,8 +11,6 @@ import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
 import { cn } from "@/lib/utils";
 import { subDays, format, parseISO, startOfDay, isWithinInterval } from "date-fns";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-
 
 const chartConfig: ChartConfig = {
   points: {
@@ -27,7 +25,7 @@ const chartConfig: ChartConfig = {
 
 export default function StudentDashboardPage() {
   const { studentData } = useContext(StudentDataContext);
-  const { students, stocks: marketStocks, platformConfig } = useContext(AppDataContext);
+  const { students, stocks: marketStocks } = useContext(AppDataContext);
   
   // Find the most up-to-date student info from the source of truth
   const currentStudent = useMemo(() => 
@@ -35,12 +33,6 @@ export default function StudentDashboardPage() {
   , [students, studentData.student?.id, studentData.student?.classId]);
 
   const totalPoints = currentStudent?.points || 0;
-
-  const announcements = useMemo(() => {
-    return (platformConfig?.announcements || [])
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 3);
-  }, [platformConfig]);
 
   const pointsData = useMemo(() => {
     if (!currentStudent) return [];
@@ -220,38 +212,6 @@ export default function StudentDashboardPage() {
           </CardContent>
         </Card>
       </div>
-
-      {announcements.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Megaphone />
-              銀行公告
-            </CardTitle>
-            <CardDescription>來自銀行的最新消息與活動。</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Accordion type="single" collapsible className="w-full">
-              {announcements.map((ann, index) => (
-                <AccordionItem value={`item-${index}`} key={ann.id}>
-                  <AccordionTrigger>
-                    <div className="flex items-center gap-4">
-                        <span className="font-semibold">{ann.title}</span>
-                        <span className="text-xs text-muted-foreground">{format(new Date(ann.date), "yyyy-MM-dd")}</span>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="prose prose-sm max-w-none text-foreground whitespace-pre-wrap">
-                      {ann.content}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          </CardContent>
-        </Card>
-      )}
-
     </div>
   );
 }
