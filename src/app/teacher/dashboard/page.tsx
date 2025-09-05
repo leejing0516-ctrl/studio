@@ -889,7 +889,6 @@ export default function TeacherDashboardPage() {
 
   const handleAddStock = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
     const ticker = (formData.get("ticker") as string).toUpperCase();
     
     if (stocks.some(s => s.ticker === ticker)) {
@@ -1084,7 +1083,7 @@ export default function TeacherDashboardPage() {
             <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <div>
-                    <CardTitle className="flex items-center gap-2"><Banknote/> 學校總資金 (中央銀行)</CardTitle>
+                    <CardTitle className="flex items-center gap-2"><Banknote/> 學校總資金</CardTitle>
                     <CardDescription>用於分配預算給各班老師的總資金池。</CardDescription>
                 </div>
                 <Button size="sm" variant="outline" onClick={() => setIsAdjustFundsDialogOpen(true)}>
@@ -1608,7 +1607,7 @@ export default function TeacherDashboardPage() {
             <DialogHeader>
                 <DialogTitle>調整學校總資金</DialogTitle>
                 <DialogDescription>
-                    增加（注入）或減少（移除）中央銀行的資金。此操作會直接影響點數的總供給量。
+                    增加（注入）或減少（移除）學校總資金。此操作會直接影響點數的總供給量。
                 </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
