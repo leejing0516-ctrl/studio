@@ -33,8 +33,19 @@ export default function RewardsPage() {
   
   const availableRewards = useMemo(() => {
     if (!student) return [];
-    return rewards.filter(reward => reward.scope === 'school' || (reward.scope === 'class' && reward.providerId === student.classId));
-  }, [rewards, student]);
+    
+    // Find the teacher for the student's class
+    const classTeacher = teachers.find(t => t.classId === student.classId);
+
+    return rewards.filter(reward => {
+      // School-wide rewards are always available
+      if (reward.scope === 'school') return true;
+      // Class-specific rewards are available if the provider is the student's teacher
+      if (reward.scope === 'class' && classTeacher && reward.providerId === classTeacher.id) return true;
+      
+      return false;
+    });
+  }, [rewards, student, teachers]);
 
   const handleRedeemClick = (reward: Reward) => {
     if (studentData.points < reward.cost) {
