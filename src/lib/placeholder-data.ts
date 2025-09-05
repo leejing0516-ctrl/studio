@@ -15,13 +15,13 @@ export const classes: Class[] = [
 ];
 
 export const teachers: Teacher[] = [
-    { id: "principal", name: "李志軒校長", role: "admin", password: TEACHER_PASSWORD },
-    { id: "teacher6A", name: "高老師", role: "teacher", classId: "6A", password: TEACHER_PASSWORD },
-    { id: "teacher6B", name: "李老師", role: "teacher", classId: "6B", password: TEACHER_PASSWORD },
-    { id: "teacher5A", name: "王老師", role: "teacher", classId: "5A", password: TEACHER_PASSWORD },
-    { id: "teacher5B", name: "陳老師", role: "teacher", classId: "5B", password: TEACHER_PASSWORD },
-    { id: "teacher4A", name: "林老師", role: "teacher", classId: "4A", password: TEACHER_PASSWORD },
-    { id: "teacherUnassigned", name: "吳老師", role: "teacher", classId: null, password: TEACHER_PASSWORD },
+    { id: "principal", name: "李志軒校長", role: "admin", password: TEACHER_PASSWORD, pointBalance: 0 },
+    { id: "teacher6A", name: "高老師", role: "teacher", classId: "6A", password: TEACHER_PASSWORD, pointBalance: 10000 },
+    { id: "teacher6B", name: "李老師", role: "teacher", classId: "6B", password: TEACHER_PASSWORD, pointBalance: 10000 },
+    { id: "teacher5A", name: "王老師", role: "teacher", classId: "5A", password: TEACHER_PASSWORD, pointBalance: 8000 },
+    { id: "teacher5B", name: "陳老師", role: "teacher", classId: "5B", password: TEACHER_PASSWORD, pointBalance: 8000 },
+    { id: "teacher4A", name: "林老師", role: "teacher", classId: "4A", password: TEACHER_PASSWORD, pointBalance: 5000 },
+    { id: "teacherUnassigned", name: "吳老師", role: "teacher", classId: null, password: TEACHER_PASSWORD, pointBalance: 0 },
 ];
 
 export const students: Student[] = [

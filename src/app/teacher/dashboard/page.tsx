@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Reward, Student, Teacher, Class, Loan, Stock } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, KeyRound, Bell, Landmark, Check, X, Upload, Download, Loader2, Users, Settings, ImageOff, LineChart, Banknote, ShieldPlus } from "lucide-react";
+import { PlusCircle, Edit, Trash2, KeyRound, Bell, Landmark, Check, X, Upload, Download, Loader2, Users, Settings, ImageOff, LineChart, Banknote, ShieldPlus, Coins } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -78,6 +78,7 @@ export default function TeacherDashboardPage() {
   } = useContext(AppDataContext);
 
   const [role, setRole] = useState<string | null>(null);
+  const [teacherId, setTeacherId] = useState<string | null>(null);
   const [teacherClassId, setTeacherClassId] = useState<string | null>(null);
   const [selectedClassId, setSelectedClassId] = useState<string>('');
 
@@ -103,11 +104,18 @@ export default function TeacherDashboardPage() {
   const [adjustFundsAmount, setAdjustFundsAmount] = useState<number | ''>('');
   const [adjustFundsType, setAdjustFundsType] = useState<'add' | 'remove'>('add');
 
+  // State for Teacher Point Allocation
+  const [isAllocatePointsDialogOpen, setIsAllocatePointsDialogOpen] = useState(false);
+  const [teacherToAllocate, setTeacherToAllocate] = useState<Teacher | null>(null);
+  const [allocationAmount, setAllocationAmount] = useState<number | ''>('');
+
 
   useEffect(() => {
     const storedRole = localStorage.getItem('teacherRole');
+    const storedTeacherId = localStorage.getItem('teacherId');
     const storedClassId = localStorage.getItem('teacherClassId');
     setRole(storedRole);
+    setTeacherId(storedTeacherId);
     setTeacherClassId(storedClassId);
     if (storedRole === 'admin') {
       if(classes.length > 0 && !selectedClassId) {
@@ -122,6 +130,8 @@ export default function TeacherDashboardPage() {
     setPlatformLogoPreview(platformConfig?.platformLogoUrl || null);
     setSponsorLogoPreviews(platformConfig?.sponsorLogoUrls || Array(4).fill(null));
   }, [platformConfig]);
+
+  const currentTeacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
 
   const studentsInView = useMemo(() => {
     if (role === 'admin') {
@@ -198,8 +208,8 @@ export default function TeacherDashboardPage() {
       return;
     }
     
-    if ((platformConfig?.schoolFunds || 0) < pointsToAdd) {
-        toast({ title: "學校資金不足", description: "學校總資金不足以發放此次點數。", variant: "destructive" });
+    if (!currentTeacher || (currentTeacher.pointBalance || 0) < pointsToAdd) {
+        toast({ title: "點數餘額不足", description: "您的點數餘額不足以發放此次點數。", variant: "destructive" });
         return;
     }
 
@@ -212,7 +222,9 @@ export default function TeacherDashboardPage() {
         return s;
     }));
     
-    setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - pointsToAdd });
+    setTeachers(currentTeachers => currentTeachers.map(t => 
+        t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToAdd } : t
+    ));
 
     const student = students.find(s => s.id === studentId && s.classId === selectedClassId);
     toast({
@@ -229,8 +241,8 @@ export default function TeacherDashboardPage() {
     }
     
     const totalPointsToAward = studentsInView.length * pointsToAdd;
-    if ((platformConfig?.schoolFunds || 0) < totalPointsToAward) {
-        toast({ title: "學校資金不足", description: `學校總資金不足以發放此次點數。需要 ${totalPointsToAward.toLocaleString()} 點，但只有 ${(platformConfig?.schoolFunds || 0).toLocaleString()} 點。`, variant: "destructive" });
+    if (!currentTeacher || (currentTeacher.pointBalance || 0) < totalPointsToAward) {
+        toast({ title: "點數餘額不足", description: `您的點數餘額不足以進行此次批次發放。需要 ${totalPointsToAward.toLocaleString()} 點，但您只有 ${(currentTeacher.pointBalance || 0).toLocaleString()} 點。`, variant: "destructive" });
         return;
     }
 
@@ -247,7 +259,9 @@ export default function TeacherDashboardPage() {
       })
     );
     
-    setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - totalPointsToAward });
+    setTeachers(currentTeachers => currentTeachers.map(t => 
+        t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - totalPointsToAward } : t
+    ));
 
     const className = classes.find(c => c.id === selectedClassId)?.name || '此班級';
     toast({
@@ -450,6 +464,7 @@ export default function TeacherDashboardPage() {
         classId: classId === 'unassigned' ? null : classId,
         role: 'teacher',
         password: platformConfig?.teacherPassword || TEACHER_PASSWORD,
+        pointBalance: 0,
     };
     setTeachers(current => [...current, newTeacher]);
     setIsAddTeacherDialogOpen(false);
@@ -783,6 +798,33 @@ export default function TeacherDashboardPage() {
     setAdjustFundsAmount('');
   };
 
+  const handleAllocatePointsToTeacher = () => {
+    const amount = Number(allocationAmount);
+    if (!amount || amount <= 0 || !teacherToAllocate) {
+        toast({ title: "無效的金額", description: "請輸入一個正數。", variant: "destructive" });
+        return;
+    }
+
+    const currentSchoolFunds = platformConfig?.schoolFunds || 0;
+    if (currentSchoolFunds < amount) {
+        toast({ title: "學校資金不足", description: "中央銀行資金不足以進行此次撥款。", variant: "destructive" });
+        return;
+    }
+    
+    // Deduct from school funds
+    setPlatformConfig({ schoolFunds: currentSchoolFunds - amount });
+    
+    // Add to teacher's balance
+    setTeachers(currentTeachers => currentTeachers.map(t => 
+        t.id === teacherToAllocate.id ? { ...t, pointBalance: (t.pointBalance || 0) + amount } : t
+    ));
+
+    toast({ title: "撥款成功", description: `已成功撥款 ${amount.toLocaleString()} 點給 ${teacherToAllocate.name} 老師。`});
+    setIsAllocatePointsDialogOpen(false);
+    setAllocationAmount('');
+    setTeacherToAllocate(null);
+  };
+
   const unassignedClasses = useMemo(() => {
     const assignedClassIds = teachers.map(t => t.classId).filter(Boolean);
     return classes.filter(c => !assignedClassIds.includes(c.id));
@@ -863,31 +905,32 @@ export default function TeacherDashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-    {role === 'admin' && (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {role === 'admin' ? (
+        <>
+            <Card>
             <CardHeader>
-              <CardTitle>班級選擇</CardTitle>
-              <CardDescription>身為校長，您可以選擇要檢視或管理的班級。</CardDescription>
+                <CardTitle>班級選擇</CardTitle>
+                <CardDescription>身為校長，您可以選擇要檢視或管理的班級。</CardDescription>
             </CardHeader>
             <CardContent>
-              <Select onValueChange={setSelectedClassId} value={selectedClassId}>
+                <Select onValueChange={setSelectedClassId} value={selectedClassId}>
                 <SelectTrigger className="w-full md:w-[280px]">
-                  <SelectValue placeholder="請選擇班級" />
+                    <SelectValue placeholder="請選擇班級" />
                 </SelectTrigger>
                 <SelectContent>
-                  {classes.map(c => (
+                    {classes.map(c => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
+                    ))}
                 </SelectContent>
-              </Select>
+                </Select>
             </CardContent>
-          </Card>>
-          <Card>
+            </Card>
+            <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <div>
                     <CardTitle className="flex items-center gap-2"><Banknote/> 學校總資金 (中央銀行)</CardTitle>
-                    <CardDescription>用於控制點數流通，避免通貨膨脹。</CardDescription>
+                    <CardDescription>用於分配預算給各班老師的總資金池。</CardDescription>
                 </div>
                 <Button size="sm" variant="outline" onClick={() => setIsAdjustFundsDialogOpen(true)}>
                     <ShieldPlus className="mr-2 h-4 w-4" />
@@ -898,9 +941,21 @@ export default function TeacherDashboardPage() {
                 <p className="text-4xl font-bold">{(platformConfig?.schoolFunds || 0).toLocaleString()}</p>
                 <p className="text-xs text-muted-foreground">目前在經濟體系中流通的點數總量。</p>
             </CardContent>
-          </Card>
-      </div>
-    )}
+            </Card>
+        </>
+        ) : (
+            <Card className="md:col-span-2">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Coins /> 我的點數餘額</CardTitle>
+                    <CardDescription>您可以發放給學生的點數總額。點數不足時請向校長申請撥款。</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-4xl font-bold">{(currentTeacher?.pointBalance || 0).toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">目前可用的點數。</p>
+                </CardContent>
+            </Card>
+        )}
+    </div>
     <Tabs defaultValue="students" className="animate-in fade-in-0 duration-500">
       <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-8' : 'grid-cols-5'}`}>
         <TabsTrigger value="students">學生管理</TabsTrigger>
@@ -1008,8 +1063,8 @@ export default function TeacherDashboardPage() {
             <Card>
                 <CardHeader  className="flex flex-row items-center justify-between">
                     <div>
-                        <CardTitle>教師名單</CardTitle>
-                        <CardDescription>新增、編輯或指派班級導師。</CardDescription>
+                        <CardTitle>教師管理</CardTitle>
+                        <CardDescription>新增、編輯教師，或為他們分配點數預算。</CardDescription>
                     </div>
                     <Button onClick={() => setIsAddTeacherDialogOpen(true)}>
                         <PlusCircle className="mr-2 h-4 w-4" />
@@ -1023,6 +1078,7 @@ export default function TeacherDashboardPage() {
                                 <TableHead>ID</TableHead>
                                 <TableHead>姓名</TableHead>
                                 <TableHead>班級</TableHead>
+                                <TableHead>點數餘額</TableHead>
                                 <TableHead className="text-right">操作</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -1032,32 +1088,58 @@ export default function TeacherDashboardPage() {
                                     <TableCell>{teacher.id}</TableCell>
                                     <TableCell>{teacher.name}</TableCell>
                                     <TableCell>{classes.find(c => c.id === teacher.classId)?.name || '未指派'}</TableCell>
+                                    <TableCell>{(teacher.pointBalance || 0).toLocaleString()}</TableCell>
                                     <TableCell className="text-right">
-                                        <Button variant="ghost" size="icon" onClick={() => handleEditTeacherClick(teacher)}>
-                                            <Edit className="h-4 w-4" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" onClick={() => handleResetTeacherPasswordClick(teacher)}>
-                                            <KeyRound className="h-4 w-4" />
-                                        </Button>
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        您確定要刪除老師「{teacher.name}」嗎？此操作將永久移除該老師的帳號且無法復原。
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>取消</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleConfirmDeleteTeacher()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button variant="ghost" size="icon" onClick={() => { setTeacherToAllocate(teacher); setIsAllocatePointsDialogOpen(true); }}>
+                                                        <Coins className="h-4 w-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent><p>分配點數</p></TooltipContent>
+                                            </Tooltip>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button variant="ghost" size="icon" onClick={() => handleEditTeacherClick(teacher)}>
+                                                        <Edit className="h-4 w-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent><p>編輯</p></TooltipContent>
+                                            </Tooltip>
+                                             <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button variant="ghost" size="icon" onClick={() => handleResetTeacherPasswordClick(teacher)}>
+                                                        <KeyRound className="h-4 w-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent><p>重設密碼</p></TooltipContent>
+                                            </Tooltip>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    您確定要刪除老師「{teacher.name}」嗎？此操作將永久移除該老師的帳號且無法復原。
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>取消</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => handleConfirmDeleteTeacher()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                </TooltipTrigger>
+                                                <TooltipContent><p>刪除</p></TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -1212,7 +1294,7 @@ export default function TeacherDashboardPage() {
             <div>
                 <CardTitle>發送點數</CardTitle>
                 <CardDescription>
-                選擇一位學生並根據他們的成就發送點數。點數將從學校總資金中扣除。
+                從您的點數餘額中發送點數給學生。
                 </CardDescription>
             </div>
             <Button onClick={() => setIsBatchAwardDialogOpen(true)}>
@@ -1439,6 +1521,40 @@ export default function TeacherDashboardPage() {
                     <Button type="button" variant="secondary">取消</Button>
                 </DialogClose>
                 <Button type="button" onClick={handleAdjustFunds}>確認調整</Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+
+    {/* Dialog for Allocating Points to Teacher */}
+    <Dialog open={isAllocatePointsDialogOpen} onOpenChange={setIsAllocatePointsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+                <DialogTitle>分配點數給老師</DialogTitle>
+                <DialogDescription>
+                    從學校總資金撥款給「{teacherToAllocate?.name}」老師。老師將能使用這些點數來獎勵學生。
+                </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                    <Label htmlFor="allocation-amount">分配金額</Label>
+                    <Input 
+                        id="allocation-amount" 
+                        type="number"
+                        placeholder="要分配的點數量"
+                        value={allocationAmount}
+                        onChange={(e) => setAllocationAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                        required 
+                    />
+                </div>
+                <div className="text-sm text-muted-foreground">
+                    目前學校總資金：{(platformConfig?.schoolFunds || 0).toLocaleString()} 點
+                </div>
+            </div>
+            <DialogFooter>
+                <DialogClose asChild>
+                    <Button type="button" variant="secondary" onClick={() => setTeacherToAllocate(null)}>取消</Button>
+                </DialogClose>
+                <Button type="button" onClick={handleAllocatePointsToTeacher}>確認撥款</Button>
             </DialogFooter>
         </DialogContent>
     </Dialog>

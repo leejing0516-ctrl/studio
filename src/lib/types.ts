@@ -72,6 +72,7 @@ export type Teacher = {
     role: 'teacher' | 'admin'; // admin is the principal
     classId?: string | null; // classId for teachers, null for unassigned, undefined for admin
     password?: string; 
+    pointBalance?: number;
 }
 
 export type PlatformConfig = {
