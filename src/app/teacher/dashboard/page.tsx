@@ -245,10 +245,12 @@ export default function TeacherDashboardPage() {
     ));
 
     const student = students.find(s => s.id === studentId && s.classId === selectedClassId);
-    toast({
-        title: "點數已發送！",
-        description: `您已成功發送 ${pointsToAdd.toLocaleString()} 點給 ${student?.name}。`
-    })
+    setTimeout(() => {
+        toast({
+            title: "點數已發送！",
+            description: `您已成功發送 ${pointsToAdd.toLocaleString()} 點給 ${student?.name}。`
+        })
+    }, 1);
   }
 
   const handleBatchAwardPoints = () => {
@@ -645,7 +647,9 @@ export default function TeacherDashboardPage() {
     const teacherForClass = teachers.find(t => t.classId === classId);
   
     if (decision === 'approve' && (!teacherForClass || !teacherId)) {
-        toast({ title: "錯誤", description: "找不到對應的老師來處理此貸款。", variant: "destructive" });
+        setTimeout(() => {
+            toast({ title: "錯誤", description: "找不到對應的老師來處理此貸款。", variant: "destructive" });
+        }, 1);
         return;
     }
   
@@ -654,7 +658,9 @@ export default function TeacherDashboardPage() {
     if (decision === 'approve') {
         const approvingTeacher = teachers.find(t => t.id === teacherId);
         if (!approvingTeacher || (approvingTeacher.pointBalance || 0) < targetLoanAmount) {
-            toast({ title: "貸款批准失敗", description: "您的點數餘額不足以批准此筆貸款。", variant: "destructive" });
+            setTimeout(() => {
+                toast({ title: "貸款批准失敗", description: "您的點數餘額不足以批准此筆貸款。", variant: "destructive" });
+            }, 1);
             return;
         }
     
@@ -671,10 +677,14 @@ export default function TeacherDashboardPage() {
             if (decision === 'approve') {
                 updatedStudent.points += targetLoanAmount;
                 updatedStudent.loans = student.loans.map(l => l.id === loanId ? { ...l, status: 'active' as const, approvalDate: today, lastInterestAccruedDate: today } : l);
-                toast({ title: "貸款已批准", description: `已將 ${targetLoanAmount.toLocaleString()} 點數撥款給 ${student.name}。` });
+                setTimeout(() => {
+                    toast({ title: "貸款已批准", description: `已將 ${targetLoanAmount.toLocaleString()} 點數撥款給 ${student.name}。` });
+                }, 1);
             } else {
                 updatedStudent.loans = student.loans.map(l => l.id === loanId ? { ...l, status: 'rejected' as const } : l);
-                toast({ title: "貸款已拒絕", description: `已拒絕 ${student.name} 的貸款申請。`, variant: "destructive" });
+                 setTimeout(() => {
+                    toast({ title: "貸款已拒絕", description: `已拒絕 ${student.name} 的貸款申請。`, variant: "destructive" });
+                }, 1);
             }
             return updatedStudent;
         }
@@ -899,6 +909,7 @@ export default function TeacherDashboardPage() {
 
   const handleAddStock = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const formData = new FormData(event.currentTarget);
     const ticker = (formData.get("ticker") as string).toUpperCase();
     
     if (stocks.some(s => s.ticker === ticker)) {
@@ -2293,7 +2304,7 @@ export default function TeacherDashboardPage() {
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogCancel onClick={() => setStockToDelete(null)}>取消</AlertDialogCancel>
-                <AlertDialogAction onClick={handleConfirmDeleteStock} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                <AlertDialogAction onClick={() => handleConfirmDeleteStock()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
     </AlertDialog>
