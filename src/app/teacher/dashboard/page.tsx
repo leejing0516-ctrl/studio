@@ -23,8 +23,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Reward, Student, Teacher, Class, Loan, Stock } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Settings, ImageOff, LineChart, Banknote, ShieldPlus, Coins, School } from "lucide-react";
+import type { Reward, Student, Teacher, Class, Loan, Stock, Challenge, StudentChallenge } from "@/lib/types";
+import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Settings, ImageOff, LineChart, Banknote, ShieldPlus, Coins, School, Flag, Hourglass } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -42,10 +42,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { AppDataContext } from "@/context/AppDataContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import Papa from "papaparse";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
+import { Textarea } from "@/components/ui/textarea";
+import { zhTW } from "date-fns/locale";
 
 interface StagedStudent {
     id: string;
@@ -110,6 +112,13 @@ export default function TeacherDashboardPage() {
   // State for Rewards
   const [rewardImageFile, setRewardImageFile] = useState<File | null>(null);
   const [rewardImagePreview, setRewardImagePreview] = useState<string | null>(null);
+
+  // State for Challenges
+  const [isAddChallengeDialogOpen, setIsAddChallengeDialogOpen] = useState(false);
+  const [isEditChallengeDialogOpen, setIsEditChallengeDialogOpen] = useState(false);
+  const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(null);
+  const [challengeToDelete, setChallengeToDelete] = useState<Challenge | null>(null);
+
 
   useEffect(() => {
     const storedRole = localStorage.getItem('teacherRole');
@@ -200,6 +209,25 @@ export default function TeacherDashboardPage() {
         return redemption.reward.providerId === teacherId;
     });
   }, [students, role, selectedClassId, teacherId, teachers]);
+  
+  const challengeApprovals = useMemo(() => {
+      const allChallenges = platformConfig?.challenges || [];
+      return students.flatMap(student =>
+          (student.challenges || [])
+            .filter(c => c.status === 'pending_approval')
+            .map(sc => ({
+                student,
+                studentChallenge: sc,
+                challenge: allChallenges.find(c => c.id === sc.challengeId)
+            }))
+      ).filter(({ student, challenge }) => {
+          if (!challenge) return false;
+          if (role === 'admin') {
+             return challenge.scope === 'school' || student.classId === selectedClassId;
+          }
+          return challenge.scope === 'class' && challenge.providerId === teacherId;
+      });
+  }, [students, platformConfig?.challenges, role, selectedClassId, teacherId]);
 
   const handleApproveUsage = (studentId: string, classId: string, redemptionId: string) => {
     setStudents(currentStudents => currentStudents.map(student => {
@@ -418,6 +446,7 @@ export default function TeacherDashboardPage() {
         redeemedRewards: [],
         loans: [],
         pointHistory: [],
+        challenges: [],
     };
     setStudents(currentStudents => [...currentStudents, newStudent]);
     setIsAddStudentDialogOpen(false);
@@ -758,6 +787,7 @@ export default function TeacherDashboardPage() {
         redeemedRewards: [],
         loans: [],
         pointHistory: [],
+        challenges: [],
     }));
 
     setStudents(current => [...current, ...newStudents]);
@@ -969,6 +999,87 @@ export default function TeacherDashboardPage() {
     setStockToDelete(null);
   }
   
+  const handleAddChallenge = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!teacherId) return;
+    const formData = new FormData(event.currentTarget);
+    
+    const newChallenge: Challenge = {
+        id: `challenge-${Date.now()}`,
+        name: formData.get("name") as string,
+        description: formData.get("description") as string,
+        points: Number(formData.get("points")),
+        scope: role === 'admin' ? 'school' : 'class',
+        providerId: role === 'admin' ? 'school_admin' : teacherId,
+    };
+
+    setPlatformConfig({ challenges: [...(platformConfig?.challenges || []), newChallenge] });
+    setIsAddChallengeDialogOpen(false);
+    toast({ title: "已新增挑戰", description: `挑戰「${newChallenge.name}」已發布。` });
+  };
+  
+  const handleEditChallengeClick = (challenge: Challenge) => {
+      setEditingChallenge(challenge);
+      setIsEditChallengeDialogOpen(true);
+  };
+
+  const handleUpdateChallenge = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingChallenge) return;
+    const formData = new FormData(event.currentTarget);
+    
+    const updatedChallenge: Challenge = {
+        ...editingChallenge,
+        name: formData.get("name") as string,
+        description: formData.get("description") as string,
+        points: Number(formData.get("points")),
+    };
+
+    setPlatformConfig({ 
+        challenges: (platformConfig?.challenges || []).map(c => 
+            c.id === updatedChallenge.id ? updatedChallenge : c
+        )
+    });
+    setIsEditChallengeDialogOpen(false);
+    setEditingChallenge(null);
+    toast({ title: "已更新挑戰", description: `挑戰「${updatedChallenge.name}」已更新。` });
+  };
+
+  const handleDeleteChallenge = (challengeId: string) => {
+    const challenge = (platformConfig?.challenges || []).find(c => c.id === challengeId);
+    setPlatformConfig({ 
+        challenges: (platformConfig?.challenges || []).filter(c => c.id !== challengeId)
+    });
+    if (challenge) {
+        toast({ title: "已刪除挑戰", description: `挑戰「${challenge.name}」已被移除。`, variant: "destructive" });
+    }
+  };
+  
+  const handleChallengeApproval = (studentId: string, classId: string, challengeId: string) => {
+    const challenge = (platformConfig?.challenges || []).find(c => c.id === challengeId);
+    if (!challenge) return;
+
+    const today = new Date().toISOString();
+    const pointsToAdd = challenge.points;
+
+    setStudents(prev => prev.map(s => {
+        if (s.id === studentId && s.classId === classId) {
+            const newHistory = [...(s.pointHistory || []), { points: pointsToAdd, date: today }];
+            return {
+                ...s,
+                points: s.points + pointsToAdd,
+                pointHistory: newHistory,
+                challenges: s.challenges.map(c => 
+                    c.challengeId === challengeId ? { ...c, status: 'completed' as const, completedDate: today } : c
+                )
+            };
+        }
+        return s;
+    }));
+    
+    toast({ title: "挑戰已批准", description: `已發送 ${pointsToAdd.toLocaleString()} 點給該學生。` });
+  };
+
   if (isLoading) {
       return (
         <div className="flex items-center justify-center h-full">
@@ -1145,22 +1256,17 @@ export default function TeacherDashboardPage() {
         )}
     </div>
     <Tabs defaultValue="students" className="animate-in fade-in-0 duration-500">
-      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-8' : 'grid-cols-4'}`}>
+      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-9' : 'grid-cols-5'}`}>
         <TabsTrigger value="students">學生管理</TabsTrigger>
         {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="stocks">股票管理</TabsTrigger>}
         <TabsTrigger value="points">發送點數</TabsTrigger>
         <TabsTrigger value="rewards">獎勵管理</TabsTrigger>
-        <TabsTrigger value="requests">
-            使用請求
-            {pendingRequests.length > 0 && (
-                <Badge variant="destructive" className="ml-2">{pendingRequests.length}</Badge>
-            )}
-        </TabsTrigger>
-         <TabsTrigger value="loans">
-            貸款申請
-            {loanRequests.length > 0 && (
-                <Badge variant="destructive" className="ml-2">{loanRequests.length}</Badge>
+        <TabsTrigger value="challenges">挑戰管理</TabsTrigger>
+        <TabsTrigger value="approvals">
+            審核中心
+            {(pendingRequests.length + loanRequests.length + challengeApprovals.length) > 0 && (
+                <Badge variant="destructive" className="ml-2">{(pendingRequests.length + loanRequests.length + challengeApprovals.length)}</Badge>
             )}
         </TabsTrigger>
         {role === 'admin' && <TabsTrigger value="settings">平台設定</TabsTrigger>}
@@ -1405,7 +1511,7 @@ export default function TeacherDashboardPage() {
                                         </Button>
                                          <AlertDialog>
                                             <AlertDialogTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStockClick(stock)}>
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
                                             </AlertDialogTrigger>
@@ -1417,7 +1523,7 @@ export default function TeacherDashboardPage() {
                                                     </AlertDialogDescription>
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter>
-                                                    <AlertDialogCancel onClick={() => setStockToDelete(null)}>取消</AlertDialogCancel>
+                                                    <AlertDialogCancel>取消</AlertDialogCancel>
                                                     <AlertDialogAction onClick={() => handleConfirmDeleteStock()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
                                                 </AlertDialogFooter>
                                             </AlertDialogContent>
@@ -1552,7 +1658,7 @@ export default function TeacherDashboardPage() {
       <TabsContent value="rewards" className="mt-6">
           <RewardsManagementTab />
       </TabsContent>
-       <TabsContent value="requests" className="mt-6">
+       <TabsContent value="approvals" className="mt-6 space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>獎勵使用請求</CardTitle>
@@ -1591,7 +1697,7 @@ export default function TeacherDashboardPage() {
                 ) : (
                     <TableRow>
                         <TableCell colSpan={5} className="text-center h-24">
-                            目前沒有待處理的請求。
+                            目前沒有待處理的獎勵使用請求。
                         </TableCell>
                     </TableRow>
                 )}
@@ -1599,9 +1705,7 @@ export default function TeacherDashboardPage() {
             </Table>
           </CardContent>
         </Card>
-      </TabsContent>
-       <TabsContent value="loans" className="mt-6">
-        <Card>
+         <Card>
           <CardHeader>
             <CardTitle>貸款申請</CardTitle>
             <CardDescription>
@@ -1647,6 +1751,113 @@ export default function TeacherDashboardPage() {
               </TableBody>
             </Table>
           </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>挑戰任務審核</CardTitle>
+            <CardDescription>
+              審核學生提交的已完成挑戰。批准後，點數將自動發送給學生。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>學生</TableHead>
+                  <TableHead>班級</TableHead>
+                  <TableHead>挑戰名稱</TableHead>
+                  <TableHead>提交時間</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {challengeApprovals.length > 0 ? (
+                    challengeApprovals.map(({ student, studentChallenge, challenge }) => (
+                        <TableRow key={studentChallenge.challengeId}>
+                            <TableCell>{student.name}</TableCell>
+                            <TableCell>{classes.find(c => c.id === student.classId)?.name}</TableCell>
+                            <TableCell>{challenge?.name}</TableCell>
+                            <TableCell>{formatDistanceToNow(new Date(studentChallenge.acceptedDate), { addSuffix: true, locale: zhTW })}</TableCell>
+                            <TableCell className="text-right">
+                                <Button size="sm" onClick={() => handleChallengeApproval(student.id, student.classId, studentChallenge.challengeId)}>
+                                    <Check className="mr-2" /> 批准並發送 {challenge?.points} 點
+                                </Button>
+                            </TableCell>
+                        </TableRow>
+                    ))
+                ) : (
+                     <TableRow>
+                        <TableCell colSpan={5} className="text-center h-24">
+                            目前沒有待審核的挑戰。
+                        </TableCell>
+                    </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </TabsContent>
+      <TabsContent value="challenges" className="mt-6">
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                    <CardTitle>{role === 'admin' ? "學校挑戰管理" : "班級挑戰管理"}</CardTitle>
+                    <CardDescription>新增、編輯或刪除挑戰任務。</CardDescription>
+                </div>
+                <Button onClick={() => setIsAddChallengeDialogOpen(true)}>
+                    <PlusCircle className="mr-2" /> 新增挑戰
+                </Button>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>名稱</TableHead>
+                            <TableHead>獎勵點數</TableHead>
+                            <TableHead>類型</TableHead>
+                            <TableHead className="text-right">操作</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {(platformConfig?.challenges || []).filter(c => role === 'admin' ? c.scope === 'school' : c.scope === 'class' && c.providerId === teacherId)
+                        .map(challenge => (
+                            <TableRow key={challenge.id}>
+                                <TableCell>{challenge.name}</TableCell>
+                                <TableCell>{challenge.points.toLocaleString()}</TableCell>
+                                <TableCell>
+                                    <Badge variant={challenge.scope === 'school' ? 'default' : 'secondary'}>
+                                        {challenge.scope === 'school' ? '學校' : '班級'}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    <Button variant="ghost" size="icon" onClick={() => handleEditChallengeClick(challenge)}>
+                                        <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setChallengeToDelete(challenge)}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>確定要刪除嗎？</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    您確定要刪除挑戰「{challenge.name}」嗎？此操作無法復原。
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>取消</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDeleteChallenge(challenge.id)} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
         </Card>
       </TabsContent>
     </Tabs>
@@ -2305,6 +2516,63 @@ export default function TeacherDashboardPage() {
             </AlertDialogFooter>
         </AlertDialogContent>
     </AlertDialog>
+     {/* Dialogs for Challenges */}
+      <Dialog open={isAddChallengeDialogOpen} onOpenChange={setIsAddChallengeDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <form onSubmit={handleAddChallenge}>
+            <DialogHeader>
+              <DialogTitle>新增挑戰</DialogTitle>
+              <DialogDescription>建立一個新的挑戰任務，學生完成後可以獲得點數。</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="challenge-name">挑戰名稱</Label>
+                <Input id="challenge-name" name="name" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="challenge-description">任務說明</Label>
+                <Textarea id="challenge-description" name="description" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="challenge-points">獎勵點數</Label>
+                <Input id="challenge-points" name="points" type="number" required />
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
+              <Button type="submit">新增挑戰</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isEditChallengeDialogOpen} onOpenChange={(open) => {if (!open) setEditingChallenge(null)}}>
+        <DialogContent className="sm:max-w-[425px]">
+          <form onSubmit={handleUpdateChallenge}>
+            <DialogHeader>
+              <DialogTitle>編輯挑戰</DialogTitle>
+              <DialogDescription>更新「{editingChallenge?.name}」的詳細資訊。</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-challenge-name">挑戰名稱</Label>
+                <Input id="edit-challenge-name" name="name" defaultValue={editingChallenge?.name} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-challenge-description">任務說明</Label>
+                <Textarea id="edit-challenge-description" name="description" defaultValue={editingChallenge?.description} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-challenge-points">獎勵點數</Label>
+                <Input id="edit-challenge-points" name="points" type="number" defaultValue={editingChallenge?.points} required />
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
+              <Button type="submit">儲存變更</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -30,6 +30,7 @@ import {
   Landmark,
   KeyRound,
   Megaphone,
+  Flag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -85,6 +86,7 @@ export default function StudentLayout({
                 portfolio: latestStudentData.portfolio,
                 redeemedRewards: latestStudentData.redeemedRewards,
                 loans: latestStudentData.loans,
+                challenges: latestStudentData.challenges,
             });
         }
     } else {
@@ -97,7 +99,7 @@ export default function StudentLayout({
   const student = studentData.student;
   
   const handleLogout = () => {
-    setStudentData({ student: null, points: 0, portfolio: [], redeemedRewards: [], loans: [] });
+    setStudentData({ student: null, points: 0, portfolio: [], redeemedRewards: [], loans: [], challenges: [] });
     router.push('/');
   }
 
@@ -151,6 +153,7 @@ export default function StudentLayout({
   const navItems = [
     { href: "/dashboard", label: "儀表板", icon: LayoutDashboard },
     { href: "/announcements", label: "最新公告", icon: Megaphone },
+    { href: "/challenges", label: "挑戰任務", icon: Flag },
     { href: "/my-collection", label: "我的收藏", icon: Package },
     { href: "/rewards", label: "獎勵商店", icon: Gift },
     { href: "/stocks", label: "股票市場", icon: LineChart },

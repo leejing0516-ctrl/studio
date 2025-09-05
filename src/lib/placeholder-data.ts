@@ -1,17 +1,17 @@
 
-import type { Student, Reward, Stock, Class, Teacher } from "./types";
+import type { Student, Reward, Stock, Class, Teacher, Challenge } from "./types";
 
 export const TEACHER_PASSWORD = "001"; // Shared password for all teachers for simplicity
 export const DAILY_INTEREST_RATE = 1; // 1 point per day
 
 export const classes: Class[] = [
-    { id: "6A", name: "六年甲班" },
-    { id: "6B", name: "六年乙班" },
-    { id: "5A", name: "五年甲班" },
-    { id: "5B", name: "五年乙班" },
-    { id: "4A", name: "四年甲班" },
-    { id: "4B", "name": "四年乙班" },
-    { id: "3A", "name": "三年甲班" },
+    { id: "6A", name: "六年甲班", announcements: [] },
+    { id: "6B", name: "六年乙班", announcements: [] },
+    { id: "5A", name: "五年甲班", announcements: [] },
+    { id: "5B", name: "五年乙班", announcements: [] },
+    { id: "4A", name: "四年甲班", announcements: [] },
+    { id: "4B", "name": "四年乙班", announcements: [] },
+    { id: "3A", "name": "三年甲班", announcements: [] },
 ];
 
 export const teachers: Teacher[] = [
@@ -29,15 +29,15 @@ export const students: Student[] = [
   { id: "S001", name: "愛麗絲·強森", classId: "6A", points: 1250, avatar: "https://picsum.photos/seed/alice/100", password: "001", portfolio: [
       { ticker: "EDU", name: "學習公司", shares: 10, avgCost: 140.00 },
       { ticker: "SCI", name: "科學解決方案", shares: 5, avgCost: 220.00 },
-  ], redeemedRewards: [], loans: [], pointHistory: [] },
+  ], redeemedRewards: [], loans: [], pointHistory: [], challenges: [] },
   { id: "S002", name: "鮑伯·威廉斯", classId: "6A", points: 800, avatar: "https://picsum.photos/seed/bob/100", password: "001", portfolio: [
       { ticker: "TECH", name: "創新有限責任公司", shares: 2, avgCost: 560.00 },
-  ], redeemedRewards: [], loans: [], pointHistory: [] },
+  ], redeemedRewards: [], loans: [], pointHistory: [], challenges: [] },
   // Class 6B
-  { id: "S003", name: "查理·布朗", classId: "6B", points: 1500, avatar: "https://picsum.photos/seed/charlie/100", password: "001", portfolio: [], redeemedRewards: [], loans: [], pointHistory: [] },
-  { id: "S004", name: "黛安娜·普林斯", classId: "6B", points: 2500, avatar: "https://picsum.photos/seed/diana/100", password: "001", portfolio: [], redeemedRewards: [], loans: [], pointHistory: [] },
+  { id: "S003", name: "查理·布朗", classId: "6B", points: 1500, avatar: "https://picsum.photos/seed/charlie/100", password: "001", portfolio: [], redeemedRewards: [], loans: [], pointHistory: [], challenges: [] },
+  { id: "S004", name: "黛安娜·普林斯", classId: "6B", points: 2500, avatar: "https://picsum.photos/seed/diana/100", password: "001", portfolio: [], redeemedRewards: [], loans: [], pointHistory: [], challenges: [] },
    // Class 5A
-  { id: "S005", name: "伊森·韓特", classId: "5A", points: 950, avatar: "https://picsum.photos/seed/ethan/100", password: "001", portfolio: [], redeemedRewards: [], loans: [], pointHistory: [] },
+  { id: "S005", name: "伊森·韓特", classId: "5A", points: 950, avatar: "https://picsum.photos/seed/ethan/100", password: "001", portfolio: [], redeemedRewards: [], loans: [], pointHistory: [], challenges: [] },
 ];
 
 export const rewards: Reward[] = [
@@ -57,6 +57,8 @@ export const stocks: Stock[] = [
     { ticker: "TECH", name: "創新有限責任公司", price: 550.00, change: -12.30, changePercent: -2.18, marketCap: "5.5兆" },
 ];
 
-    
-
-    
+export const challenges: Challenge[] = [
+    { id: 'challenge-1', name: '閱讀冠軍', description: '一個月內閱讀 5 本書並撰寫心得。', points: 500, scope: 'school', providerId: 'school_admin' },
+    { id: 'challenge-2', name: '數學達人', description: '完成 10 份數學練習卷並達到 90% 正確率。', points: 300, scope: 'class', providerId: 'teacher6A' },
+    { id: 'challenge-3', name: '小小科學家', description: '完成一項科學實驗並提交報告。', points: 400, scope: 'class', providerId: 'teacher6A' },
+];

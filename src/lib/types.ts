@@ -23,6 +23,13 @@ export type Loan = {
   lastInterestAccruedDate?: string; // ISO date string, last time interest was calculated
 }
 
+export type StudentChallenge = {
+    challengeId: string;
+    status: 'in_progress' | 'pending_approval' | 'completed';
+    acceptedDate: string; // ISO date string
+    completedDate?: string; // ISO date string
+};
+
 export type Student = {
   id: string; // Student ID within the class
   name: string;
@@ -34,6 +41,7 @@ export type Student = {
   redeemedRewards: RedeemedRewardItem[];
   loans: Loan[];
   pointHistory: PointRecord[];
+  challenges: StudentChallenge[];
 };
 
 export type Reward = {
@@ -43,6 +51,15 @@ export type Reward = {
   cost: number;
   image: string;
   stock: number;
+  scope: 'school' | 'class';
+  providerId: string; // 'school_admin' or teacher's id
+};
+
+export type Challenge = {
+  id: string;
+  name: string;
+  description: string;
+  points: number;
   scope: 'school' | 'class';
   providerId: string; // 'school_admin' or teacher's id
 };
@@ -92,4 +109,5 @@ export type PlatformConfig = {
     sponsorLogoUrls?: (string | null)[];
     teacherPassword?: string;
     announcements?: Announcement[];
+    challenges?: Challenge[];
 }

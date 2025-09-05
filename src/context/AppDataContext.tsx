@@ -2,13 +2,14 @@
 "use client";
 
 import { createContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
-import type { Student, Reward, Class, Teacher, Stock, PlatformConfig, Loan, Announcement } from '@/lib/types';
+import type { Student, Reward, Class, Teacher, Stock, PlatformConfig, Loan, Announcement, Challenge } from '@/lib/types';
 import { 
     students as initialStudents, 
     rewards as initialRewards,
     classes as initialClasses,
     teachers as initialTeachers,
     stocks as initialStocks,
+    challenges as initialChallenges,
     DAILY_INTEREST_RATE,
     TEACHER_PASSWORD,
 } from '@/lib/placeholder-data';
@@ -137,6 +138,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             teacherPassword: TEACHER_PASSWORD, 
             schoolFunds: 1000000,
             announcements: [],
+            challenges: initialChallenges,
         };
         batch.set(configDocRef, initialConfig, { merge: true });
         setPlatformConfigState(prev => ({ ...(prev || { id: 'main' }), ...initialConfig }));
@@ -357,14 +359,17 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const setTeachers = createUpdater<Teacher>('teachers', setTeachersState);
   
   const setPlatformConfig = async (newConfig: Partial<PlatformConfig>) => {
-    const fullConfig = { ...(platformConfig || { id: 'main' }), ...newConfig };
-    setPlatformConfigState(fullConfig);
-    const configDocRef = doc(db, 'config', 'main');
-    try {
-        await setDoc(configDocRef, newConfig, { merge: true });
-    } catch(e) {
-        console.error("Failed to update platform config:", e);
-    }
+    setPlatformConfigState(prev => {
+        const updatedConfig = { ...(prev || { id: 'main' }), ...newConfig };
+        
+        const configDocRef = doc(db, 'config', 'main');
+        try {
+            setDoc(configDocRef, updatedConfig, { merge: true });
+        } catch(e) {
+            console.error("Failed to update platform config:", e);
+        }
+        return updatedConfig;
+    });
   }
 
 
