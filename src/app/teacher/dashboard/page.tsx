@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Reward, Student, Teacher, Class, Loan, Stock } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, KeyRound, Bell, Landmark, Check, X, Upload, Download, Loader2, Users, Settings, ImageOff, LineChart } from "lucide-react";
+import { PlusCircle, Edit, Trash2, KeyRound, Bell, Landmark, Check, X, Upload, Download, Loader2, Users, Settings, ImageOff, LineChart, Banknote, ShieldPlus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -97,6 +97,11 @@ export default function TeacherDashboardPage() {
   const [sponsorLogoFiles, setSponsorLogoFiles] = useState<(File | null)[]>(Array(4).fill(null));
   const [sponsorLogoPreviews, setSponsorLogoPreviews] = useState<(string | null)[]>(platformConfig?.sponsorLogoUrls || Array(4).fill(null));
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  
+  // State for Central Bank
+  const [isAdjustFundsDialogOpen, setIsAdjustFundsDialogOpen] = useState(false);
+  const [adjustFundsAmount, setAdjustFundsAmount] = useState<number | ''>('');
+  const [adjustFundsType, setAdjustFundsType] = useState<'add' | 'remove'>('add');
 
 
   useEffect(() => {
@@ -189,13 +194,15 @@ export default function TeacherDashboardPage() {
 
   const handleAwardPoints = (studentId: string, pointsToAdd: number) => {
     if (!pointsToAdd || pointsToAdd <= 0) {
-      toast({
-        title: "無效的點數",
-        description: "請輸入一個正數。",
-        variant: "destructive",
-      });
+      toast({ title: "無效的點數", description: "請輸入一個正數。", variant: "destructive" });
       return;
     }
+    
+    if ((platformConfig?.schoolFunds || 0) < pointsToAdd) {
+        toast({ title: "學校資金不足", description: "學校總資金不足以發放此次點數。", variant: "destructive" });
+        return;
+    }
+
     const today = new Date().toISOString();
     setStudents(currentStudents => currentStudents.map(s => {
         if (s.id === studentId && s.classId === selectedClassId) {
@@ -204,6 +211,9 @@ export default function TeacherDashboardPage() {
         }
         return s;
     }));
+    
+    setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - pointsToAdd });
+
     const student = students.find(s => s.id === studentId && s.classId === selectedClassId);
     toast({
         title: "點數已發送！",
@@ -214,12 +224,14 @@ export default function TeacherDashboardPage() {
   const handleBatchAwardPoints = () => {
     const pointsToAdd = Number(batchAwardAmount);
     if (!pointsToAdd || pointsToAdd <= 0) {
-      toast({
-        title: "無效的點數",
-        description: "請輸入一個正數。",
-        variant: "destructive",
-      });
+      toast({ title: "無效的點數", description: "請輸入一個正數。", variant: "destructive" });
       return;
+    }
+    
+    const totalPointsToAward = studentsInView.length * pointsToAdd;
+    if ((platformConfig?.schoolFunds || 0) < totalPointsToAward) {
+        toast({ title: "學校資金不足", description: `學校總資金不足以發放此次點數。需要 ${totalPointsToAward.toLocaleString()} 點，但只有 ${(platformConfig?.schoolFunds || 0).toLocaleString()} 點。`, variant: "destructive" });
+        return;
     }
 
     const studentIdsInView = studentsInView.map(s => s.id);
@@ -234,6 +246,8 @@ export default function TeacherDashboardPage() {
         return student;
       })
     );
+    
+    setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - totalPointsToAward });
 
     const className = classes.find(c => c.id === selectedClassId)?.name || '此班級';
     toast({
@@ -744,6 +758,31 @@ export default function TeacherDashboardPage() {
     }
   };
 
+  const handleAdjustFunds = () => {
+    const amount = Number(adjustFundsAmount);
+    if (!amount || amount <= 0) {
+        toast({ title: "無效的金額", description: "請輸入一個正數。", variant: "destructive" });
+        return;
+    }
+    const currentFunds = platformConfig?.schoolFunds || 0;
+    let newFunds: number;
+
+    if (adjustFundsType === 'add') {
+        newFunds = currentFunds + amount;
+    } else {
+        if (currentFunds < amount) {
+            toast({ title: "資金不足", description: "無法移除比目前總資金還多的金額。", variant: "destructive" });
+            return;
+        }
+        newFunds = currentFunds - amount;
+    }
+
+    setPlatformConfig({ schoolFunds: newFunds });
+    toast({ title: "資金已調整", description: `學校總資金已更新為 ${newFunds.toLocaleString()} 點。` });
+    setIsAdjustFundsDialogOpen(false);
+    setAdjustFundsAmount('');
+  };
+
   const unassignedClasses = useMemo(() => {
     const assignedClassIds = teachers.map(t => t.classId).filter(Boolean);
     return classes.filter(c => !assignedClassIds.includes(c.id));
@@ -825,24 +864,42 @@ export default function TeacherDashboardPage() {
   return (
     <div className="flex flex-col gap-6">
     {role === 'admin' && (
-      <Card>
-        <CardHeader>
-          <CardTitle>班級選擇</CardTitle>
-          <CardDescription>身為校長，您可以選擇要檢視或管理的班級。</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Select onValueChange={setSelectedClassId} value={selectedClassId}>
-            <SelectTrigger className="w-[280px]">
-              <SelectValue placeholder="請選擇班級" />
-            </SelectTrigger>
-            <SelectContent>
-              {classes.map(c => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>班級選擇</CardTitle>
+              <CardDescription>身為校長，您可以選擇要檢視或管理的班級。</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Select onValueChange={setSelectedClassId} value={selectedClassId}>
+                <SelectTrigger className="w-full md:w-[280px]">
+                  <SelectValue placeholder="請選擇班級" />
+                </SelectTrigger>
+                <SelectContent>
+                  {classes.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                    <CardTitle className="flex items-center gap-2"><Banknote/> 學校總資金 (中央銀行)</CardTitle>
+                    <CardDescription>用於控制點數流通，避免通貨膨脹。</CardDescription>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => setIsAdjustFundsDialogOpen(true)}>
+                    <ShieldPlus className="mr-2 h-4 w-4" />
+                    調整資金
+                </Button>
+            </CardHeader>
+            <CardContent>
+                <p className="text-4xl font-bold">{(platformConfig?.schoolFunds || 0).toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">目前在經濟體系中流通的點數總量。</p>
+            </CardContent>
+          </Card>
+      </div>
     )}
     <Tabs defaultValue="students" className="animate-in fade-in-0 duration-500">
       <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-8' : 'grid-cols-5'}`}>
@@ -1155,7 +1212,7 @@ export default function TeacherDashboardPage() {
             <div>
                 <CardTitle>發送點數</CardTitle>
                 <CardDescription>
-                選擇一位學生並根據他們的成就發送點數。
+                選擇一位學生並根據他們的成就發送點數。點數將從學校總資金中扣除。
                 </CardDescription>
             </div>
             <Button onClick={() => setIsBatchAwardDialogOpen(true)}>
@@ -1341,6 +1398,50 @@ export default function TeacherDashboardPage() {
         </Card>
       </TabsContent>
     </Tabs>
+
+    {/* Dialog for Adjusting School Funds */}
+    <Dialog open={isAdjustFundsDialogOpen} onOpenChange={setIsAdjustFundsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+                <DialogTitle>調整學校總資金</DialogTitle>
+                <DialogDescription>
+                    增加（注入）或減少（移除）中央銀行的資金。此操作會直接影響點數的總供給量。
+                </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                    <Label>操作類型</Label>
+                    <Select onValueChange={(value: 'add' | 'remove') => setAdjustFundsType(value)} defaultValue={adjustFundsType}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="選擇操作類型" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="add">增加資金 (注入)</SelectItem>
+                            <SelectItem value="remove">減少資金 (移除)</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="adjust-funds-amount">金額</Label>
+                    <Input 
+                        id="adjust-funds-amount" 
+                        name="adjust-funds-amount" 
+                        type="number"
+                        placeholder="要調整的點數"
+                        value={adjustFundsAmount}
+                        onChange={(e) => setAdjustFundsAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                        required 
+                    />
+                </div>
+            </div>
+            <DialogFooter>
+                <DialogClose asChild>
+                    <Button type="button" variant="secondary">取消</Button>
+                </DialogClose>
+                <Button type="button" onClick={handleAdjustFunds}>確認調整</Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
 
     {/* Dialog for Batch Awarding Points */}
     <Dialog open={isBatchAwardDialogOpen} onOpenChange={setIsBatchAwardDialogOpen}>

@@ -127,13 +127,14 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         }
     }
     
-    // Seed initial teacher password if not set
+    // Seed initial config if not set
     const configDocRef = doc(db, 'config', 'main');
     const configSnap = await getDoc(configDocRef);
-    if (!configSnap.exists() || !configSnap.data().teacherPassword) {
+    if (!configSnap.exists()) {
         writesPending = true;
-        batch.set(configDocRef, { teacherPassword: TEACHER_PASSWORD }, { merge: true });
-        setPlatformConfigState(prev => ({ ...(prev || { id: 'main' }), teacherPassword: TEACHER_PASSWORD }));
+        const initialConfig = { teacherPassword: TEACHER_PASSWORD, schoolFunds: 1000000 };
+        batch.set(configDocRef, initialConfig, { merge: true });
+        setPlatformConfigState(prev => ({ ...(prev || { id: 'main' }), ...initialConfig }));
         dataUpdated = true;
     }
 

@@ -76,6 +76,7 @@ export type Teacher = {
 
 export type PlatformConfig = {
     id: 'main';
+    schoolFunds?: number;
     platformLogoUrl?: string;
     sponsorLogoUrls?: (string | null)[];
     teacherPassword?: string;

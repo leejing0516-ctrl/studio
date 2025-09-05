@@ -26,7 +26,7 @@ export default function RewardsPage() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const { toast } = useToast();
   const { studentData } = useContext(StudentDataContext);
-  const { students, setStudents, rewards, setRewards } = useContext(AppDataContext);
+  const { students, setStudents, rewards, setRewards, platformConfig, setPlatformConfig } = useContext(AppDataContext);
 
   const handleRedeemClick = (reward: Reward) => {
     if (studentData.points < reward.cost) {
@@ -80,6 +80,11 @@ export default function RewardsPage() {
       setRewards(currentRewards => currentRewards.map(r =>
         r.id === selectedReward.id ? { ...r, stock: r.stock - 1 } : r
       ));
+      
+      // Return points to the central bank
+      if (platformConfig?.schoolFunds !== undefined) {
+          setPlatformConfig({ schoolFunds: platformConfig.schoolFunds + selectedReward.cost });
+      }
 
       toast({
         title: "兌換成功！",
