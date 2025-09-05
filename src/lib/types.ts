@@ -77,10 +77,18 @@ export type Teacher = {
     pointBalance?: number;
 }
 
+export type Announcement = {
+    id: string;
+    title: string;
+    content: string;
+    date: string; // ISO date string
+};
+
 export type PlatformConfig = {
     id: 'main';
     schoolFunds?: number;
     platformLogoUrl?: string;
     sponsorLogoUrls?: (string | null)[];
     teacherPassword?: string;
+    announcements?: Announcement[];
 }

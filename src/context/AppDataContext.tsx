@@ -2,7 +2,7 @@
 "use client";
 
 import { createContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
-import type { Student, Reward, Class, Teacher, Stock, PlatformConfig, Loan } from '@/lib/types';
+import type { Student, Reward, Class, Teacher, Stock, PlatformConfig, Loan, Announcement } from '@/lib/types';
 import { 
     students as initialStudents, 
     rewards as initialRewards,
@@ -132,7 +132,12 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     const configSnap = await getDoc(configDocRef);
     if (!configSnap.exists()) {
         writesPending = true;
-        const initialConfig = { teacherPassword: TEACHER_PASSWORD, schoolFunds: 1000000 };
+        const initialConfig: PlatformConfig = { 
+            id: 'main',
+            teacherPassword: TEACHER_PASSWORD, 
+            schoolFunds: 1000000,
+            announcements: [],
+        };
         batch.set(configDocRef, initialConfig, { merge: true });
         setPlatformConfigState(prev => ({ ...(prev || { id: 'main' }), ...initialConfig }));
         dataUpdated = true;
