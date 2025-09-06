@@ -136,7 +136,7 @@ export default function TeacherDashboardPage() {
     } else {
       setSelectedClassId(storedClassId || '');
     }
-  }, [classes, selectedClassId]);
+  }, [classes]);
 
   useEffect(() => {
     setPlatformLogoPreview(platformConfig?.platformLogoUrl || null);
