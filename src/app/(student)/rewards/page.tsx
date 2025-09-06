@@ -83,6 +83,7 @@ export default function RewardsPage() {
         redemptionId: `${selectedReward.id}-${Date.now()}`,
         reward: selectedReward,
         status: 'collected' as const,
+        redemptionDate: new Date().toISOString(),
       };
 
       // Find the student in the global list and update them

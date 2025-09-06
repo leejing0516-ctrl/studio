@@ -224,7 +224,11 @@ export default function TeacherDashboardPage() {
              if (role === 'admin') return true; // Admin sees all
              return student.classId === teacherClassId;
         })
-        .sort((a,b) => new Date(b.redemption.redemptionDate).getTime() - new Date(a.redemption.redemptionDate).getTime())
+        .sort((a, b) => {
+            if (!a.redemption.redemptionDate) return 1;
+            if (!b.redemption.redemptionDate) return -1;
+            return new Date(b.redemption.redemptionDate).getTime() - new Date(a.redemption.redemptionDate).getTime();
+        })
         .slice(0, 10);
   }, [students, role, teacherClassId]);
   
@@ -1438,7 +1442,7 @@ export default function TeacherDashboardPage() {
                                                             <AlertDialogHeader>
                                                                 <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
                                                                 <AlertDialogDescription>
-                                                                    您確定要刪除老師「{teacher.name}」嗎？此操作將永久移除該老師的帳號且無法復原。
+                                                                    您確定要刪除老師「{teacher.name}」嗎？此操作將永久移除该老師的帳號且無法復原。
                                                                 </AlertDialogDescription>
                                                             </AlertDialogHeader>
                                                             <AlertDialogFooter>
@@ -1792,7 +1796,7 @@ export default function TeacherDashboardPage() {
                             <TableCell>{student.name}</TableCell>
                             <TableCell>{classes.find(c => c.id === student.classId)?.name}</TableCell>
                             <TableCell>{redemption.reward.name}</TableCell>
-                            <TableCell>{format(new Date(redemption.redemptionDate), 'yyyy-MM-dd HH:mm')}</TableCell>
+                            <TableCell>{redemption.redemptionDate ? format(new Date(redemption.redemptionDate), 'yyyy-MM-dd HH:mm') : 'N/A'}</TableCell>
                         </TableRow>
                     ))
                 ) : (
