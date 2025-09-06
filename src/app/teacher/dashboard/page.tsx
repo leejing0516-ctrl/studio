@@ -98,8 +98,8 @@ export default function TeacherDashboardPage() {
   const [sponsorLogoFiles, setSponsorLogoFiles] = useState<(File | null)[]>(Array(4).fill(null));
   const [sponsorLogoPreviews, setSponsorLogoPreviews] = useState<(string | null)[]>(platformConfig?.sponsorLogoUrls || Array(4).fill(null));
   const [isSavingSettings, setIsSavingSettings] = useState(false);
-  const [fixedDepositRate, setFixedDepositRate] = useState<number | ''>((platformConfig?.fixedDepositInterestRate || 0) * 100);
-  const [loanInterestRate, setLoanInterestRate] = useState<number | ''>((platformConfig?.loanInterestRate || 0) * 100);
+  const [fixedDepositRate, setFixedDepositRate] = useState<number | ''>(() => (platformConfig?.fixedDepositInterestRate || 0) * 100);
+  const [loanInterestRate, setLoanInterestRate] = useState<number | ''>(() => (platformConfig?.loanInterestRate || 0) * 100);
   
   // State for Central Bank
   const [isAdjustFundsDialogOpen, setIsAdjustFundsDialogOpen] = useState(false);
@@ -131,24 +131,15 @@ export default function TeacherDashboardPage() {
     setTeacherClassId(storedClassId);
     
     if (storedRole === 'admin') {
-      // For admin, if no class is selected yet, and classes are loaded, select the first one.
       if (classes.length > 0 && !selectedClassId) {
         setSelectedClassId(classes[0].id);
       }
     } else {
-      // For teachers, their class is fixed.
       if (storedClassId) {
         setSelectedClassId(storedClassId);
       }
     }
   }, [classes, role, teacherClassId, selectedClassId]);
-
-  useEffect(() => {
-    setPlatformLogoPreview(platformConfig?.platformLogoUrl || null);
-    setSponsorLogoPreviews(platformConfig?.sponsorLogoUrls || Array(4).fill(null));
-    setFixedDepositRate((platformConfig?.fixedDepositInterestRate || 0) * 100);
-    setLoanInterestRate((platformConfig?.loanInterestRate || 0) * 100);
-  }, [platformConfig]);
 
   const currentTeacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
 
@@ -211,11 +202,9 @@ export default function TeacherDashboardPage() {
             .filter(r => r.status === 'pending_use')
             .map(redemption => ({ student, redemption }))
     ).filter(({ redemption }) => {
-        // Admin sees school reward requests
         if (role === 'admin' && redemption.reward.scope === 'school') {
             return true;
         }
-        // Teacher sees requests for their own rewards
         if (role === 'teacher' && redemption.reward.providerId === teacherId) {
             return true;
         }
@@ -291,7 +280,7 @@ export default function TeacherDashboardPage() {
     const today = new Date().toISOString();
     setStudents(currentStudents => currentStudents.map(s => {
         if (s.id === studentId && s.classId === selectedClassId) {
-            const newHistory = [...(s.pointHistory || []), { points: pointsToAdd, date: today }];
+            const newHistory = [...(s.pointHistory || []), { points: pointsToAdd, date: today, reason: `由老師 ${currentTeacher.name} 發放` }];
             return { ...s, points: s.points + pointsToAdd, pointHistory: newHistory };
         }
         return s;
@@ -329,7 +318,7 @@ export default function TeacherDashboardPage() {
     setStudents(currentStudents => 
       currentStudents.map(student => {
         if (student.classId === selectedClassId && studentIdsInView.includes(student.id)) {
-          const newHistory = [...(student.pointHistory || []), { points: pointsToAdd, date: today }];
+          const newHistory = [...(student.pointHistory || []), { points: pointsToAdd, date: today, reason: `由老師 ${currentTeacher.name} 批次發放` }];
           return { ...student, points: student.points + pointsToAdd, pointHistory: newHistory };
         }
         return student;
@@ -1090,7 +1079,7 @@ export default function TeacherDashboardPage() {
 
     setStudents(prev => prev.map(s => {
         if (s.id === studentId && s.classId === classId) {
-            const newHistory = [...(s.pointHistory || []), { points: pointsToAdd, date: today }];
+            const newHistory = [...(s.pointHistory || []), { points: pointsToAdd, date: today, reason: `完成挑戰: ${challenge.name}` }];
             return {
                 ...s,
                 points: s.points + pointsToAdd,
