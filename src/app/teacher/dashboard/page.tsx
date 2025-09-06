@@ -129,14 +129,19 @@ export default function TeacherDashboardPage() {
     setRole(storedRole);
     setTeacherId(storedTeacherId);
     setTeacherClassId(storedClassId);
+    
     if (storedRole === 'admin') {
-      if(classes.length > 0 && !selectedClassId) {
-          setSelectedClassId(classes[0].id);
+      // For admin, if no class is selected yet, and classes are loaded, select the first one.
+      if (classes.length > 0 && !selectedClassId) {
+        setSelectedClassId(classes[0].id);
       }
     } else {
-      setSelectedClassId(storedClassId || '');
+      // For teachers, their class is fixed.
+      if (storedClassId) {
+        setSelectedClassId(storedClassId);
+      }
     }
-  }, [classes]);
+  }, [classes, role, teacherClassId, selectedClassId]);
 
   useEffect(() => {
     setPlatformLogoPreview(platformConfig?.platformLogoUrl || null);
@@ -1101,7 +1106,7 @@ export default function TeacherDashboardPage() {
     toast({ title: "挑戰已批准", description: `已發送 ${pointsToAdd.toLocaleString()} 點給該學生。` });
   };
 
-  if (isLoading) {
+  if (isLoading && !selectedClassId) {
       return (
         <div className="flex items-center justify-center h-full">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -1739,7 +1744,7 @@ export default function TeacherDashboardPage() {
                 <TableRow>
                   <TableHead>學生</TableHead>
                    <TableHead>班級</TableHead>
-                  <TableHead>獎勵名稱</TableHead>
+                  <TableHead>獎勵名称</TableHead>
                    <TableHead>類型</TableHead>
                   <TableHead className="text-right">操作</TableHead>
                 </TableRow>
@@ -1785,7 +1790,7 @@ export default function TeacherDashboardPage() {
                 <TableRow>
                   <TableHead>學生</TableHead>
                    <TableHead>班級</TableHead>
-                  <TableHead>獎勵名稱</TableHead>
+                  <TableHead>獎勵名称</TableHead>
                   <TableHead>兌換時間</TableHead>
                 </TableRow>
               </TableHeader>
