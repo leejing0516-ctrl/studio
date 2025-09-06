@@ -10,7 +10,6 @@ import {
     teachers as initialTeachers,
     stocks as initialStocks,
     challenges as initialChallenges,
-    DAILY_INTEREST_RATE,
     TEACHER_PASSWORD,
 } from '@/lib/placeholder-data';
 import { db } from '@/lib/firebase';
@@ -22,15 +21,15 @@ import { isSameDay, startOfDay, differenceInCalendarDays, parseISO, isAfter } fr
 
 interface AppDataContextType {
   students: Student[];
-  setStudents: (newStudents: Student[] | ((prev: Student[]) => Student[])) => Promise<void>;
+  setStudents: (updater: (prev: Student[]) => Student[]) => Promise<void>;
   rewards: Reward[];
-  setRewards: (newRewards: Reward[] | ((prev: Reward[]) => Reward[])) => Promise<void>;
+  setRewards: (updater: (prev: Reward[]) => Reward[]) => Promise<void>;
   stocks: Stock[];
-  setStocks: (newStocks: Stock[] | ((prev: Stock[]) => Stock[])) => Promise<void>;
+  setStocks: (updater: (prev: Stock[]) => Stock[]) => Promise<void>;
   classes: Class[];
-  setClasses: (newClasses: Class[] | ((prev: Class[]) => Class[])) => Promise<void>;
+  setClasses: (updater: (prev: Class[]) => Class[]) => Promise<void>;
   teachers: Teacher[];
-  setTeachers: (newTeachers: Teacher[] | ((prev: Teacher[]) => Teacher[])) => Promise<void>;
+  setTeachers: (updater: (prev: Teacher[]) => Teacher[]) => Promise<void>;
   platformConfig: PlatformConfig | null;
   setPlatformConfig: (newConfig: Partial<PlatformConfig>) => Promise<void>;
   isLoading: boolean;
@@ -94,6 +93,147 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       }
   }, []);
   
+  const createUpdater = <T extends { id?: string | number; ticker?: string }>(
+    collectionName: string,
+    stateSetter: React.Dispatch<React.SetStateAction<T[]>>
+  ) => {
+    return async (updater: (prevState: T[]) => T[]) => {
+      stateSetter(prevState => {
+        const finalData = updater(prevState);
+        const batch = writeBatch(db);
+        const currentIds = new Set(finalData.map(p => p.id ? String(p.id) : p.ticker));
+
+        finalData.forEach(item => {
+          const docId = item.id ? String(item.id) : (item.ticker || null);
+          if (docId) {
+            const docRef = doc(db, collectionName, docId);
+            batch.set(docRef, { ...item });
+          }
+        });
+        
+        prevState.forEach(item => {
+          const docId = item.id ? String(item.id) : (item.ticker || null);
+          if (docId && !currentIds.has(docId)) {
+            const docRef = doc(db, collectionName, docId);
+            batch.delete(docRef);
+          }
+        });
+
+        batch.commit().catch(e => console.error(`Failed to update ${collectionName}`, e));
+        
+        return finalData;
+      });
+    };
+  };
+
+  const setStudents = createUpdater<Student>('students', setStudentsState);
+  const setRewards = createUpdater<Reward>('rewards', setRewardsState);
+  const setStocks = createUpdater<Stock>('stocks', setStocksState);
+  const setClasses = createUpdater<Class>('classes', setClassesState);
+  const setTeachers = createUpdater<Teacher>('teachers', setTeachersState);
+  
+  const setPlatformConfig = async (newConfig: Partial<PlatformConfig>) => {
+    setPlatformConfigState(prev => {
+        const updatedConfig = { ...(prev || { id: 'main' }), ...newConfig };
+        
+        const configDocRef = doc(db, 'config', 'main');
+        try {
+            setDoc(configDocRef, updatedConfig, { merge: true });
+        } catch(e) {
+            console.error("Failed to update platform config:", e);
+        }
+        return updatedConfig;
+    });
+  }
+
+  const runDailyUpdates = useCallback(() => {
+    console.log("Running daily updates for loans and deposits...");
+    setStudents(prevStudents => {
+        const today = startOfDay(new Date());
+        let hasChanges = false;
+        
+        const updatedStudents = prevStudents.map(student => {
+            let studentModified = false;
+            let studentPoints = student.points;
+            
+            // --- Loan Updates ---
+            const updatedLoans = (student.loans || []).map(loan => {
+                if (loan.status !== 'active' && loan.status !== 'overdue') {
+                    return loan;
+                }
+                
+                const lastUpdate = startOfDay(loan.lastInterestAccruedDate ? parseISO(loan.lastInterestAccruedDate) : parseISO(loan.approvalDate!));
+                const daysSinceLastUpdate = differenceInCalendarDays(today, lastUpdate);
+                
+                let updatedLoan = {...loan};
+
+                if (daysSinceLastUpdate > 0) {
+                    updatedLoan.interest += daysSinceLastUpdate * loan.amount * loan.interestRate;
+                    updatedLoan.lastInterestAccruedDate = today.toISOString();
+                    studentModified = true;
+                }
+
+                const repaymentDate = startOfDay(parseISO(loan.repaymentDate));
+                if (today > repaymentDate && updatedLoan.status === 'active') {
+                    updatedLoan.status = 'overdue';
+                    studentModified = true;
+                }
+
+                return updatedLoan;
+            });
+            
+            // --- Fixed Deposit Updates ---
+            const updatedDeposits = (student.fixedDeposits || []).map(deposit => {
+                if (deposit.status !== 'active') {
+                    return deposit;
+                }
+
+                let updatedDeposit = {...deposit};
+                const maturityDate = startOfDay(parseISO(deposit.maturityDate));
+
+                if (isAfter(today, maturityDate) || isSameDay(today, maturityDate)) {
+                    // Deposit has matured
+                    updatedDeposit.status = 'matured';
+                    const interestGained = Math.floor(updatedDeposit.amount * updatedDeposit.interestRate * differenceInCalendarDays(parseISO(updatedDeposit.maturityDate), parseISO(updatedDeposit.startDate)));
+                    const finalAmount = deposit.amount + interestGained;
+                    studentPoints += finalAmount;
+                    // Add a point history record for clarity
+                    if (!student.pointHistory) student.pointHistory = [];
+                    student.pointHistory.push({
+                        points: finalAmount,
+                        date: today.toISOString(),
+                        reason: `定存到期 #${deposit.id.slice(-4)}`
+                    });
+                    updatedDeposit.interestEarned = interestGained;
+                    studentModified = true;
+                }
+                
+                return updatedDeposit;
+            });
+            
+            if (studentModified) {
+                hasChanges = true;
+                return { 
+                    ...student, 
+                    points: studentPoints,
+                    loans: updatedLoans, 
+                    fixedDeposits: updatedDeposits,
+                };
+            }
+            return student;
+        });
+        
+        if (hasChanges) {
+            // This is a functional update for the state, but we return the original
+            // students if no changes were made to avoid a re-render.
+            console.log("Daily updates resulted in changes, updating state and Firestore.");
+            return updatedStudents;
+        }
+        console.log("No daily updates needed.")
+        return prevStudents;
+    });
+  }, [setStudents]);
+
   const seedInitialData = useCallback(async () => {
     console.log("Checking if initial data seeding is necessary...");
     const collectionsToSeed = [
@@ -140,6 +280,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             announcements: [],
             challenges: initialChallenges,
             fixedDepositInterestRate: 0.01, // 1% daily
+            loanInterestRate: 0.005, // 0.5% daily
         };
         batch.set(configDocRef, initialConfig, { merge: true });
         setPlatformConfigState(prev => ({ ...(prev || { id: 'main' }), ...initialConfig }));
@@ -177,18 +318,24 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         // If data was just seeded, the state is already up-to-date.
         // Otherwise, fetch from Firestore.
         if (!dataWasSeeded) {
-            const [classesData, teachersData, stocksData] = await Promise.all([
+            const [classesData, teachersData, stocksData, studentsData] = await Promise.all([
                 fetchData<Class>('classes'),
                 fetchData<Teacher>('teachers'),
                 fetchData<Stock>('stocks'), // Stocks are public, load them here.
+                fetchData<Student>('students'), // Load students to run daily updates
             ]);
             setClassesState(classesData);
             setTeachersState(teachersData);
             setStocksState(stocksData);
+            setStudentsState(studentsData);
         } else {
             // Even if seeded, fetch latest stock data if it's there
-             const stocksData = await fetchData<Stock>('stocks');
+             const [stocksData, studentsData] = await Promise.all([
+                fetchData<Stock>('stocks'),
+                fetchData<Student>('students')
+             ]);
              setStocksState(stocksData);
+             setStudentsState(studentsData);
         }
     } catch (error) {
         console.error("Error initializing public data from Firestore:", error);
@@ -219,14 +366,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [fetchData]);
 
-
   useEffect(() => {
     initializePublicData();
     
-    // This interval checks the market status and updates prices if it's open.
-    if (stockUpdateIntervalRef.current) {
-        clearInterval(stockUpdateIntervalRef.current);
-    }
+    if (stockUpdateIntervalRef.current) clearInterval(stockUpdateIntervalRef.current);
     stockUpdateIntervalRef.current = setInterval(() => {
         const marketOpen = checkMarketOpen();
         setIsMarketOpen(marketOpen);
@@ -250,176 +393,17 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 return updatedStocks;
             });
         }
-    }, 7200000); // Check every 2 hours
-    
-    // Daily updates for loans and fixed deposits
-    if (dailyUpdateIntervalRef.current) {
-        clearInterval(dailyUpdateIntervalRef.current);
-    }
-    dailyUpdateIntervalRef.current = setInterval(() => {
-        console.log("Running daily updates for loans and deposits...");
-        setStudents(prevStudents => {
-            const today = startOfDay(new Date());
-            let hasChanges = false;
-            
-            const updatedStudents = prevStudents.map(student => {
-                let studentModified = false;
-                let studentPoints = student.points;
-                
-                // --- Loan Updates ---
-                const updatedLoans = (student.loans || []).map(loan => {
-                    if (loan.status !== 'active' && loan.status !== 'overdue') {
-                        return loan;
-                    }
-                    
-                    const lastUpdate = startOfDay(loan.lastInterestAccruedDate ? parseISO(loan.lastInterestAccruedDate) : parseISO(loan.approvalDate!));
-                    const daysSinceLastUpdate = differenceInCalendarDays(today, lastUpdate);
-                    
-                    let updatedLoan = {...loan};
+    }, 30 * 60 * 1000); // Check every 30 minutes
 
-                    if (daysSinceLastUpdate > 0) {
-                        updatedLoan.interest += daysSinceLastUpdate * DAILY_INTEREST_RATE;
-                        updatedLoan.lastInterestAccruedDate = today.toISOString();
-                        studentModified = true;
-                    }
+    runDailyUpdates(); // Run once on startup
+    if (dailyUpdateIntervalRef.current) clearInterval(dailyUpdateIntervalRef.current);
+    dailyUpdateIntervalRef.current = setInterval(runDailyUpdates, 86400000); // 24 hours
 
-                    const repaymentDate = startOfDay(parseISO(loan.repaymentDate));
-                    if (today > repaymentDate && updatedLoan.status === 'active') {
-                        updatedLoan.status = 'overdue';
-                        studentModified = true;
-                    }
-
-                    return updatedLoan;
-                });
-                
-                // --- Fixed Deposit Updates ---
-                const updatedDeposits = (student.fixedDeposits || []).map(deposit => {
-                    if (deposit.status !== 'active') {
-                        return deposit;
-                    }
-
-                    let updatedDeposit = {...deposit};
-                    const maturityDate = startOfDay(parseISO(deposit.maturityDate));
-
-                    if (isAfter(today, maturityDate) || isSameDay(today, maturityDate)) {
-                        // Deposit has matured
-                        updatedDeposit.status = 'matured';
-                        const finalAmount = deposit.amount + deposit.interestEarned;
-                        studentPoints += finalAmount;
-                        // Add a point history record for clarity
-                        student.pointHistory.push({
-                            points: finalAmount,
-                            date: today.toISOString(),
-                        });
-                        studentModified = true;
-                    } else {
-                        // Accrue interest
-                        updatedDeposit.interestEarned += deposit.amount * deposit.interestRate;
-                        studentModified = true;
-                    }
-                    
-                    return updatedDeposit;
-                });
-                
-                if (studentModified) {
-                    hasChanges = true;
-                    return { 
-                        ...student, 
-                        points: studentPoints,
-                        loans: updatedLoans, 
-                        fixedDeposits: updatedDeposits,
-                    };
-                }
-                return student;
-            });
-            
-            // This is a functional update for the state, but we return the original
-            // students if no changes were made to avoid a re-render.
-            return hasChanges ? updatedStudents : prevStudents;
-        });
-    }, 86400000); // 24 hours
-
-    // Cleanup intervals on component unmount
     return () => {
-        if (stockUpdateIntervalRef.current) {
-            clearInterval(stockUpdateIntervalRef.current);
-        }
-        if (dailyUpdateIntervalRef.current) {
-            clearInterval(dailyUpdateIntervalRef.current);
-        }
+        if (stockUpdateIntervalRef.current) clearInterval(stockUpdateIntervalRef.current);
+        if (dailyUpdateIntervalRef.current) clearInterval(dailyUpdateIntervalRef.current);
     };
-  }, [initializePublicData]);
-
-  const createUpdater = useCallback(<T extends { id?: string | number; ticker?: string }>(
-    collectionName: string,
-    stateSetter: React.Dispatch<React.SetStateAction<T[]>>
-  ) => {
-    return async (dataOrFn: T[] | ((prevState: T[]) => T[])) => {
-      // First, get the final state of the data
-      const finalData = await new Promise<T[]>(resolve => {
-          stateSetter(prevState => {
-              const updated = typeof dataOrFn === 'function' ? dataOrFn(prevState) : dataOrFn;
-              resolve(updated);
-              return updated;
-          });
-      });
-
-      // Then, commit this final state to Firestore
-      const batch = writeBatch(db);
-      const currentIds = new Set(finalData.map(p => p.id ? String(p.id) : p.ticker));
-      const previousState = await new Promise<T[]>(resolve => stateSetter(prevState => {
-          resolve(prevState);
-          return prevState; // No actual state change here, just getting the value
-      }));
-      const previousIds = new Set(previousState.map(p => p.id ? String(p.id) : p.ticker));
-
-
-      finalData.forEach(item => {
-        const docId = item.id ? String(item.id) : (item.ticker || null);
-        if (docId) {
-          const docRef = doc(db, collectionName, docId);
-          batch.set(docRef, { ...item });
-        }
-      });
-      
-      previousState.forEach(item => {
-        const docId = item.id ? String(item.id) : (item.ticker || null);
-        if (docId && !currentIds.has(docId)) {
-          const docRef = doc(db, collectionName, docId);
-          batch.delete(docRef);
-        }
-      });
-
-
-      try {
-        await batch.commit();
-      } catch (e) {
-        console.error(`Failed to update ${collectionName}`, e);
-        // Here you might want to handle the error, e.g., by reverting the state
-      }
-    };
-  }, []);
-
-  const setStudents = createUpdater<Student>('students', setStudentsState);
-  const setRewards = createUpdater<Reward>('rewards', setRewardsState);
-  const setStocks = createUpdater<Stock>('stocks', setStocksState);
-  const setClasses = createUpdater<Class>('classes', setClassesState);
-  const setTeachers = createUpdater<Teacher>('teachers', setTeachersState);
-  
-  const setPlatformConfig = async (newConfig: Partial<PlatformConfig>) => {
-    setPlatformConfigState(prev => {
-        const updatedConfig = { ...(prev || { id: 'main' }), ...newConfig };
-        
-        const configDocRef = doc(db, 'config', 'main');
-        try {
-            setDoc(configDocRef, updatedConfig, { merge: true });
-        } catch(e) {
-            console.error("Failed to update platform config:", e);
-        }
-        return updatedConfig;
-    });
-  }
-
+  }, [initializePublicData, runDailyUpdates, setStocks]);
 
   return (
     <AppDataContext.Provider value={{ 

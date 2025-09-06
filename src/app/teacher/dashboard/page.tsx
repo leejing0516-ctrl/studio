@@ -99,6 +99,7 @@ export default function TeacherDashboardPage() {
   const [sponsorLogoPreviews, setSponsorLogoPreviews] = useState<(string | null)[]>(platformConfig?.sponsorLogoUrls || Array(4).fill(null));
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [fixedDepositRate, setFixedDepositRate] = useState<number | ''>((platformConfig?.fixedDepositInterestRate || 0) * 100);
+  const [loanInterestRate, setLoanInterestRate] = useState<number | ''>((platformConfig?.loanInterestRate || 0) * 100);
   
   // State for Central Bank
   const [isAdjustFundsDialogOpen, setIsAdjustFundsDialogOpen] = useState(false);
@@ -141,6 +142,7 @@ export default function TeacherDashboardPage() {
     setPlatformLogoPreview(platformConfig?.platformLogoUrl || null);
     setSponsorLogoPreviews(platformConfig?.sponsorLogoUrls || Array(4).fill(null));
     setFixedDepositRate((platformConfig?.fixedDepositInterestRate || 0) * 100);
+    setLoanInterestRate((platformConfig?.loanInterestRate || 0) * 100);
   }, [platformConfig]);
 
   const currentTeacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
@@ -152,14 +154,16 @@ export default function TeacherDashboardPage() {
     return students.filter(s => s.classId === teacherClassId);
   }, [role, students, selectedClassId, teacherClassId]);
   
-  const loanRequests = useMemo(() => students.flatMap(student => 
-      (student.loans || [])
-          .filter(l => l.status === 'pending')
-          .map(l => ({ student, loan: l }))
-  ).filter(({student}) => {
-      if (role === 'admin') return student.classId === selectedClassId;
-      return student.classId === teacherClassId;
-  }), [students, role, selectedClassId, teacherClassId]);
+  const loanRequests = useMemo(() => {
+      return students.flatMap(student => 
+          (student.loans || [])
+              .filter(l => l.status === 'pending')
+              .map(l => ({ student, loan: l }))
+      ).filter(({ student }) => {
+          if (role === 'admin') return true; // Admins see all loan requests
+          return student.classId === teacherClassId;
+      });
+  }, [students, role, teacherClassId]);
 
 
   const [isAddRewardDialogOpen, setIsAddRewardDialogOpen] = useState(false);
@@ -196,34 +200,33 @@ export default function TeacherDashboardPage() {
 
   const { toast } = useToast();
   
- const pendingRequests = useMemo(() => {
-    return students.flatMap(student => 
+  const pendingRequests = useMemo(() => {
+    return students.flatMap(student =>
         (student.redeemedRewards || [])
             .filter(r => r.status === 'pending_use')
             .map(redemption => ({ student, redemption }))
-    ).filter(({ redemption, student }) => {
-        const teacherForStudent = teachers.find(t => t.classId === student.classId);
-        // Admin sees school rewards requests from any class, or any request from the selected class
-        if (role === 'admin') {
-            return redemption.reward.scope === 'school' || student.classId === selectedClassId;
+    ).filter(({ redemption }) => {
+        // Admin sees school reward requests
+        if (role === 'admin' && redemption.reward.scope === 'school') {
+            return true;
         }
-        // Teacher sees requests for their own rewards, or school rewards from their own students.
-        if (role === 'teacher' && student.classId === teacherClassId) {
-             return redemption.reward.providerId === teacherId || redemption.reward.scope === 'school';
+        // Teacher sees requests for their own rewards
+        if (role === 'teacher' && redemption.reward.providerId === teacherId) {
+            return true;
         }
         return false;
     });
-  }, [students, role, selectedClassId, teacherId, teachers, teacherClassId]);
+  }, [students, role, teacherId]);
 
   const recentRedemptions = useMemo(() => {
-     return students.flatMap(student => student.redeemedRewards.map(r => ({student, redemption: r})))
+     return students.flatMap(student => (student.redeemedRewards || []).map(r => ({student, redemption: r})))
         .filter(({ student }) => {
-             if (role === 'admin') return student.classId === selectedClassId;
+             if (role === 'admin') return true; // Admin sees all
              return student.classId === teacherClassId;
         })
         .sort((a,b) => new Date(b.redemption.redemptionDate).getTime() - new Date(a.redemption.redemptionDate).getTime())
         .slice(0, 10);
-  }, [students, role, selectedClassId, teacherClassId]);
+  }, [students, role, teacherClassId]);
   
   const challengeApprovals = useMemo(() => {
       const allChallenges = platformConfig?.challenges || [];
@@ -237,19 +240,24 @@ export default function TeacherDashboardPage() {
             }))
       ).filter(({ student, challenge }) => {
           if (!challenge) return false;
-          if (role === 'admin') {
-             return challenge.scope === 'school' || student.classId === selectedClassId;
+          // Admin sees school challenges
+          if (role === 'admin' && challenge.scope === 'school') {
+             return true;
           }
-          return challenge.scope === 'class' && challenge.providerId === teacherId;
+          // Teacher sees their own class challenges
+          if (role === 'teacher' && challenge.providerId === teacherId) {
+            return true;
+          }
+          return false;
       });
-  }, [students, platformConfig?.challenges, role, selectedClassId, teacherId]);
+  }, [students, platformConfig?.challenges, role, teacherId]);
 
   const handleApproveUsage = (studentId: string, classId: string, redemptionId: string) => {
     setStudents(currentStudents => currentStudents.map(student => {
         if (student.id === studentId && student.classId === classId) {
             return {
                 ...student,
-                redeemedRewards: student.redeemedRewards.filter(r => r.redemptionId !== redemptionId)
+                redeemedRewards: (student.redeemedRewards || []).filter(r => r.redemptionId !== redemptionId)
             };
         }
         return student;
@@ -683,55 +691,45 @@ export default function TeacherDashboardPage() {
   };
 
   const handleLoanDecision = (studentId: string, classId: string, loanId: string, decision: 'approve' | 'reject') => {
-    const today = new Date().toISOString();
-  
-    // Find the teacher for the student's class
-    const teacherForClass = teachers.find(t => t.classId === classId);
-  
-    if (decision === 'approve' && (!teacherForClass || !teacherId)) {
-        setTimeout(() => {
-            toast({ title: "錯誤", description: "找不到對應的老師來處理此貸款。", variant: "destructive" });
-        }, 1);
-        return;
-    }
-  
-    const targetLoanAmount = students.find(s => s.id === studentId && s.classId === classId)?.loans.find(l => l.id === loanId)?.amount || 0;
-  
-    if (decision === 'approve') {
-        const approvingTeacher = teachers.find(t => t.id === teacherId);
-        if (!approvingTeacher || (approvingTeacher.pointBalance || 0) < targetLoanAmount) {
-            setTimeout(() => {
-                toast({ title: "貸款批准失敗", description: "您的點數餘額不足以批准此筆貸款。", variant: "destructive" });
-            }, 1);
-            return;
-        }
-    
-        // Deduct points from teacher's balance
-        setTeachers(currentTeachers => currentTeachers.map(t => 
-            t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - targetLoanAmount } : t
-        ));
-    }
-  
-    // Update student's loan status and points
-    setStudents(currentStudents => currentStudents.map(student => {
-        if (student.id === studentId && student.classId === classId) {
-            let updatedStudent = { ...student };
-            if (decision === 'approve') {
-                updatedStudent.points += targetLoanAmount;
-                updatedStudent.loans = student.loans.map(l => l.id === loanId ? { ...l, status: 'active' as const, approvalDate: today, lastInterestAccruedDate: today } : l);
-                setTimeout(() => {
-                    toast({ title: "貸款已批准", description: `已將 ${targetLoanAmount.toLocaleString()} 點數撥款給 ${student.name}。` });
-                }, 1);
-            } else {
-                updatedStudent.loans = student.loans.map(l => l.id === loanId ? { ...l, status: 'rejected' as const } : l);
-                 setTimeout(() => {
-                    toast({ title: "貸款已拒絕", description: `已拒絕 ${student.name} 的貸款申請。`, variant: "destructive" });
-                }, 1);
-            }
-            return updatedStudent;
-        }
-        return student;
-    }));
+      const today = new Date().toISOString();
+      const targetLoan = students.find(s => s.id === studentId && s.classId === classId)?.loans.find(l => l.id === loanId);
+
+      if (!targetLoan) {
+          toast({ title: "錯誤", description: "找不到該筆貸款申請。", variant: "destructive" });
+          return;
+      }
+      
+      const approver = teachers.find(t => t.id === teacherId);
+      if (decision === 'approve') {
+          if (!approver) {
+              toast({ title: "錯誤", description: "找不到您的教師帳號資訊。", variant: "destructive" });
+              return;
+          }
+          if ((approver.pointBalance || 0) < targetLoan.amount) {
+              toast({ title: "貸款批准失敗", description: "您的點數餘額不足以批准此筆貸款。", variant: "destructive" });
+              return;
+          }
+          // Deduct points from teacher's balance
+          setTeachers(currentTeachers => currentTeachers.map(t => 
+              t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - targetLoan.amount } : t
+          ));
+      }
+
+      setStudents(currentStudents => currentStudents.map(student => {
+          if (student.id === studentId && student.classId === classId) {
+              const updatedStudent = { ...student };
+              if (decision === 'approve') {
+                  updatedStudent.points += targetLoan.amount;
+                  updatedStudent.loans = (updatedStudent.loans || []).map(l => l.id === loanId ? { ...l, status: 'active' as const, approvalDate: today, lastInterestAccruedDate: today } : l);
+                  toast({ title: "貸款已批准", description: `已將 ${targetLoan.amount.toLocaleString()} 點數撥款給 ${student.name}。` });
+              } else {
+                  updatedStudent.loans = (updatedStudent.loans || []).map(l => l.id === loanId ? { ...l, status: 'rejected' as const } : l);
+                  toast({ title: "貸款已拒絕", description: `已拒絕 ${student.name} 的貸款申請。`, variant: "destructive" });
+              }
+              return updatedStudent;
+          }
+          return student;
+      }));
   };
   
   
@@ -881,7 +879,8 @@ export default function TeacherDashboardPage() {
         await setPlatformConfig({ 
             platformLogoUrl, 
             sponsorLogoUrls: newSponsorUrls,
-            fixedDepositInterestRate: Number(fixedDepositRate) / 100
+            fixedDepositInterestRate: Number(fixedDepositRate) / 100,
+            loanInterestRate: Number(loanInterestRate) / 100
         });
 
         toast({ title: "設定已儲存", description: "平台設定已成功更新。" });
@@ -1008,7 +1007,7 @@ export default function TeacherDashboardPage() {
     // Also need to remove this stock from all student portfolios
     setStudents(currentStudents => currentStudents.map(student => ({
         ...student,
-        portfolio: student.portfolio.filter(p => p.ticker !== stockToDelete.ticker)
+        portfolio: (student.portfolio || []).filter(p => p.ticker !== stockToDelete.ticker)
     })));
 
     setStocks(current => current.filter(s => s.ticker !== stockToDelete.ticker));
@@ -1087,7 +1086,7 @@ export default function TeacherDashboardPage() {
                 ...s,
                 points: s.points + pointsToAdd,
                 pointHistory: newHistory,
-                challenges: s.challenges.map(c => 
+                challenges: (s.challenges || []).map(c => 
                     c.challengeId === challengeId ? { ...c, status: 'completed' as const, completedDate: today } : c
                 )
             };
@@ -1343,7 +1342,7 @@ export default function TeacherDashboardPage() {
                            </Button>
                            <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                   <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                   <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStudentClick(student)}>
                                         <Trash2 className="h-4 w-4" />
                                    </Button>
                                 </AlertDialogTrigger>
@@ -1355,8 +1354,8 @@ export default function TeacherDashboardPage() {
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
-                                        <AlertDialogCancel>取消</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleConfirmDeleteStudent()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                        <AlertDialogCancel onClick={() => setStudentToDelete(null)}>取消</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleConfirmDeleteStudent} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
                            </AlertDialog>
@@ -1443,8 +1442,8 @@ export default function TeacherDashboardPage() {
                                                                 </AlertDialogDescription>
                                                             </AlertDialogHeader>
                                                             <AlertDialogFooter>
-                                                                <AlertDialogCancel>取消</AlertDialogCancel>
-                                                                <AlertDialogAction onClick={() => handleConfirmDeleteTeacher()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                                                <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>取消</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={handleConfirmDeleteTeacher} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
                                                             </AlertDialogFooter>
                                                         </AlertDialogContent>
                                                     </AlertDialog>
@@ -1541,8 +1540,8 @@ export default function TeacherDashboardPage() {
                                                     </AlertDialogDescription>
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter>
-                                                    <AlertDialogCancel>取消</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleConfirmDeleteStock()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                                    <AlertDialogCancel onClick={() => setStockToDelete(null)}>取消</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={handleConfirmDeleteStock} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
                                                 </AlertDialogFooter>
                                             </AlertDialogContent>
                                         </AlertDialog>
@@ -1575,6 +1574,25 @@ export default function TeacherDashboardPage() {
                                 type="number" 
                                 value={fixedDepositRate}
                                 onChange={(e) => setFixedDepositRate(e.target.value === '' ? '' : Number(e.target.value))}
+                                className="w-24"
+                                step="0.01"
+                            />
+                            <Percent className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                    </div>
+                     <div className="flex items-center justify-between rounded-lg border p-4">
+                        <div>
+                            <Label htmlFor="loan-interest-rate" className="font-semibold">貸款日利率</Label>
+                            <p className="text-xs text-muted-foreground">
+                                設定學生信用貸款的每日利率。
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                             <Input 
+                                id="loan-interest-rate" 
+                                type="number" 
+                                value={loanInterestRate}
+                                onChange={(e) => setLoanInterestRate(e.target.value === '' ? '' : Number(e.target.value))}
                                 className="w-24"
                                 step="0.01"
                             />
@@ -1652,7 +1670,7 @@ export default function TeacherDashboardPage() {
                 從您的點數餘額中發送點數給學生。
                 </CardDescription>
             </div>
-            <Button onClick={() => setIsBatchAwardDialogOpen(true)}>
+            <Button onClick={() => setIsBatchAwardDialogOpen(true)} disabled={role !== 'admin' && !teacherClassId}>
                 <Users className="mr-2 h-4 w-4" />
                 全班批次發放
             </Button>
@@ -1762,6 +1780,7 @@ export default function TeacherDashboardPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>學生</TableHead>
+                   <TableHead>班級</TableHead>
                   <TableHead>獎勵名稱</TableHead>
                   <TableHead>兌換時間</TableHead>
                 </TableRow>
@@ -1771,13 +1790,14 @@ export default function TeacherDashboardPage() {
                     recentRedemptions.map(({ student, redemption }) => (
                         <TableRow key={redemption.redemptionId}>
                             <TableCell>{student.name}</TableCell>
+                            <TableCell>{classes.find(c => c.id === student.classId)?.name}</TableCell>
                             <TableCell>{redemption.reward.name}</TableCell>
                             <TableCell>{format(new Date(redemption.redemptionDate), 'yyyy-MM-dd HH:mm')}</TableCell>
                         </TableRow>
                     ))
                 ) : (
                     <TableRow>
-                        <TableCell colSpan={3} className="text-center h-24">
+                        <TableCell colSpan={4} className="text-center h-24">
                             最近沒有任何兌換紀錄。
                         </TableCell>
                     </TableRow>
@@ -1928,7 +1948,7 @@ export default function TeacherDashboardPage() {
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
-                                                <AlertDialogCancel>取消</AlertDialogCancel>
+                                                <AlertDialogCancel onClick={() => setChallengeToDelete(null)}>取消</AlertDialogCancel>
                                                 <AlertDialogAction onClick={() => handleDeleteChallenge(challenge.id)} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
                                             </AlertDialogFooter>
                                         </AlertDialogContent>
@@ -2289,7 +2309,7 @@ export default function TeacherDashboardPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isEditStudentDialogOpen} onOpenChange={setIsEditStudentDialogOpen}>
+      <Dialog open={isEditStudentDialogOpen} onOpenChange={(open) => {if(!open) setEditingStudent(null)}}>
         <DialogContent className="sm:max-w-[425px]">
             <form onSubmit={handleUpdateStudent}>
           <DialogHeader>
@@ -2337,7 +2357,7 @@ export default function TeacherDashboardPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog open={isResetPasswordDialogOpen} onOpenChange={setIsResetPasswordDialogOpen}>
+      <Dialog open={isResetPasswordDialogOpen} onOpenChange={(open) => {if(!open) setEditingStudent(null)}}>
         <DialogContent className="sm:max-w-[425px]">
             <form onSubmit={handleConfirmResetPassword}>
           <DialogHeader>
@@ -2403,7 +2423,7 @@ export default function TeacherDashboardPage() {
           </form>
         </DialogContent>
       </Dialog>
-      <Dialog open={isEditTeacherDialogOpen} onOpenChange={setIsEditTeacherDialogOpen}>
+      <Dialog open={isEditTeacherDialogOpen} onOpenChange={(open) => {if(!open) setEditingTeacher(null)}}>
         <DialogContent className="sm:max-w-[425px]">
             <form onSubmit={handleUpdateTeacher}>
           <DialogHeader>
@@ -2449,7 +2469,7 @@ export default function TeacherDashboardPage() {
           </form>
         </DialogContent>
       </Dialog>
-      <Dialog open={isResetTeacherPasswordDialogOpen} onOpenChange={setIsResetTeacherPasswordDialogOpen}>
+      <Dialog open={isResetTeacherPasswordDialogOpen} onOpenChange={(open) => {if(!open) setTeacherToResetPassword(null)}}>
         <DialogContent className="sm:max-w-[425px]">
           <form onSubmit={handleConfirmResetTeacherPassword}>
             <DialogHeader>
@@ -2481,7 +2501,7 @@ export default function TeacherDashboardPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={() => handleConfirmDeleteTeacher()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+            <AlertDialogAction onClick={handleConfirmDeleteTeacher} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -2593,7 +2613,7 @@ export default function TeacherDashboardPage() {
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogCancel onClick={() => setStockToDelete(null)}>取消</AlertDialogCancel>
-                <AlertDialogAction onClick={() => handleConfirmDeleteStock()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                <AlertDialogAction onClick={handleConfirmDeleteStock} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
     </AlertDialog>
@@ -2626,7 +2646,7 @@ export default function TeacherDashboardPage() {
           </form>
         </DialogContent>
       </Dialog>
-      <Dialog open={isEditChallengeDialogOpen} onOpenChange={setIsEditChallengeDialogOpen}>
+      <Dialog open={isEditChallengeDialogOpen} onOpenChange={(open) => {if(!open) setEditingChallenge(null)}}>
         <DialogContent className="sm:max-w-[425px]">
           <form onSubmit={handleUpdateChallenge}>
             <DialogHeader>

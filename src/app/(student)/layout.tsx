@@ -92,27 +92,28 @@ export default function StudentLayout({
           return;
       }
     }
-    
-    // Sync student data from the "source of truth" (AppDataContext)
-    const latestStudentData = students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId);
-    if (latestStudentData) {
-        const studentJson = JSON.stringify(studentData.student);
-        const latestStudentJson = JSON.stringify(latestStudentData);
-        // Only update if the data is actually different to avoid infinite loops
-        if (studentJson !== latestStudentJson) {
-            setStudentData({ 
-                student: latestStudentData,
-                points: latestStudentData.points,
-                portfolio: latestStudentData.portfolio,
-                redeemedRewards: latestStudentData.redeemedRewards,
-                loans: latestStudentData.loans,
-                challenges: latestStudentData.challenges,
-                fixedDeposits: latestStudentData.fixedDeposits || [],
-            });
+  }, [students, studentData.student, setStudentData, router]);
+
+  useEffect(() => {
+    if (studentData.student) {
+        const latestStudentData = students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId);
+        if (latestStudentData) {
+            const studentJson = JSON.stringify(studentData.student);
+            const latestStudentJson = JSON.stringify(latestStudentData);
+            if (studentJson !== latestStudentJson) {
+                setStudentData({ 
+                    student: latestStudentData,
+                    points: latestStudentData.points,
+                    portfolio: latestStudentData.portfolio,
+                    redeemedRewards: latestStudentData.redeemedRewards,
+                    loans: latestStudentData.loans,
+                    challenges: latestStudentData.challenges,
+                    fixedDeposits: latestStudentData.fixedDeposits || [],
+                });
+            }
+        } else if (studentData.student) {
+            handleLogout();
         }
-    } else if (studentData.student) {
-        // If student is not found in the global list (e.g., removed by teacher), log out
-        handleLogout();
     }
   }, [students, studentData.student, setStudentData, router]);
 

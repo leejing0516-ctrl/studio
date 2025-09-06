@@ -27,16 +27,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { DAILY_INTEREST_RATE } from "@/lib/placeholder-data";
 
 const LOAN_LIMIT = 500;
 
 export default function LoansPage() {
   const { studentData } = useContext(StudentDataContext);
-  const { students, setStudents } = useContext(AppDataContext);
+  const { students, setStudents, platformConfig } = useContext(AppDataContext);
   const { toast } = useToast();
 
-  const [loanAmount, setLoanAmount] = useState<number>(100);
+  const [loanAmount, setLoanAmount] = useState<number | "">(100);
   const [loanReason, setLoanReason] = useState("");
   const [repaymentDate, setRepaymentDate] = useState<Date | undefined>(addDays(new Date(), 7));
   const [isConfirmRepayOpen, setIsConfirmRepayOpen] = useState(false);
@@ -45,10 +44,11 @@ export default function LoansPage() {
   const currentStudent = students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId);
   const activeLoan = useMemo(() => currentStudent?.loans?.find(l => l.status === 'active' || l.status === 'overdue'), [currentStudent]);
   const pendingLoan = useMemo(() => currentStudent?.loans?.find(l => l.status === 'pending'), [currentStudent]);
+  const loanInterestRate = platformConfig?.loanInterestRate || 0.005; // Default 0.5% daily interest
 
   const handleLoanRequest = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!repaymentDate || !currentStudent) return;
+    if (!repaymentDate || !currentStudent || !loanAmount) return;
     if (loanAmount <= 0 || loanAmount > LOAN_LIMIT) {
         toast({ title: "無效的金額", description: `貸款金額必須介於 1 至 ${LOAN_LIMIT.toLocaleString()} 之間。`, variant: "destructive" });
         return;
@@ -65,6 +65,7 @@ export default function LoansPage() {
       requestDate: new Date().toISOString(),
       repaymentDate: startOfDay(repaymentDate).toISOString(),
       status: 'pending',
+      interestRate: loanInterestRate,
       interest: 0,
     };
 
@@ -89,7 +90,7 @@ export default function LoansPage() {
   const handleConfirmRepay = () => {
     if (!loanToRepay || !currentStudent) return;
     
-    const totalRepayment = loanToRepay.amount + loanToRepay.interest;
+    const totalRepayment = Math.ceil(loanToRepay.amount + loanToRepay.interest);
     if (currentStudent.points < totalRepayment) {
         toast({ title: "點數不足", description: `您需要 ${totalRepayment.toLocaleString()} 點來償還此筆貸款。`, variant: "destructive" });
         setIsConfirmRepayOpen(false);
@@ -126,7 +127,7 @@ export default function LoansPage() {
       );
     }
     if (activeLoan) {
-        const totalRepayment = activeLoan.amount + activeLoan.interest;
+        const totalRepayment = Math.ceil(activeLoan.amount + activeLoan.interest);
         const isOverdue = activeLoan.status === 'overdue';
       return (
         <Card className={cn("overflow-hidden", isOverdue && "border-red-500 bg-red-500/5")}>
@@ -142,7 +143,7 @@ export default function LoansPage() {
           <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                   <div><p className="text-muted-foreground">貸款金額</p><p className="font-bold text-lg">{activeLoan.amount.toLocaleString()} 點</p></div>
-                  <div><p className="text-muted-foreground">累積利息</p><p className="font-bold text-lg">{activeLoan.interest.toLocaleString()} 點</p></div>
+                  <div><p className="text-muted-foreground">累積利息 ({(activeLoan.interestRate * 100).toFixed(2)}%日利率)</p><p className="font-bold text-lg">{Math.floor(activeLoan.interest).toLocaleString()} 點</p></div>
                   <div><p className="text.muted-foreground">批准日期</p><p>{activeLoan.approvalDate ? format(new Date(activeLoan.approvalDate), 'yyyy-MM-dd') : 'N/A'}</p></div>
                   <div><p className="text.muted-foreground">還款期限</p><p className={cn(isOverdue && "font-bold text-red-500")}>{format(new Date(activeLoan.repaymentDate), 'yyyy-MM-dd')}</p></div>
               </div>
@@ -172,12 +173,12 @@ export default function LoansPage() {
             <form onSubmit={handleLoanRequest}>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2"><Landmark/> 信用貸款申請</CardTitle>
-                    <CardDescription>需要點數應急嗎？您可以申請最高 {LOAN_LIMIT.toLocaleString()} 點的短期貸款。每日利息為 {DAILY_INTEREST_RATE.toLocaleString()} 點。</CardDescription>
+                    <CardDescription>需要點數應急嗎？您可以申請最高 {LOAN_LIMIT.toLocaleString()} 點的短期貸款。目前的日利率為 {(loanInterestRate * 100).toFixed(2)}%。</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="amount">貸款金額 (上限 {LOAN_LIMIT.toLocaleString()} 點)</Label>
-                        <Input id="amount" type="number" value={loanAmount} onChange={e => setLoanAmount(Number(e.target.value))} max={LOAN_LIMIT} min="1" required/>
+                        <Input id="amount" type="number" value={loanAmount} onChange={e => setLoanAmount(e.target.value === '' ? '' : Number(e.target.value))} max={LOAN_LIMIT} min="1" required/>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="reason">貸款理由</Label>
@@ -228,12 +229,12 @@ export default function LoansPage() {
                 <CardTitle>貸款歷史紀錄</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="space-y-4">
+                <div className="space-y-4 max-h-96 overflow-y-auto">
                     {historicalLoans.map(loan => (
                         <div key={loan.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                             <div>
                                 <p className="font-semibold">
-                                    {loan.status === 'repaid' ? `已償還 ${loan.amount.toLocaleString()} 點` : `已拒絕 ${loan.amount.toLocaleString()} 點`}
+                                    {loan.status === 'repaid' ? `已償還 ${Math.ceil(loan.amount + loan.interest).toLocaleString()} 點` : `已拒絕 ${loan.amount.toLocaleString()} 點`}
                                 </p>
                                 <p className="text-sm text-muted-foreground">
                                     申請日期: {format(new Date(loan.requestDate), 'yyyy-MM-dd')}
@@ -264,7 +265,7 @@ export default function LoansPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>確認還款？</AlertDialogTitle>
             <AlertDialogDescription>
-              您確定要花費 {((loanToRepay?.amount || 0) + (loanToRepay?.interest || 0)).toLocaleString()} 點來償還此筆貸款嗎？
+              您確定要花費 {Math.ceil((loanToRepay?.amount || 0) + (loanToRepay?.interest || 0)).toLocaleString()} 點來償還此筆貸款嗎？
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -30,6 +30,7 @@ export type Loan = {
   repaymentDate: string; // ISO date string
   status: 'pending' | 'active' | 'repaid' | 'rejected' | 'overdue';
   interest: number;
+  interestRate: number; // The daily rate for this loan
   approvalDate?: string; // ISO date string, set when loan is approved
   lastInterestAccruedDate?: string; // ISO date string, last time interest was calculated
 }
@@ -123,4 +124,5 @@ export type PlatformConfig = {
     announcements?: Announcement[];
     challenges?: Challenge[];
     fixedDepositInterestRate?: number;
+    loanInterestRate?: number;
 }
