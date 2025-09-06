@@ -4,12 +4,23 @@ export type RedeemedRewardItem = {
   redemptionId: string; // A unique ID for this specific instance of the reward
   reward: Reward;
   status: 'collected' | 'pending_use';
+  redemptionDate: string; // ISO date string
 };
 
 export type PointRecord = {
     points: number;
     date: string; // ISO date string of when the points were awarded
 }
+
+export type FixedDeposit = {
+  id: string;
+  amount: number;
+  startDate: string; // ISO date string
+  maturityDate: string; // ISO date string
+  status: 'active' | 'matured';
+  interestRate: number; // The daily rate at the time of deposit
+  interestEarned: number;
+};
 
 export type Loan = {
   id: string;
@@ -42,6 +53,7 @@ export type Student = {
   loans: Loan[];
   pointHistory: PointRecord[];
   challenges: StudentChallenge[];
+  fixedDeposits: FixedDeposit[];
 };
 
 export type Reward = {
@@ -110,4 +122,5 @@ export type PlatformConfig = {
     teacherPassword?: string;
     announcements?: Announcement[];
     challenges?: Challenge[];
+    fixedDepositInterestRate?: number;
 }

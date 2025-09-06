@@ -2,7 +2,7 @@
 import type { Student, Reward, Stock, Class, Teacher, Challenge } from "./types";
 
 export const TEACHER_PASSWORD = "001"; // Shared password for all teachers for simplicity
-export const DAILY_INTEREST_RATE = 1; // 1 point per day
+export const DAILY_INTEREST_RATE = 1; // 1 point per day for loans
 
 export const classes: Class[] = [
     { id: "6A", name: "六年甲班", announcements: [] },
@@ -26,28 +26,21 @@ export const teachers: Teacher[] = [
 
 export const students: Student[] = [
   // Class 6A
-  { id: "S001", name: "愛麗絲·強森", classId: "6A", points: 1250, avatar: "https://picsum.photos/seed/alice/100", password: "001", portfolio: [
+  { id: "S001", name: "陳囿嘉", classId: "6A", points: 1250, avatar: "https://picsum.photos/seed/alice/100", password: "001", portfolio: [
       { ticker: "EDU", name: "學習公司", shares: 10, avgCost: 140.00 },
       { ticker: "SCI", name: "科學解決方案", shares: 5, avgCost: 220.00 },
-  ], redeemedRewards: [], loans: [], pointHistory: [], challenges: [] },
+  ], redeemedRewards: [], loans: [], pointHistory: [], challenges: [], fixedDeposits: [] },
   { id: "S002", name: "鮑伯·威廉斯", classId: "6A", points: 800, avatar: "https://picsum.photos/seed/bob/100", password: "001", portfolio: [
       { ticker: "TECH", name: "創新有限責任公司", shares: 2, avgCost: 560.00 },
-  ], redeemedRewards: [], loans: [], pointHistory: [], challenges: [] },
+  ], redeemedRewards: [], loans: [], pointHistory: [], challenges: [], fixedDeposits: [] },
   // Class 6B
-  { id: "S003", name: "查理·布朗", classId: "6B", points: 1500, avatar: "https://picsum.photos/seed/charlie/100", password: "001", portfolio: [], redeemedRewards: [], loans: [], pointHistory: [], challenges: [] },
-  { id: "S004", name: "黛安娜·普林斯", classId: "6B", points: 2500, avatar: "https://picsum.photos/seed/diana/100", password: "001", portfolio: [], redeemedRewards: [], loans: [], pointHistory: [], challenges: [] },
+  { id: "S003", name: "查理·布朗", classId: "6B", points: 1500, avatar: "https://picsum.photos/seed/charlie/100", password: "001", portfolio: [], redeemedRewards: [], loans: [], pointHistory: [], challenges: [], fixedDeposits: [] },
+  { id: "S004", name: "黛安娜·普林斯", classId: "6B", points: 2500, avatar: "https://picsum.photos/seed/diana/100", password: "001", portfolio: [], redeemedRewards: [], loans: [], pointHistory: [], challenges: [], fixedDeposits: [] },
    // Class 5A
-  { id: "S005", name: "伊森·韓特", classId: "5A", points: 950, avatar: "https://picsum.photos/seed/ethan/100", password: "001", portfolio: [], redeemedRewards: [], loans: [], pointHistory: [], challenges: [] },
+  { id: "S005", name: "伊森·韓特", classId: "5A", points: 950, avatar: "https://picsum.photos/seed/ethan/100", password: "001", portfolio: [], redeemedRewards: [], loans: [], pointHistory: [], challenges: [], fixedDeposits: [] },
 ];
 
-export const rewards: Reward[] = [
-  { id: 1, name: "作業通行證", description: "跳過一次作業。", cost: 500, image: "https://picsum.photos/seed/pass/600/400", stock: 10, scope: 'school', providerId: 'school_admin' },
-  { id: 2, name: "披薩派對券", description: "在班級派對上獲得一片披薩。", cost: 250, image: "https://picsum.photos/seed/pizza/600/400", stock: 20, scope: 'class', providerId: 'teacher6A' },
-  { id: 3, name: "教室 VIP", description: "選擇一周的座位。", cost: 1000, image: "https://picsum.photos/seed/vip/600/400", stock: 5, scope: 'class', providerId: 'teacher6A' },
-  { id: 4, name: "老師的小幫手", description: "當一天老師的助理。", cost: 750, image: "https://picsum.photos/seed/assistant/600/400", stock: 8, scope: 'school', providerId: 'school_admin' },
-  { id: 5, name: "額外點數", description: "總點數增加 100 點。", cost: 1000, image: "https://picsum.photos/seed/bonus/600/400", stock: 15, scope: 'school', providerId: 'school_admin' },
-  { id: 6, name: "神秘盒子", description: "一個裝有驚喜獎勵的盒子！", cost: 1200, image: "https://picsum.photos/seed/mystery/600/400", stock: 3, scope: 'class', providerId: 'teacher6B' },
-];
+export const rewards: Reward[] = [];
 
 export const stocks: Stock[] = [
     { ticker: "EDU", name: "學習公司", price: 150.75, change: 2.50, changePercent: 1.68, marketCap: "1.2兆" },

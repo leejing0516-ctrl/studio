@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Reward, Student, Teacher, Class, Loan, Stock, Challenge, StudentChallenge } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Settings, ImageOff, LineChart, Banknote, ShieldPlus, Coins, School, Flag, Hourglass } from "lucide-react";
+import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Settings, ImageOff, LineChart, Banknote, ShieldPlus, Coins, School, Flag, Hourglass, Percent } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -98,6 +98,7 @@ export default function TeacherDashboardPage() {
   const [sponsorLogoFiles, setSponsorLogoFiles] = useState<(File | null)[]>(Array(4).fill(null));
   const [sponsorLogoPreviews, setSponsorLogoPreviews] = useState<(string | null)[]>(platformConfig?.sponsorLogoUrls || Array(4).fill(null));
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [fixedDepositRate, setFixedDepositRate] = useState<number | ''>((platformConfig?.fixedDepositInterestRate || 0) * 100);
   
   // State for Central Bank
   const [isAdjustFundsDialogOpen, setIsAdjustFundsDialogOpen] = useState(false);
@@ -139,6 +140,7 @@ export default function TeacherDashboardPage() {
   useEffect(() => {
     setPlatformLogoPreview(platformConfig?.platformLogoUrl || null);
     setSponsorLogoPreviews(platformConfig?.sponsorLogoUrls || Array(4).fill(null));
+    setFixedDepositRate((platformConfig?.fixedDepositInterestRate || 0) * 100);
   }, [platformConfig]);
 
   const currentTeacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
@@ -194,21 +196,34 @@ export default function TeacherDashboardPage() {
 
   const { toast } = useToast();
   
-  const pendingRequests = useMemo(() => {
+ const pendingRequests = useMemo(() => {
     return students.flatMap(student => 
         (student.redeemedRewards || [])
             .filter(r => r.status === 'pending_use')
             .map(redemption => ({ student, redemption }))
     ).filter(({ redemption, student }) => {
         const teacherForStudent = teachers.find(t => t.classId === student.classId);
+        // Admin sees school rewards requests from any class, or any request from the selected class
         if (role === 'admin') {
-            // Admin sees school rewards and rewards for the selected class
-            return redemption.reward.scope === 'school' || (redemption.reward.providerId === teacherForStudent?.id && student.classId === selectedClassId);
+            return redemption.reward.scope === 'school' || student.classId === selectedClassId;
         }
-        // Teacher only sees requests for their own rewards
-        return redemption.reward.providerId === teacherId;
+        // Teacher sees requests for their own rewards, or school rewards from their own students.
+        if (role === 'teacher' && student.classId === teacherClassId) {
+             return redemption.reward.providerId === teacherId || redemption.reward.scope === 'school';
+        }
+        return false;
     });
-  }, [students, role, selectedClassId, teacherId, teachers]);
+  }, [students, role, selectedClassId, teacherId, teachers, teacherClassId]);
+
+  const recentRedemptions = useMemo(() => {
+     return students.flatMap(student => student.redeemedRewards.map(r => ({student, redemption: r})))
+        .filter(({ student }) => {
+             if (role === 'admin') return student.classId === selectedClassId;
+             return student.classId === teacherClassId;
+        })
+        .sort((a,b) => new Date(b.redemption.redemptionDate).getTime() - new Date(a.redemption.redemptionDate).getTime())
+        .slice(0, 10);
+  }, [students, role, selectedClassId, teacherClassId]);
   
   const challengeApprovals = useMemo(() => {
       const allChallenges = platformConfig?.challenges || [];
@@ -447,6 +462,7 @@ export default function TeacherDashboardPage() {
         loans: [],
         pointHistory: [],
         challenges: [],
+        fixedDeposits: [],
     };
     setStudents(currentStudents => [...currentStudents, newStudent]);
     setIsAddStudentDialogOpen(false);
@@ -788,6 +804,7 @@ export default function TeacherDashboardPage() {
         loans: [],
         pointHistory: [],
         challenges: [],
+        fixedDeposits: [],
     }));
 
     setStudents(current => [...current, ...newStudents]);
@@ -863,7 +880,8 @@ export default function TeacherDashboardPage() {
         
         await setPlatformConfig({ 
             platformLogoUrl, 
-            sponsorLogoUrls: newSponsorUrls 
+            sponsorLogoUrls: newSponsorUrls,
+            fixedDepositInterestRate: Number(fixedDepositRate) / 100
         });
 
         toast({ title: "設定已儲存", description: "平台設定已成功更新。" });
@@ -1540,6 +1558,33 @@ export default function TeacherDashboardPage() {
         <TabsContent value="settings" className="mt-6 space-y-6">
             <Card>
                 <CardHeader>
+                    <CardTitle>一般設定</CardTitle>
+                    <CardDescription>管理平台的核心參數。</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between rounded-lg border p-4">
+                        <div>
+                            <Label htmlFor="fixed-deposit-rate" className="font-semibold">定存日利率</Label>
+                            <p className="text-xs text-muted-foreground">
+                                設定學生定期存款的每日利率。
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                             <Input 
+                                id="fixed-deposit-rate" 
+                                type="number" 
+                                value={fixedDepositRate}
+                                onChange={(e) => setFixedDepositRate(e.target.value === '' ? '' : Number(e.target.value))}
+                                className="w-24"
+                                step="0.01"
+                            />
+                            <Percent className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
                     <CardTitle>平台 Logo 設定</CardTitle>
                     <CardDescription>上傳平台 Logo。此 Logo 將顯示在登入頁面和側邊欄中。建議使用透明背景的 PNG 檔案。</CardDescription>
                 </CardHeader>
@@ -1698,6 +1743,42 @@ export default function TeacherDashboardPage() {
                     <TableRow>
                         <TableCell colSpan={5} className="text-center h-24">
                             目前沒有待處理的獎勵使用請求。
+                        </TableCell>
+                    </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+         <Card>
+          <CardHeader>
+            <CardTitle>最新兌換紀錄</CardTitle>
+            <CardDescription>
+              查看學生最近兌換了哪些獎勵。此處僅為紀錄，不需操作。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>學生</TableHead>
+                  <TableHead>獎勵名稱</TableHead>
+                  <TableHead>兌換時間</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recentRedemptions.length > 0 ? (
+                    recentRedemptions.map(({ student, redemption }) => (
+                        <TableRow key={redemption.redemptionId}>
+                            <TableCell>{student.name}</TableCell>
+                            <TableCell>{redemption.reward.name}</TableCell>
+                            <TableCell>{format(new Date(redemption.redemptionDate), 'yyyy-MM-dd HH:mm')}</TableCell>
+                        </TableRow>
+                    ))
+                ) : (
+                    <TableRow>
+                        <TableCell colSpan={3} className="text-center h-24">
+                            最近沒有任何兌換紀錄。
                         </TableCell>
                     </TableRow>
                 )}

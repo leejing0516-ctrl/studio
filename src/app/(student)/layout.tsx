@@ -31,6 +31,7 @@ import {
   KeyRound,
   Megaphone,
   Flag,
+  PiggyBank,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -69,10 +70,29 @@ export default function StudentLayout({
   useEffect(() => {
     // If there's no student data on page load (e.g., after a refresh), redirect to login
     if (!studentData.student) {
-      router.push('/');
-      return;
+      const storedId = localStorage.getItem('studentId');
+      const storedClassId = localStorage.getItem('studentClassId');
+      if (storedId && storedClassId) {
+        const foundStudent = students.find(s => s.id === storedId && s.classId === storedClassId);
+        if (foundStudent) {
+            setStudentData({ 
+                student: foundStudent,
+                points: foundStudent.points,
+                portfolio: foundStudent.portfolio,
+                redeemedRewards: foundStudent.redeemedRewards,
+                loans: foundStudent.loans,
+                challenges: foundStudent.challenges,
+                fixedDeposits: foundStudent.fixedDeposits,
+            });
+        } else {
+             router.push('/');
+        }
+      } else {
+          router.push('/');
+          return;
+      }
     }
-
+    
     // Sync student data from the "source of truth" (AppDataContext)
     const latestStudentData = students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId);
     if (latestStudentData) {
@@ -87,11 +107,12 @@ export default function StudentLayout({
                 redeemedRewards: latestStudentData.redeemedRewards,
                 loans: latestStudentData.loans,
                 challenges: latestStudentData.challenges,
+                fixedDeposits: latestStudentData.fixedDeposits || [],
             });
         }
-    } else {
+    } else if (studentData.student) {
         // If student is not found in the global list (e.g., removed by teacher), log out
-        router.push('/');
+        handleLogout();
     }
   }, [students, studentData.student, setStudentData, router]);
 
@@ -99,7 +120,10 @@ export default function StudentLayout({
   const student = studentData.student;
   
   const handleLogout = () => {
-    setStudentData({ student: null, points: 0, portfolio: [], redeemedRewards: [], loans: [], challenges: [] });
+    setStudentData({ student: null, points: 0, portfolio: [], redeemedRewards: [], loans: [], challenges: [], fixedDeposits: [] });
+    localStorage.removeItem('studentId');
+    localStorage.removeItem('studentClassId');
+    localStorage.removeItem('userRole');
     router.push('/');
   }
 
@@ -157,6 +181,7 @@ export default function StudentLayout({
     { href: "/my-collection", label: "我的收藏", icon: Package },
     { href: "/rewards", label: "獎勵商店", icon: Gift },
     { href: "/stocks", label: "股票市場", icon: LineChart },
+    { href: "/deposits", label: "定期存款", icon: PiggyBank },
     { href: "/loans", label: "信用貸款", icon: Landmark },
   ];
 

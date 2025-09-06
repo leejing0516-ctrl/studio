@@ -2,7 +2,7 @@
 "use client";
 
 import { createContext, useState, ReactNode } from 'react';
-import type { PortfolioItem, RedeemedRewardItem, Student, Loan, StudentChallenge } from '@/lib/types';
+import type { PortfolioItem, RedeemedRewardItem, Student, Loan, StudentChallenge, FixedDeposit } from '@/lib/types';
 
 interface StudentData {
   student: Student | null;
@@ -11,6 +11,7 @@ interface StudentData {
   redeemedRewards: RedeemedRewardItem[];
   loans: Loan[];
   challenges: StudentChallenge[];
+  fixedDeposits: FixedDeposit[];
 }
 
 interface StudentDataContextType {
@@ -25,6 +26,7 @@ const defaultStudentData: StudentData = {
     redeemedRewards: [],
     loans: [],
     challenges: [],
+    fixedDeposits: [],
 };
 
 export const StudentDataContext = createContext<StudentDataContextType>({

@@ -15,7 +15,7 @@ import {
 } from '@/lib/placeholder-data';
 import { db } from '@/lib/firebase';
 import { collection, doc, getDocs, writeBatch, setDoc, getDoc, updateDoc } from 'firebase/firestore';
-import { isSameDay, startOfDay, differenceInCalendarDays, parseISO } from 'date-fns';
+import { isSameDay, startOfDay, differenceInCalendarDays, parseISO, isAfter } from 'date-fns';
 
 
 // --- Cloud-based Data Management ---
@@ -139,6 +139,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             schoolFunds: 1000000,
             announcements: [],
             challenges: initialChallenges,
+            fixedDepositInterestRate: 0.01, // 1% daily
         };
         batch.set(configDocRef, initialConfig, { merge: true });
         setPlatformConfigState(prev => ({ ...(prev || { id: 'main' }), ...initialConfig }));
@@ -251,22 +252,22 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         }
     }, 7200000); // Check every 2 hours
     
-    // Daily updates for loans
+    // Daily updates for loans and fixed deposits
     if (dailyUpdateIntervalRef.current) {
         clearInterval(dailyUpdateIntervalRef.current);
     }
     dailyUpdateIntervalRef.current = setInterval(() => {
-        console.log("Running daily updates for loans...");
+        console.log("Running daily updates for loans and deposits...");
         setStudents(prevStudents => {
             const today = startOfDay(new Date());
             let hasChanges = false;
             
             const updatedStudents = prevStudents.map(student => {
-                if (!student.loans || student.loans.length === 0) return student;
-
                 let studentModified = false;
+                let studentPoints = student.points;
                 
-                const updatedLoans = student.loans.map(loan => {
+                // --- Loan Updates ---
+                const updatedLoans = (student.loans || []).map(loan => {
                     if (loan.status !== 'active' && loan.status !== 'overdue') {
                         return loan;
                     }
@@ -291,9 +292,43 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                     return updatedLoan;
                 });
                 
+                // --- Fixed Deposit Updates ---
+                const updatedDeposits = (student.fixedDeposits || []).map(deposit => {
+                    if (deposit.status !== 'active') {
+                        return deposit;
+                    }
+
+                    let updatedDeposit = {...deposit};
+                    const maturityDate = startOfDay(parseISO(deposit.maturityDate));
+
+                    if (isAfter(today, maturityDate) || isSameDay(today, maturityDate)) {
+                        // Deposit has matured
+                        updatedDeposit.status = 'matured';
+                        const finalAmount = deposit.amount + deposit.interestEarned;
+                        studentPoints += finalAmount;
+                        // Add a point history record for clarity
+                        student.pointHistory.push({
+                            points: finalAmount,
+                            date: today.toISOString(),
+                        });
+                        studentModified = true;
+                    } else {
+                        // Accrue interest
+                        updatedDeposit.interestEarned += deposit.amount * deposit.interestRate;
+                        studentModified = true;
+                    }
+                    
+                    return updatedDeposit;
+                });
+                
                 if (studentModified) {
                     hasChanges = true;
-                    return { ...student, loans: updatedLoans };
+                    return { 
+                        ...student, 
+                        points: studentPoints,
+                        loans: updatedLoans, 
+                        fixedDeposits: updatedDeposits,
+                    };
                 }
                 return student;
             });
@@ -315,42 +350,55 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [initializePublicData]);
 
-  // Generic update function
-  const createUpdater = <T extends { id?: string | number; ticker?: string }>(
-    collectionName: string, 
-    setter: React.Dispatch<React.SetStateAction<T[]>>
-  ) => async (newData: T[] | ((prev: T[]) => T[])) => {
-    // Use a function for the setter to get the most up-to-date previous state
-    setter(prevData => {
-        const updatedData = typeof newData === 'function' ? newData(prevData) : newData;
-        
-        const batch = writeBatch(db);
-        const currentIds = new Set(updatedData.map(p => p.id ? String(p.id) : p.ticker));
+  const createUpdater = useCallback(<T extends { id?: string | number; ticker?: string }>(
+    collectionName: string,
+    stateSetter: React.Dispatch<React.SetStateAction<T[]>>
+  ) => {
+    return async (dataOrFn: T[] | ((prevState: T[]) => T[])) => {
+      // First, get the final state of the data
+      const finalData = await new Promise<T[]>(resolve => {
+          stateSetter(prevState => {
+              const updated = typeof dataOrFn === 'function' ? dataOrFn(prevState) : dataOrFn;
+              resolve(updated);
+              return updated;
+          });
+      });
 
-        updatedData.forEach(item => {
-            const docId = item.id ? String(item.id) : (item.ticker || null);
-            if (docId) {
-                const docRef = doc(db, collectionName, docId);
-                batch.set(docRef, { ...item });
-            } else {
-                console.warn(`Skipping item in ${collectionName} due to missing id/ticker:`, item);
-            }
-        });
+      // Then, commit this final state to Firestore
+      const batch = writeBatch(db);
+      const currentIds = new Set(finalData.map(p => p.id ? String(p.id) : p.ticker));
+      const previousState = await new Promise<T[]>(resolve => stateSetter(prevState => {
+          resolve(prevState);
+          return prevState; // No actual state change here, just getting the value
+      }));
+      const previousIds = new Set(previousState.map(p => p.id ? String(p.id) : p.ticker));
 
-        // Delete items that are in prevData but not in updatedData
-        prevData.forEach(item => {
-            const docId = item.id ? String(item.id) : (item.ticker || null);
-            if(docId && !currentIds.has(docId)) {
-                const docRef = doc(db, collectionName, docId);
-                batch.delete(docRef);
-            }
-        })
-        
-        batch.commit().catch(e => console.error(`Failed to update ${collectionName}`, e));
 
-        return updatedData;
-    });
-  };
+      finalData.forEach(item => {
+        const docId = item.id ? String(item.id) : (item.ticker || null);
+        if (docId) {
+          const docRef = doc(db, collectionName, docId);
+          batch.set(docRef, { ...item });
+        }
+      });
+      
+      previousState.forEach(item => {
+        const docId = item.id ? String(item.id) : (item.ticker || null);
+        if (docId && !currentIds.has(docId)) {
+          const docRef = doc(db, collectionName, docId);
+          batch.delete(docRef);
+        }
+      });
+
+
+      try {
+        await batch.commit();
+      } catch (e) {
+        console.error(`Failed to update ${collectionName}`, e);
+        // Here you might want to handle the error, e.g., by reverting the state
+      }
+    };
+  }, []);
 
   const setStudents = createUpdater<Student>('students', setStudentsState);
   const setRewards = createUpdater<Reward>('rewards', setRewardsState);
