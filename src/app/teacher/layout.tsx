@@ -25,6 +25,9 @@ import {
   ChevronDown,
   Megaphone,
   Flag,
+  LineChart,
+  HeartHandshake,
+  Gift,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -152,12 +155,15 @@ export default function TeacherLayout({
   const navItems = [
     { href: "/teacher/dashboard", label: "班級與點數管理", icon: LayoutDashboard, roles: ['admin', 'teacher', 'subject_teacher'] },
     { href: "/teacher/announcements", label: "公告管理", icon: Megaphone, roles: ['admin', 'teacher'] },
+    { href: "/teacher/rewards", label: "獎勵管理", icon: Gift, roles: ['admin', 'teacher'] },
     { href: "/teacher/challenges", label: "挑戰管理", icon: Flag, roles: ['admin', 'teacher'] },
+    { href: "/teacher/stocks", label: "股票管理", icon: LineChart, roles: ['admin'] },
+    { href: "/teacher/fundraising", label: "募資管理", icon: HeartHandshake, roles: ['admin'] },
     { href: "/teacher/settings", label: "平台設定", icon: Settings, roles: ['admin'] },
   ];
   
   const availableNavItems = navItems.filter(item => item.roles.includes(teacherRole || ''));
-  const currentNavItem = availableNavItems.find(item => pathname === item.href || pathname.startsWith(item.href));
+  const currentNavItem = availableNavItems.find(item => pathname.startsWith(item.href));
 
 
   const roleNameMapping: { [key: string]: string } = {

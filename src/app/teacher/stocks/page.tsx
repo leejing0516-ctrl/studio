@@ -1,0 +1,275 @@
+
+"use client";
+
+import { useState, useContext, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "@/components/ui/table";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import type { Stock } from "@/lib/types";
+import { PlusCircle, Edit, Trash2, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { AppDataContext } from "@/context/AppDataContext";
+import { useRouter } from "next/navigation";
+
+
+export default function TeacherStocksPage() {
+  const { 
+    stocks, setStocks,
+    students, setStudents,
+    isLoading
+  } = useContext(AppDataContext);
+
+  const { toast } = useToast();
+  const router = useRouter();
+
+  const [role, setRole] = useState<string | null>(null);
+
+  // States for Stock Management
+  const [isAddStockDialogOpen, setIsAddStockDialogOpen] = useState(false);
+  const [isEditStockDialogOpen, setIsEditStockDialogOpen] = useState(false);
+  const [stockToEdit, setStockToEdit] = useState<Stock | null>(null);
+  const [stockToDelete, setStockToDelete] = useState<Stock | null>(null);
+
+  useEffect(() => {
+    const storedRole = localStorage.getItem('teacherRole');
+    if (storedRole !== 'admin') {
+      toast({ title: "權限不足", description: "只有校長才能存取此頁面。", variant: "destructive" });
+      router.push('/teacher/dashboard');
+      return;
+    }
+    setRole(storedRole);
+  }, [router, toast]);
+
+  const handleAddStock = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const ticker = (formData.get("ticker") as string).toUpperCase();
+    
+    if (stocks.some(s => s.ticker === ticker)) {
+        toast({ title: "新增失敗", description: `股票代碼 ${ticker} 已存在。`, variant: "destructive" });
+        return;
+    }
+
+    const newStock: Stock = {
+        ticker,
+        name: formData.get("name") as string,
+        price: Number(formData.get("price")),
+        marketCap: formData.get("marketCap") as string,
+        change: 0,
+        changePercent: 0,
+    };
+
+    setStocks(current => [...current, newStock]);
+    setIsAddStockDialogOpen(false);
+    toast({ title: "已新增股票", description: `${newStock.name} (${newStock.ticker}) 已新增至市場。`});
+  };
+
+  const handleEditStockClick = (stock: Stock) => {
+    setStockToEdit(stock);
+    setIsEditStockDialogOpen(true);
+  };
+
+  const handleUpdateStock = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!stockToEdit) return;
+    const formData = new FormData(event.currentTarget);
+    
+    const updatedStock: Stock = {
+        ...stockToEdit,
+        name: formData.get("name") as string,
+        price: Number(formData.get("price")),
+        marketCap: formData.get("marketCap") as string,
+    };
+    
+    setStocks(current => current.map(s => s.ticker === updatedStock.ticker ? updatedStock : s));
+    setIsEditStockDialogOpen(false);
+    setStockToEdit(null);
+    toast({ title: "已更新股票", description: `${updatedStock.name} 的資訊已更新。` });
+  };
+  
+  const handleDeleteStockClick = (stock: Stock) => {
+    setStockToDelete(stock);
+  };
+
+  const handleConfirmDeleteStock = () => {
+    if (!stockToDelete) return;
+    // Also need to remove this stock from all student portfolios
+    setStudents(currentStudents => currentStudents.map(student => ({
+        ...student,
+        portfolio: (student.portfolio || []).filter(p => p.ticker !== stockToDelete.ticker)
+    })));
+
+    setStocks(current => current.filter(s => s.ticker !== stockToDelete.ticker));
+
+    toast({ title: "已刪除股票", description: `已從市場及所有投資組合中移除 ${stockToDelete.name}。`, variant: "destructive" });
+    setStockToDelete(null);
+  }
+  
+  if (isLoading || role !== 'admin') {
+      return (
+        <div className="flex items-center justify-center h-full">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+      )
+  }
+
+  return (
+    <div className="space-y-6 animate-in fade-in-0 duration-500">
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                    <CardTitle>股票市場管理</CardTitle>
+                    <CardDescription>管理虛擬市場中可供學生交易的股票。</CardDescription>
+                </div>
+                <Button onClick={() => setIsAddStockDialogOpen(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    新增股票
+                </Button>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>代碼</TableHead>
+                            <TableHead>公司名稱</TableHead>
+                            <TableHead>初始價格</TableHead>
+                            <TableHead>市值</TableHead>
+                            <TableHead className="text-right">操作</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {stocks.map(stock => (
+                            <TableRow key={stock.ticker}>
+                                <TableCell>{stock.ticker}</TableCell>
+                                <TableCell>{stock.name}</TableCell>
+                                <TableCell>{stock.price.toLocaleString()}</TableCell>
+                                <TableCell>{stock.marketCap}</TableCell>
+                                <TableCell className="text-right">
+                                    <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleEditStockClick(stock)}>
+                                        <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <AlertDialog open={!!stockToDelete && stockToDelete.ticker === stock.ticker} onOpenChange={(open) => !open && setStockToDelete(null)}>
+                                        <AlertDialogTrigger asChild>
+                                             <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStockClick(stock)}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>您確定要下市嗎？</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    您確定要將「{stock.name}」從市場上下市嗎？此操作將會把這支股票從所有學生的投資組合中移除。
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>取消</AlertDialogCancel>
+                                                <AlertDialogAction onClick={handleConfirmDeleteStock} className={buttonVariants({ variant: "destructive" })}>確定下市</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+
+        {/* Dialog for Add Stock */}
+        <Dialog open={isAddStockDialogOpen} onOpenChange={setIsAddStockDialogOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+                <form onSubmit={handleAddStock}>
+                    <DialogHeader>
+                        <DialogTitle>新增股票</DialogTitle>
+                        <DialogDescription>建立一支持新的股票，讓學生可以進行交易。</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="stock-ticker">股票代碼 (Ticker)</Label>
+                            <Input id="stock-ticker" name="ticker" placeholder="例如：EDU" required />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="stock-name">公司名稱</Label>
+                            <Input id="stock-name" name="name" placeholder="例如：學習公司" required />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="stock-price">初始價格</Label>
+                            <Input id="stock-price" name="price" type="number" placeholder="例如：150" required />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="stock-marketCap">市值</Label>
+                            <Input id="stock-marketCap" name="marketCap" placeholder="例如：1.2兆" required />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
+                        <Button type="submit">新增股票</Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+
+        {/* Dialog for Edit Stock */}
+        <Dialog open={isEditStockDialogOpen} onOpenChange={(open) => {if(!open) setStockToEdit(null)}}>
+            <DialogContent className="sm:max-w-[425px]">
+                <form onSubmit={handleUpdateStock}>
+                    <DialogHeader>
+                        <DialogTitle>編輯股票</DialogTitle>
+                        <DialogDescription>修改「{stockToEdit?.name}」的詳細資訊。</DialogDescription>
+                    </DialogHeader>
+                     <div className="grid gap-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-stock-ticker">股票代碼 (Ticker)</Label>
+                            <Input id="edit-stock-ticker" name="ticker" defaultValue={stockToEdit?.ticker} disabled />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-stock-name">公司名稱</Label>
+                            <Input id="edit-stock-name" name="name" defaultValue={stockToEdit?.name} required />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-stock-price">目前價格</Label>
+                            <Input id="edit-stock-price" name="price" type="number" defaultValue={stockToEdit?.price} required />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-stock-marketCap">市值</Label>
+                            <Input id="edit-stock-marketCap" name="marketCap" defaultValue={stockToEdit?.marketCap} required />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
+                        <Button type="submit">儲存變更</Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    </div>
+  );
+}
+
