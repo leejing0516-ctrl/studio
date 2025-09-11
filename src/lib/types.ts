@@ -18,6 +18,7 @@ export type FundraisingProject = {
   status: 'active' | 'completed';
   creatorId: string; // Should be 'school_admin'
   donations: Donation[];
+  deadline: string; // ISO date string
 };
 
 export type RedeemedRewardItem = {

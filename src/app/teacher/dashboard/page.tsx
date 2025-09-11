@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Reward, Student, Teacher, Class, Loan, Stock, Challenge, StudentChallenge, FundraisingProject, Donation } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Settings, ImageOff, LineChart, Banknote, ShieldPlus, Coins, School, Flag, Hourglass, Percent, ShieldCheck, HeartHandshake, Gift, Briefcase } from "lucide-react";
+import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Settings, ImageOff, LineChart, Banknote, ShieldPlus, Coins, School, Flag, Hourglass, Percent, ShieldCheck, HeartHandshake, Gift, Briefcase, Calendar as CalendarIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -35,14 +35,13 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { AppDataContext } from "@/context/AppDataContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format, formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow, addDays } from "date-fns";
 import Papa from "papaparse";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
@@ -52,6 +51,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 
 interface StagedStudent {
@@ -121,6 +123,8 @@ export default function TeacherDashboardPage() {
   const [editingProject, setEditingProject] = useState<FundraisingProject | null>(null);
   const [projectImageFile, setProjectImageFile] = useState<File | null>(null);
   const [projectImagePreview, setProjectImagePreview] = useState<string | null>(null);
+  const [projectDeadline, setProjectDeadline] = useState<Date | undefined>(addDays(new Date(), 14));
+
 
   const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
@@ -155,7 +159,7 @@ export default function TeacherDashboardPage() {
             setSelectedClassId(teacherClassIds[0]);
         }
     }
-  }, [role, classes, teacherClassIds, selectedClassId]);
+  }, [role, classes, teacherClassIds]);
 
   const currentTeacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
 
@@ -175,18 +179,6 @@ export default function TeacherDashboardPage() {
       });
   }, [students, role, teacherClassIds]);
 
-
-  const [isAddRewardDialogOpen, setIsAddRewardDialogOpen] = useState(false);
-  const [isEditRewardDialogOpen, setIsEditRewardDialogOpen] = useState(false);
-  const [rewardToDelete, setRewardToDelete] = useState<Reward | null>(null);
-  const [editingReward, setEditingReward] = useState<Reward | null>(null);
-  
-  const rewardsInView = useMemo(() => {
-      if (role === 'admin') {
-          return rewards.filter(r => r.scope === 'school');
-      }
-      return rewards.filter(r => r.scope === 'class' && r.providerId === teacherId);
-  }, [rewards, role, teacherId]);
 
   const [isAddStudentDialogOpen, setIsAddStudentDialogOpen] = useState(false);
 
@@ -368,96 +360,6 @@ export default function TeacherDashboardPage() {
     }
   };
 
-
-  const handleAddReward = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!teacherId) return;
-
-    const formData = new FormData(event.currentTarget);
-    const name = formData.get("name") as string;
-    const description = formData.get("description") as string;
-    const cost = Number(formData.get("cost"));
-    const stock = Number(formData.get("stock"));
-
-    let imageUrl = `https://picsum.photos/seed/${name.replace(/\s/g, '-')}/600/400`;
-
-    if (rewardImageFile) {
-        try {
-            imageUrl = await fileToDataUrl(rewardImageFile);
-        } catch (error) {
-            console.error("Error converting image to data URL", error);
-            toast({ title: "圖片上傳失敗", description: "無法處理您上傳的圖片，將使用預設圖片。", variant: "destructive" });
-        }
-    }
-
-    const newReward: Reward = {
-      id: rewards.length > 0 ? Math.max(...rewards.map(r => parseInt(r.id.toString()))) + 1 : 1,
-      name,
-      description,
-      cost,
-      stock,
-      image: imageUrl,
-      scope: role === 'admin' ? 'school' : 'class',
-      providerId: role === 'admin' ? 'school_admin' : teacherId,
-    };
-
-    setRewards(currentRewards => [...currentRewards, newReward]);
-    setIsAddRewardDialogOpen(false);
-    toast({
-        title: "已新增獎勵",
-        description: `${newReward.name} 已被新增至商店。`
-    });
-  };
-  
-  const handleEditRewardClick = (reward: Reward) => {
-    setEditingReward(reward);
-    setRewardImagePreview(reward.image);
-    setIsEditRewardDialogOpen(true);
-  };
-  
-  const handleUpdateReward = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!editingReward) return;
-
-    const formData = new FormData(event.currentTarget);
-    let imageUrl = editingReward.image;
-
-    if (rewardImageFile) {
-        try {
-            imageUrl = await fileToDataUrl(rewardImageFile);
-        } catch (error) {
-            console.error("Error converting image to data URL", error);
-            toast({ title: "圖片上傳失敗", description: "無法處理您上傳的圖片，將保留原圖片。", variant: "destructive" });
-        }
-    }
-
-    const updatedReward: Reward = {
-      ...editingReward,
-      name: formData.get("name") as string,
-      description: formData.get("description") as string,
-      cost: Number(formData.get("cost")),
-      stock: Number(formData.get("stock")),
-      image: imageUrl,
-    };
-    
-    setRewards(currentRewards => currentRewards.map(r => (r.id === updatedReward.id ? updatedReward : r)));
-    setIsEditRewardDialogOpen(false);
-    setEditingReward(null);
-    toast({
-        title: "已更新獎勵",
-        description: `${updatedReward.name} 的資訊已更新。`
-    })
-  }
-
-  const handleDeleteReward = (reward: Reward) => {
-    setRewards(currentRewards => currentRewards.filter(r => r.id !== reward.id));
-    toast({
-        title: "已移除獎勵",
-        description: `${reward.name} 已被移除。`,
-        variant: "destructive"
-    });
-    setRewardToDelete(null);
-  }
 
   const handleAddStudent = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -1008,6 +910,11 @@ export default function TeacherDashboardPage() {
 
   const handleAddFundraisingProject = async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
+      if (!projectDeadline) {
+          toast({ title: "缺少截止日期", description: "請為專案設定一個截止日期。", variant: "destructive" });
+          return;
+      }
+
       const formData = new FormData(event.currentTarget);
       const title = formData.get("title") as string;
       const description = formData.get("description") as string;
@@ -1032,6 +939,7 @@ export default function TeacherDashboardPage() {
           status: 'active',
           creatorId: teacherId || 'school_admin',
           donations: [],
+          deadline: projectDeadline.toISOString(),
       };
 
       setPlatformConfig({
@@ -1044,12 +952,16 @@ export default function TeacherDashboardPage() {
   const handleEditProjectClick = (project: FundraisingProject) => {
     setEditingProject(project);
     setProjectImagePreview(project.image);
+    setProjectDeadline(new Date(project.deadline));
     setIsEditProjectDialogOpen(true);
   };
   
   const handleUpdateFundraisingProject = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!editingProject) return;
+    if (!editingProject || !projectDeadline) {
+        toast({ title: "缺少截止日期", description: "請為專案設定一個截止日期。", variant: "destructive" });
+        return;
+    }
 
     const formData = new FormData(event.currentTarget);
     let imageUrl = editingProject.image;
@@ -1068,6 +980,7 @@ export default function TeacherDashboardPage() {
         goal: Number(formData.get("goal")),
         status: formData.get("status") as 'active' | 'completed',
         image: imageUrl,
+        deadline: projectDeadline.toISOString(),
     };
     
     setPlatformConfig({
@@ -1148,12 +1061,12 @@ export default function TeacherDashboardPage() {
       <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-7' : (role === 'teacher' ? 'grid-cols-4' : 'grid-cols-2')}`}>
         {role !== 'subject_teacher' && <TabsTrigger value="students">學生管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
-        {role === 'admin' && <TabsTrigger value="fundraising">募資管理</TabsTrigger>}
         {role === 'subject_teacher' && <TabsTrigger value="classes">班級管理</TabsTrigger>}
         <TabsTrigger value="points">發送點數</TabsTrigger>
         {(role === 'admin' || role === 'teacher') && <TabsTrigger value="approvals">審核中心</TabsTrigger>}
         {(role === 'admin' || role === 'teacher') && <TabsTrigger value="rewards">獎勵管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="stocks">股票管理</TabsTrigger>}
+        {role === 'admin' && <TabsTrigger value="fundraising">募資管理</TabsTrigger>}
       </TabsList>
       
       {role !== 'subject_teacher' && 
@@ -1365,74 +1278,6 @@ export default function TeacherDashboardPage() {
                     </Table>
                 </CardContent>
             </Card>
-        </TabsContent>
-        <TabsContent value="fundraising" className="mt-6">
-           <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                        <CardTitle>募資專案管理</CardTitle>
-                        <CardDescription>建立、編輯或查看全校性的募資專案。</CardDescription>
-                    </div>
-                    <Button onClick={() => setIsAddProjectDialogOpen(true)}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        建立新專案
-                    </Button>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {(platformConfig?.fundraisingProjects || []).length > 0 ? (platformConfig?.fundraisingProjects || []).map(project => (
-                        <Card key={project.id} className="p-4">
-                            <div className="flex flex-col md:flex-row gap-4">
-                                <Image src={project.image} alt={project.title} width={128} height={128} className="rounded-md object-cover w-full md:w-32 h-32"/>
-                                <div className="flex-1 space-y-2">
-                                    <div className="flex justify-between items-start">
-                                        <CardTitle>{project.title}</CardTitle>
-                                        <Badge variant={project.status === 'active' ? 'default' : 'secondary'}>
-                                            {project.status === 'active' ? '進行中' : '已完成'}
-                                        </Badge>
-                                    </div>
-                                    <p className="text-sm text-muted-foreground">{project.description}</p>
-                                    <Progress value={(project.currentAmount / project.goal) * 100} />
-                                    <p className="text-sm">
-                                        進度：{project.currentAmount.toLocaleString()} / {project.goal.toLocaleString()} 點
-                                    </p>
-                                </div>
-                                <div className="flex flex-col gap-2 md:items-end">
-                                   <Button size="sm" onClick={() => handleEditProjectClick(project)}>
-                                        <Edit className="mr-2"/>編輯
-                                    </Button>
-                                </div>
-                            </div>
-                            <details className="mt-4">
-                                <summary className="cursor-pointer text-sm font-medium">查看捐款紀錄</summary>
-                                <ScrollArea className="h-40 mt-2 border rounded-md p-2">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>學生</TableHead>
-                                                <TableHead>班級</TableHead>
-                                                <TableHead>日期</TableHead>
-                                                <TableHead className="text-right">金額</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {project.donations.map((d, i) => (
-                                                <TableRow key={i}>
-                                                    <TableCell>{d.studentName}</TableCell>
-                                                    <TableCell>{classes.find(c=>c.id === d.classId)?.name}</TableCell>
-                                                    <TableCell>{format(new Date(d.date), 'yyyy-MM-dd')}</TableCell>
-                                                    <TableCell className="text-right">{d.amount.toLocaleString()} 點</TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </ScrollArea>
-                            </details>
-                        </Card>
-                    )) : (
-                        <p className="text-center text-muted-foreground py-8">尚未建立任何募資專案。</p>
-                    )}
-                </CardContent>
-           </Card>
         </TabsContent>
         </>
       )}
@@ -1715,89 +1560,13 @@ export default function TeacherDashboardPage() {
       )}
 
       {(role === 'admin' || role === 'teacher') && (
-        <TabsContent value="rewards" className="mt-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>獎勵管理</CardTitle>
-                  <CardDescription>
-                    {role === 'admin'
-                      ? "管理全校學生可以兌換的獎勵。"
-                      : "管理您班級學生可以兌換的限定獎勵。"}
-                  </CardDescription>
-                </div>
-                <Button onClick={() => {
-                  setRewardImagePreview(null);
-                  setRewardImageFile(null);
-                  setIsAddRewardDialogOpen(true);
-                }}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  新增獎勵
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>獎勵</TableHead>
-                      <TableHead>費用(點)</TableHead>
-                      <TableHead>庫存</TableHead>
-                      <TableHead className="text-right">操作</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rewardsInView.map((reward) => (
-                      <TableRow key={reward.id}>
-                        <TableCell className="flex items-center gap-4">
-                          <Image
-                            src={reward.image}
-                            alt={reward.name}
-                            width={40}
-                            height={40}
-                            className="rounded-md object-cover"
-                          />
-                          <div>
-                            <p className="font-medium">{reward.name}</p>
-                            <p className="text-xs text-muted-foreground line-clamp-1">{reward.description}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>{reward.cost.toLocaleString()}</TableCell>
-                        <TableCell>{reward.stock}</TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleEditRewardClick(reward)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setRewardToDelete(reward)}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  您確定要刪除獎勵「{reward.name}」嗎？此操作無法復原。
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel onClick={() => setRewardToDelete(null)}>取消</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteReward(reward)} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+        <TabsContent value="rewards">
+             {/* This content is now in /teacher/rewards page */}
         </TabsContent>
       )}
-
-      {role === 'admin' && (
-          <TabsContent value="stocks" className="mt-6">
+      
+      {role === 'admin' &&
+        <TabsContent value="stocks" className="mt-6">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <div>
@@ -1857,8 +1626,79 @@ export default function TeacherDashboardPage() {
                     </Table>
                 </CardContent>
             </Card>
-          </TabsContent>
-      )}
+        </TabsContent>
+      }
+
+      {role === 'admin' &&
+        <TabsContent value="fundraising" className="mt-6">
+           <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle>募資專案管理</CardTitle>
+                        <CardDescription>建立、編輯或查看全校性的募資專案。</CardDescription>
+                    </div>
+                    <Button onClick={() => setIsAddProjectDialogOpen(true)}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        建立新專案
+                    </Button>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {(platformConfig?.fundraisingProjects || []).length > 0 ? (platformConfig?.fundraisingProjects || []).map(project => (
+                        <Card key={project.id} className="p-4">
+                            <div className="flex flex-col md:flex-row gap-4">
+                                <Image src={project.image} alt={project.title} width={128} height={128} className="rounded-md object-cover w-full md:w-32 h-32"/>
+                                <div className="flex-1 space-y-2">
+                                    <div className="flex justify-between items-start">
+                                        <CardTitle>{project.title}</CardTitle>
+                                        <Badge variant={project.status === 'active' ? 'default' : 'secondary'}>
+                                            {project.status === 'active' ? '進行中' : '已完成'}
+                                        </Badge>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">{project.description}</p>
+                                    <Progress value={(project.currentAmount / project.goal) * 100} />
+                                    <p className="text-sm">
+                                        進度：{project.currentAmount.toLocaleString()} / {project.goal.toLocaleString()} 點
+                                    </p>
+                                </div>
+                                <div className="flex flex-col gap-2 md:items-end">
+                                   <Button size="sm" onClick={() => handleEditProjectClick(project)}>
+                                        <Edit className="mr-2"/>編輯
+                                    </Button>
+                                </div>
+                            </div>
+                            <details className="mt-4">
+                                <summary className="cursor-pointer text-sm font-medium">查看捐款紀錄</summary>
+                                <ScrollArea className="h-40 mt-2 border rounded-md p-2">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>學生</TableHead>
+                                                <TableHead>班級</TableHead>
+                                                <TableHead>日期</TableHead>
+                                                <TableHead className="text-right">金額</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {project.donations.map((d, i) => (
+                                                <TableRow key={i}>
+                                                    <TableCell>{d.studentName}</TableCell>
+                                                    <TableCell>{classes.find(c=>c.id === d.classId)?.name}</TableCell>
+                                                    <TableCell>{format(new Date(d.date), 'yyyy-MM-dd')}</TableCell>
+                                                    <TableCell className="text-right">{d.amount.toLocaleString()} 點</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </ScrollArea>
+                            </details>
+                        </Card>
+                    )) : (
+                        <p className="text-center text-muted-foreground py-8">尚未建立任何募資專案。</p>
+                    )}
+                </CardContent>
+           </Card>
+        </TabsContent>
+      }
 
     </Tabs>
     </>
@@ -2324,9 +2164,37 @@ export default function TeacherDashboardPage() {
                             <Label htmlFor="project-description">專案說明</Label>
                             <Textarea id="project-description" name="description" required />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="project-goal">募資目標（點數）</Label>
-                            <Input id="project-goal" name="goal" type="number" required />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="project-goal">募資目標（點數）</Label>
+                                <Input id="project-goal" name="goal" type="number" required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="project-deadline">截止日期</Label>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                        variant={"outline"}
+                                        className={cn(
+                                            "w-full justify-start text-left font-normal",
+                                            !projectDeadline && "text-muted-foreground"
+                                        )}
+                                        >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {projectDeadline ? format(projectDeadline, "PPP") : <span>選擇一個日期</span>}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0">
+                                        <Calendar
+                                        mode="single"
+                                        selected={projectDeadline}
+                                        onSelect={setProjectDeadline}
+                                        disabled={(date) => date < new Date()}
+                                        initialFocus
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>
@@ -2372,9 +2240,37 @@ export default function TeacherDashboardPage() {
                             <Label htmlFor="edit-project-description">專案說明</Label>
                             <Textarea id="edit-project-description" name="description" defaultValue={editingProject?.description} required />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="edit-project-goal">募資目標（點數）</Label>
-                            <Input id="edit-project-goal" name="goal" type="number" defaultValue={editingProject?.goal} required />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-project-goal">募資目標（點數）</Label>
+                                <Input id="edit-project-goal" name="goal" type="number" defaultValue={editingProject?.goal} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-project-deadline">截止日期</Label>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                        variant={"outline"}
+                                        className={cn(
+                                            "w-full justify-start text-left font-normal",
+                                            !projectDeadline && "text-muted-foreground"
+                                        )}
+                                        >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {projectDeadline ? format(projectDeadline, "PPP") : <span>選擇一個日期</span>}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0">
+                                        <Calendar
+                                        mode="single"
+                                        selected={projectDeadline}
+                                        onSelect={setProjectDeadline}
+                                        disabled={(date) => date < new Date()}
+                                        initialFocus
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
                         </div>
                          <div className="space-y-2">
                             <Label>專案狀態</Label>
@@ -2427,176 +2323,6 @@ export default function TeacherDashboardPage() {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-
-        {/* Dialogs for Rewards */}
-        <Dialog open={isAddRewardDialogOpen} onOpenChange={(open) => { if(!open) { setRewardImageFile(null); setRewardImagePreview(null); } setIsAddRewardDialogOpen(open); }}>
-            <DialogContent className="sm:max-w-lg">
-                <form onSubmit={handleAddReward}>
-                    <DialogHeader>
-                        <DialogTitle>新增獎勵</DialogTitle>
-                        <DialogDescription>
-                            建立一個新的獎勵品項供學生兌換。
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="space-y-2">
-                            <Label>獎勵圖片</Label>
-                            <div className="flex items-center gap-4">
-                                <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
-                                    {rewardImagePreview ? (
-                                        <Image src={rewardImagePreview} alt="Reward preview" fill className="object-cover rounded-md" />
-                                    ) : (
-                                        <ImageOff className="h-8 w-8 text-muted-foreground" />
-                                    )}
-                                </div>
-                                <Input id="reward-image-upload" type="file" accept="image/*" onChange={handleRewardImageFileChange} className="max-w-xs" />
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="reward-name">獎勵名稱</Label>
-                            <Input id="reward-name" name="name" required />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="reward-description">描述</Label>
-                            <Textarea id="reward-description" name="description" required />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="reward-cost">費用 (點數)</Label>
-                                <Input id="reward-cost" name="cost" type="number" required />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="reward-stock">庫存</Label>
-                                <Input id="reward-stock" name="stock" type="number" required />
-                            </div>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
-                        <Button type="submit">新增獎勵</Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
-        <Dialog open={isEditRewardDialogOpen} onOpenChange={(open) => { if(!open) { setEditingReward(null); setRewardImageFile(null); setRewardImagePreview(null); } setIsEditRewardDialogOpen(open); }}>
-            <DialogContent className="sm:max-w-lg">
-                 <form onSubmit={handleUpdateReward}>
-                    <DialogHeader>
-                        <DialogTitle>編輯獎勵</DialogTitle>
-                        <DialogDescription>
-                            修改「{editingReward?.name}」的詳細資訊。
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                         <div className="space-y-2">
-                            <Label>獎勵圖片</Label>
-                            <div className="flex items-center gap-4">
-                                <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
-                                    {rewardImagePreview ? (
-                                        <Image src={rewardImagePreview} alt="Reward preview" fill className="object-cover rounded-md" />
-                                    ) : (
-                                        <ImageOff className="h-8 w-8 text-muted-foreground" />
-                                    )}
-                                </div>
-                                <Input id="edit-reward-image-upload" type="file" accept="image/*" onChange={handleRewardImageFileChange} className="max-w-xs" />
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="edit-reward-name">獎勵名稱</Label>
-                            <Input id="edit-reward-name" name="name" defaultValue={editingReward?.name} required />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="edit-reward-description">描述</Label>
-                            <Textarea id="edit-reward-description" name="description" defaultValue={editingReward?.description} required />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="edit-reward-cost">費用 (點數)</Label>
-                                <Input id="edit-reward-cost" name="cost" type="number" defaultValue={editingReward?.cost} required />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="edit-reward-stock">庫存</Label>
-                                <Input id="edit-reward-stock" name="stock" type="number" defaultValue={editingReward?.stock} required />
-                            </div>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
-                        <Button type="submit">儲存變更</Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
-        
-        {/* Dialogs for Stocks (Admin only) */}
-        {role === 'admin' && (
-            <>
-              <Dialog open={isAddStockDialogOpen} onOpenChange={setIsAddStockDialogOpen}>
-                  <DialogContent className="sm:max-w-md">
-                      <form onSubmit={handleAddStock}>
-                          <DialogHeader>
-                              <DialogTitle>新增股票</DialogTitle>
-                              <DialogDescription>建立一支持新的股票至虛擬市場中。</DialogDescription>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                              <div className="space-y-2">
-                                  <Label htmlFor="stock-ticker">股票代碼 (Ticker)</Label>
-                                  <Input id="stock-ticker" name="ticker" placeholder="例如：EDU" required />
-                              </div>
-                              <div className="space-y-2">
-                                  <Label htmlFor="stock-name">公司名稱</Label>
-                                  <Input id="stock-name" name="name" placeholder="例如：學習公司" required />
-                              </div>
-                              <div className="space-y-2">
-                                  <Label htmlFor="stock-price">初始價格</Label>
-                                  <Input id="stock-price" name="price" type="number" required />
-                              </div>
-                              <div className="space-y-2">
-                                  <Label htmlFor="stock-marketCap">市值</Label>
-                                  <Input id="stock-marketCap" name="marketCap" placeholder="例如：1.2兆" required />
-                              </div>
-                          </div>
-                          <DialogFooter>
-                              <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
-                              <Button type="submit">新增股票</Button>
-                          </DialogFooter>
-                      </form>
-                  </DialogContent>
-              </Dialog>
-              <Dialog open={isEditStockDialogOpen} onOpenChange={(open) => { if (!open) setStockToEdit(null); setIsEditStockDialogOpen(open); }}>
-                  <DialogContent className="sm:max-w-md">
-                      <form onSubmit={handleUpdateStock}>
-                          <DialogHeader>
-                              <DialogTitle>編輯股票</DialogTitle>
-                              <DialogDescription>更新「{stockToEdit?.name}」的資訊。</DialogDescription>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                              <div className="space-y-2">
-                                  <Label htmlFor="edit-stock-ticker">股票代碼</Label>
-                                  <Input id="edit-stock-ticker" name="ticker" value={stockToEdit?.ticker} disabled />
-                              </div>
-                              <div className="space-y-2">
-                                  <Label htmlFor="edit-stock-name">公司名稱</Label>
-                                  <Input id="edit-stock-name" name="name" defaultValue={stockToEdit?.name} required />
-                              </div>
-                              <div className="space-y-2">
-                                  <Label htmlFor="edit-stock-price">目前價格</Label>
-                                  <Input id="edit-stock-price" name="price" type="number" defaultValue={stockToEdit?.price} required />
-                              </div>
-                              <div className="space-y-2">
-                                  <Label htmlFor="edit-stock-marketCap">市值</Label>
-                                  <Input id="edit-stock-marketCap" name="marketCap" defaultValue={stockToEdit?.marketCap} required />
-                              </div>
-                          </div>
-                          <DialogFooter>
-                              <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
-                              <Button type="submit">儲存變更</Button>
-                          </DialogFooter>
-                      </form>
-                  </DialogContent>
-              </Dialog>
-            </>
-        )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext, useMemo } from "react";
+import { useState, useContext, useMemo, useEffect } from "react";
 import Image from "next/image";
 import {
   Card,
@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { AppDataContext } from "@/context/AppDataContext";
 import { StudentDataContext } from "@/context/StudentDataContext";
-import { HeartHandshake, Users, Info, Coins } from "lucide-react";
+import { HeartHandshake, Users, Info, Coins, Timer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { FundraisingProject, Donation } from "@/lib/types";
 import {
@@ -31,8 +31,48 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { format } from "date-fns";
+import { format, intervalToDuration } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+
+const Countdown = ({ to }: { to: string }) => {
+  const [duration, setDuration] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [isOver, setIsOver] = useState(false);
+
+  useEffect(() => {
+    const targetDate = new Date(to);
+    
+    const calculateDuration = () => {
+      const now = new Date();
+      if (now > targetDate) {
+        setIsOver(true);
+        return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+      }
+      return intervalToDuration({ start: now, end: targetDate });
+    };
+
+    setDuration(calculateDuration());
+    const interval = setInterval(() => {
+        const newDuration = calculateDuration();
+        if (new Date() > targetDate && !isOver) {
+             setIsOver(true);
+        }
+        setDuration(newDuration);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [to, isOver]);
+  
+  if (isOver) {
+    return <span className="font-semibold text-destructive">已結束</span>
+  }
+
+  return (
+    <span className="font-semibold text-foreground">
+        {duration.days || 0}天 {duration.hours || 0}時 {duration.minutes || 0}分 {duration.seconds || 0}秒
+    </span>
+  );
+};
+
 
 export default function FundraisingPage() {
   const { platformConfig, setPlatformConfig, students, setStudents, classes } = useContext(AppDataContext);
@@ -47,11 +87,11 @@ export default function FundraisingPage() {
   const currentStudent = students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId);
 
   const activeProjects = useMemo(() => {
-    return (platformConfig?.fundraisingProjects || []).filter(p => p.status === 'active');
+    return (platformConfig?.fundraisingProjects || []).filter(p => p.status === 'active' && new Date(p.deadline) > new Date());
   }, [platformConfig]);
   
   const completedProjects = useMemo(() => {
-    return (platformConfig?.fundraisingProjects || []).filter(p => p.status === 'completed');
+    return (platformConfig?.fundraisingProjects || []).filter(p => p.status === 'completed' || new Date(p.deadline) <= new Date());
   }, [platformConfig]);
 
   const handleDonateClick = (project: FundraisingProject) => {
@@ -116,6 +156,9 @@ export default function FundraisingPage() {
   
   const ProjectCard = ({ project }: { project: FundraisingProject }) => {
     const progress = Math.min((project.currentAmount / project.goal) * 100, 100);
+    const isExpired = new Date(project.deadline) <= new Date();
+    const isCompleted = project.status === 'completed';
+
     return (
       <Card className="flex flex-col">
         <CardHeader>
@@ -127,20 +170,33 @@ export default function FundraisingPage() {
               className="object-cover rounded-lg"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
+             {(isExpired || isCompleted) && (
+                <Badge className="absolute top-2 right-2" variant={isCompleted ? "default" : "secondary"}>
+                    {isCompleted ? '已達標' : '已結束'}
+                </Badge>
+             )}
           </div>
           <CardTitle>{project.title}</CardTitle>
           <CardDescription className="line-clamp-4">{project.description}</CardDescription>
         </CardHeader>
         <CardContent className="flex-grow space-y-4">
             <Progress value={progress} />
-            <div className="flex justify-between text-sm text-muted-foreground">
-                <p><span className="font-bold text-foreground">{progress.toFixed(1)}%</span></p>
-                <p><span className="font-bold text-foreground">{project.currentAmount.toLocaleString()}</span> / {project.goal.toLocaleString()} 點</p>
+            <div className="grid grid-cols-2 text-sm text-muted-foreground">
+                <div>
+                  <p className="font-bold text-lg text-primary">{progress.toFixed(0)}%</p>
+                  <p><span className="font-bold text-foreground">{project.currentAmount.toLocaleString()}</span> / {project.goal.toLocaleString()} 點</p>
+                </div>
+                <div className="text-right">
+                    <p className="flex items-center justify-end gap-1.5 font-medium"><Timer className="h-4 w-4"/> 剩餘時間</p>
+                    <Countdown to={project.deadline} />
+                </div>
             </div>
         </CardContent>
         <CardFooter className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => handleDetailsClick(project)}><Info className="mr-2"/>詳細資訊</Button>
-            <Button onClick={() => handleDonateClick(project)}><HeartHandshake className="mr-2"/>支持專案</Button>
+            <Button onClick={() => handleDonateClick(project)} disabled={isExpired || isCompleted}>
+              <HeartHandshake className="mr-2"/>支持專案
+            </Button>
         </CardFooter>
       </Card>
     );
@@ -170,32 +226,14 @@ export default function FundraisingPage() {
         {completedProjects.length > 0 && (
             <section>
                 <div className="mb-4">
-                    <h2 className="text-2xl font-bold flex items-center gap-2">已完成的專案</h2>
+                    <h2 className="text-2xl font-bold flex items-center gap-2">已完成/已結束的專案</h2>
                     <p className="text-muted-foreground">感謝大家的努力，這些是我們共同完成的驕傲！</p>
                 </div>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {completedProjects.map(p => (
-                        <Card key={p.id} className="flex flex-col opacity-70">
-                            <CardHeader>
-                               <div className="relative h-48 w-full mb-4">
-                                 <Image
-                                   src={p.image}
-                                   alt={p.title}
-                                   fill
-                                   className="object-cover rounded-lg filter grayscale"
-                                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                 />
-                                 <Badge className="absolute top-2 right-2">已達標</Badge>
-                               </div>
-                               <CardTitle>{p.title}</CardTitle>
-                            </CardHeader>
-                            <CardContent className="flex-grow">
-                                <p className="text-sm text-muted-foreground">{p.description}</p>
-                            </CardContent>
-                             <CardFooter className="flex justify-end gap-2">
-                                <Button variant="ghost" onClick={() => handleDetailsClick(p)}><Info className="mr-2"/>查看成果</Button>
-                            </CardFooter>
-                        </Card>
+                       <div key={p.id} className="opacity-80">
+                         <ProjectCard project={p} />
+                       </div>
                     ))}
                 </div>
             </section>
