@@ -35,6 +35,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -693,16 +694,7 @@ export default function TeacherDashboardPage() {
         fixedDeposits: [],
     }));
 
-    await setStudents(currentStudents => {
-        const studentMap = new Map(currentStudents.map(s => [`${s.classId}-${s.id}`, s]));
-        newStudents.forEach(s => {
-            const key = `${s.classId}-${s.id}`;
-            const existingStudent = studentMap.get(key);
-            // Keep existing data like points, portfolio etc. when updating a student
-            studentMap.set(key, { ...(existingStudent || {}), ...s });
-        });
-        return Array.from(studentMap.values());
-    });
+    await setStudents(newStudents);
 
     toast({
         title: "匯入成功",
@@ -1986,12 +1978,3 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
         </Dialog>
     )
 }
-
-
-
-    
-
-    
-
-
-
