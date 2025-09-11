@@ -13,7 +13,7 @@ import {
     TEACHER_PASSWORD,
 } from '@/lib/placeholder-data';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDocs, writeBatch, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, writeBatch, setDoc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { isSameDay, startOfDay, differenceInCalendarDays, parseISO, isAfter } from 'date-fns';
 
 
@@ -93,60 +93,51 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       }
   }, []);
   
-  const createUpdater = <T extends { id?: string | number; ticker?: string }>(
+const createUpdater = <T extends { id?: string | number; ticker?: string }>(
     collectionName: string,
-    stateSetter: React.Dispatch<React.SetStateAction<T[]>>
+    stateSetter: React.Dispatch<React.SetStateAction<T[]>>,
+    getPrevState: () => T[]
   ) => {
     return async (updater: (prevState: T[]) => T[]) => {
-      let finalData: T[] | undefined;
-      stateSetter(prevState => {
-        finalData = updater(prevState);
-        return finalData;
-      });
-
-      // Wait for state to be potentially set, then proceed with side effects
+      const prevState = getPrevState();
+      const finalData = updater(prevState);
+      stateSetter(finalData);
+  
+      // Defer Firestore update slightly to allow state to propagate
       await new Promise(resolve => setTimeout(resolve, 0));
-
-      if (finalData) {
-        const batch = writeBatch(db);
-        const currentIds = new Set(finalData.map(p => p.id ? String(p.id) : p.ticker));
-
-        finalData.forEach(item => {
-          const docId = item.id ? String(item.id) : (item.ticker || null);
-          if (docId) {
-            const docRef = doc(db, collectionName, docId);
-            batch.set(docRef, { ...item });
-          }
-        });
-        
-        // This part seems to require knowing the previous state to find deletions.
-        // Let's get the previous state from a ref or another way if needed, but for now this is tricky.
-        // A better way is to compare the new list with a fetched list, but that's slow.
-        // The current implementation assumes `updater` gets the latest `prevState`.
-        // Let's assume the state update is synchronous for the logic below.
-        const prevData = students; // This is a simplification and might not be robust.
-        prevData.forEach((item: any) => {
-          const docId = item.id ? String(item.id) : (item.ticker || null);
-          if (docId && !currentIds.has(docId)) {
-            const docRef = doc(db, collectionName, docId);
-            batch.delete(docRef);
-          }
-        });
-
-        try {
-          await batch.commit();
-        } catch (e) {
-          console.error(`Failed to update ${collectionName}`, e)
+  
+      const batch = writeBatch(db);
+      const prevIds = new Set(prevState.map(p => String(p.id ?? p.ticker)));
+      const finalIds = new Set(finalData.map(p => String(p.id ?? p.ticker)));
+  
+      // Add or update documents
+      finalData.forEach(item => {
+        const docId = String(item.id ?? item.ticker);
+        const docRef = doc(db, collectionName, docId);
+        batch.set(docRef, { ...item });
+      });
+  
+      // Delete documents that are no longer in the list
+      prevIds.forEach(id => {
+        if (!finalIds.has(id)) {
+          const docRef = doc(db, collectionName, id);
+          batch.delete(docRef);
         }
+      });
+  
+      try {
+        await batch.commit();
+      } catch (e) {
+        console.error(`Failed to update ${collectionName}`, e);
       }
     };
   };
 
-  const setStudents = createUpdater<Student>('students', setStudentsState);
-  const setRewards = createUpdater<Reward>('rewards', setRewardsState);
-  const setStocks = createUpdater<Stock>('stocks', setStocksState);
-  const setClasses = createUpdater<Class>('classes', setClassesState);
-  const setTeachers = createUpdater<Teacher>('teachers', setTeachersState);
+  const setStudents = createUpdater<Student>('students', setStudentsState, () => students);
+  const setRewards = createUpdater<Reward>('rewards', setRewardsState, () => rewards);
+  const setStocks = createUpdater<Stock>('stocks', setStocksState, () => stocks);
+  const setClasses = createUpdater<Class>('classes', setClassesState, () => classes);
+  const setTeachers = createUpdater<Teacher>('teachers', setTeachersState, () => teachers);
   
   const setPlatformConfig = async (newConfig: Partial<PlatformConfig>) => {
     setPlatformConfigState(prev => {

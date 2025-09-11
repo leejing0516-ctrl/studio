@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext, useEffect, useMemo } from "react";
+import { useState, useContext, useEffect, useMemo, useCallback } from "react";
 import Image from "next/image";
 import {
   Card,
@@ -96,9 +96,9 @@ export default function TeacherDashboardPage() {
 
   // State for Platform Settings
   const [platformLogoFile, setPlatformLogoFile] = useState<File | null>(null);
-  const [platformLogoPreview, setPlatformLogoPreview] = useState<string | null>(platformConfig?.platformLogoUrl || null);
+  const [platformLogoPreview, setPlatformLogoPreview] = useState<string | null>(null);
   const [sponsorLogoFiles, setSponsorLogoFiles] = useState<(File | null)[]>(Array(4).fill(null));
-  const [sponsorLogoPreviews, setSponsorLogoPreviews] = useState<(string | null)[]>(platformConfig?.sponsorLogoUrls || Array(4).fill(null));
+  const [sponsorLogoPreviews, setSponsorLogoPreviews] = useState<(string | null)[]>([]);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [fixedDepositRate, setFixedDepositRate] = useState<number | string>('');
   const [loanInterestRate, setLoanInterestRate] = useState<number | string>('');
@@ -127,42 +127,38 @@ export default function TeacherDashboardPage() {
   const [isManageClassesDialogOpen, setIsManageClassesDialogOpen] = useState(false);
   const [selectedClassesForSubjectTeacher, setSelectedClassesForSubjectTeacher] = useState<string[]>([]);
 
-  // Consolidated useEffect for initialization
+  const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
+  const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+  const [studentToResetPassword, setStudentToResetPassword] = useState<Student | null>(null);
+
   useEffect(() => {
-    // This effect runs only once on mount to initialize the component's state
     const storedRole = localStorage.getItem('teacherRole');
     const storedTeacherId = localStorage.getItem('teacherId');
     const storedClassIdsStr = localStorage.getItem('teacherClassIds');
-
     setRole(storedRole);
     setTeacherId(storedTeacherId);
-
-    let initialClassIds: string[] = [];
+    
     if (storedClassIdsStr && storedClassIdsStr !== 'undefined') {
         try {
-            initialClassIds = JSON.parse(storedClassIdsStr);
-            setTeacherClassIds(initialClassIds);
-        } catch {
-            // Ignore error, keep it as empty array
-        }
+            setTeacherClassIds(JSON.parse(storedClassIdsStr));
+        } catch {}
     }
-     // Set platform config values locally
+
     if (platformConfig) {
         setPlatformLogoPreview(platformConfig.platformLogoUrl || null);
         setSponsorLogoPreviews(platformConfig.sponsorLogoUrls || Array(4).fill(null));
         setFixedDepositRate((platformConfig.fixedDepositInterestRate || 0) * 100);
         setLoanInterestRate((platformConfig.loanInterestRate || 0) * 100);
     }
-  }, [platformConfig]); 
-  
+  }, [platformConfig]);
+
   useEffect(() => {
-    // This effect handles setting the default selected class once dependencies are ready
-    if (role === 'admin' && !selectedClassId && classes.length > 0) {
+    if (role === 'admin' && classes.length > 0 && !selectedClassId) {
         setSelectedClassId(classes[0].id);
-    } else if ((role === 'teacher' || role === 'subject_teacher') && !selectedClassId && teacherClassIds.length > 0) {
+    } else if ((role === 'teacher' || role === 'subject_teacher') && teacherClassIds.length > 0 && !selectedClassId) {
         setSelectedClassId(teacherClassIds[0]);
     }
-  }, [role, selectedClassId, classes, teacherClassIds]);
+  }, [role, classes, teacherClassIds, selectedClassId]);
 
   const currentTeacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
 
@@ -196,9 +192,6 @@ export default function TeacherDashboardPage() {
   }, [rewards, role, teacherId]);
 
   const [isAddStudentDialogOpen, setIsAddStudentDialogOpen] = useState(false);
-  const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
-  const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
-  const [studentToResetPassword, setStudentToResetPassword] = useState<Student | null>(null);
 
   const [isAddTeacherDialogOpen, setIsAddTeacherDialogOpen] = useState(false);
   const [isEditTeacherDialogOpen, setIsEditTeacherDialogOpen] = useState(false);
@@ -651,10 +644,22 @@ export default function TeacherDashboardPage() {
   
   const handleConfirmDeleteTeacher = () => {
     if (!teacherToDelete) return;
-    setTeachers(currentTeachers => currentTeachers.filter(t => t.id !== teacherToDelete.id));
+    
+    // Cascade delete: remove rewards and challenges associated with this teacher
+    const teacherIdToDelete = teacherToDelete.id;
+    setRewards(currentRewards => currentRewards.filter(r => r.providerId !== teacherIdToDelete));
+
+    if(platformConfig?.challenges) {
+      setPlatformConfig({
+        challenges: platformConfig.challenges.filter(c => c.providerId !== teacherIdToDelete)
+      });
+    }
+    
+    setTeachers(currentTeachers => currentTeachers.filter(t => t.id !== teacherIdToDelete));
+
     toast({
         title: "已刪除老師",
-        description: `已成功刪除老師 ${teacherToDelete.name}。`,
+        description: `已成功刪除老師 ${teacherToDelete.name} 及其相關的獎勵與挑戰。`,
         variant: "destructive",
     });
     setTeacherToDelete(null);
@@ -1479,7 +1484,7 @@ export default function TeacherDashboardPage() {
                                                             <AlertDialogHeader>
                                                                 <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
                                                                 <AlertDialogDescription>
-                                                                    您確定要刪除老師「{teacher.name}」嗎？此操作將永久移除该老師的帳號且無法復原。
+                                                                    您確定要刪除老師「{teacher.name}」嗎？此操作將永久移除该老師的帳號及其建立的獎勵與挑戰，且無法復原。
                                                                 </AlertDialogDescription>
                                                             </AlertDialogHeader>
                                                             <AlertDialogFooter>
@@ -2428,7 +2433,7 @@ export default function TeacherDashboardPage() {
                 </div>
                 <DialogFooter>
                     <DialogClose asChild>
-                        <Button type="button" variant="secondary">取消</Button>
+                        <Button type="button" variant="secondary" onClick={() => setStudentToEdit(null)}>取消</Button>
                     </DialogClose>
                     <Button type="submit">儲存變更</Button>
                 </DialogFooter>
@@ -2872,5 +2877,3 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
         </Dialog>
     )
 }
-
-    
