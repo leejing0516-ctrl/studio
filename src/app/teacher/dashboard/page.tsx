@@ -261,12 +261,18 @@ export default function TeacherDashboardPage() {
     const newHistory = [...(studentToUpdate.pointHistory || []), { points: pointsToChange, date: today, reason }];
     const updatedStudent = { ...studentToUpdate, points: studentToUpdate.points + pointsToChange, pointHistory: newHistory };
     
-    await setStudents(currentStudents => currentStudents.map(s => (s.id === studentId && s.classId === selectedClassId) ? updatedStudent : s));
+    await setStudents([updatedStudent]);
     
-    if (role !== 'admin' && currentTeacher && !isDeducting) {
-      await setTeachers(currentTeachers => currentTeachers.map(t => 
-        t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToChange } : t
-      ));
+    if (role !== 'admin' && currentTeacher) {
+        if (!isDeducting) {
+            await setTeachers(currentTeachers => currentTeachers.map(t => 
+              t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToChange } : t
+            ));
+        } else {
+             await setTeachers(currentTeachers => currentTeachers.map(t => 
+              t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) + Math.abs(pointsToChange) } : t
+            ));
+        }
     }
   
     setTimeout(() => {
@@ -302,17 +308,19 @@ export default function TeacherDashboardPage() {
         return { ...student, points: student.points + pointsToChange, pointHistory: newHistory };
     });
 
-    await setStudents(currentStudents => {
-        const studentMap = new Map(currentStudents.map(s => [`${s.classId}-${s.id}`, s]));
-        updatedStudents.forEach(s => studentMap.set(`${s.classId}-${s.id}`, s));
-        return Array.from(studentMap.values());
-    });
+    await setStudents(updatedStudents);
     
-    if (role !== 'admin' && currentTeacher && !isDeducting) {
+    if (role !== 'admin' && currentTeacher) {
       const totalPointsToChange = studentsInView.length * pointsToChange;
-      await setTeachers(currentTeachers => currentTeachers.map(t => 
-        t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - totalPointsToChange } : t
-      ));
+      if (!isDeducting) {
+        await setTeachers(currentTeachers => currentTeachers.map(t => 
+          t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - totalPointsToChange } : t
+        ));
+      } else {
+        await setTeachers(currentTeachers => currentTeachers.map(t =>
+          t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) + Math.abs(totalPointsToChange) } : t
+        ));
+      }
     }
   
     const className = classes.find(c => c.id === selectedClassId)?.name || '此班級';
@@ -385,7 +393,7 @@ export default function TeacherDashboardPage() {
     }
 
     const updatedStudent = { ...studentToEdit, id: newId, name: newName };
-    setStudents(currentStudents => currentStudents.map(s => (s.id === studentToEdit.id && s.classId === studentToEdit.classId) ? updatedStudent : s));
+    setStudents([updatedStudent]);
     
     setStudentToEdit(null);
     toast({
@@ -423,7 +431,7 @@ export default function TeacherDashboardPage() {
     const newPassword = formData.get("new-password") as string;
     
     const updatedStudent = { ...studentToResetPassword, password: newPassword };
-    setStudents(currentStudents => currentStudents.map(s => (s.id === studentToResetPassword.id && s.classId === studentToResetPassword.classId) ? updatedStudent : s));
+    setStudents([updatedStudent]);
 
     setStudentToResetPassword(null);
     toast({
@@ -637,7 +645,7 @@ export default function TeacherDashboardPage() {
           toast({ title: "貸款已拒絕", description: `已拒絕 ${studentToUpdate.name} 的貸款申請。`, variant: "destructive" });
       }
       
-      setStudents(currentStudents => currentStudents.map(s => (s.id === studentId && s.classId === classId) ? updatedStudent : s));
+      setStudents([updatedStudent]);
   };
   
   
@@ -729,7 +737,7 @@ export default function TeacherDashboardPage() {
         return;
     }
 
-    await setStudents(currentStudents => [...currentStudents, ...newStudents]);
+    await setStudents(newStudents);
 
     toast({
         title: "匯入成功",
@@ -823,7 +831,7 @@ export default function TeacherDashboardPage() {
         )
     };
     
-    setStudents(current => current.map(s => (s.id === studentId && s.classId === classId) ? updatedStudent : s));
+    setStudents([updatedStudent]);
     
     toast({ title: "挑戰已批准", description: `已發送 ${pointsToAdd.toLocaleString()} 點給該學生。` });
   };
@@ -2040,3 +2048,6 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
 
 
 
+
+
+    
