@@ -32,6 +32,8 @@ import {
   Megaphone,
   Flag,
   PiggyBank,
+  Bell,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,7 +50,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import type { Student } from "@/lib/types";
+import type { Student, PointRecord } from "@/lib/types";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
+import { formatDistanceToNow } from "date-fns";
+import { zhTW } from "date-fns/locale";
 
 export default function StudentLayout({
   children,
@@ -185,9 +191,29 @@ export default function StudentLayout({
     { href: "/deposits", label: "定期存款", icon: PiggyBank },
     { href: "/loans", label: "信用貸款", icon: Landmark },
   ];
+  
+  const pointHistory = student?.pointHistory?.filter(r => r.points > 0).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
 
   if (!student) {
       return null; // Or a loading spinner, as the useEffect will redirect
+  }
+  
+  const NotificationItem = ({ record }: { record: PointRecord }) => {
+    const teacherName = record.reason?.match(/由老師 (.*?) (發放|批次發放)/)?.[1] || record.reason;
+    return (
+        <div className="flex items-start gap-3">
+            <Mail className="mt-1 h-4 w-4 text-muted-foreground shrink-0" />
+            <div className="text-sm">
+                <p>
+                    <span className="font-semibold">{teacherName}</span> 
+                    {' '}發送了 <span className="font-bold text-primary">{record.points.toLocaleString()}</span> 點給你
+                </p>
+                <p className="text-xs text-muted-foreground">
+                    {formatDistanceToNow(new Date(record.date), { addSuffix: true, locale: zhTW })}
+                </p>
+            </div>
+        </div>
+    )
   }
 
   return (
@@ -256,10 +282,38 @@ export default function StudentLayout({
       <SidebarInset>
         <div className="flex flex-col min-h-svh">
             <header className="flex h-14 items-center justify-between border-b bg-background/50 backdrop-blur-sm px-4 md:px-6 sticky top-0 z-20">
-                <SidebarTrigger className="md:hidden" />
-                <h1 className="text-lg font-semibold md:text-xl capitalize">
-                    {pathname.split("/").pop()?.replace('-', ' ') || '儀表板'}
-                </h1>
+                <div className="flex items-center gap-2">
+                    <SidebarTrigger className="md:hidden" />
+                    <h1 className="text-lg font-semibold md:text-xl capitalize">
+                        {pathname.split("/").pop()?.replace('-', ' ') || '儀表板'}
+                    </h1>
+                </div>
+                 <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="icon" className="relative">
+                        <Bell />
+                        {pointHistory.length > 0 && <span className="absolute top-1.5 right-1.5 flex h-2 w-2 rounded-full bg-red-500" />}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80">
+                      <div className="grid gap-4">
+                        <div className="space-y-2">
+                          <h4 className="font-medium leading-none">簡訊通知</h4>
+                          <p className="text-sm text-muted-foreground">
+                            您最近的點數入帳紀錄。
+                          </p>
+                        </div>
+                        <Separator />
+                        <div className="grid gap-4 max-h-96 overflow-y-auto pr-2">
+                            {pointHistory.length > 0 ? (
+                                pointHistory.map(record => <NotificationItem key={`${record.date}-${record.points}`} record={record} />)
+                            ) : (
+                                <p className="text-sm text-center text-muted-foreground py-4">沒有新的通知。</p>
+                            )}
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
             </header>
             <main className="flex-1 p-4 md:p-6">{children}</main>
              <footer className="text-center p-4 text-muted-foreground text-sm border-t">
