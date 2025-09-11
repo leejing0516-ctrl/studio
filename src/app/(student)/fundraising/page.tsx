@@ -129,7 +129,7 @@ export default function FundraisingPage() {
             />
           </div>
           <CardTitle>{project.title}</CardTitle>
-          <CardDescription className="line-clamp-3 h-[60px]">{project.description}</CardDescription>
+          <CardDescription className="line-clamp-4">{project.description}</CardDescription>
         </CardHeader>
         <CardContent className="flex-grow space-y-4">
             <Progress value={progress} />
