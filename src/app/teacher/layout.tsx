@@ -151,9 +151,13 @@ export default function TeacherLayout({
 
   const navItems = [
     { href: "/teacher/dashboard", label: "班級與點數管理", icon: LayoutDashboard, roles: ['admin', 'teacher', 'subject_teacher'] },
+    { href: "/teacher/announcements", label: "公告管理", icon: Megaphone, roles: ['admin', 'teacher'] },
+    { href: "/teacher/dashboard", tab: "challenges", label: "挑戰管理", icon: Flag, roles: ['admin', 'teacher'] },
   ];
   
   const availableNavItems = navItems.filter(item => item.roles.includes(teacherRole || ''));
+  const currentNavItem = availableNavItems.find(item => pathname === item.href || pathname.startsWith(item.href));
+
 
   const roleNameMapping: { [key: string]: string } = {
     admin: '校長',
@@ -181,7 +185,7 @@ export default function TeacherLayout({
         <SidebarContent>
           <SidebarMenu>
             {availableNavItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
+              <SidebarMenuItem key={item.href + (item.tab || '')}>
                 <SidebarMenuButton
                   asChild
                   isActive={pathname.startsWith(item.href)}
@@ -233,7 +237,7 @@ export default function TeacherLayout({
         <header className="flex h-14 items-center justify-between border-b bg-background/50 backdrop-blur-sm px-4 md:px-6 sticky top-0 z-20">
             <SidebarTrigger className="md:hidden" />
             <h1 className="text-lg font-semibold md:text-xl capitalize">
-                班級與點數管理
+                {currentNavItem?.label || '儀表板'}
             </h1>
         </header>
         <main className="flex-1 p-4 md:p-6">{children}</main>
@@ -275,3 +279,5 @@ export default function TeacherLayout({
     </>
   );
 }
+
+    

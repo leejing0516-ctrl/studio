@@ -50,7 +50,8 @@ export default function TeacherAnnouncementsPage() {
     const { toast } = useToast();
 
     const [role, setRole] = useState<string | null>(null);
-    const [teacherClassId, setTeacherClassId] = useState<string | null>(null);
+    const [teacherClassIds, setTeacherClassIds] = useState<string[]>([]);
+    const [selectedClassId, setSelectedClassId] = useState<string>('');
     
     // State for Announcements
     const [isAddAnnouncementDialogOpen, setIsAddAnnouncementDialogOpen] = useState(false);
@@ -62,11 +63,17 @@ export default function TeacherAnnouncementsPage() {
 
     useEffect(() => {
         const storedRole = localStorage.getItem('teacherRole');
-        const storedClassId = localStorage.getItem('teacherClassId');
+        const storedClassIdsStr = localStorage.getItem('teacherClassIds');
         setRole(storedRole);
-        setTeacherClassId(storedClassId);
-        if (storedRole === 'teacher') {
-            setAnnouncementType('class');
+        if (storedClassIdsStr) {
+            const ids = JSON.parse(storedClassIdsStr);
+            setTeacherClassIds(ids);
+            if (ids.length > 0) {
+                setSelectedClassId(ids[0]);
+                if (storedRole === 'teacher') {
+                    setAnnouncementType('class');
+                }
+            }
         }
     }, []);
 
@@ -76,11 +83,11 @@ export default function TeacherAnnouncementsPage() {
     }, [platformConfig]);
     
     const classAnnouncements = useMemo(() => {
-        if (!teacherClassId) return [];
-        const currentClass = classes.find(c => c.id === teacherClassId);
+        if (!selectedClassId) return [];
+        const currentClass = classes.find(c => c.id === selectedClassId);
         return (currentClass?.announcements || [])
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [classes, teacherClassId]);
+    }, [classes, selectedClassId]);
 
 
     const handleAddAnnouncement = (event: React.FormEvent<HTMLFormElement>) => {
@@ -100,9 +107,9 @@ export default function TeacherAnnouncementsPage() {
             const currentAnnouncements = platformConfig?.announcements || [];
             setPlatformConfig({ announcements: [...currentAnnouncements, newAnnouncement] });
             toast({ title: "學校公告已發布" });
-        } else if (announcementType === 'class' && teacherClassId) {
+        } else if (announcementType === 'class' && selectedClassId) {
              setClasses(currentClasses => currentClasses.map(c => {
-                if (c.id === teacherClassId) {
+                if (c.id === selectedClassId) {
                     return { ...c, announcements: [...(c.announcements || []), newAnnouncement] };
                 }
                 return c;
@@ -138,10 +145,10 @@ export default function TeacherAnnouncementsPage() {
                 ann.id === updatedAnnouncement.id ? updatedAnnouncement : ann
             );
             setPlatformConfig({ announcements: updatedAnnouncements });
-        } else if (announcementType === 'class' && teacherClassId) {
+        } else if (announcementType === 'class' && selectedClassId) {
             setClasses(currentClasses => currentClasses.map(c => {
-                if (c.id === teacherClassId) {
-                    return { ...c, announcements: c.announcements.map(ann => ann.id === updatedAnnouncement.id ? updatedAnnouncement : ann) };
+                if (c.id === selectedClassId) {
+                    return { ...c, announcements: (c.announcements || []).map(ann => ann.id === updatedAnnouncement.id ? updatedAnnouncement : ann) };
                 }
                 return c;
              }));
@@ -163,10 +170,10 @@ export default function TeacherAnnouncementsPage() {
         if (announcementType === 'school') {
             const updatedAnnouncements = (platformConfig?.announcements || []).filter(ann => ann.id !== announcementToDelete.id);
             setPlatformConfig({ announcements: updatedAnnouncements });
-        } else if (announcementType === 'class' && teacherClassId) {
+        } else if (announcementType === 'class' && selectedClassId) {
             setClasses(currentClasses => currentClasses.map(c => {
-                if (c.id === teacherClassId) {
-                    return { ...c, announcements: c.announcements.filter(ann => ann.id !== announcementToDelete.id) };
+                if (c.id === selectedClassId) {
+                    return { ...c, announcements: (c.announcements || []).filter(ann => ann.id !== announcementToDelete.id) };
                 }
                 return c;
             }));
@@ -279,14 +286,28 @@ export default function TeacherAnnouncementsPage() {
                     <CardHeader className="flex flex-row items-center justify-between">
                         <div>
                             <CardTitle>班級公告管理</CardTitle>
-                            <CardDescription>新增、編輯或刪除您的班級公告。</CardDescription>
+                            <CardDescription>為您選擇的班級新增、編輯或刪除公告。</CardDescription>
                         </div>
-                        <Button onClick={() => { setAnnouncementType('class'); setIsAddAnnouncementDialogOpen(true); }}>
+                        <Button onClick={() => { setAnnouncementType('class'); setIsAddAnnouncementDialogOpen(true); }} disabled={!selectedClassId}>
                             <PlusCircle className="mr-2 h-4 w-4" />
                             新增班級公告
                         </Button>
                     </CardHeader>
                     <CardContent>
+                        <div className="mb-4">
+                            <Label htmlFor="class-select">選擇班級</Label>
+                             <Select onValueChange={setSelectedClassId} value={selectedClassId}>
+                                <SelectTrigger id="class-select" className="w-full md:w-[280px]">
+                                    <SelectValue placeholder="請選擇班級" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {teacherClassIds.map(id => {
+                                        const classInfo = classes.find(c => c.id === id);
+                                        return classInfo ? <SelectItem key={id} value={id}>{classInfo.name}</SelectItem> : null
+                                    })}
+                                </SelectContent>
+                            </Select>
+                        </div>
                         <AnnouncementTable announcements={classAnnouncements} type="class" />
                     </CardContent>
                 </Card>
@@ -317,7 +338,7 @@ export default function TeacherAnnouncementsPage() {
                     </form>
                 </DialogContent>
             </Dialog>
-            <Dialog open={isEditAnnouncementDialogOpen} onOpenChange={(open) => {if (!open) setEditingAnnouncement(null)}}>
+            <Dialog open={isEditAnnouncementDialogOpen} onOpenChange={(open) => {if (!open) {setEditingAnnouncement(null); setIsEditAnnouncementDialogOpen(false);}}}>
                 <DialogContent className="sm:max-w-lg">
                     <form onSubmit={handleUpdateAnnouncement}>
                         <DialogHeader>
@@ -358,3 +379,5 @@ export default function TeacherAnnouncementsPage() {
         </div>
     )
 }
+
+    

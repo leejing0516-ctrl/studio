@@ -126,3 +126,5 @@ export type PlatformConfig = {
     fixedDepositInterestRate?: number;
     loanInterestRate?: number;
 }
+
+    

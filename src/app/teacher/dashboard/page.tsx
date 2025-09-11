@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useContext, useEffect, useMemo } from "react";
@@ -24,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Reward, Student, Teacher, Class, Loan, Stock, Challenge, StudentChallenge } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Settings, ImageOff, LineChart, Banknote, ShieldPlus, Coins, School, Flag, Hourglass, Percent } from "lucide-react";
+import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Settings, ImageOff, LineChart, Banknote, ShieldPlus, Coins, School, Flag, Hourglass, Percent, ShieldCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -101,8 +100,8 @@ export default function TeacherDashboardPage() {
   const [sponsorLogoFiles, setSponsorLogoFiles] = useState<(File | null)[]>(Array(4).fill(null));
   const [sponsorLogoPreviews, setSponsorLogoPreviews] = useState<(string | null)[]>(platformConfig?.sponsorLogoUrls || Array(4).fill(null));
   const [isSavingSettings, setIsSavingSettings] = useState(false);
-  const [fixedDepositRate, setFixedDepositRate] = useState<number | string>('');
-  const [loanInterestRate, setLoanInterestRate] = useState<number | string>('');
+  const [fixedDepositRate, setFixedDepositRate] = useState<number | string>((platformConfig?.fixedDepositInterestRate || 0) * 100);
+  const [loanInterestRate, setLoanInterestRate] = useState<number | string>((platformConfig?.loanInterestRate || 0) * 100);
   
   // State for Central Bank
   const [isAdjustFundsDialogOpen, setIsAdjustFundsDialogOpen] = useState(false);
@@ -154,14 +153,8 @@ export default function TeacherDashboardPage() {
     if (role === 'admin' && !selectedClassId && classes.length > 0) {
         setSelectedClassId(classes[0].id);
     }
-  }, [role, classes, selectedClassId]);
+  }, [role, classes]);
   
-  useEffect(() => {
-    if (platformConfig) {
-        setFixedDepositRate((platformConfig.fixedDepositInterestRate || 0) * 100);
-        setLoanInterestRate((platformConfig.loanInterestRate || 0) * 100);
-    }
-  }, [platformConfig]);
 
   const currentTeacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
 
@@ -953,7 +946,6 @@ export default function TeacherDashboardPage() {
 
   const handleAddStock = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
     const ticker = (formData.get("ticker") as string).toUpperCase();
     
     if (stocks.some(s => s.ticker === ticker)) {
@@ -1122,7 +1114,7 @@ export default function TeacherDashboardPage() {
     );
   };
 
-  if (isLoading && !selectedClassId && role !== 'subject_teacher') {
+  if (isLoading) {
       return (
         <div className="flex items-center justify-center h-full">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -1314,7 +1306,7 @@ export default function TeacherDashboardPage() {
         )}
     </div>
     <Tabs defaultValue={role === 'subject_teacher' ? 'classes' : 'students'} className="animate-in fade-in-0 duration-500">
-      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-7' : role === 'teacher' ? 'grid-cols-4' : 'grid-cols-2'}`}>
+      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-8' : role === 'teacher' ? 'grid-cols-5' : 'grid-cols-2'}`}>
         {role !== 'subject_teacher' && <TabsTrigger value="students">學生管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
         {role === 'subject_teacher' && <TabsTrigger value="classes">班級管理</TabsTrigger>}
@@ -1322,6 +1314,7 @@ export default function TeacherDashboardPage() {
         <TabsTrigger value="points">發送點數</TabsTrigger>
         {role !== 'subject_teacher' && <TabsTrigger value="rewards">獎勵管理</TabsTrigger>}
         {role !== 'subject_teacher' && <TabsTrigger value="challenges">挑戰管理</TabsTrigger>}
+        {(role === 'admin' || role === 'teacher') && <TabsTrigger value="approvals">審核中心</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="settings">平台設定</TabsTrigger>}
       </TabsList>
       
@@ -1527,7 +1520,7 @@ export default function TeacherDashboardPage() {
                                 <TableRow key={c.id}>
                                     <TableCell>{c.id}</TableCell>
                                     <TableCell>{c.name}</TableCell>
-                                    <TableCell>{teachers.find(t => t.role === 'teacher' && t.classIds && t.classIds.includes(c.id))?.name || 'N/A'}</TableCell>
+                                    <TableCell>{teachers.find(t => t.role === 'teacher' && t.classIds?.includes(c.id))?.name || 'N/A'}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -1907,6 +1900,154 @@ export default function TeacherDashboardPage() {
         </Card>
       </TabsContent>
     }
+     {(role === 'admin' || role === 'teacher') && (
+        <TabsContent value="approvals" className="mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><ShieldCheck/> 獎勵使用請求</CardTitle>
+                        <CardDescription>學生想要使用他們兌換的獎勵，您可以在這裡批准。</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                         <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>學生</TableHead>
+                                    <TableHead>獎勵</TableHead>
+                                    <TableHead className="text-right">操作</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {pendingRequests.length > 0 ? pendingRequests.map(({student, redemption}) => (
+                                    <TableRow key={redemption.redemptionId}>
+                                        <TableCell>{student.name} ({classes.find(c => c.id === student.classId)?.name})</TableCell>
+                                        <TableCell>{redemption.reward.name}</TableCell>
+                                        <TableCell className="text-right">
+                                            <Button size="sm" onClick={() => handleApproveUsage(student.id, student.classId, redemption.redemptionId)}>同意使用</Button>
+                                        </TableCell>
+                                    </TableRow>
+                                )) : (
+                                    <TableRow>
+                                        <TableCell colSpan={3} className="h-24 text-center">目前沒有獎勵使用請求。</TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>最新兌換紀錄</CardTitle>
+                        <CardDescription>查看最近學生們用點數兌換了什麼獎勵。</CardDescription>
+                    </CardHeader>
+                     <CardContent>
+                         <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>學生</TableHead>
+                                    <TableHead>班級</TableHead>
+                                    <TableHead>獎勵</TableHead>
+                                    <TableHead>兌換時間</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {recentRedemptions.length > 0 ? recentRedemptions.map(({student, redemption}) => (
+                                    <TableRow key={redemption.redemptionId}>
+                                        <TableCell>{student.name}</TableCell>
+                                        <TableCell>{classes.find(c => c.id === student.classId)?.name}</TableCell>
+                                        <TableCell>{redemption.reward.name}</TableCell>
+                                        <TableCell>{redemption.redemptionDate ? formatDistanceToNow(new Date(redemption.redemptionDate), { addSuffix: true, locale: zhTW }) : 'N/A'}</TableCell>
+                                    </TableRow>
+                                )) : (
+                                     <TableRow>
+                                        <TableCell colSpan={4} className="h-24 text-center">目前沒有兌換紀錄。</TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+                <Card className="lg:col-span-1">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><Banknote /> 貸款申請</CardTitle>
+                        <CardDescription>審核來自學生的貸款申請。</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>學生</TableHead>
+                                    <TableHead>金額</TableHead>
+                                    <TableHead>理由</TableHead>
+                                    <TableHead className="text-right">操作</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {loanRequests.length > 0 ? loanRequests.map(({ student, loan }) => (
+                                    <TableRow key={loan.id}>
+                                        <TableCell>{student.name}</TableCell>
+                                        <TableCell>{loan.amount.toLocaleString()}</TableCell>
+                                        <TableCell className="max-w-xs truncate">
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild><p>{loan.reason}</p></TooltipTrigger>
+                                                    <TooltipContent><p>{loan.reason}</p></TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <Button size="sm" variant="outline" className="mr-2 border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600" onClick={() => handleLoanDecision(student.id, student.classId, loan.id, 'approve')}>
+                                                <Check className="h-4 w-4" />
+                                            </Button>
+                                            <Button size="sm" variant="outline" className="border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600" onClick={() => handleLoanDecision(student.id, student.classId, loan.id, 'reject')}>
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                )) : (
+                                     <TableRow>
+                                        <TableCell colSpan={4} className="h-24 text-center">目前沒有貸款申請。</TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+                 <Card className="lg:col-span-1">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><Flag/> 挑戰任務審核</CardTitle>
+                        <CardDescription>審核學生提交的已完成挑戰。</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                             <TableHeader>
+                                <TableRow>
+                                    <TableHead>學生</TableHead>
+                                    <TableHead>挑戰名稱</TableHead>
+                                    <TableHead className="text-right">操作</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {challengeApprovals.length > 0 ? challengeApprovals.map(({student, studentChallenge, challenge}) => (
+                                     <TableRow key={`${student.id}-${studentChallenge.challengeId}`}>
+                                        <TableCell>{student.name}</TableCell>
+                                        <TableCell>{challenge?.name}</TableCell>
+                                        <TableCell className="text-right">
+                                            <Button size="sm" onClick={() => handleChallengeApproval(student.id, student.classId, studentChallenge.challengeId)}>批准</Button>
+                                        </TableCell>
+                                     </TableRow>
+                                )) : (
+                                     <TableRow>
+                                        <TableCell colSpan={3} className="h-24 text-center">目前沒有待審核的挑戰。</TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            </div>
+        </TabsContent>
+      )}
     </Tabs>
     </>
     );
@@ -2402,7 +2543,7 @@ export default function TeacherDashboardPage() {
                     />
                 )}
 
-                <Dialog open={!!teacherToResetPassword} onOpenChange={(open) => !open && setTeacherToResetPassword(null)}>
+                <Dialog open={!!teacherToResetPassword} onOpenChange={setTeacherToResetPassword}>
                     <DialogContent className="sm:max-w-[425px]">
                     <form onSubmit={handleConfirmResetTeacherPassword}>
                         <DialogHeader>
@@ -2774,3 +2915,6 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
         </Dialog>
     )
 }
+
+
+    
