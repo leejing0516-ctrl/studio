@@ -35,7 +35,7 @@ import { format, intervalToDuration } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 
 const Countdown = ({ to }: { to: string }) => {
-  const [duration, setDuration] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [duration, setDuration] = useState({ days: 0, hours: 0, minutes: 0 });
   const [isOver, setIsOver] = useState(false);
 
   useEffect(() => {
@@ -45,7 +45,7 @@ const Countdown = ({ to }: { to: string }) => {
       const now = new Date();
       if (now > targetDate) {
         setIsOver(true);
-        return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+        return { days: 0, hours: 0, minutes: 0 };
       }
       return intervalToDuration({ start: now, end: targetDate });
     };
@@ -57,7 +57,7 @@ const Countdown = ({ to }: { to: string }) => {
              setIsOver(true);
         }
         setDuration(newDuration);
-    }, 1000);
+    }, 60000); // Update every minute
 
     return () => clearInterval(interval);
   }, [to, isOver]);
@@ -68,7 +68,7 @@ const Countdown = ({ to }: { to: string }) => {
 
   return (
     <span className="font-semibold text-foreground">
-        {duration.days || 0}天 {duration.hours || 0}時 {duration.minutes || 0}分 {duration.seconds || 0}秒
+        {duration.days || 0}天 {duration.hours || 0}時 {duration.minutes || 0}分
     </span>
   );
 };
