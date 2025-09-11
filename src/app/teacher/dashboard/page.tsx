@@ -660,9 +660,10 @@ export default function TeacherDashboardPage() {
   
   const handleConfirmImport = async () => {
     setIsImporting(true);
+    
+    // Get new students from the parsed CSV file that are valid for import
     const validStudentsToImport = stagedStudents.filter(s => s.status === 'valid');
-
-    const newStudents: Student[] = validStudentsToImport.map(s => ({
+    const newStudentObjects: Student[] = validStudentsToImport.map(s => ({
         id: s.id,
         name: s.name,
         password: s.password!,
@@ -678,12 +679,20 @@ export default function TeacherDashboardPage() {
     }));
 
     try {
+        // Create the final, complete list of all students
+        // 1. Get all students who are NOT in the currently selected class
+        const otherClassesStudents = students.filter(s => s.classId !== selectedClassId);
+        // 2. Get all students who are ALREADY in the selected class (these will not be overwritten)
+        const existingStudentsInClass = students.filter(s => s.classId === selectedClassId);
+        // 3. Combine them with the new students for this class
+        const finalStudentList = [...otherClassesStudents, ...existingStudentsInClass, ...newStudentObjects];
+
         // Pass the complete new list to the context updater
-        await setStudents(current => [...current, ...newStudents]);
+        await setStudents(() => finalStudentList);
         
         toast({
             title: "匯入成功",
-            description: `已成功匯入 ${newStudents.length} 位學生。`
+            description: `已成功匯入 ${newStudentObjects.length} 位學生至 ${classes.find(c => c.id === selectedClassId)?.name}。`
         });
     } catch (error) {
         console.error("Failed to import students:", error);
@@ -1148,7 +1157,7 @@ export default function TeacherDashboardPage() {
             <div>
                 <CardTitle>發送/扣除點數</CardTitle>
                 <CardDescription>
-                發送點數給學生，或輸入負數來扣除點數。
+                發送點數給學生，或輸入負數来扣除點數。
                 </CardDescription>
             </div>
              <Button onClick={() => setIsBatchAwardDialogOpen(true)} disabled={!selectedClassId || studentsInView.length === 0}>
@@ -1967,4 +1976,5 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
     
 
     
+
 

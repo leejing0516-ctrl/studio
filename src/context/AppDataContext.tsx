@@ -99,7 +99,11 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     stateSetter: React.Dispatch<React.SetStateAction<T[]>>
   ) => {
     return async (updater: (prevState: T[]) => T[]) => {
-      const finalState = updater(await fetchData<T>(collectionName));
+      // First, apply the update to get the final desired state
+      const currentState = await fetchData<T>(collectionName);
+      const finalState = updater(currentState);
+      stateSetter(finalState); // Optimistic UI update
+
       try {
         await runTransaction(db, async (transaction) => {
           const collectionRef = collection(db, collectionName);
@@ -117,12 +121,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
              }
           });
         });
-        // If the transaction is successful, update the local state.
-        stateSetter(finalState);
         console.log(`${collectionName} collection successfully updated.`);
       } catch (error) {
         console.error(`Transaction failed for ${collectionName}: `, error);
-        // Optionally, handle the error, e.g., by showing a toast notification.
+        stateSetter(currentState); // Rollback optimistic update on failure
       }
     };
   };
