@@ -222,14 +222,16 @@ export default function TeacherDashboardPage() {
   }, [students, platformConfig?.challenges, role, teacherId, teacherClassIds]);
 
   const handleApproveUsage = (studentId: string, classId: string, redemptionId: string) => {
-    const studentToUpdate = students.find(student => student.id === studentId && student.classId === classId);
-    if (!studentToUpdate) return;
     
-    const updatedStudent = {
-        ...studentToUpdate,
-        redeemedRewards: (studentToUpdate.redeemedRewards || []).filter(r => r.redemptionId !== redemptionId)
-    };
-    setStudents(currentStudents => currentStudents.map(s => (s.id === studentId && s.classId === classId) ? updatedStudent : s));
+    setStudents(currentStudents => currentStudents.map(s => {
+        if (s.id === studentId && s.classId === classId) {
+            return {
+                ...s,
+                redeemedRewards: (s.redeemedRewards || []).filter(r => r.redemptionId !== redemptionId)
+            };
+        }
+        return s;
+    }));
 
     toast({
         title: "已批准使用",
@@ -251,34 +253,33 @@ export default function TeacherDashboardPage() {
       }
     }
   
-    const studentToUpdate = students.find(s => s.id === studentId && s.classId === selectedClassId);
-    if (!studentToUpdate) return;
-
-    const today = new Date().toISOString();
-    const actionText = isDeducting ? "扣除" : "發放";
-    const reason = role === 'admin' ? `由校長 ${currentTeacher?.name} ${actionText}` : `由老師 ${currentTeacher?.name} ${actionText}`;
-    
-    const newHistory = [...(studentToUpdate.pointHistory || []), { points: pointsToChange, date: today, reason }];
-    const updatedStudent = { ...studentToUpdate, points: studentToUpdate.points + pointsToChange, pointHistory: newHistory };
-    
-    await setStudents([updatedStudent]);
+    setStudents(currentStudents => currentStudents.map(student => {
+        if (student.id === studentId && student.classId === selectedClassId) {
+            const today = new Date().toISOString();
+            const actionText = isDeducting ? "扣除" : "發放";
+            const reason = role === 'admin' ? `由校長 ${currentTeacher?.name} ${actionText}` : `由老師 ${currentTeacher?.name} ${actionText}`;
+            
+            const newHistory = [...(student.pointHistory || []), { points: pointsToChange, date: today, reason }];
+            return { ...student, points: student.points + pointsToChange, pointHistory: newHistory };
+        }
+        return student;
+    }));
     
     if (role !== 'admin' && currentTeacher) {
-        if (!isDeducting) {
-            await setTeachers(currentTeachers => currentTeachers.map(t => 
-              t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToChange } : t
-            ));
-        } else {
-             await setTeachers(currentTeachers => currentTeachers.map(t => 
-              t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) + Math.abs(pointsToChange) } : t
-            ));
-        }
+        await setTeachers(currentTeachers => currentTeachers.map(t => {
+            if (t.id === teacherId) {
+                const newBalance = (t.pointBalance || 0) + (isDeducting ? Math.abs(pointsToChange) : -pointsToChange);
+                return { ...t, pointBalance: newBalance };
+            }
+            return t;
+        }));
     }
   
     setTimeout(() => {
+        const studentToUpdate = students.find(s => s.id === studentId && s.classId === selectedClassId);
         toast({
-            title: `點數已${actionText}！`,
-            description: `您已成功對 ${studentToUpdate?.name} ${actionText} ${Math.abs(pointsToChange).toLocaleString()} 點。`
+            title: `點數已${isDeducting ? '扣除' : '發放'}！`,
+            description: `您已成功對 ${studentToUpdate?.name} ${isDeducting ? '扣除' : '發放'} ${Math.abs(pointsToChange).toLocaleString()} 點。`
         })
     }, 1);
   }
@@ -303,24 +304,23 @@ export default function TeacherDashboardPage() {
     const actionText = isDeducting ? "批次扣除" : "批次發放";
     const reason = role === 'admin' ? `由校長 ${currentTeacher?.name} ${actionText}` : `由老師 ${currentTeacher?.name} ${actionText}`;
   
-    const updatedStudents = studentsInView.map(student => {
-        const newHistory = [...(student.pointHistory || []), { points: pointsToChange, date: today, reason }];
-        return { ...student, points: student.points + pointsToChange, pointHistory: newHistory };
-    });
-
-    await setStudents(updatedStudents);
+    await setStudents(currentStudents => currentStudents.map(student => {
+        if (student.classId === selectedClassId) {
+            const newHistory = [...(student.pointHistory || []), { points: pointsToChange, date: today, reason }];
+            return { ...student, points: student.points + pointsToChange, pointHistory: newHistory };
+        }
+        return student;
+    }));
     
     if (role !== 'admin' && currentTeacher) {
       const totalPointsToChange = studentsInView.length * pointsToChange;
-      if (!isDeducting) {
-        await setTeachers(currentTeachers => currentTeachers.map(t => 
-          t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - totalPointsToChange } : t
-        ));
-      } else {
-        await setTeachers(currentTeachers => currentTeachers.map(t =>
-          t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) + Math.abs(totalPointsToChange) } : t
-        ));
-      }
+      await setTeachers(currentTeachers => currentTeachers.map(t => {
+        if (t.id === teacherId) {
+          const newBalance = (t.pointBalance || 0) + (isDeducting ? Math.abs(totalPointsToChange) : -totalPointsToChange);
+          return { ...t, pointBalance: newBalance };
+        }
+        return t;
+      }));
     }
   
     const className = classes.find(c => c.id === selectedClassId)?.name || '此班級';
@@ -392,8 +392,12 @@ export default function TeacherDashboardPage() {
         return;
     }
 
-    const updatedStudent = { ...studentToEdit, id: newId, name: newName };
-    setStudents([updatedStudent]);
+    setStudents(currentStudents => currentStudents.map(s => {
+        if (s.id === studentToEdit.id && s.classId === studentToEdit.classId) {
+            return { ...studentToEdit, id: newId, name: newName };
+        }
+        return s;
+    }));
     
     setStudentToEdit(null);
     toast({
@@ -409,7 +413,7 @@ export default function TeacherDashboardPage() {
   const handleConfirmDeleteStudent = async () => {
     if (!studentToDelete) return;
     
-    setStudents(current => current.filter(s => s.id !== studentToDelete.id || s.classId !== studentToDelete.classId));
+    await setStudents(current => current.filter(s => s.id !== studentToDelete.id || s.classId !== studentToDelete.classId));
 
     toast({
         title: "已刪除學生",
@@ -430,8 +434,12 @@ export default function TeacherDashboardPage() {
     const formData = new FormData(event.currentTarget);
     const newPassword = formData.get("new-password") as string;
     
-    const updatedStudent = { ...studentToResetPassword, password: newPassword };
-    setStudents([updatedStudent]);
+    setStudents(currentStudents => currentStudents.map(s => {
+        if (s.id === studentToResetPassword.id && s.classId === studentToResetPassword.classId) {
+            return { ...s, password: newPassword };
+        }
+        return s;
+    }));
 
     setStudentToResetPassword(null);
     toast({
@@ -601,13 +609,9 @@ export default function TeacherDashboardPage() {
   };
 
   const handleLoanDecision = (studentId: string, classId: string, loanId: string, decision: 'approve' | 'reject') => {
-      const studentToUpdate = students.find(s => s.id === studentId && s.classId === classId);
-      if (!studentToUpdate) {
-        toast({ title: "錯誤", description: "找不到該學生。", variant: "destructive" });
-        return;
-      }
-      const targetLoan = studentToUpdate.loans.find(l => l.id === loanId);
-
+      
+      const targetLoan = students.find(s => s.id === studentId && s.classId === classId)?.loans.find(l => l.id === loanId);
+      
       if (!targetLoan) {
           toast({ title: "錯誤", description: "找不到該筆貸款申請。", variant: "destructive" });
           return;
@@ -629,23 +633,27 @@ export default function TeacherDashboardPage() {
           ));
       }
       
-      let updatedStudent: Student;
-      if (decision === 'approve') {
-          updatedStudent = {
-              ...studentToUpdate,
-              points: studentToUpdate.points + targetLoan.amount,
-              loans: (studentToUpdate.loans || []).map(l => l.id === loanId ? { ...l, status: 'active' as const, approvalDate: new Date().toISOString(), lastInterestAccruedDate: new Date().toISOString() } : l)
-          };
-          toast({ title: "貸款已批准", description: `已將 ${targetLoan.amount.toLocaleString()} 點數撥款給 ${studentToUpdate.name}。` });
-      } else {
-          updatedStudent = {
-              ...studentToUpdate,
-              loans: (studentToUpdate.loans || []).map(l => l.id === loanId ? { ...l, status: 'rejected' as const } : l)
-          };
-          toast({ title: "貸款已拒絕", description: `已拒絕 ${studentToUpdate.name} 的貸款申請。`, variant: "destructive" });
-      }
-      
-      setStudents([updatedStudent]);
+      setStudents(currentStudents => currentStudents.map(s => {
+          if (s.id === studentId && s.classId === classId) {
+            let updatedStudent = { ...s };
+            if (decision === 'approve') {
+                updatedStudent = {
+                    ...updatedStudent,
+                    points: updatedStudent.points + targetLoan.amount,
+                    loans: (updatedStudent.loans || []).map(l => l.id === loanId ? { ...l, status: 'active' as const, approvalDate: new Date().toISOString(), lastInterestAccruedDate: new Date().toISOString() } : l)
+                };
+                toast({ title: "貸款已批准", description: `已將 ${targetLoan.amount.toLocaleString()} 點數撥款給 ${updatedStudent.name}。` });
+            } else {
+                 updatedStudent = {
+                    ...updatedStudent,
+                    loans: (updatedStudent.loans || []).map(l => l.id === loanId ? { ...l, status: 'rejected' as const } : l)
+                };
+                toast({ title: "貸款已拒絕", description: `已拒絕 ${updatedStudent.name} 的貸款申請。`, variant: "destructive" });
+            }
+            return updatedStudent;
+          }
+          return s;
+      }));
   };
   
   
@@ -815,25 +823,26 @@ export default function TeacherDashboardPage() {
     const challenge = (platformConfig?.challenges || []).find(c => c.id === challengeId);
     if (!challenge) return;
     
-    const studentToUpdate = students.find(s => s.id === studentId && s.classId === classId);
-    if(!studentToUpdate) return;
-
-    const today = new Date().toISOString();
-    const pointsToAdd = challenge.points;
+    setStudents(currentStudents => currentStudents.map(student => {
+        if(student.id === studentId && student.classId === classId) {
+            const today = new Date().toISOString();
+            const pointsToAdd = challenge.points;
+            
+            const newHistory = [...(student.pointHistory || []), { points: pointsToAdd, date: today, reason: `完成挑戰: ${challenge.name}` }];
+            const updatedStudent = {
+                ...student,
+                points: student.points + pointsToAdd,
+                pointHistory: newHistory,
+                challenges: (student.challenges || []).map(c => 
+                    c.challengeId === challengeId ? { ...c, status: 'completed' as const, completedDate: today } : c
+                )
+            };
+            return updatedStudent;
+        }
+        return student;
+    }));
     
-    const newHistory = [...(studentToUpdate.pointHistory || []), { points: pointsToAdd, date: today, reason: `完成挑戰: ${challenge.name}` }];
-    const updatedStudent = {
-        ...studentToUpdate,
-        points: studentToUpdate.points + pointsToAdd,
-        pointHistory: newHistory,
-        challenges: (studentToUpdate.challenges || []).map(c => 
-            c.challengeId === challengeId ? { ...c, status: 'completed' as const, completedDate: today } : c
-        )
-    };
-    
-    setStudents([updatedStudent]);
-    
-    toast({ title: "挑戰已批准", description: `已發送 ${pointsToAdd.toLocaleString()} 點給該學生。` });
+    toast({ title: "挑戰已批准", description: `已發送 ${challenge.points.toLocaleString()} 點給該學生。` });
   };
   
   const handleOpenManageClasses = () => {

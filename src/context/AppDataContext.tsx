@@ -97,15 +97,33 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     const setStudents = async (updater: Student[] | ((prev: Student[]) => Student[])) => {
         try {
             const batch = writeBatch(db);
-            const currentState = await fetchData<Student>('students');
-            const intendedState = typeof updater === 'function' ? updater(currentState) : updater;
+            let dataToWrite: Student[];
 
-            // De-duplicate using a Map to ensure unique students by composite key
-            const studentMap = new Map<string, Student>();
-            currentState.forEach(student => studentMap.set(`${student.classId}-${student.id}`, student));
-            intendedState.forEach(student => studentMap.set(`${student.classId}-${student.id}`, student));
+            // Determine the final list of students to write.
+            if (typeof updater === 'function') {
+                // If it's a function, we must get the current state first.
+                // This is less ideal as it might use a slightly stale local state.
+                // Should primarily be used for simple updates like single student changes.
+                 const currentState = students; // Use local state for immediate feedback
+                 dataToWrite = updater(currentState);
+            } else {
+                // If it's a direct array, it represents a list of changes to apply.
+                // We'll merge this with the full list from the DB to ensure completeness.
+                const allStudents = await fetchData<Student>('students');
+                const studentMap = new Map<string, Student>();
+                allStudents.forEach(student => studentMap.set(`${student.classId}-${student.id}`, student));
+                updater.forEach(student => studentMap.set(`${student.classId}-${student.id}`, student));
+                dataToWrite = Array.from(studentMap.values());
+            }
             
-            const uniqueStudents = Array.from(studentMap.values());
+            // Ensure uniqueness before writing to DB
+            const uniqueStudentMap = new Map<string, Student>();
+            dataToWrite.forEach(student => {
+                 if (student && student.classId && student.id) {
+                    uniqueStudentMap.set(`${student.classId}-${student.id}`, student)
+                 }
+            });
+            const uniqueStudents = Array.from(uniqueStudentMap.values());
 
             uniqueStudents.forEach(student => {
                 const studentDocId = `${student.classId}-${student.id}`;
