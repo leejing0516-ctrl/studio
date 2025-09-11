@@ -262,7 +262,7 @@ export default function TeacherDashboardPage() {
       return s;
     }));
     
-    if (role !== 'admin' && currentTeacher) {
+    if (role !== 'admin' && currentTeacher && !isDeducting) {
       await setTeachers(currentTeachers => currentTeachers.map(t => 
         t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToChange } : t
       ));
@@ -309,7 +309,7 @@ export default function TeacherDashboardPage() {
       })
     );
     
-    if (role !== 'admin' && currentTeacher) {
+    if (role !== 'admin' && currentTeacher && !isDeducting) {
       const totalPointsToChange = studentsInView.length * pointsToChange;
       await setTeachers(currentTeachers => currentTeachers.map(t => 
         t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - totalPointsToChange } : t
@@ -671,15 +671,15 @@ export default function TeacherDashboardPage() {
   
  const handleConfirmImport = async () => {
     setIsImporting(true);
-    const validStudentsToImport = stagedStudents.filter(s => s.status === 'valid' || s.status === 'duplicate');
+    const studentsToProcess = stagedStudents.filter(s => s.status === 'valid' || s.status === 'duplicate');
     
-    if (validStudentsToImport.length === 0) {
+    if (studentsToProcess.length === 0) {
         toast({ title: "沒有可匯入的學生", description: "請檢查您的 CSV 檔案，沒有找到可匯入或更新的新學生。", variant: "destructive" });
         setIsImporting(false);
         return;
     }
 
-    const newStudents: Student[] = validStudentsToImport.map(s => ({
+    const newOrUpdatedStudents: Student[] = studentsToProcess.map(s => ({
         id: s.id,
         name: s.name,
         password: s.password!,
@@ -694,17 +694,11 @@ export default function TeacherDashboardPage() {
         fixedDeposits: [],
     }));
 
-    await setStudents(currentStudents => {
-        const studentMap = new Map(currentStudents.map(s => [`${s.classId}-${s.id}`, s]));
-        newStudents.forEach(s => {
-            studentMap.set(`${s.classId}-${s.id}`, s);
-        });
-        return Array.from(studentMap.values());
-    });
+    await setStudents(newOrUpdatedStudents);
 
     toast({
         title: "匯入成功",
-        description: `已成功處理 ${validStudentsToImport.length} 位學生資料。`
+        description: `已成功處理 ${studentsToProcess.length} 位學生資料。`
     });
 
     setIsImporting(false);

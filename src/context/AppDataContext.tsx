@@ -96,31 +96,32 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   
     const setStudents = async (updater: Student[] | ((prev: Student[]) => Student[])) => {
         try {
+            // First, get the most up-to-date list of students from Firestore.
             const currentStudents = await fetchData<Student>('students');
-            let dataToWrite: Student[];
-
+            
+            // Calculate the next state based on the updater
+            let intendedState: Student[];
             if (typeof updater === 'function') {
-                dataToWrite = updater(currentStudents);
+                intendedState = updater(currentStudents);
             } else {
-                dataToWrite = updater;
+                // If it's a direct array, we assume it's a list of students to add/update
+                // so we merge it with the current state.
+                const studentMap = new Map(currentStudents.map(s => [`${s.classId}-${s.id}`, s]));
+                updater.forEach(s => {
+                    studentMap.set(`${s.classId}-${s.id}`, { ...studentMap.get(`${s.classId}-${s.id}`), ...s });
+                });
+                intendedState = Array.from(studentMap.values());
             }
 
+            // Ensure the final list is unique using a Map. This is the authoritative deduplication step.
             const studentMap = new Map<string, Student>();
-            // First, add all current students to the map
-            currentStudents.forEach(student => {
+            intendedState.forEach(student => {
                 const key = `${student.classId}-${student.id}`;
                 studentMap.set(key, student);
             });
-            // Then, add or update with students from the new data
-            dataToWrite.forEach(student => {
-                const key = `${student.classId}-${student.id}`;
-                const existingStudent = studentMap.get(key) || {};
-                const mergedStudent = { ...existingStudent, ...student };
-                studentMap.set(key, mergedStudent);
-            });
-            
             const uniqueStudents = Array.from(studentMap.values());
-            
+
+            // Write the clean, unique list to Firestore.
             const batch = writeBatch(db);
             uniqueStudents.forEach(student => {
                 const studentDocId = `${student.classId}-${student.id}`;
@@ -130,8 +131,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             
             await batch.commit();
 
-            const freshStudents = await fetchData<Student>('students');
-            setStudentsState(freshStudents);
+            // After a successful write, update the local state with the same clean data.
+            setStudentsState(uniqueStudents);
             
             console.log(`Students collection successfully updated with ${uniqueStudents.length} students.`);
 
