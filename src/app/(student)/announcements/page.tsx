@@ -9,10 +9,9 @@ import { format } from "date-fns";
 import { AppDataContext } from "@/context/AppDataContext";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 
 export default function AnnouncementsPage() {
-    const { platformConfig, classes } = useContext(AppDataContext);
+    const { platformConfig, classes, students } = useContext(AppDataContext);
     const { studentData } = useContext(StudentDataContext);
 
     const schoolAnnouncements = useMemo(() => {
@@ -22,10 +21,14 @@ export default function AnnouncementsPage() {
 
     const classAnnouncements = useMemo(() => {
         if (!studentData.student) return [];
-        const studentClass = classes.find(c => c.id === studentData.student!.classId);
+        // Get the most up-to-date student info from the source of truth (AppDataContext)
+        const currentStudent = students.find(s => s.id === studentData.student!.id && s.classId === studentData.student!.classId);
+        if (!currentStudent) return [];
+        
+        const studentClass = classes.find(c => c.id === currentStudent.classId);
         return (studentClass?.announcements || [])
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [classes, studentData.student]);
+    }, [classes, students, studentData.student]);
 
 
     const AnnouncementList = ({ announcements, type }: { announcements: any[], type: 'school' | 'class' }) => (
