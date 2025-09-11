@@ -144,7 +144,7 @@ export default function TeacherDashboardPage() {
     }
     
     // Auto-select class based on role, only if no class is selected yet.
-    if (!selectedClassId) {
+    if (!selectedClassId && storedRole) {
         if (storedRole === 'admin' && classes.length > 0) {
             setSelectedClassId(classes[0].id);
         } else if (storedRole === 'teacher' && parsedClassIds.length > 0) {
@@ -947,7 +947,7 @@ export default function TeacherDashboardPage() {
   const unassignedClasses = useMemo(() => {
     const assignedClassIds = teachers
         .filter(t => t.role === 'teacher')
-        .flatMap(t => t.classIds);
+        .flatMap(t => t.classIds || []);
     return classes.filter(c => !assignedClassIds.includes(c.id));
   }, [classes, teachers]);
 
@@ -1505,7 +1505,7 @@ export default function TeacherDashboardPage() {
                                 <TableRow key={c.id}>
                                     <TableCell>{c.id}</TableCell>
                                     <TableCell>{c.name}</TableCell>
-                                    <TableCell>{teachers.find(t => t.role === 'teacher' && t.classIds.includes(c.id))?.name || 'N/A'}</TableCell>
+                                    <TableCell>{teachers.find(t => t.role === 'teacher' && t.classIds && t.classIds.includes(c.id))?.name || 'N/A'}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -2804,7 +2804,7 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
                                 <SelectContent>
                                     <SelectItem value="unassigned">不指派</SelectItem>
                                     {/* The teacher's own current class must be in the list */}
-                                    {teacher.classIds[0] && !unassignedClasses.find(c => c.id === teacher.classIds[0]) &&
+                                    {teacher.classIds && teacher.classIds[0] && !unassignedClasses.find(c => c.id === teacher.classIds[0]) &&
                                       <SelectItem key={teacher.classIds[0]} value={teacher.classIds[0]}>
                                         {classes.find(c => c.id === teacher.classIds[0])?.name}
                                       </SelectItem>
@@ -2845,3 +2845,4 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
         </Dialog>
     )
 }
+
