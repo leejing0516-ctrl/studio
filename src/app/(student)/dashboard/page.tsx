@@ -29,7 +29,7 @@ export default function StudentDashboardPage() {
   
   // Find the most up-to-date student info from the source of truth
   const currentStudent = useMemo(() => 
-    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId)
+    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student?.classId)
   , [students, studentData.student?.id, studentData.student?.classId]);
 
   const totalPoints = currentStudent?.points || 0;
@@ -74,7 +74,7 @@ export default function StudentDashboardPage() {
 
   const portfolioValue = useMemo(() => {
     if (!currentStudent) return 0;
-    return currentStudent.portfolio.reduce((acc, item) => {
+    return (currentStudent.portfolio || []).reduce((acc, item) => {
         const marketInfo = marketStocks.find(s => s.ticker === item.ticker);
         const currentValue = marketInfo ? marketInfo.price * item.shares : 0;
         return acc + currentValue;
@@ -95,7 +95,7 @@ export default function StudentDashboardPage() {
     const studentsInClass = students.filter(s => s.classId === currentStudent.classId);
 
     const studentsWithAssets = studentsInClass.map(student => {
-      const studentPortfolioValue = student.portfolio.reduce((acc, item) => {
+      const studentPortfolioValue = (student.portfolio || []).reduce((acc, item) => {
         const marketInfo = marketStocks.find(s => s.ticker === item.ticker);
         const currentValue = marketInfo ? marketInfo.price * item.shares : 0;
         return acc + currentValue;
@@ -215,3 +215,5 @@ export default function StudentDashboardPage() {
     </div>
   );
 }
+
+    
