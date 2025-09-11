@@ -3,27 +3,24 @@
 
 import { useContext, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Megaphone, GraduationCap } from "lucide-react";
 import { format } from "date-fns";
 import { AppDataContext } from "@/context/AppDataContext";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { Separator } from "@/components/ui/separator";
 
-const AnnouncementList = ({ announcements, type }: { announcements: any[], type: 'school' | 'class' }) => (
-     <Accordion type="single" collapsible className="w-full">
+const AnnouncementList = ({ announcements }: { announcements: any[] }) => (
+    <div className="space-y-6">
         {announcements.map((ann, index) => (
-        <AccordionItem value={`item-${type}-${index}`} key={ann.id}>
-            <AccordionTrigger>
-                <span className="font-semibold">{ann.title}</span>
-                <span className="text-xs text-muted-foreground ml-4 whitespace-nowrap">{format(new Date(ann.date), "yyyy-MM-dd")}</span>
-            </AccordionTrigger>
-            <AccordionContent>
-                <p>{ann.content}</p>
-            </AccordionContent>
-        </AccordionItem>
+            <div key={ann.id} className="border-b pb-4 last:border-b-0 last:pb-0">
+                <div className="flex justify-between items-baseline mb-1">
+                    <h3 className="font-semibold text-base">{ann.title}</h3>
+                    <span className="text-xs text-muted-foreground ml-4 whitespace-nowrap">{format(new Date(ann.date), "yyyy-MM-dd")}</span>
+                </div>
+                <p className="text-sm text-muted-foreground">{ann.content}</p>
+            </div>
         ))}
-    </Accordion>
+    </div>
 );
 
 
@@ -59,7 +56,7 @@ export default function AnnouncementsPage() {
                 </CardHeader>
                 <CardContent>
                     {schoolAnnouncements.length > 0 ? (
-                        <AnnouncementList announcements={schoolAnnouncements} type="school" />
+                        <AnnouncementList announcements={schoolAnnouncements} />
                     ) : (
                         <p className="text-muted-foreground text-center py-8">目前沒有學校公告。</p>
                     )}
@@ -78,7 +75,7 @@ export default function AnnouncementsPage() {
                 </CardHeader>
                 <CardContent>
                      {classAnnouncements.length > 0 ? (
-                        <AnnouncementList announcements={classAnnouncements} type="class" />
+                        <AnnouncementList announcements={classAnnouncements} />
                     ) : (
                         <p className="text-muted-foreground text-center py-8">目前沒有班級公告。</p>
                     )}
