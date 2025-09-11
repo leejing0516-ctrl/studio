@@ -579,7 +579,7 @@ export default function TeacherDashboardPage() {
     
     // Unassign any teacher from that class
     setTeachers(prev => prev.map(t => {
-        if (t.classIds.includes(classToDelete.id)) {
+        if (t.classIds && t.classIds.includes(classToDelete.id)) {
             return { ...t, classIds: t.classIds.filter(id => id !== classToDelete.id) };
         }
         return t;
@@ -725,13 +725,7 @@ export default function TeacherDashboardPage() {
         return;
     }
 
-    await setStudents(currentStudents => {
-        const studentMap = new Map(currentStudents.map(s => [`${s.classId}-${s.id}`, s]));
-        newStudents.forEach(s => {
-            studentMap.set(`${s.classId}-${s.id}`, s);
-        });
-        return Array.from(studentMap.values());
-    });
+    await setStudents(newStudents);
 
     toast({
         title: "匯入成功",
@@ -2039,3 +2033,4 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
 }
 
     
+
