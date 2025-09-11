@@ -132,17 +132,15 @@ export default function TeacherDashboardPage() {
             setTeacherClassIds(initialClassIds);
         } catch {}
     }
+  }, []);
 
-    if (storedRole === 'admin' && classes.length > 0) {
-        if (!selectedClassId) {
-            setSelectedClassId(classes[0].id);
-        }
-    } else if ((storedRole === 'teacher' || storedRole === 'subject_teacher') && initialClassIds.length > 0) {
-        if (!selectedClassId) {
-            setSelectedClassId(initialClassIds[0]);
-        }
+  useEffect(() => {
+    if (role === 'admin' && classes.length > 0 && !selectedClassId) {
+        setSelectedClassId(classes[0].id);
+    } else if ((role === 'teacher' || role === 'subject_teacher') && teacherClassIds.length > 0 && !selectedClassId) {
+        setSelectedClassId(teacherClassIds[0]);
     }
-  }, [classes, selectedClassId]);
+  }, [role, classes, teacherClassIds]);
 
   const currentTeacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
 
@@ -267,8 +265,8 @@ export default function TeacherDashboardPage() {
       return;
     }
 
-    if (role !== 'admin') {
-      if (!currentTeacher || (currentTeacher.pointBalance || 0) < pointsToAdd) {
+    if (role !== 'admin' && currentTeacher) {
+      if ((currentTeacher.pointBalance || 0) < pointsToAdd) {
           toast({ title: "點數餘額不足", description: "您的點數餘額不足以發放此次點數。", variant: "destructive" });
           return;
       }
@@ -284,7 +282,7 @@ export default function TeacherDashboardPage() {
         return s;
     }));
     
-    if (role !== 'admin') {
+    if (role !== 'admin' && currentTeacher) {
         setTeachers(currentTeachers => currentTeachers.map(t => 
             t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToAdd } : t
         ));
@@ -306,9 +304,9 @@ export default function TeacherDashboardPage() {
       return;
     }
     
-    if (role !== 'admin') {
+    if (role !== 'admin' && currentTeacher) {
         const totalPointsToAward = studentsInView.length * pointsToAdd;
-        if (!currentTeacher || (currentTeacher.pointBalance || 0) < totalPointsToAward) {
+        if ((currentTeacher.pointBalance || 0) < totalPointsToAward) {
             toast({ title: "點數餘額不足", description: `您的點數餘額不足以進行此次批次發放。需要 ${totalPointsToAward.toLocaleString()} 點，但您只有 ${(currentTeacher.pointBalance || 0).toLocaleString()} 點。`, variant: "destructive" });
             return;
         }
@@ -323,13 +321,13 @@ export default function TeacherDashboardPage() {
       currentStudents.map(student => {
         if (student.classId === selectedClassId && studentIdsInView.includes(student.id)) {
           const newHistory = [...(student.pointHistory || []), { points: pointsToAdd, date: today, reason }];
-          return { ...s, points: student.points + pointsToAdd, pointHistory: newHistory };
+          return { ...student, points: student.points + pointsToAdd, pointHistory: newHistory };
         }
         return student;
       })
     );
     
-    if (role !== 'admin') {
+    if (role !== 'admin' && currentTeacher) {
         const totalPointsToAward = studentsInView.length * pointsToAdd;
         setTeachers(currentTeachers => currentTeachers.map(t => 
             t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - totalPointsToAward } : t
@@ -692,7 +690,7 @@ export default function TeacherDashboardPage() {
       }
       
       const approver = teachers.find(t => t.id === teacherId);
-      if (decision === 'approve') {
+      if (decision === 'approve' && role !== 'admin') {
           if (!approver) {
               toast({ title: "錯誤", description: "找不到您的教師帳號資訊。", variant: "destructive" });
               return;
@@ -984,7 +982,7 @@ export default function TeacherDashboardPage() {
     );
   };
 
-  if (isLoading && !role) {
+  if (isLoading) {
       return (
         <div className="flex items-center justify-center h-full">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -1176,11 +1174,10 @@ export default function TeacherDashboardPage() {
         )}
     </div>
     <Tabs defaultValue={role === 'subject_teacher' ? 'classes' : 'students'} className="animate-in fade-in-0 duration-500">
-      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-6' : (role === 'teacher' ? 'grid-cols-4' : 'grid-cols-2')}`}>
+      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-4' : (role === 'teacher' ? 'grid-cols-3' : 'grid-cols-2')}`}>
         {role !== 'subject_teacher' && <TabsTrigger value="students">學生管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
         {role === 'subject_teacher' && <TabsTrigger value="classes">班級管理</TabsTrigger>}
-        {role === 'admin' && <TabsTrigger value="stocks">股票管理</TabsTrigger>}
         <TabsTrigger value="points">發送點數</TabsTrigger>
         {role !== 'subject_teacher' && <TabsTrigger value="rewards">獎勵管理</TabsTrigger>}
         {(role === 'admin' || role === 'teacher') && <TabsTrigger value="approvals">審核中心</TabsTrigger>}
@@ -1442,72 +1439,6 @@ export default function TeacherDashboardPage() {
             </Card>
          </TabsContent>
        )}
-
-      {role === 'admin' && (
-        <>
-        <TabsContent value="stocks" className="mt-6">
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                        <CardTitle>股票管理</CardTitle>
-                        <CardDescription>新增、編輯或刪除市場上的股票。</CardDescription>
-                    </div>
-                    <Button onClick={() => setIsAddStockDialogOpen(true)}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        新增股票
-                    </Button>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>代碼</TableHead>
-                                <TableHead>公司名稱</TableHead>
-                                <TableHead>目前價格</TableHead>
-                                <TableHead>市值</TableHead>
-                                <TableHead className="text-right">操作</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {stocks.map(stock => (
-                                <TableRow key={stock.ticker}>
-                                    <TableCell className="font-mono">{stock.ticker}</TableCell>
-                                    <TableCell>{stock.name}</TableCell>
-                                    <TableCell>${stock.price.toFixed(2)}</TableCell>
-                                    <TableCell>{stock.marketCap}</TableCell>
-                                    <TableCell className="text-right">
-                                        <Button variant="ghost" size="icon" onClick={() => handleEditStockClick(stock)}>
-                                            <Edit className="h-4 w-4" />
-                                        </Button>
-                                         <AlertDialog open={!!stockToDelete && stockToDelete.ticker === stock.ticker} onOpenChange={(open) => !open && setStockToDelete(null)}>
-                                            <AlertDialogTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStockClick(stock)}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        您確定要刪除股票「{stock.name}」嗎？此操作將永久移除該股票，並從所有學生的投資組合中移除此持股。此操作無法復原。
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel onClick={() => setStockToDelete(null)}>取消</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={handleConfirmDeleteStock} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
-        </TabsContent>
-        </>
-      )}
       
       <TabsContent value="points" className="mt-6">
         <Card>
