@@ -35,6 +35,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -147,7 +148,9 @@ export default function TeacherDashboardPage() {
   useEffect(() => {
     if (role && classes.length > 0 && !selectedClassId) {
         if (role === 'admin') {
-            setSelectedClassId(classes[0].id);
+            if (classes[0]) {
+                setSelectedClassId(classes[0].id);
+            }
         } else if (teacherClassIds.length > 0) {
             setSelectedClassId(teacherClassIds[0]);
         }
@@ -1142,7 +1145,7 @@ export default function TeacherDashboardPage() {
         )}
     </div>
     <Tabs defaultValue={role === 'subject_teacher' ? 'classes' : 'students'} className="animate-in fade-in-0 duration-500">
-      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-4' : (role === 'teacher' ? 'grid-cols-3' : 'grid-cols-2')}`}>
+      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-4' : (role === 'teacher' ? 'grid-cols-2' : 'grid-cols-2')}`}>
         {role !== 'subject_teacher' && <TabsTrigger value="students">學生管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="fundraising">募資管理</TabsTrigger>}
