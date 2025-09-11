@@ -732,26 +732,44 @@ export default function TeacherDashboardPage() {
 
   const handleAllocatePointsToTeacher = () => {
     const amount = Number(allocationAmount);
-    if (!amount || amount <= 0 || !teacherToAllocate) {
-        toast({ title: "無效的金額", description: "請輸入一個正數。", variant: "destructive" });
+    if (!amount || !teacherToAllocate) {
+        toast({ title: "無效的金額", description: "請輸入一個有效的金額。", variant: "destructive" });
+        return;
+    }
+    if (amount <= 0 && adjustFundsType === 'add') {
+        toast({ title: "無效的金額", description: "撥款金額必須大於 0。", variant: "destructive" });
         return;
     }
 
     const currentSchoolFunds = platformConfig?.schoolFunds || 0;
-    if (currentSchoolFunds < amount) {
-        toast({ title: "學校資金不足", description: "中央銀行資金不足以進行此次撥款。", variant: "destructive" });
-        return;
+    
+    if (adjustFundsType === 'add') {
+        if (currentSchoolFunds < amount) {
+            toast({ title: "學校資金不足", description: "中央銀行資金不足以進行此次撥款。", variant: "destructive" });
+            return;
+        }
+        // Deduct from school funds
+        setPlatformConfig({ schoolFunds: currentSchoolFunds - amount });
+        // Add to teacher's balance
+        setTeachers(currentTeachers => currentTeachers.map(t => 
+            t.id === teacherToAllocate.id ? { ...t, pointBalance: (t.pointBalance || 0) + amount } : t
+        ));
+        toast({ title: "撥款成功", description: `已成功撥款 ${amount.toLocaleString()} 點給 ${teacherToAllocate.name} 老師。`});
+    } else { // Reclaim funds
+        const teacherBalance = teacherToAllocate.pointBalance || 0;
+        if (teacherBalance < amount) {
+            toast({ title: "餘額不足", description: `${teacherToAllocate.name} 老師的餘額不足以回收 ${amount.toLocaleString()} 點。`, variant: "destructive" });
+            return;
+        }
+        // Add back to school funds
+        setPlatformConfig({ schoolFunds: currentSchoolFunds + amount });
+        // Deduct from teacher's balance
+        setTeachers(currentTeachers => currentTeachers.map(t => 
+            t.id === teacherToAllocate.id ? { ...t, pointBalance: (t.pointBalance || 0) - amount } : t
+        ));
+        toast({ title: "回收成功", description: `已成功從 ${teacherToAllocate.name} 老師回收 ${amount.toLocaleString()} 點。`});
     }
-    
-    // Deduct from school funds
-    setPlatformConfig({ schoolFunds: currentSchoolFunds - amount });
-    
-    // Add to teacher's balance
-    setTeachers(currentTeachers => currentTeachers.map(t => 
-        t.id === teacherToAllocate.id ? { ...t, pointBalance: (t.pointBalance || 0) + amount } : t
-    ));
 
-    toast({ title: "撥款成功", description: `已成功撥款 ${amount.toLocaleString()} 點給 ${teacherToAllocate.name} 老師。`});
     setIsAllocatePointsDialogOpen(false);
     setAllocationAmount('');
     setTeacherToAllocate(null);
@@ -883,11 +901,11 @@ export default function TeacherDashboardPage() {
         )}
     </div>
     <Tabs defaultValue={role === 'subject_teacher' ? 'classes' : 'students'} className="animate-in fade-in-0 duration-500">
-        <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-2' : (role === 'teacher' ? 'grid-cols-2' : 'grid-cols-2')}`}>
+        <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-3' : (role === 'teacher' ? 'grid-cols-3' : 'grid-cols-2')}`}>
             {role !== 'subject_teacher' && <TabsTrigger value="students">學生管理</TabsTrigger>}
             {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
             {role === 'subject_teacher' && <TabsTrigger value="classes">班級管理</TabsTrigger>}
-            <TabsTrigger value="points">發送點數</TabsTrigger>}
+            <TabsTrigger value="points">發送點數</TabsTrigger>
             {(role === 'admin' || role === 'teacher') && <TabsTrigger value="approvals">審核中心</TabsTrigger>}
         </TabsList>
 
@@ -1019,7 +1037,7 @@ export default function TeacherDashboardPage() {
                                                         <Coins className="h-4 w-4" />
                                                     </Button>
                                                 </TooltipTrigger>
-                                                <TooltipContent><p>分配點數</p></TooltipContent>
+                                                <TooltipContent><p>分配/回收點數</p></TooltipContent>
                                             </Tooltip>
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
@@ -1436,21 +1454,33 @@ export default function TeacherDashboardPage() {
         </Dialog>
 
         {/* Dialog for Allocating Points to Teacher */}
-        <Dialog open={isAllocatePointsDialogOpen} onOpenChange={setIsAllocatePointsDialogOpen}>
+        <Dialog open={isAllocatePointsDialogOpen} onOpenChange={(open) => { if(!open) setTeacherToAllocate(null) }}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>分配點數給老師</DialogTitle>
+                    <DialogTitle>分配/回收點數給老師</DialogTitle>
                     <DialogDescription>
-                        從學校總資金撥款給「{teacherToAllocate?.name}」老師。老師將能使用這些點數來獎勵學生。
+                        從學校總資金撥款給「{teacherToAllocate?.name}」老師，或從老師餘額回收點數。
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                     <div className="space-y-2">
-                        <Label htmlFor="allocation-amount">分配金額</Label>
+                        <Label>操作類型</Label>
+                        <Select onValueChange={(value: 'add' | 'remove') => setAdjustFundsType(value)} defaultValue="add">
+                            <SelectTrigger>
+                                <SelectValue placeholder="選擇操作類型" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="add">分配點數 (學校 -> 老師)</SelectItem>
+                                <SelectItem value="remove">回收點數 (老師 -> 學校)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="allocation-amount">金額</Label>
                         <Input 
                             id="allocation-amount" 
                             type="number"
-                            placeholder="要分配的點數量"
+                            placeholder="要操作的點數量"
                             value={allocationAmount}
                             min="1"
                             onChange={(e) => setAllocationAmount(e.target.value === '' ? '' : Number(e.target.value))}
@@ -1458,14 +1488,15 @@ export default function TeacherDashboardPage() {
                         />
                     </div>
                     <div className="text-sm text-muted-foreground">
-                        目前學校總資金：{(platformConfig?.schoolFunds || 0).toLocaleString()} 點
+                        <p>學校總資金：{(platformConfig?.schoolFunds || 0).toLocaleString()} 點</p>
+                        <p>{teacherToAllocate?.name}老師餘額：{(teacherToAllocate?.pointBalance || 0).toLocaleString()} 點</p>
                     </div>
                 </div>
                 <DialogFooter>
                     <DialogClose asChild>
                         <Button type="button" variant="secondary" onClick={() => setTeacherToAllocate(null)}>取消</Button>
                     </DialogClose>
-                    <Button type="button" onClick={handleAllocatePointsToTeacher}>確認撥款</Button>
+                    <Button type="button" onClick={handleAllocatePointsToTeacher}>確認操作</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
