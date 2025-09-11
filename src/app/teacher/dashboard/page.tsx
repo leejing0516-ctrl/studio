@@ -923,7 +923,7 @@ export default function TeacherDashboardPage() {
                             <Button variant="ghost" size="icon" onClick={() => handleResetPasswordClick(student)}>
                                     <KeyRound className="h-4 w-4" />
                             </Button>
-                            <AlertDialog open={!!studentToDelete && studentToDelete.id === student.id && studentToDelete.classId === student.classId} onOpenChange={(open) => !open && setStudentToDelete(null)}>
+                                   <AlertDialog open={!!studentToDelete && studentToDelete.id === student.id && studentToDelete.classId === student.classId} onOpenChange={(open) => !open && setStudentToDelete(null)}>
                                     <AlertDialogTrigger asChild>
                                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStudentClick(student)}>
                                             <Trash2 className="h-4 w-4" />
@@ -1017,11 +1017,27 @@ export default function TeacherDashboardPage() {
                                                 <TooltipContent><p>重設密碼</p></TooltipContent>
                                             </Tooltip>
                                             <Tooltip>
-                                                <AlertDialogTrigger asChild>
-                                                  <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                  </Button>
-                                                </AlertDialogTrigger>
+                                                <TooltipTrigger asChild>
+                                                    <AlertDialog open={!!teacherToDelete && teacherToDelete.id === teacher.id} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    您確定要刪除老師「{teacherToDelete?.name}」嗎？此操作將永久移除该老師的帳號及其建立的獎勵與挑戰，且無法復原。
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>取消</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={handleConfirmDeleteTeacher} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                </TooltipTrigger>
                                                 <TooltipContent><p>刪除</p></TooltipContent>
                                             </Tooltip>
                                         </TooltipProvider>
@@ -1031,20 +1047,6 @@ export default function TeacherDashboardPage() {
                         </TableBody>
                     </Table>
                 </CardContent>
-                 <AlertDialog open={!!teacherToDelete} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                您確定要刪除老師「{teacherToDelete?.name}」嗎？此操作將永久移除该老師的帳號及其建立的獎勵與挑戰，且無法復原。
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>取消</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleConfirmDeleteTeacher} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
             </Card>
              <Card>
                 <CardHeader  className="flex flex-row items-center justify-between">
@@ -1947,5 +1949,7 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
         </Dialog>
     )
 }
+
+    
 
     
