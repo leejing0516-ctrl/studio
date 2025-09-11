@@ -102,10 +102,6 @@ const createUpdater = <T extends { id?: string | number; ticker?: string }>(
     return async (updater: (prevState: T[]) => T[]) => {
       const prevState = getPrevState();
       const finalData = updater(prevState);
-      stateSetter(finalData);
-  
-      // Defer Firestore update slightly to allow state to propagate
-      await new Promise(resolve => setTimeout(resolve, 0));
   
       const batch = writeBatch(db);
       const prevIds = new Set(prevState.map(p => String(p.id ?? p.ticker)));
@@ -114,6 +110,10 @@ const createUpdater = <T extends { id?: string | number; ticker?: string }>(
       // Add or update documents
       finalData.forEach(item => {
         const docId = String(item.id ?? item.ticker);
+        if (!docId) {
+            console.warn(`Item in ${collectionName} is missing a unique ID.`, item);
+            return;
+        }
         const docRef = doc(db, collectionName, docId);
         batch.set(docRef, { ...item });
       });
@@ -128,8 +128,11 @@ const createUpdater = <T extends { id?: string | number; ticker?: string }>(
   
       try {
         await batch.commit();
+        // Set state only after successful commit
+        stateSetter(finalData);
       } catch (e) {
         console.error(`Failed to update ${collectionName}`, e);
+        // Optional: handle error, maybe revert optimistic UI update
       }
     };
   };

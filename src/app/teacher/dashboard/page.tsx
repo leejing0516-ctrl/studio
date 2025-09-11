@@ -41,7 +41,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { AppDataContext } from "@/context/AppDataContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format, formatDistanceToNow, isValid } from "date-fns";
+import { format, formatDistanceToNow, isValid, addDays } from "date-fns";
 import Papa from "papaparse";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
@@ -49,6 +49,12 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { zhTW } from 'date-fns/locale';
+import { db } from "@/lib/firebase";
+import { doc, writeBatch } from "firebase/firestore";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 
 interface StagedStudent {
@@ -672,12 +678,30 @@ export default function TeacherDashboardPage() {
         fixedDeposits: [],
     }));
 
-    await setStudents(current => [...current, ...newStudents]);
-
-    toast({
-        title: "匯入成功",
-        description: `已成功匯入 ${newStudents.length} 位學生。`
+    // Use a batch write to add all new students to Firestore
+    const batch = writeBatch(db);
+    newStudents.forEach(student => {
+        const studentRef = doc(db, 'students', student.id);
+        batch.set(studentRef, student);
     });
+
+    try {
+        await batch.commit();
+        // Only update the frontend state after the backend has been successfully updated
+        setStudentsState(current => [...current, ...newStudents]);
+        toast({
+            title: "匯入成功",
+            description: `已成功匯入 ${newStudents.length} 位學生。`
+        });
+    } catch (error) {
+        console.error("Failed to import students to Firestore:", error);
+        toast({
+            title: "匯入失敗",
+            description: "將學生資料儲存至資料庫時發生錯誤。",
+            variant: "destructive"
+        });
+    }
+
 
     setIsImporting(false);
     setIsImportDialogOpen(false);
@@ -863,7 +887,7 @@ export default function TeacherDashboardPage() {
         )}
     </div>
     <Tabs defaultValue={role === 'subject_teacher' ? 'classes' : 'students'} className="animate-in fade-in-0 duration-500">
-        <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-4' : (role === 'teacher' ? 'grid-cols-3' : 'grid-cols-2')}`}>
+        <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-3' : (role === 'teacher' ? 'grid-cols-2' : 'grid-cols-2')}`}>
             {role !== 'subject_teacher' && <TabsTrigger value="students">學生管理</TabsTrigger>}
             {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
             {role === 'subject_teacher' && <TabsTrigger value="classes">班級管理</TabsTrigger>}
