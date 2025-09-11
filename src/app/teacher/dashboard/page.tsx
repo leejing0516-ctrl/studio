@@ -164,6 +164,7 @@ export default function TeacherDashboardPage() {
   const [teacherToResetPassword, setTeacherToResetPassword] = useState<Teacher | null>(null);
   
   const [isAddClassDialogOpen, setIsAddClassDialogOpen] = useState(false);
+  const [classToDelete, setClassToDelete] = useState<Class | null>(null);
 
 
   const { toast } = useToast();
@@ -563,6 +564,38 @@ export default function TeacherDashboardPage() {
     });
   };
 
+  const handleDeleteClassClick = (classObj: Class) => {
+    setClassToDelete(classObj);
+  };
+
+  const handleConfirmDeleteClass = () => {
+    if (!classToDelete) return;
+    
+    // Remove students in that class
+    setStudents(prev => prev.filter(s => s.classId !== classToDelete.id));
+    
+    // Remove the class itself
+    setClasses(prev => prev.filter(c => c.id !== classToDelete.id));
+    
+    // Unassign any teacher from that class
+    setTeachers(prev => prev.map(t => {
+        if (t.classIds.includes(classToDelete.id)) {
+            return { ...t, classIds: t.classIds.filter(id => id !== classToDelete.id) };
+        }
+        return t;
+    }));
+
+    toast({ title: "已刪除班級", description: `已成功刪除班級「${classToDelete.name}」及其所有學生。`, variant: "destructive" });
+    
+    // If the deleted class was the selected one, reset selection
+    if (selectedClassId === classToDelete.id) {
+        const firstClass = classes.find(c => c.id !== classToDelete.id);
+        setSelectedClassId(firstClass ? firstClass.id : '');
+    }
+    
+    setClassToDelete(null);
+  };
+
   const handleLoanDecision = (studentId: string, classId: string, loanId: string, decision: 'approve' | 'reject') => {
       const today = new Date().toISOString();
       const targetLoan = students.find(s => s.id === studentId && s.classId === classId)?.loans.find(l => l.id === loanId);
@@ -669,17 +702,9 @@ export default function TeacherDashboardPage() {
     });
   }
   
- const handleConfirmImport = async () => {
+  const handleConfirmImport = async () => {
     setIsImporting(true);
-    const studentsToProcess = stagedStudents.filter(s => s.status === 'valid' || s.status === 'duplicate');
-    
-    if (studentsToProcess.length === 0) {
-        toast({ title: "沒有可匯入的學生", description: "請檢查您的 CSV 檔案，沒有找到可匯入或更新的新學生。", variant: "destructive" });
-        setIsImporting(false);
-        return;
-    }
-
-    const newOrUpdatedStudents: Student[] = studentsToProcess.map(s => ({
+    const newStudents = stagedStudents.filter(s => s.status === 'valid' || s.status === 'duplicate').map(s => ({
         id: s.id,
         name: s.name,
         password: s.password!,
@@ -694,18 +719,30 @@ export default function TeacherDashboardPage() {
         fixedDeposits: [],
     }));
 
-    await setStudents(newOrUpdatedStudents);
+    if (newStudents.length === 0) {
+        toast({ title: "沒有可匯入的學生", description: "請檢查您的 CSV 檔案，沒有找到可匯入或更新的新學生。", variant: "destructive" });
+        setIsImporting(false);
+        return;
+    }
+
+    await setStudents(currentStudents => {
+        const studentMap = new Map(currentStudents.map(s => [`${s.classId}-${s.id}`, s]));
+        newStudents.forEach(s => {
+            studentMap.set(`${s.classId}-${s.id}`, s);
+        });
+        return Array.from(studentMap.values());
+    });
 
     toast({
         title: "匯入成功",
-        description: `已成功處理 ${studentsToProcess.length} 位學生資料。`
+        description: `已成功處理 ${newStudents.length} 位學生資料。`
     });
 
     setIsImporting(false);
     setIsImportDialogOpen(false);
     setStagedStudents([]);
     setFile(null);
-};
+  };
   
   const handleAdjustFunds = () => {
     const amount = Number(adjustFundsAmount);
@@ -1091,6 +1128,7 @@ export default function TeacherDashboardPage() {
                                 <TableHead>班級 ID</TableHead>
                                 <TableHead>班級名稱</TableHead>
                                 <TableHead>班級導師</TableHead>
+                                <TableHead className="text-right">操作</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1099,6 +1137,27 @@ export default function TeacherDashboardPage() {
                                     <TableCell>{c.id}</TableCell>
                                     <TableCell>{c.name}</TableCell>
                                     <TableCell>{teachers.find(t => t.role === 'teacher' && t.classIds && t.classIds.includes(c.id))?.name || 'N/A'}</TableCell>
+                                    <TableCell className="text-right">
+                                        <AlertDialog open={!!classToDelete && classToDelete.id === c.id} onOpenChange={(open) => !open && setClassToDelete(null)}>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteClassClick(c)}>
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>您確定要刪除班級嗎？</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        刪除「{c.name}」將會永久刪除該班級內的所有學生資料，此操作無法復原。
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>取消</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={handleConfirmDeleteClass} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -1978,3 +2037,5 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
         </Dialog>
     )
 }
+
+    
