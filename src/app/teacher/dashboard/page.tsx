@@ -660,8 +660,8 @@ export default function TeacherDashboardPage() {
   
  const handleConfirmImport = async () => {
     setIsImporting(true);
-
     const validStudentsToImport = stagedStudents.filter(s => s.status === 'valid');
+    
     if (validStudentsToImport.length === 0) {
         toast({ title: "沒有可匯入的學生", description: "請檢查您的 CSV 檔案，沒有找到可匯入的新學生。", variant: "destructive" });
         setIsImporting(false);
@@ -684,17 +684,24 @@ export default function TeacherDashboardPage() {
     }));
 
     await setStudents(currentStudents => {
+        // Keep all students from other classes
         const otherClassesStudents = currentStudents.filter(s => s.classId !== selectedClassId);
+        // Get existing students in the current class to avoid duplicates
         const existingStudentsInClass = currentStudents.filter(s => s.classId === selectedClassId);
         
-        const studentMap = new Map(existingStudentsInClass.map(s => [s.id, s]));
-        newStudents.forEach(newStudent => {
-            studentMap.set(newStudent.id, newStudent);
+        // Create a map of new students for efficient lookup
+        const newStudentsMap = new Map(newStudents.map(s => [s.id, s]));
+
+        // Combine existing students with new ones, overwriting duplicates from the CSV
+        const updatedClassStudentsMap = new Map(existingStudentsInClass.map(s => [s.id, s]));
+        newStudentsMap.forEach((student, id) => {
+            updatedClassStudentsMap.set(id, student);
         });
+        
+        const updatedClassStudents = Array.from(updatedClassStudentsMap.values());
 
-        return [...otherClassesStudents, ...Array.from(studentMap.values())];
+        return [...otherClassesStudents, ...updatedClassStudents];
     });
-
 
     toast({
         title: "匯入成功",
@@ -889,7 +896,7 @@ export default function TeacherDashboardPage() {
             {role !== 'subject_teacher' && <TabsTrigger value="students">學生管理</TabsTrigger>}
             {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
             {role === 'subject_teacher' && <TabsTrigger value="classes">班級管理</TabsTrigger>}
-            <TabsTrigger value="points">發送點數</TabsTrigger>
+            <TabsTrigger value="points">發送點數</TabsTrigger>}
             {(role === 'admin' || role === 'teacher') && <TabsTrigger value="approvals">審核中心</TabsTrigger>}
         </TabsList>
 
@@ -927,7 +934,7 @@ export default function TeacherDashboardPage() {
                     </TableHeader>
                     <TableBody>
                         {studentsInView.map((student) => (
-                        <TableRow key={student.id}>
+                        <TableRow key={`${student.classId}-${student.id}`}>
                             <TableCell className="font-mono">{student.id}</TableCell>
                             <TableCell className="flex items-center gap-4">
                             <Avatar>
@@ -1195,7 +1202,7 @@ export default function TeacherDashboardPage() {
                 </TableHeader>
                 <TableBody>
                     {studentsInView.length > 0 ? studentsInView.map((student) => (
-                    <TableRow key={student.id}>
+                    <TableRow key={`${student.classId}-${student.id}`}>
                         <TableCell className="flex items-center gap-4">
                         <Avatar>
                             <AvatarImage src={student.avatar} data-ai-hint="student avatar" />
@@ -1975,3 +1982,6 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
     )
 }
 
+
+
+    
