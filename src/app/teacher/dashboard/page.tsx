@@ -88,7 +88,7 @@ export default function TeacherDashboardPage() {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [stagedStudents, setStagedStudents] = useState<StagedStudent[]>([]);
   const [file, setFile] = useState<File | null>(null);
-  const [isImporting, setIsImporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(isImporting);
 
   // State for Batch Award Points
   const [isBatchAwardDialogOpen, setIsBatchAwardDialogOpen] = useState(false);
@@ -100,8 +100,8 @@ export default function TeacherDashboardPage() {
   const [sponsorLogoFiles, setSponsorLogoFiles] = useState<(File | null)[]>(Array(4).fill(null));
   const [sponsorLogoPreviews, setSponsorLogoPreviews] = useState<(string | null)[]>(platformConfig?.sponsorLogoUrls || Array(4).fill(null));
   const [isSavingSettings, setIsSavingSettings] = useState(false);
-  const [fixedDepositRate, setFixedDepositRate] = useState<number | string>((platformConfig?.fixedDepositInterestRate || 0) * 100);
-  const [loanInterestRate, setLoanInterestRate] = useState<number | string>((platformConfig?.loanInterestRate || 0) * 100);
+  const [fixedDepositRate, setFixedDepositRate] = useState<number | string>('');
+  const [loanInterestRate, setLoanInterestRate] = useState<number | string>('');
   
   // State for Central Bank
   const [isAdjustFundsDialogOpen, setIsAdjustFundsDialogOpen] = useState(false);
@@ -128,32 +128,39 @@ export default function TeacherDashboardPage() {
   const [selectedClassesForSubjectTeacher, setSelectedClassesForSubjectTeacher] = useState<string[]>([]);
 
 
-  // Effect for initializing component state from localStorage
+  // Effect for initializing component state from localStorage. Runs only once.
   useEffect(() => {
     const storedRole = localStorage.getItem('teacherRole');
     const storedTeacherId = localStorage.getItem('teacherId');
-    const storedClassIds = localStorage.getItem('teacherClassIds');
+    const storedClassIdsStr = localStorage.getItem('teacherClassIds');
     setRole(storedRole);
     setTeacherId(storedTeacherId);
-    if (storedClassIds) {
+    if (storedClassIdsStr) {
         try {
-            const parsedClassIds = JSON.parse(storedClassIds);
+            const parsedClassIds = JSON.parse(storedClassIdsStr);
             setTeacherClassIds(parsedClassIds);
-             if (storedRole !== 'admin' && parsedClassIds.length > 0) {
-                setSelectedClassId(parsedClassIds[0]);
-            }
         } catch {
             setTeacherClassIds([]);
         }
     }
-  }, []);
-
-  // Effect for auto-selecting class for admin after initial data is loaded
-  useEffect(() => {
-    if (role === 'admin' && !selectedClassId && classes.length > 0) {
-        setSelectedClassId(classes[0].id);
+    if (platformConfig) {
+        setFixedDepositRate((platformConfig.fixedDepositInterestRate || 0) * 100);
+        setLoanInterestRate((platformConfig.loanInterestRate || 0) * 100);
     }
-  }, [role, classes]);
+  }, [platformConfig]);
+
+  // Effect for auto-selecting class after initial data is loaded.
+  useEffect(() => {
+    // For admin: select first class if none is selected
+    if (role === 'admin' && !selectedClassId && classes.length > 0) {
+      setSelectedClassId(classes[0].id);
+    }
+    // For teacher: select their class if none is selected
+    else if (role === 'teacher' && teacherClassIds.length > 0 && !selectedClassId) {
+      setSelectedClassId(teacherClassIds[0]);
+    }
+  }, [role, classes, teacherClassIds, selectedClassId]);
+
   
 
   const currentTeacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
@@ -191,7 +198,7 @@ export default function TeacherDashboardPage() {
   const [isEditStudentDialogOpen, setIsEditStudentDialogOpen] = useState(false);
   const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
-  const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
+  const [studentToResetPassword, setStudentToResetPassword] = useState<Student | null>(null);
 
   const [isAddTeacherDialogOpen, setIsAddTeacherDialogOpen] = useState(false);
   const [isEditTeacherDialogOpen, setIsEditTeacherDialogOpen] = useState(false);
@@ -542,22 +549,20 @@ export default function TeacherDashboardPage() {
 
 
   const handleResetPasswordClick = (student: Student) => {
-    setStudentToEdit(student);
-    setIsResetPasswordDialogOpen(true);
+    setStudentToResetPassword(student);
   };
 
   const handleConfirmResetPassword = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!studentToEdit) return;
+    if (!studentToResetPassword) return;
     const formData = new FormData(event.currentTarget);
     const newPassword = formData.get("new-password") as string;
 
-    setStudents(currentStudents => currentStudents.map(s => (s.id === studentToEdit.id && s.classId === studentToEdit.classId) ? { ...s, password: newPassword } : s));
-    setIsResetPasswordDialogOpen(false);
-    setStudentToEdit(null);
+    setStudents(currentStudents => currentStudents.map(s => (s.id === studentToResetPassword.id && s.classId === studentToResetPassword.classId) ? { ...s, password: newPassword } : s));
+    setStudentToResetPassword(null);
     toast({
         title: "密碼已重設",
-        description: `${studentToEdit.name} 的密碼已更新。`
+        description: `${studentToResetPassword.name} 的密碼已更新。`
     });
   }
   
@@ -1306,12 +1311,12 @@ export default function TeacherDashboardPage() {
         )}
     </div>
     <Tabs defaultValue={role === 'subject_teacher' ? 'classes' : 'students'} className="animate-in fade-in-0 duration-500">
-      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-8' : role === 'teacher' ? 'grid-cols-5' : 'grid-cols-2'}`}>
+      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-7' : (role === 'teacher' ? 'grid-cols-5' : 'grid-cols-2')}`}>
         {role !== 'subject_teacher' && <TabsTrigger value="students">學生管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
         {role === 'subject_teacher' && <TabsTrigger value="classes">班級管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="stocks">股票管理</TabsTrigger>}
-        <TabsTrigger value="points">發送點數</TabsTrigger>
+        <TabsTrigger value="points">發送點數</TabsTrigger>}
         {role !== 'subject_teacher' && <TabsTrigger value="rewards">獎勵管理</TabsTrigger>}
         {role !== 'subject_teacher' && <TabsTrigger value="challenges">挑戰管理</TabsTrigger>}
         {(role === 'admin' || role === 'teacher') && <TabsTrigger value="approvals">審核中心</TabsTrigger>}
@@ -1370,7 +1375,7 @@ export default function TeacherDashboardPage() {
                             <Button variant="ghost" size="icon" onClick={() => handleResetPasswordClick(student)}>
                                     <KeyRound className="h-4 w-4" />
                             </Button>
-                            <AlertDialog>
+                            <AlertDialog open={studentToDelete?.id === student.id && studentToDelete?.classId === student.classId} onOpenChange={(open) => !open && setStudentToDelete(null)}>
                                     <AlertDialogTrigger asChild>
                                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStudentClick(student)}>
                                             <Trash2 className="h-4 w-4" />
@@ -1465,7 +1470,7 @@ export default function TeacherDashboardPage() {
                                             </Tooltip>
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
-                                                    <AlertDialog>
+                                                    <AlertDialog open={teacherToDelete?.id === teacher.id} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
                                                         <AlertDialogTrigger asChild>
                                                             <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
                                                                 <Trash2 className="h-4 w-4" />
@@ -1520,7 +1525,7 @@ export default function TeacherDashboardPage() {
                                 <TableRow key={c.id}>
                                     <TableCell>{c.id}</TableCell>
                                     <TableCell>{c.name}</TableCell>
-                                    <TableCell>{teachers.find(t => t.role === 'teacher' && t.classIds?.includes(c.id))?.name || 'N/A'}</TableCell>
+                                    <TableCell>{teachers.find(t => t.role === 'teacher' && t.classIds && t.classIds.includes(c.id))?.name || 'N/A'}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -1611,7 +1616,7 @@ export default function TeacherDashboardPage() {
                                         <Button variant="ghost" size="icon" onClick={() => handleEditStockClick(stock)}>
                                             <Edit className="h-4 w-4" />
                                         </Button>
-                                         <AlertDialog>
+                                         <AlertDialog open={stockToDelete?.ticker === stock.ticker} onOpenChange={(open) => !open && setStockToDelete(null)}>
                                             <AlertDialogTrigger asChild>
                                                 <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStockClick(stock)}>
                                                     <Trash2 className="h-4 w-4" />
@@ -1768,12 +1773,9 @@ export default function TeacherDashboardPage() {
                         <SelectValue placeholder="請選擇班級" />
                     </SelectTrigger>
                     <SelectContent>
-                        {role !== 'subject_teacher' ? classes.map(c => (
+                        {(role === 'admin' ? classes : (teacherClassIds || []).map(id => classes.find(c => c.id === id)).filter(Boolean) as Class[]).map(c => (
                             <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        )) : (currentTeacher?.classIds || []).map(id => {
-                            const classInfo = classes.find(c => c.id === id);
-                            return classInfo ? <SelectItem key={id} value={id}>{classInfo.name}</SelectItem> : null
-                        })}
+                        ))}
                     </SelectContent>
                 </Select>
             </div>
@@ -1872,7 +1874,7 @@ export default function TeacherDashboardPage() {
                                     <Button variant="ghost" size="icon" onClick={() => handleEditChallengeClick(challenge)}>
                                         <Edit className="h-4 w-4" />
                                     </Button>
-                                    <AlertDialog>
+                                    <AlertDialog open={challengeToDelete?.id === challenge.id} onOpenChange={(open) => !open && setChallengeToDelete(null)}>
                                         <AlertDialogTrigger asChild>
                                             <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setChallengeToDelete(challenge)}>
                                                 <Trash2 className="h-4 w-4" />
@@ -2435,28 +2437,13 @@ export default function TeacherDashboardPage() {
             </DialogContent>
         </Dialog>
         
-        <AlertDialog open={!!studentToDelete} onOpenChange={(open) => !open && setStudentToDelete(null)}>
-            <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
-                <AlertDialogDescription>
-                您確定要刪除學生「{studentToDelete?.name}」嗎？此操作將永久移除該學生的所有資料且無法復原。
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setStudentToDelete(null)}>取消</AlertDialogCancel>
-                <AlertDialogAction onClick={handleConfirmDeleteStudent} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-            </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-
-        <Dialog open={isResetPasswordDialogOpen} onOpenChange={(open) => {if(!open) setStudentToEdit(null)}}>
+        <Dialog open={!!studentToResetPassword} onOpenChange={(open) => { if (!open) setStudentToResetPassword(null); }}>
             <DialogContent className="sm:max-w-[425px]">
                 <form onSubmit={handleConfirmResetPassword}>
             <DialogHeader>
                 <DialogTitle>重設密碼</DialogTitle>
                 <DialogDescription>
-                為學生「{studentToEdit?.name}」設定一組新密碼。
+                為學生「{studentToResetPassword?.name}」設定一組新密碼。
                 </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -2469,7 +2456,7 @@ export default function TeacherDashboardPage() {
             </div>
             <DialogFooter>
                 <DialogClose asChild>
-                    <Button type="button" variant="secondary" onClick={() => setStudentToEdit(null)}>取消</Button>
+                    <Button type="button" variant="secondary" onClick={() => setStudentToResetPassword(null)}>取消</Button>
                 </DialogClose>
                 <Button type="submit">儲存密碼</Button>
             </DialogFooter>
@@ -2543,7 +2530,7 @@ export default function TeacherDashboardPage() {
                     />
                 )}
 
-                <Dialog open={!!teacherToResetPassword} onOpenChange={setTeacherToResetPassword}>
+                <Dialog open={!!teacherToResetPassword} onOpenChange={(open) => { if (!open) setTeacherToResetPassword(null); }}>
                     <DialogContent className="sm:max-w-[425px]">
                     <form onSubmit={handleConfirmResetTeacherPassword}>
                         <DialogHeader>
@@ -2565,21 +2552,6 @@ export default function TeacherDashboardPage() {
                     </form>
                     </DialogContent>
                 </Dialog>
-
-                <AlertDialog open={!!teacherToDelete} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
-                    <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
-                        <AlertDialogDescription>
-                        您確定要刪除老師「{teacherToDelete?.name}」嗎？此操作將永久移除该老師的帳號且無法復原。
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmDeleteTeacher} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-                    </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
 
                 <Dialog open={isAddClassDialogOpen} onOpenChange={setIsAddClassDialogOpen}>
                     <DialogContent className="sm:max-w-[425px]">
@@ -2681,20 +2653,6 @@ export default function TeacherDashboardPage() {
                 </form>
             </DialogContent>
         </Dialog>
-        <AlertDialog open={!!stockToDelete} onOpenChange={(open) => !open && setStockToDelete(null)}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        您確定要刪除股票「{stockToDelete?.name}」嗎？此操作將永久移除該股票，並從所有學生的投資組合中移除此持股。此操作無法復原。
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => setStockToDelete(null)}>取消</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleConfirmDeleteStock} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
         {/* Dialogs for Challenges */}
         <Dialog open={isAddChallengeDialogOpen} onOpenChange={setIsAddChallengeDialogOpen}>
             <DialogContent className="sm:max-w-[425px]">
@@ -2917,4 +2875,5 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
 }
 
 
+    
     
