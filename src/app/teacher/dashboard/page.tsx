@@ -116,7 +116,7 @@ export default function TeacherDashboardPage() {
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const [studentToResetPassword, setStudentToResetPassword] = useState<Student | null>(null);
 
-  // One-time effect to load teacher info from localStorage and set initial class selection
+  // One-time effect to load teacher info from localStorage
   useEffect(() => {
     const storedRole = localStorage.getItem('teacherRole');
     const storedTeacherId = localStorage.getItem('teacherId');
@@ -133,14 +133,17 @@ export default function TeacherDashboardPage() {
         } catch {}
     }
   }, []);
-
+  
+  // Effect to set initial class selection
   useEffect(() => {
-    if (role === 'admin' && classes.length > 0 && !selectedClassId) {
-        setSelectedClassId(classes[0].id);
-    } else if ((role === 'teacher' || role === 'subject_teacher') && teacherClassIds.length > 0 && !selectedClassId) {
-        setSelectedClassId(teacherClassIds[0]);
+    if (role && classes.length > 0 && !selectedClassId) {
+        if (role === 'admin') {
+            setSelectedClassId(classes[0].id);
+        } else if (teacherClassIds.length > 0) {
+            setSelectedClassId(teacherClassIds[0]);
+        }
     }
-  }, [role, classes, teacherClassIds]);
+  }, [role, classes, teacherClassIds, selectedClassId]);
 
   const currentTeacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
 
@@ -264,30 +267,31 @@ export default function TeacherDashboardPage() {
       toast({ title: "無效的點數", description: "請輸入一個正數。", variant: "destructive" });
       return;
     }
-
-    if (role !== 'admin' && currentTeacher) {
-      if ((currentTeacher.pointBalance || 0) < pointsToAdd) {
-          toast({ title: "點數餘額不足", description: "您的點數餘額不足以發放此次點數。", variant: "destructive" });
-          return;
+  
+    if (role !== 'admin') {
+      if (!currentTeacher || (currentTeacher.pointBalance || 0) < pointsToAdd) {
+        toast({ title: "點數餘額不足", description: "您的點數餘額不足以發放此次點數。", variant: "destructive" });
+        return;
       }
     }
-
+  
     const today = new Date().toISOString();
+    const reason = role === 'admin' ? `由校長 ${currentTeacher?.name} 發放` : `由老師 ${currentTeacher?.name} 發放`;
+  
     setStudents(currentStudents => currentStudents.map(s => {
-        if (s.id === studentId && s.classId === selectedClassId) {
-            const reason = role === 'admin' ? `由校長 ${currentTeacher?.name} 發放` : `由老師 ${currentTeacher?.name} 發放`;
-            const newHistory = [...(s.pointHistory || []), { points: pointsToAdd, date: today, reason }];
-            return { ...s, points: s.points + pointsToAdd, pointHistory: newHistory };
-        }
-        return s;
+      if (s.id === studentId && s.classId === selectedClassId) {
+        const newHistory = [...(s.pointHistory || []), { points: pointsToAdd, date: today, reason }];
+        return { ...s, points: s.points + pointsToAdd, pointHistory: newHistory };
+      }
+      return s;
     }));
     
     if (role !== 'admin' && currentTeacher) {
-        setTeachers(currentTeachers => currentTeachers.map(t => 
-            t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToAdd } : t
-        ));
+      setTeachers(currentTeachers => currentTeachers.map(t => 
+        t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToAdd } : t
+      ));
     }
-
+  
     const student = students.find(s => s.id === studentId && s.classId === selectedClassId);
     setTimeout(() => {
         toast({
@@ -304,18 +308,18 @@ export default function TeacherDashboardPage() {
       return;
     }
     
-    if (role !== 'admin' && currentTeacher) {
-        const totalPointsToAward = studentsInView.length * pointsToAdd;
-        if ((currentTeacher.pointBalance || 0) < totalPointsToAward) {
-            toast({ title: "點數餘額不足", description: `您的點數餘額不足以進行此次批次發放。需要 ${totalPointsToAward.toLocaleString()} 點，但您只有 ${(currentTeacher.pointBalance || 0).toLocaleString()} 點。`, variant: "destructive" });
-            return;
-        }
+    if (role !== 'admin') {
+      const totalPointsToAward = studentsInView.length * pointsToAdd;
+      if (!currentTeacher || (currentTeacher.pointBalance || 0) < totalPointsToAward) {
+        toast({ title: "點數餘額不足", description: `您的點數餘額不足以進行此次批次發放。需要 ${totalPointsToAward.toLocaleString()} 點，但您只有 ${(currentTeacher?.pointBalance || 0).toLocaleString()} 點。`, variant: "destructive" });
+        return;
+      }
     }
-
+  
     const studentIdsInView = studentsInView.map(s => s.id);
     const today = new Date().toISOString();
     const reason = role === 'admin' ? `由校長 ${currentTeacher?.name} 批次發放` : `由老師 ${currentTeacher?.name} 批次發放`;
-
+  
     
     setStudents(currentStudents => 
       currentStudents.map(student => {
@@ -328,18 +332,18 @@ export default function TeacherDashboardPage() {
     );
     
     if (role !== 'admin' && currentTeacher) {
-        const totalPointsToAward = studentsInView.length * pointsToAdd;
-        setTeachers(currentTeachers => currentTeachers.map(t => 
-            t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - totalPointsToAward } : t
-        ));
+      const totalPointsToAward = studentsInView.length * pointsToAdd;
+      setTeachers(currentTeachers => currentTeachers.map(t => 
+        t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - totalPointsToAward } : t
+      ));
     }
-
+  
     const className = classes.find(c => c.id === selectedClassId)?.name || '此班級';
     toast({
         title: "批次發放成功！",
         description: `您已成功發送 ${pointsToAdd.toLocaleString()} 點給 ${className} 的所有學生。`
     });
-
+  
     setIsBatchAwardDialogOpen(false);
     setBatchAwardAmount('');
   };
@@ -1174,12 +1178,11 @@ export default function TeacherDashboardPage() {
         )}
     </div>
     <Tabs defaultValue={role === 'subject_teacher' ? 'classes' : 'students'} className="animate-in fade-in-0 duration-500">
-      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-4' : (role === 'teacher' ? 'grid-cols-3' : 'grid-cols-2')}`}>
+      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-3' : (role === 'teacher' ? 'grid-cols-3' : 'grid-cols-2')}`}>
         {role !== 'subject_teacher' && <TabsTrigger value="students">學生管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
         {role === 'subject_teacher' && <TabsTrigger value="classes">班級管理</TabsTrigger>}
         <TabsTrigger value="points">發送點數</TabsTrigger>
-        {role !== 'subject_teacher' && <TabsTrigger value="rewards">獎勵管理</TabsTrigger>}
         {(role === 'admin' || role === 'teacher') && <TabsTrigger value="approvals">審核中心</TabsTrigger>}
       </TabsList>
       
@@ -1524,11 +1527,6 @@ export default function TeacherDashboardPage() {
           </CardContent>
         </Card>
       </TabsContent>
-      {role !== 'subject_teacher' &&
-        <TabsContent value="rewards" className="mt-6">
-            <RewardsManagementTab />
-        </TabsContent>
-      }
      {(role === 'admin' || role === 'teacher') && (
         <TabsContent value="approvals" className="mt-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

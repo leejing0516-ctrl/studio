@@ -50,7 +50,7 @@ export default function TeacherLayout({
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
-  const { teachers, setTeachers, platformConfig, setPlatformConfig } = useContext(AppDataContext);
+  const { teachers, setTeachers, platformConfig, setPlatformConfig, isLoading } = useContext(AppDataContext);
 
   const [teacherId, setTeacherId] = useState<string | null>(null);
   const [teacherName, setTeacherName] = useState<string | null>(null);
@@ -70,7 +70,7 @@ export default function TeacherLayout({
     setTeacherId(id);
     setTeacherName(name);
     setTeacherRole(role);
-    if (!name) {
+    if (!localStorage.getItem('userRole')?.includes('teacher')) {
       router.push('/');
     }
   }, [router]);
@@ -167,8 +167,26 @@ export default function TeacherLayout({
   };
 
 
-  if (!teacherName) {
-    return <div>載入中...</div>; // Or a proper loading screen
+  if (isLoading || !teacherName) {
+    return (
+        <div className="flex h-screen w-full items-center justify-center">
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="mr-2 h-6 w-6 animate-spin"
+            >
+                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+            載入中...
+        </div>
+    );
   }
 
   return (
