@@ -23,7 +23,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Reward, Student, Teacher, Class, Loan, StudentChallenge, FundraisingProject, Donation } from "@/lib/types";
+import type { Reward, Student, Teacher, Class, Loan, StudentChallenge, FundraisingProject } from "@/lib/types";
 import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Banknote, ShieldPlus, Coins, Flag, Hourglass, ShieldCheck, Gift, Briefcase, HeartHandshake, LineChart } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
@@ -684,19 +684,16 @@ export default function TeacherDashboardPage() {
     }));
 
     await setStudents(currentStudents => {
-        // Create a map of existing students for quick lookup, using a composite key
-        const studentMap = new Map(currentStudents.map(s => [`${s.classId}-${s.id}`, s]));
+        const otherClassesStudents = currentStudents.filter(s => s.classId !== selectedClassId);
+        const existingStudentsInClass = currentStudents.filter(s => s.classId === selectedClassId);
         
+        // Use a Map to handle potential duplicates within the new import vs existing
+        const studentMap = new Map(existingStudentsInClass.map(s => [s.id, s]));
         newStudents.forEach(newStudent => {
-            const compositeKey = `${newStudent.classId}-${newStudent.id}`;
-            studentMap.set(compositeKey, newStudent);
+            studentMap.set(newStudent.id, newStudent);
         });
 
-        // The final list is the combination of all students from all classes
-        const otherClassesStudents = currentStudents.filter(s => s.classId !== selectedClassId);
-        const updatedClassStudents = Array.from(studentMap.values()).filter(s => s.classId === selectedClassId);
-        
-        return [...otherClassesStudents, ...updatedClassStudents];
+        return [...otherClassesStudents, ...Array.from(studentMap.values())];
     });
 
 
@@ -1043,18 +1040,22 @@ export default function TeacherDashboardPage() {
                                                 </TooltipTrigger>
                                                 <TooltipContent><p>重設密碼</p></TooltipContent>
                                             </Tooltip>
-                                            <AlertDialog open={!!teacherToDelete && teacherToDelete.id === teacher.id} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
-                                                <AlertDialogTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </AlertDialogTrigger>
-                                                <TooltipContent><p>刪除</p></TooltipContent>
+                                            <AlertDialog>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <AlertDialogTrigger asChild>
+                                                          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
+                                                              <Trash2 className="h-4 w-4" />
+                                                          </Button>
+                                                        </AlertDialogTrigger>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent><p>刪除</p></TooltipContent>
+                                                </Tooltip>
                                                 <AlertDialogContent>
                                                     <AlertDialogHeader>
                                                         <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
                                                         <AlertDialogDescription>
-                                                            您確定要刪除老師「{teacherToDelete?.name}」嗎？此操作將永久移除该老師的帳號及其建立的獎勵與挑戰，且無法復原。
+                                                            您確定要刪除老師「{teacher.name}」嗎？此操作將永久移除该老師的帳號及其建立的獎勵與挑戰，且無法復原。
                                                         </AlertDialogDescription>
                                                     </AlertDialogHeader>
                                                     <AlertDialogFooter>
