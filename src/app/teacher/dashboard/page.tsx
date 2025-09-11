@@ -127,39 +127,30 @@ export default function TeacherDashboardPage() {
   // Editing Teacher State
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
 
+  // Effect for initializing component state from localStorage
   useEffect(() => {
     const storedRole = localStorage.getItem('teacherRole');
     const storedTeacherId = localStorage.getItem('teacherId');
     const storedClassIds = localStorage.getItem('teacherClassIds');
     setRole(storedRole);
     setTeacherId(storedTeacherId);
-    let parsedClassIds: string[] = [];
     if (storedClassIds) {
         try {
-            parsedClassIds = JSON.parse(storedClassIds);
-            setTeacherClassIds(parsedClassIds);
+            setTeacherClassIds(JSON.parse(storedClassIds));
         } catch {
             setTeacherClassIds([]);
         }
     }
-    
-    // Auto-select class based on role, only if no class is selected yet.
-    if (!selectedClassId && storedRole) {
-        if (storedRole === 'admin' && classes.length > 0) {
-            setSelectedClassId(classes[0].id);
-        } else if (storedRole === 'teacher' && parsedClassIds.length > 0) {
-            setSelectedClassId(parsedClassIds[0]);
-        }
-    }
-  }, [role, classes, teacherClassIds, selectedClassId]);
+  }, []);
 
+  // Effect for auto-selecting class after initial data is loaded
   useEffect(() => {
-    if (platformConfig) {
-        setFixedDepositRate((platformConfig.fixedDepositInterestRate || 0) * 100);
-        setLoanInterestRate((platformConfig.loanInterestRate || 0) * 100);
+    if (role === 'admin' && !selectedClassId && classes.length > 0) {
+        setSelectedClassId(classes[0].id);
+    } else if (role === 'teacher' && !selectedClassId && teacherClassIds.length > 0) {
+        setSelectedClassId(teacherClassIds[0]);
     }
-  }, [platformConfig]);
-
+  }, [role, classes, selectedClassId, teacherClassIds]);
 
   const currentTeacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
 
@@ -2846,3 +2837,5 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
     )
 }
 
+
+    
