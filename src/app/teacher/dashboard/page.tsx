@@ -101,8 +101,8 @@ export default function TeacherDashboardPage() {
   const [sponsorLogoFiles, setSponsorLogoFiles] = useState<(File | null)[]>(Array(4).fill(null));
   const [sponsorLogoPreviews, setSponsorLogoPreviews] = useState<(string | null)[]>(platformConfig?.sponsorLogoUrls || Array(4).fill(null));
   const [isSavingSettings, setIsSavingSettings] = useState(false);
-  const [fixedDepositRate, setFixedDepositRate] = useState<number | ''>((platformConfig?.fixedDepositInterestRate || 0) * 100);
-  const [loanInterestRate, setLoanInterestRate] = useState<number | ''>((platformConfig?.loanInterestRate || 0) * 100);
+  const [fixedDepositRate, setFixedDepositRate] = useState<number | string>('');
+  const [loanInterestRate, setLoanInterestRate] = useState<number | string>('');
   
   // State for Central Bank
   const [isAdjustFundsDialogOpen, setIsAdjustFundsDialogOpen] = useState(false);
@@ -133,24 +133,33 @@ export default function TeacherDashboardPage() {
     const storedClassIds = localStorage.getItem('teacherClassIds');
     setRole(storedRole);
     setTeacherId(storedTeacherId);
+    let parsedClassIds: string[] = [];
     if (storedClassIds) {
         try {
-            setTeacherClassIds(JSON.parse(storedClassIds));
+            parsedClassIds = JSON.parse(storedClassIds);
+            setTeacherClassIds(parsedClassIds);
         } catch {
             setTeacherClassIds([]);
         }
     }
     
-    // Auto-select class based on role
-    if (storedRole === 'admin' && classes.length > 0 && !selectedClassId) {
-        setSelectedClassId(classes[0].id);
-    } else if (storedRole === 'teacher' && storedClassIds) {
-         const parsedClassIds = JSON.parse(storedClassIds);
-         if (parsedClassIds.length > 0 && !selectedClassId) {
+    // Auto-select class based on role, only if no class is selected yet.
+    if (!selectedClassId) {
+        if (storedRole === 'admin' && classes.length > 0) {
+            setSelectedClassId(classes[0].id);
+        } else if (storedRole === 'teacher' && parsedClassIds.length > 0) {
             setSelectedClassId(parsedClassIds[0]);
-         }
+        }
     }
   }, [role, classes, teacherClassIds, selectedClassId]);
+
+  useEffect(() => {
+    if (platformConfig) {
+        setFixedDepositRate((platformConfig.fixedDepositInterestRate || 0) * 100);
+        setLoanInterestRate((platformConfig.loanInterestRate || 0) * 100);
+    }
+  }, [platformConfig]);
+
 
   const currentTeacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
 
@@ -595,7 +604,7 @@ export default function TeacherDashboardPage() {
     setIsEditTeacherDialogOpen(true);
   }
 
-  const handleUpdateTeacher = (updatedTeacherData: Teacher) => {
+  const handleUpdateTeacher = (updatedTeacherData: Partial<Teacher>) => {
     if (!editingTeacher) return;
     
     setTeachers(currentTeachers => currentTeachers.map(t => 
@@ -1411,7 +1420,7 @@ export default function TeacherDashboardPage() {
                                             {roleNameMapping[teacher.role]}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell>{teacher.classIds.map(id => classes.find(c => c.id === id)?.name).join(', ') || 'N/A'}</TableCell>
+                                    <TableCell>{(teacher.classIds || []).map(id => classes.find(c => c.id === id)?.name).join(', ') || 'N/A'}</TableCell>
                                     <TableCell>{(teacher.pointBalance || 0).toLocaleString()}</TableCell>
                                     <TableCell className="text-right">
                                         <TooltipProvider>
@@ -2716,44 +2725,48 @@ interface EditTeacherDialogProps {
     teacher: Teacher;
     classes: Class[];
     allTeachers: Teacher[];
-    onSave: (updatedTeacher: Teacher) => void;
+    onSave: (updatedTeacher: Partial<Teacher>) => void;
 }
 
 function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers, onSave }: EditTeacherDialogProps) {
     const [name, setName] = useState(teacher.name);
-    const [role, setRole] = useState(teacher.role);
-    const [classIds, setClassIds] = useState<string[]>(teacher.classIds || []);
+    const [currentRole, setCurrentRole] = useState(teacher.role);
+    const [currentClassIds, setCurrentClassIds] = useState<string[]>(teacher.classIds || []);
 
     // Recalculate available classes for homeroom teacher assignment
     const unassignedClasses = useMemo(() => {
         const assignedClassIds = allTeachers
             .filter(t => t.role === 'teacher' && t.id !== teacher.id) // Exclude current teacher
-            .flatMap(t => t.classIds);
+            .flatMap(t => t.classIds || []);
         return classes.filter(c => !assignedClassIds.includes(c.id));
     }, [classes, allTeachers, teacher.id]);
-
+    
+    // Reset local state when the dialog is opened with a new teacher
     useEffect(() => {
-        setName(teacher.name);
-        setRole(teacher.role);
-        setClassIds(teacher.classIds || []);
-    }, [teacher]);
+        if (isOpen) {
+            setName(teacher.name);
+            setCurrentRole(teacher.role);
+            setCurrentClassIds(teacher.classIds || []);
+        }
+    }, [isOpen, teacher]);
 
     const handleRoleChange = (newRole: 'teacher' | 'subject_teacher' | 'admin') => {
-        setRole(newRole);
-        // Reset class assignments when role changes
-        setClassIds([]);
+        setCurrentRole(newRole);
+        // Reset class assignments when role changes to ensure validity
+        setCurrentClassIds([]);
     };
     
     const handleHomeroomClassChange = (newClassId: string) => {
-        setClassIds(newClassId === 'unassigned' ? [] : [newClassId]);
+        setCurrentClassIds(newClassId === 'unassigned' ? [] : [newClassId]);
     };
 
     const handleSubjectClassChange = (classId: string, isChecked: boolean) => {
-        setClassIds(prev => isChecked ? [...prev, classId] : prev.filter(id => id !== classId));
+        setCurrentClassIds(prev => isChecked ? [...prev, classId] : prev.filter(id => id !== classId));
     };
 
     const handleSaveChanges = () => {
-        onSave({ ...teacher, name, role, classIds });
+        onSave({ name, role: currentRole, classIds: currentClassIds });
+        onOpenChange(false);
     };
 
     return (
@@ -2770,7 +2783,7 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
                     </div>
                     <div className="space-y-2">
                         <Label>角色</Label>
-                        <RadioGroup value={role} onValueChange={handleRoleChange}>
+                        <RadioGroup value={currentRole} onValueChange={handleRoleChange}>
                             <div className="flex items-center space-x-2">
                                 <RadioGroupItem value="teacher" id="edit-role-teacher" />
                                 <Label htmlFor="edit-role-teacher">班級導師</Label>
@@ -2783,27 +2796,33 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
                     </div>
                     <div className="space-y-2">
                          <Label>指派班級</Label>
-                        {role === 'teacher' && (
-                            <Select value={classIds[0] || 'unassigned'} onValueChange={handleHomeroomClassChange}>
+                        {currentRole === 'teacher' && (
+                            <Select value={currentClassIds[0] || 'unassigned'} onValueChange={handleHomeroomClassChange}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="選擇班級" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="unassigned">不指派</SelectItem>
+                                    {/* The teacher's own current class must be in the list */}
+                                    {teacher.classIds[0] && !unassignedClasses.find(c => c.id === teacher.classIds[0]) &&
+                                      <SelectItem key={teacher.classIds[0]} value={teacher.classIds[0]}>
+                                        {classes.find(c => c.id === teacher.classIds[0])?.name}
+                                      </SelectItem>
+                                    }
                                     {unassignedClasses.map(c => (
                                         <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         )}
-                        {role === 'subject_teacher' && (
+                        {currentRole === 'subject_teacher' && (
                             <ScrollArea className="h-40 rounded-md border p-4">
                                <div className="space-y-2">
                                  {classes.map(c => (
                                     <div key={c.id} className="flex items-center space-x-2">
                                         <Checkbox 
                                             id={`class-${c.id}`} 
-                                            checked={classIds.includes(c.id)}
+                                            checked={currentClassIds.includes(c.id)}
                                             onCheckedChange={(checked) => handleSubjectClassChange(c.id, !!checked)}
                                         />
                                         <label htmlFor={`class-${c.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
