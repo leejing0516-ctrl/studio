@@ -1,4 +1,25 @@
 
+
+export type Donation = {
+  studentId: string;
+  studentName: string;
+  classId: string;
+  amount: number;
+  date: string; // ISO date string
+};
+
+export type FundraisingProject = {
+  id: string;
+  title: string;
+  description: string;
+  image: string;
+  goal: number;
+  currentAmount: number;
+  status: 'active' | 'completed';
+  creatorId: string; // Should be 'school_admin'
+  donations: Donation[];
+};
+
 export type RedeemedRewardItem = {
   redemptionId: string; // A unique ID for this specific instance of the reward
   reward: Reward;
@@ -123,6 +144,7 @@ export type PlatformConfig = {
     teacherPassword?: string;
     announcements?: Announcement[];
     challenges?: Challenge[];
+    fundraisingProjects?: FundraisingProject[];
     fixedDepositInterestRate?: number;
     loanInterestRate?: number;
 }

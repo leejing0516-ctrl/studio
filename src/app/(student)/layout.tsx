@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import Link from "next/link";
@@ -34,6 +35,7 @@ import {
   PiggyBank,
   Bell,
   Mail,
+  HeartHandshake,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -185,6 +187,7 @@ export default function StudentLayout({
     { href: "/dashboard", label: "儀表板", icon: LayoutDashboard },
     { href: "/announcements", label: "最新公告", icon: Megaphone },
     { href: "/challenges", label: "挑戰任務", icon: Flag },
+    { href: "/fundraising", label: "募資平台", icon: HeartHandshake },
     { href: "/my-collection", label: "我的收藏", icon: Package },
     { href: "/rewards", label: "獎勵商店", icon: Gift },
     { href: "/stocks", label: "股票市場", icon: LineChart },
