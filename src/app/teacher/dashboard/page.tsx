@@ -149,18 +149,22 @@ export default function TeacherDashboardPage() {
     }
 
     if (storedRole === 'admin' && classes.length > 0) {
-        setSelectedClassId(classes[0].id);
+        if (!selectedClassId) {
+            setSelectedClassId(classes[0].id);
+        }
     } else if ((storedRole === 'teacher' || storedRole === 'subject_teacher') && initialClassIds.length > 0) {
-        setSelectedClassId(initialClassIds[0]);
+        if (!selectedClassId) {
+            setSelectedClassId(initialClassIds[0]);
+        }
     }
 
     if (platformConfig) {
-        setPlatformLogoPreview(platformConfig.platformLogoUrl || null);
-        setSponsorLogoPreviews(platformConfig.sponsorLogoUrls || Array(4).fill(null));
-        setFixedDepositRate((platformConfig.fixedDepositInterestRate || 0) * 100);
-        setLoanInterestRate((platformConfig.loanInterestRate || 0) * 100);
+        if (platformLogoPreview === null) setPlatformLogoPreview(platformConfig.platformLogoUrl || null);
+        if (sponsorLogoPreviews.length === 0) setSponsorLogoPreviews(platformConfig.sponsorLogoUrls || Array(4).fill(null));
+        if (fixedDepositRate === '') setFixedDepositRate((platformConfig.fixedDepositInterestRate || 0) * 100);
+        if (loanInterestRate === '') setLoanInterestRate((platformConfig.loanInterestRate || 0) * 100);
     }
-  }, [classes, platformConfig]); // Depend on `classes` to ensure it's loaded before selecting
+  }, [classes, platformConfig, selectedClassId, platformLogoPreview, sponsorLogoPreviews.length, fixedDepositRate, loanInterestRate]);
 
   const currentTeacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
 
@@ -341,7 +345,7 @@ export default function TeacherDashboardPage() {
       currentStudents.map(student => {
         if (student.classId === selectedClassId && studentIdsInView.includes(student.id)) {
           const newHistory = [...(student.pointHistory || []), { points: pointsToAdd, date: today, reason }];
-          return { ...student, points: student.points + pointsToAdd, pointHistory: newHistory };
+          return { ...s, points: student.points + pointsToAdd, pointHistory: newHistory };
         }
         return student;
       })
@@ -659,16 +663,14 @@ export default function TeacherDashboardPage() {
   const handleConfirmDeleteTeacher = () => {
     if (!teacherToDelete) return;
     
-    const teacherIdToDelete = teacherToDelete.id;
-    setRewards(currentRewards => currentRewards.filter(r => r.providerId !== teacherIdToDelete));
+    setTeachers(currentTeachers => currentTeachers.filter(t => t.id !== teacherToDelete.id));
+    setRewards(currentRewards => currentRewards.filter(r => r.providerId !== teacherToDelete.id));
 
     if(platformConfig?.challenges) {
       setPlatformConfig({
-        challenges: platformConfig.challenges.filter(c => c.providerId !== teacherIdToDelete)
+        challenges: platformConfig.challenges.filter(c => c.providerId !== teacherToDelete.id)
       });
     }
-    
-    setTeachers(currentTeachers => currentTeachers.filter(t => t.id !== teacherIdToDelete));
 
     toast({
         title: "已刪除老師",
@@ -967,7 +969,6 @@ export default function TeacherDashboardPage() {
 
   const handleAddStock = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
     const ticker = (formData.get("ticker") as string).toUpperCase();
     
     if (stocks.some(s => s.ticker === ticker)) {
@@ -1790,7 +1791,10 @@ export default function TeacherDashboardPage() {
                         <SelectValue placeholder="請選擇班級" />
                     </SelectTrigger>
                     <SelectContent>
-                        {(role === 'admin' ? classes : (teacherClassIds || []).map(id => classes.find(c => c.id === id)).filter(Boolean) as Class[]).map(c => (
+                        {(role === 'admin' 
+                            ? classes 
+                            : (teacherClassIds || []).map(id => classes.find(c => c.id === id)).filter(Boolean) as Class[]
+                        ).map(c => (
                             <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                         ))}
                     </SelectContent>
@@ -2890,3 +2894,5 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
         </Dialog>
     )
 }
+
+
