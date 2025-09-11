@@ -101,24 +101,31 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         try {
             const batch = writeBatch(db);
             
-            finalState.forEach(student => {
-                // IMPORTANT: Use a composite key to ensure document uniqueness across classes
+            // Use a Map to get a clear picture of adds/updates and deletes
+            const currentStateMap = new Map(currentState.map(s => (`${s.classId}-${s.id}`, s)));
+            const finalStateMap = new Map(finalState.map(s => [`${s.classId}-${s.id}`, s]));
+            
+            // Process updates and adds
+            finalStateMap.forEach((student, key) => {
                 const studentDocId = `${student.classId}-${student.id}`;
                 const studentRef = doc(db, 'students', studentDocId);
                 batch.set(studentRef, student);
             });
 
-            // Handle deletions by comparing the final state with the initial state
-            const finalIds = new Set(finalState.map(s => `${s.classId}-${s.id}`));
-            currentState.forEach(student => {
+            // Process deletes
+            currentStateMap.forEach((student, key) => {
                 const studentDocId = `${student.classId}-${student.id}`;
-                if (!finalIds.has(studentDocId)) {
+                if (!finalStateMap.has(key)) {
                     batch.delete(doc(db, 'students', studentDocId));
                 }
             });
 
             await batch.commit();
-            setStudentsState(finalState); // Update local state only after successful commit
+
+            // SSoT Refresh: After commit, refetch from Firestore to guarantee UI consistency.
+            const freshStudents = await fetchData<Student>('students');
+            setStudentsState(freshStudents);
+            
             console.log(`Students collection successfully updated.`);
         } catch (error) {
             console.error(`Transaction failed for students: `, error);
