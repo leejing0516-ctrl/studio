@@ -41,7 +41,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { AppDataContext } from "@/context/AppDataContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format, formatDistanceToNow, addDays } from "date-fns";
+import { format, formatDistanceToNow, addDays, isValid } from "date-fns";
 import Papa from "papaparse";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
