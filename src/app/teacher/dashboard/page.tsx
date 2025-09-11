@@ -93,15 +93,6 @@ export default function TeacherDashboardPage() {
   // State for Batch Award Points
   const [isBatchAwardDialogOpen, setIsBatchAwardDialogOpen] = useState(false);
   const [batchAwardAmount, setBatchAwardAmount] = useState<number | ''>('');
-
-  // State for Platform Settings
-  const [platformLogoFile, setPlatformLogoFile] = useState<File | null>(null);
-  const [platformLogoPreview, setPlatformLogoPreview] = useState<string | null>(null);
-  const [sponsorLogoFiles, setSponsorLogoFiles] = useState<(File | null)[]>(Array(4).fill(null));
-  const [sponsorLogoPreviews, setSponsorLogoPreviews] = useState<(string | null)[]>([]);
-  const [isSavingSettings, setIsSavingSettings] = useState(false);
-  const [fixedDepositRate, setFixedDepositRate] = useState<number | string>('');
-  const [loanInterestRate, setLoanInterestRate] = useState<number | string>('');
   
   // State for Central Bank
   const [isAdjustFundsDialogOpen, setIsAdjustFundsDialogOpen] = useState(false);
@@ -116,12 +107,6 @@ export default function TeacherDashboardPage() {
   // State for Rewards
   const [rewardImageFile, setRewardImageFile] = useState<File | null>(null);
   const [rewardImagePreview, setRewardImagePreview] = useState<string | null>(null);
-
-  // State for Challenges
-  const [isAddChallengeDialogOpen, setIsAddChallengeDialogOpen] = useState(false);
-  const [isEditChallengeDialogOpen, setIsEditChallengeDialogOpen] = useState(false);
-  const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(null);
-  const [challengeToDelete, setChallengeToDelete] = useState<Challenge | null>(null);
   
   // State for Subject Teacher Class Management
   const [isManageClassesDialogOpen, setIsManageClassesDialogOpen] = useState(false);
@@ -157,14 +142,7 @@ export default function TeacherDashboardPage() {
             setSelectedClassId(initialClassIds[0]);
         }
     }
-
-    if (platformConfig) {
-        if (platformLogoPreview === null) setPlatformLogoPreview(platformConfig.platformLogoUrl || null);
-        if (sponsorLogoPreviews.length === 0) setSponsorLogoPreviews(platformConfig.sponsorLogoUrls || Array(4).fill(null));
-        if (fixedDepositRate === '') setFixedDepositRate((platformConfig.fixedDepositInterestRate || 0) * 100);
-        if (loanInterestRate === '') setLoanInterestRate((platformConfig.loanInterestRate || 0) * 100);
-    }
-  }, [classes, platformConfig, selectedClassId, platformLogoPreview, sponsorLogoPreviews.length, fixedDepositRate, loanInterestRate]);
+  }, [classes, selectedClassId]);
 
   const currentTeacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
 
@@ -832,82 +810,6 @@ export default function TeacherDashboardPage() {
     setFile(null);
   };
   
-  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'platform') => {
-    const file = e.target.files?.[0];
-    if (file) {
-        setPlatformLogoFile(file);
-        setPlatformLogoPreview(URL.createObjectURL(file));
-    }
-  };
-
-  const handleSponsorLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
-    const file = e.target.files?.[0];
-    if (file) {
-        setSponsorLogoFiles(prev => {
-            const newFiles = [...prev];
-            newFiles[index] = file;
-            return newFiles;
-        });
-        setSponsorLogoPreviews(prev => {
-            const newPreviews = [...prev];
-            newPreviews[index] = URL.createObjectURL(file);
-            return newPreviews;
-        });
-    }
-  };
-  
-  const handleRemoveSponsorLogo = (index: number) => {
-      setSponsorLogoFiles(prev => {
-        const newFiles = [...prev];
-        newFiles[index] = null;
-        return newFiles;
-      });
-      setSponsorLogoPreviews(prev => {
-        const newPreviews = [...prev];
-        newPreviews[index] = null;
-        return newPreviews;
-      });
-  }
-
-  const handleSaveSettings = async () => {
-    setIsSavingSettings(true);
-    try {
-        let platformLogoUrl = platformConfig?.platformLogoUrl;
-        if (platformLogoFile) {
-            platformLogoUrl = await fileToDataUrl(platformLogoFile);
-        }
-
-        const newSponsorUrls = [...(platformConfig?.sponsorLogoUrls || Array(4).fill(null))];
-        for(let i = 0; i < sponsorLogoFiles.length; i++) {
-            const file = sponsorLogoFiles[i];
-            if (file) {
-                newSponsorUrls[i] = await fileToDataUrl(file);
-            } else {
-                 // Check if the preview was removed
-                 if (sponsorLogoPreviews[i] === null) {
-                    newSponsorUrls[i] = null;
-                }
-            }
-        }
-        
-        await setPlatformConfig({ 
-            platformLogoUrl, 
-            sponsorLogoUrls: newSponsorUrls,
-            fixedDepositInterestRate: Number(fixedDepositRate) / 100,
-            loanInterestRate: Number(loanInterestRate) / 100
-        });
-
-        toast({ title: "設定已儲存", description: "平台設定已成功更新。" });
-    } catch (error) {
-        console.error("Error saving settings:", error);
-        toast({ title: "儲存失敗", description: "儲存平台設定時發生錯誤。", variant: "destructive" });
-    } finally {
-        setIsSavingSettings(false);
-        setPlatformLogoFile(null);
-        setSponsorLogoFiles(Array(4).fill(null));
-    }
-  };
-
   const handleAdjustFunds = () => {
     const amount = Number(adjustFundsAmount);
     if (!amount || amount <= 0) {
@@ -1031,62 +933,6 @@ export default function TeacherDashboardPage() {
     toast({ title: "已刪除股票", description: `已從市場及所有投資組合中移除 ${stockToDelete.name}。`, variant: "destructive" });
     setStockToDelete(null);
   }
-  
-  const handleAddChallenge = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!teacherId) return;
-    const formData = new FormData(event.currentTarget);
-    
-    const newChallenge: Challenge = {
-        id: `challenge-${Date.now()}`,
-        name: formData.get("name") as string,
-        description: formData.get("description") as string,
-        points: Number(formData.get("points")),
-        scope: role === 'admin' ? 'school' : 'class',
-        providerId: role === 'admin' ? 'school_admin' : teacherId,
-    };
-
-    setPlatformConfig({ challenges: [...(platformConfig?.challenges || []), newChallenge] });
-    setIsAddChallengeDialogOpen(false);
-    toast({ title: "已新增挑戰", description: `挑戰「${newChallenge.name}」已發布。` });
-  };
-  
-  const handleEditChallengeClick = (challenge: Challenge) => {
-      setEditingChallenge(challenge);
-      setIsEditChallengeDialogOpen(true);
-  };
-
-  const handleUpdateChallenge = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!editingChallenge) return;
-    const formData = new FormData(event.currentTarget);
-    
-    const updatedChallenge: Challenge = {
-        ...editingChallenge,
-        name: formData.get("name") as string,
-        description: formData.get("description") as string,
-        points: Number(formData.get("points")),
-    };
-
-    setPlatformConfig({ 
-        challenges: (platformConfig?.challenges || []).map(c => 
-            c.id === updatedChallenge.id ? updatedChallenge : c
-        )
-    });
-    setIsEditChallengeDialogOpen(false);
-    setEditingChallenge(null);
-    toast({ title: "已更新挑戰", description: `挑戰「${updatedChallenge.name}」已更新。` });
-  };
-
-  const handleDeleteChallenge = (challengeId: string) => {
-    const challenge = (platformConfig?.challenges || []).find(c => c.id === challengeId);
-    setPlatformConfig({ 
-        challenges: (platformConfig?.challenges || []).filter(c => c.id !== challengeId)
-    });
-    if (challenge) {
-        toast({ title: "已刪除挑戰", description: `挑戰「${challenge.name}」已被移除。`, variant: "destructive" });
-    }
-  };
   
   const handleChallengeApproval = (studentId: string, classId: string, challengeId: string) => {
     const challenge = (platformConfig?.challenges || []).find(c => c.id === challengeId);
@@ -1330,16 +1176,14 @@ export default function TeacherDashboardPage() {
         )}
     </div>
     <Tabs defaultValue={role === 'subject_teacher' ? 'classes' : 'students'} className="animate-in fade-in-0 duration-500">
-      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-7' : (role === 'teacher' ? 'grid-cols-5' : 'grid-cols-2')}`}>
+      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-6' : (role === 'teacher' ? 'grid-cols-4' : 'grid-cols-2')}`}>
         {role !== 'subject_teacher' && <TabsTrigger value="students">學生管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
         {role === 'subject_teacher' && <TabsTrigger value="classes">班級管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="stocks">股票管理</TabsTrigger>}
         <TabsTrigger value="points">發送點數</TabsTrigger>
         {role !== 'subject_teacher' && <TabsTrigger value="rewards">獎勵管理</TabsTrigger>}
-        {role !== 'subject_teacher' && <TabsTrigger value="challenges">挑戰管理</TabsTrigger>}
         {(role === 'admin' || role === 'teacher') && <TabsTrigger value="approvals">審核中心</TabsTrigger>}
-        {role === 'admin' && <TabsTrigger value="settings">平台設定</TabsTrigger>}
       </TabsList>
       
       {role !== 'subject_teacher' && 
@@ -1662,111 +1506,6 @@ export default function TeacherDashboardPage() {
                 </CardContent>
             </Card>
         </TabsContent>
-        
-        <TabsContent value="settings" className="mt-6 space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>一般設定</CardTitle>
-                    <CardDescription>管理平台的核心參數。</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between rounded-lg border p-4">
-                        <div>
-                            <Label htmlFor="fixed-deposit-rate" className="font-semibold">定存日利率</Label>
-                            <p className="text-xs text-muted-foreground">
-                                設定學生定期存款的每日利率。
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                             <Input 
-                                id="fixed-deposit-rate" 
-                                type="number" 
-                                value={fixedDepositRate}
-                                onChange={(e) => setFixedDepositRate(e.target.value === '' ? '' : Number(e.target.value))}
-                                className="w-24"
-                                step="0.01"
-                            />
-                            <Percent className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                    </div>
-                     <div className="flex items-center justify-between rounded-lg border p-4">
-                        <div>
-                            <Label htmlFor="loan-interest-rate" className="font-semibold">貸款日利率</Label>
-                            <p className="text-xs text-muted-foreground">
-                                設定學生信用貸款的每日利率。
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                             <Input 
-                                id="loan-interest-rate" 
-                                type="number" 
-                                value={loanInterestRate}
-                                onChange={(e) => setLoanInterestRate(e.target.value === '' ? '' : Number(e.target.value))}
-                                className="w-24"
-                                step="0.01"
-                            />
-                            <Percent className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle>平台 Logo 設定</CardTitle>
-                    <CardDescription>上傳平台 Logo。此 Logo 將顯示在登入頁面和側邊欄中。建議使用透明背景的 PNG 檔案。</CardDescription>
-                </CardHeader>
-                <CardContent className="flex items-center gap-6">
-                     <div className="w-32 h-32 bg-muted rounded-md flex items-center justify-center">
-                        {platformLogoPreview ? (
-                            <Image src={platformLogoPreview} alt="Logo Preview" width={128} height={128} className="object-contain rounded-md" />
-                        ) : (
-                            <span className="text-xs text-muted-foreground">預覽</span>
-                        )}
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="logo-upload">上傳 Logo (PNG)</Label>
-                        <Input id="logo-upload" type="file" accept="image/png" onChange={(e) => handleLogoFileChange(e, 'platform')} className="max-w-xs" />
-                    </div>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle>贊助商 Logo 設定</CardTitle>
-                    <CardDescription>上傳最多四個贊助商 Logo。這些 Logo 將顯示在頁面底部的頁尾区域。建議使用透明背景的 PNG 檔案，並確保所有 Logo 寬度一致。</CardDescription>
-                </CardHeader>
-                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                    {Array.from({ length: 4 }).map((_, index) => (
-                        <div key={index} className="flex items-center gap-4">
-                            <div className="w-48 h-24 bg-muted rounded-md flex items-center justify-center relative group">
-                                {sponsorLogoPreviews[index] ? (
-                                    <>
-                                      <Image src={sponsorLogoPreviews[index]!} alt={`Sponsor Logo ${index + 1} Preview`} fill className="object-contain p-2" />
-                                      <Button variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleRemoveSponsorLogo(index)}>
-                                        <X className="h-4 w-4" />
-                                      </Button>
-                                    </>
-                                ) : (
-                                    <div className="flex flex-col items-center gap-1 text-muted-foreground">
-                                        <ImageOff className="h-6 w-6"/>
-                                        <span className="text-xs">位置 {index + 1}</span>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor={`sponsor-logo-upload-${index}`}>上傳 Logo {index + 1}</Label>
-                                <Input id={`sponsor-logo-upload-${index}`} type="file" accept="image/png" onChange={(e) => handleSponsorLogoFileChange(e, index)} className="max-w-xs"/>
-                            </div>
-                        </div>
-                    ))}
-                </CardContent>
-            </Card>
-             <div className="flex justify-end">
-                <Button onClick={handleSaveSettings} disabled={isSavingSettings}>
-                    {isSavingSettings && <Loader2 className="mr-2 animate-spin" />}
-                    儲存設定
-                </Button>
-            </div>
-        </TabsContent>
         </>
       )}
       
@@ -1859,71 +1598,6 @@ export default function TeacherDashboardPage() {
             <RewardsManagementTab />
         </TabsContent>
       }
-      {role !== 'subject_teacher' &&
-       <TabsContent value="challenges" className="mt-6">
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                    <CardTitle>{role === 'admin' ? "學校挑戰管理" : "班級挑戰管理"}</CardTitle>
-                    <CardDescription>新增、編輯或刪除挑戰任務。</CardDescription>
-                </div>
-                <Button onClick={() => setIsAddChallengeDialogOpen(true)}>
-                    <PlusCircle className="mr-2" /> 新增挑戰
-                </Button>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>名稱</TableHead>
-                            <TableHead>獎勵點數</TableHead>
-                            <TableHead>類型</TableHead>
-                            <TableHead className="text-right">操作</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {(platformConfig?.challenges || []).filter(c => role === 'admin' ? c.scope === 'school' : (role === 'teacher' && c.scope === 'class' && c.providerId === teacherId))
-                        .map(challenge => (
-                            <TableRow key={challenge.id}>
-                                <TableCell>{challenge.name}</TableCell>
-                                <TableCell>{challenge.points.toLocaleString()}</TableCell>
-                                <TableCell>
-                                    <Badge variant={challenge.scope === 'school' ? 'default' : 'secondary'}>
-                                        {challenge.scope === 'school' ? '學校' : '班級'}
-                                    </Badge>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <Button variant="ghost" size="icon" onClick={() => handleEditChallengeClick(challenge)}>
-                                        <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <AlertDialog open={!!challengeToDelete && challengeToDelete.id === challenge.id} onOpenChange={(open) => !open && setChallengeToDelete(null)}>
-                                        <AlertDialogTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setChallengeToDelete(challenge)}>
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>確定要刪除嗎？</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                    您確定要刪除挑戰「{challenge.name}」嗎？此操作無法復原。
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel onClick={() => setChallengeToDelete(null)}>取消</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => handleDeleteChallenge(challenge.id)} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </CardContent>
-        </Card>
-      </TabsContent>
-    }
      {(role === 'admin' || role === 'teacher') && (
         <TabsContent value="approvals" className="mt-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -2675,66 +2349,6 @@ export default function TeacherDashboardPage() {
                 </form>
             </DialogContent>
         </Dialog>
-        {/* Dialogs for Challenges */}
-        <Dialog open={isAddChallengeDialogOpen} onOpenChange={setIsAddChallengeDialogOpen}>
-            <DialogContent className="sm:max-w-[425px]">
-            <form onSubmit={handleAddChallenge}>
-                <DialogHeader>
-                <DialogTitle>新增挑戰</DialogTitle>
-                <DialogDescription>建立一個新的挑戰任務，學生完成後可以獲得點數。</DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                <div className="space-y-2">
-                    <Label htmlFor="challenge-name">挑戰名稱</Label>
-                    <Input id="challenge-name" name="name" required />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="challenge-description">任務說明</Label>
-                    <Textarea id="challenge-description" name="description" required />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="challenge-points">獎勵點數</Label>
-                    <Input id="challenge-points" name="points" type="number" required />
-                </div>
-                </div>
-                <DialogFooter>
-                <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
-                <Button type="submit">新增挑戰</Button>
-                </DialogFooter>
-            </form>
-            </DialogContent>
-        </Dialog>
-        <Dialog open={isEditChallengeDialogOpen} onOpenChange={(open) => {if(!open) setEditingChallenge(null)}}>
-            <DialogContent className="sm:max-w-[425px]">
-            <form onSubmit={handleUpdateChallenge}>
-                <DialogHeader>
-                <DialogTitle>編輯挑戰</DialogTitle>
-                <DialogDescription>更新「{editingChallenge?.name}」的詳細資訊。</DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                <div className="space-y-2">
-                    <Label htmlFor="edit-challenge-name">挑戰名稱</Label>
-                    <Input id="edit-challenge-name" name="name" defaultValue={editingChallenge?.name} required />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="edit-challenge-description">任務說明</Label>
-                    <Textarea id="edit-challenge-description" name="description" defaultValue={editingChallenge?.description} required />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="edit-challenge-points">獎勵點數</Label>
-                    <Input id="edit-challenge-points" name="points" type="number" defaultValue={editingChallenge?.points} required />
-                </div>
-                </div>
-                <DialogFooter>
-                    <Button type="button" variant="secondary" onClick={() => {
-                        setIsEditChallengeDialogOpen(false);
-                        setEditingChallenge(null);
-                    }}>取消</Button>
-                <Button type="submit">儲存變更</Button>
-                </DialogFooter>
-            </form>
-            </DialogContent>
-        </Dialog>
         {/* Dialog for Subject Teacher to manage classes */}
         <Dialog open={isManageClassesDialogOpen} onOpenChange={setIsManageClassesDialogOpen}>
             <DialogContent className="sm:max-w-md">
@@ -2895,6 +2509,3 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
         </Dialog>
     )
 }
-
-
-

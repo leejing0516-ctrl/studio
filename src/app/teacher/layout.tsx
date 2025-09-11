@@ -152,7 +152,8 @@ export default function TeacherLayout({
   const navItems = [
     { href: "/teacher/dashboard", label: "班級與點數管理", icon: LayoutDashboard, roles: ['admin', 'teacher', 'subject_teacher'] },
     { href: "/teacher/announcements", label: "公告管理", icon: Megaphone, roles: ['admin', 'teacher'] },
-    { href: "/teacher/dashboard", tab: "challenges", label: "挑戰管理", icon: Flag, roles: ['admin', 'teacher'] },
+    { href: "/teacher/challenges", label: "挑戰管理", icon: Flag, roles: ['admin', 'teacher'] },
+    { href: "/teacher/settings", label: "平台設定", icon: Settings, roles: ['admin'] },
   ];
   
   const availableNavItems = navItems.filter(item => item.roles.includes(teacherRole || ''));
@@ -185,7 +186,7 @@ export default function TeacherLayout({
         <SidebarContent>
           <SidebarMenu>
             {availableNavItems.map((item) => (
-              <SidebarMenuItem key={item.href + (item.tab || '')}>
+              <SidebarMenuItem key={item.href + (item.label || '')}>
                 <SidebarMenuButton
                   asChild
                   isActive={pathname.startsWith(item.href)}
@@ -279,5 +280,3 @@ export default function TeacherLayout({
     </>
   );
 }
-
-    
