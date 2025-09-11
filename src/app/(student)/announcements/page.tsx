@@ -10,6 +10,23 @@ import { AppDataContext } from "@/context/AppDataContext";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { Separator } from "@/components/ui/separator";
 
+const AnnouncementList = ({ announcements, type }: { announcements: any[], type: 'school' | 'class' }) => (
+     <Accordion type="single" collapsible className="w-full">
+        {announcements.map((ann, index) => (
+        <AccordionItem value={`item-${type}-${index}`} key={ann.id}>
+            <AccordionTrigger>
+                <span className="font-semibold">{ann.title}</span>
+                <span className="text-xs text-muted-foreground ml-4 whitespace-nowrap">{format(new Date(ann.date), "yyyy-MM-dd")}</span>
+            </AccordionTrigger>
+            <AccordionContent>
+                <p>{ann.content}</p>
+            </AccordionContent>
+        </AccordionItem>
+        ))}
+    </Accordion>
+);
+
+
 export default function AnnouncementsPage() {
     const { platformConfig, classes, students } = useContext(AppDataContext);
     const { studentData } = useContext(StudentDataContext);
@@ -29,27 +46,6 @@ export default function AnnouncementsPage() {
         return (studentClass?.announcements || [])
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [classes, students, studentData.student]);
-
-
-    const AnnouncementList = ({ announcements, type }: { announcements: any[], type: 'school' | 'class' }) => (
-         <Accordion type="single" collapsible className="w-full">
-            {announcements.map((ann, index) => (
-            <AccordionItem value={`item-${type}-${index}`} key={ann.id}>
-                <AccordionTrigger>
-                <div className="flex items-center gap-4 text-left">
-                    <span className="font-semibold">{ann.title}</span>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">{format(new Date(ann.date), "yyyy-MM-dd")}</span>
-                </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                <div className="text-foreground">
-                    <p>{ann.content}</p>
-                </div>
-                </AccordionContent>
-            </AccordionItem>
-            ))}
-        </Accordion>
-    );
 
     return (
         <div className="animate-in fade-in-0 duration-500 space-y-8">
