@@ -94,47 +94,125 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       }
   }, []);
   
-  const createCollectionUpdater = <T extends { id?: string | number; ticker?: string }>(
-    collectionName: string,
-    stateSetter: React.Dispatch<React.SetStateAction<T[]>>
-  ) => {
-    return async (updater: (prevState: T[]) => T[]) => {
-      // First, apply the update to get the final desired state
-      const currentState = await fetchData<T>(collectionName);
-      const finalState = updater(currentState);
-      stateSetter(finalState); // Optimistic UI update
+    const setStudents = async (updater: (prev: Student[]) => Student[]) => {
+        const currentState = students;
+        const finalState = updater(currentState);
 
-      try {
-        await runTransaction(db, async (transaction) => {
-          const collectionRef = collection(db, collectionName);
-          const snapshot = await getDocs(collectionRef);
-          
-          // Delete all existing documents in the collection
-          snapshot.docs.forEach(doc => transaction.delete(doc.ref));
+        try {
+            const batch = writeBatch(db);
+            const currentIds = new Set(currentState.map(s => s.id));
+            
+            finalState.forEach(student => {
+                const studentRef = doc(db, 'students', student.id);
+                batch.set(studentRef, student);
+            });
 
-          // Add all documents from the new state
-          finalState.forEach(item => {
-             const docId = String(item.id ?? item.ticker);
-             if (docId) {
-                const newDocRef = doc(db, collectionName, docId);
-                transaction.set(newDocRef, item);
-             }
-          });
-        });
-        console.log(`${collectionName} collection successfully updated.`);
-      } catch (error) {
-        console.error(`Transaction failed for ${collectionName}: `, error);
-        stateSetter(currentState); // Rollback optimistic update on failure
-      }
+            await batch.commit();
+            setStudentsState(finalState);
+            console.log(`Students collection successfully updated.`);
+        } catch (error) {
+            console.error(`Transaction failed for students: `, error);
+            setStudentsState(currentState); // Rollback optimistic update
+        }
     };
-  };
 
-  const setStudents = createCollectionUpdater<Student>('students', setStudentsState);
-  const setRewards = createCollectionUpdater<Reward>('rewards', setRewardsState);
-  const setStocks = createCollectionUpdater<Stock>('stocks', setStocksState);
-  const setClasses = createCollectionUpdater<Class>('classes', setClassesState);
-  const setTeachers = createCollectionUpdater<Teacher>('teachers', setTeachersState);
-  
+    const setRewards = async (updater: (prev: Reward[]) => Reward[]) => {
+        const currentState = rewards;
+        const finalState = updater(currentState);
+        
+        try {
+            const batch = writeBatch(db);
+            finalState.forEach(reward => {
+                const rewardRef = doc(db, 'rewards', String(reward.id));
+                batch.set(rewardRef, reward);
+            });
+            // Handle deletions
+            const finalIds = new Set(finalState.map(r => r.id));
+            currentState.forEach(reward => {
+                if (!finalIds.has(reward.id)) {
+                    batch.delete(doc(db, 'rewards', String(reward.id)));
+                }
+            });
+            await batch.commit();
+            setRewardsState(finalState);
+        } catch (error) {
+            console.error("Failed to update rewards:", error);
+            setRewardsState(currentState);
+        }
+    };
+    
+    const setStocks = async (updater: (prev: Stock[]) => Stock[]) => {
+        const currentState = stocks;
+        const finalState = updater(currentState);
+        
+        try {
+            const batch = writeBatch(db);
+            finalState.forEach(stock => {
+                const stockRef = doc(db, 'stocks', stock.ticker);
+                batch.set(stockRef, stock);
+            });
+            const finalIds = new Set(finalState.map(s => s.ticker));
+            currentState.forEach(stock => {
+                if (!finalIds.has(stock.ticker)) {
+                    batch.delete(doc(db, 'stocks', stock.ticker));
+                }
+            });
+            await batch.commit();
+            setStocksState(finalState);
+        } catch (error) {
+            console.error("Failed to update stocks:", error);
+            setStocksState(currentState);
+        }
+    };
+
+    const setClasses = async (updater: (prev: Class[]) => Class[]) => {
+        const currentState = classes;
+        const finalState = updater(currentState);
+        
+        try {
+            const batch = writeBatch(db);
+            finalState.forEach(c => {
+                const classRef = doc(db, 'classes', c.id);
+                batch.set(classRef, c);
+            });
+            const finalIds = new Set(finalState.map(c => c.id));
+            currentState.forEach(c => {
+                if (!finalIds.has(c.id)) {
+                    batch.delete(doc(db, 'classes', c.id));
+                }
+            });
+            await batch.commit();
+            setClassesState(finalState);
+        } catch (error) {
+            console.error("Failed to update classes:", error);
+            setClassesState(currentState);
+        }
+    };
+
+    const setTeachers = async (updater: (prev: Teacher[]) => Teacher[]) => {
+        const currentState = teachers;
+        const finalState = updater(currentState);
+        
+        try {
+            const batch = writeBatch(db);
+            finalState.forEach(teacher => {
+                const teacherRef = doc(db, 'teachers', teacher.id);
+                batch.set(teacherRef, teacher);
+            });
+             const finalIds = new Set(finalState.map(t => t.id));
+            currentState.forEach(teacher => {
+                if (!finalIds.has(teacher.id)) {
+                    batch.delete(doc(db, 'teachers', teacher.id));
+                }
+            });
+            await batch.commit();
+            setTeachersState(finalState);
+        } catch (error) {
+            console.error("Failed to update teachers:", error);
+            setTeachersState(currentState);
+        }
+    };
+
   const setPlatformConfig = async (newConfig: Partial<PlatformConfig>) => {
     setPlatformConfigState(prev => {
         const updatedConfig = { ...(prev || { id: 'main' }), ...newConfig };

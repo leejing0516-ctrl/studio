@@ -668,7 +668,7 @@ export default function TeacherDashboardPage() {
         return;
     }
 
-    const newStudentObjects: Student[] = validStudentsToImport.map(s => ({
+    const newStudents: Student[] = validStudentsToImport.map(s => ({
         id: s.id,
         name: s.name,
         password: s.password!,
@@ -683,26 +683,19 @@ export default function TeacherDashboardPage() {
         fixedDeposits: [],
     }));
 
-    try {
-        await setStudents((currentStudents) => {
-            const otherClassesStudents = currentStudents.filter(s => s.classId !== selectedClassId);
-            const existingStudentsInClass = currentStudents.filter(s => s.classId === selectedClassId);
-            const finalStudentList = [...otherClassesStudents, ...existingStudentsInClass, ...newStudentObjects];
-            return finalStudentList;
+    await setStudents(currentStudents => {
+        // Create a map of existing students for quick lookup
+        const studentMap = new Map(currentStudents.map(s => [s.id, s]));
+        newStudents.forEach(newStudent => {
+            studentMap.set(newStudent.id, newStudent);
         });
+        return Array.from(studentMap.values());
+    });
 
-        toast({
-            title: "匯入成功",
-            description: `已成功匯入 ${newStudentObjects.length} 位學生至 ${classes.find(c => c.id === selectedClassId)?.name}。`
-        });
-    } catch (error) {
-        console.error("Failed to import students:", error);
-        toast({
-            title: "匯入失敗",
-            description: "儲存學生資料時發生錯誤。",
-            variant: "destructive"
-        });
-    }
+    toast({
+        title: "匯入成功",
+        description: `已成功匯入 ${newStudents.length} 位學生。`
+    });
 
     setIsImporting(false);
     setIsImportDialogOpen(false);
@@ -1975,6 +1968,7 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
     
 
     
+
 
 
 
