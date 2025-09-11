@@ -127,41 +127,43 @@ export default function TeacherDashboardPage() {
   const [isManageClassesDialogOpen, setIsManageClassesDialogOpen] = useState(false);
   const [selectedClassesForSubjectTeacher, setSelectedClassesForSubjectTeacher] = useState<string[]>([]);
 
-
-  // Effect for initializing component state from localStorage. Runs only once.
+  // Consolidated useEffect for initialization
   useEffect(() => {
+    // 1. Load data from localStorage
     const storedRole = localStorage.getItem('teacherRole');
     const storedTeacherId = localStorage.getItem('teacherId');
     const storedClassIdsStr = localStorage.getItem('teacherClassIds');
+
     setRole(storedRole);
     setTeacherId(storedTeacherId);
+
+    let initialClassIds: string[] = [];
     if (storedClassIdsStr && storedClassIdsStr !== 'undefined') {
         try {
-            const parsedClassIds = JSON.parse(storedClassIdsStr);
-            setTeacherClassIds(parsedClassIds);
+            initialClassIds = JSON.parse(storedClassIdsStr);
+            setTeacherClassIds(initialClassIds);
         } catch {
-            setTeacherClassIds([]);
+            // Ignore error, keep it as empty array
         }
     }
+
+    // 2. Set default class selection based on role
+    if (storedRole === 'admin' && classes.length > 0) {
+        setSelectedClassId(classes[0].id);
+    } else if (storedRole === 'teacher' && initialClassIds.length > 0) {
+        setSelectedClassId(initialClassIds[0]);
+    } else if (storedRole === 'subject_teacher' && initialClassIds.length > 0) {
+        setSelectedClassId(initialClassIds[0]);
+    }
+    
+    // 3. Set platform config values
     if (platformConfig) {
+        setPlatformLogoPreview(platformConfig.platformLogoUrl || null);
+        setSponsorLogoPreviews(platformConfig.sponsorLogoUrls || Array(4).fill(null));
         setFixedDepositRate((platformConfig.fixedDepositInterestRate || 0) * 100);
         setLoanInterestRate((platformConfig.loanInterestRate || 0) * 100);
     }
-  }, [platformConfig]);
-
-  // Effect for auto-selecting class after initial data is loaded.
-    useEffect(() => {
-        // For admin: select first class if none is selected
-        if (role === 'admin' && !selectedClassId && classes.length > 0) {
-            setSelectedClassId(classes[0].id);
-        }
-        // For teacher: select their class if none is selected
-        else if (role === 'teacher' && teacherClassIds.length > 0 && !selectedClassId) {
-            setSelectedClassId(teacherClassIds[0]);
-        }
-    }, [role, classes, teacherClassIds, selectedClassId]);
-
-  
+  }, [platformConfig, classes]); // Depend on data from context
 
   const currentTeacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
 
@@ -951,7 +953,6 @@ export default function TeacherDashboardPage() {
 
   const handleAddStock = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
     const ticker = (formData.get("ticker") as string).toUpperCase();
     
     if (stocks.some(s => s.ticker === ticker)) {
@@ -1120,7 +1121,7 @@ export default function TeacherDashboardPage() {
     );
   };
 
-  if (isLoading) {
+  if (isLoading && !role) {
       return (
         <div className="flex items-center justify-center h-full">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -1317,7 +1318,7 @@ export default function TeacherDashboardPage() {
         {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
         {role === 'subject_teacher' && <TabsTrigger value="classes">班級管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="stocks">股票管理</TabsTrigger>}
-        <TabsTrigger value="points">發送點數</TabsTrigger>}
+        <TabsTrigger value="points">發送點數</TabsTrigger>
         {role !== 'subject_teacher' && <TabsTrigger value="rewards">獎勵管理</TabsTrigger>}
         {role !== 'subject_teacher' && <TabsTrigger value="challenges">挑戰管理</TabsTrigger>}
         {(role === 'admin' || role === 'teacher') && <TabsTrigger value="approvals">審核中心</TabsTrigger>}
@@ -2531,7 +2532,7 @@ export default function TeacherDashboardPage() {
                     />
                 )}
 
-                <Dialog open={!!teacherToResetPassword} onOpenChange={(open) => { if (!open) setTeacherToResetPassword(null); }}>
+                <Dialog open={!!teacherToResetPassword} onOpenChange={(open) => { if (!open) setTeacherToResetPassword(null) }}>
                     <DialogContent className="sm:max-w-[425px]">
                     <form onSubmit={handleConfirmResetTeacherPassword}>
                         <DialogHeader>
@@ -2875,6 +2876,4 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
     )
 }
 
-
-    
     
