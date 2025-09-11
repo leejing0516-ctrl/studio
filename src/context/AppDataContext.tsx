@@ -22,7 +22,7 @@ import { isSameDay, startOfDay, differenceInCalendarDays, parseISO, isAfter } fr
 
 interface AppDataContextType {
   students: Student[];
-  setStudents: (updater: (prev: Student[]) => Student[]) => Promise<void>;
+  setStudents: (updater: Student[] | ((prev: Student[]) => Student[])) => Promise<void>;
   rewards: Reward[];
   setRewards: (updater: (prev: Reward[]) => Reward[]) => Promise<void>;
   stocks: Stock[];
@@ -94,43 +94,48 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       }
   }, []);
   
-    const setStudents = async (updater: (prev: Student[]) => Student[]) => {
-        const currentState = students;
-        const finalState = updater(currentState);
-
+    const setStudents = async (updater: Student[] | ((prev: Student[]) => Student[])) => {
         try {
             const batch = writeBatch(db);
-            
-            // Use a Map to get a clear picture of adds/updates and deletes
-            const currentStateMap = new Map(currentState.map(s => (`${s.classId}-${s.id}`, s)));
-            const finalStateMap = new Map(finalState.map(s => [`${s.classId}-${s.id}`, s]));
-            
-            // Process updates and adds
-            finalStateMap.forEach((student, key) => {
+            let dataToWrite: Student[];
+
+            if (typeof updater === 'function') {
+                const currentState = await fetchData<Student>('students');
+                dataToWrite = updater(currentState);
+            } else {
+                dataToWrite = updater;
+            }
+
+            dataToWrite.forEach(student => {
                 const studentDocId = `${student.classId}-${student.id}`;
                 const studentRef = doc(db, 'students', studentDocId);
-                batch.set(studentRef, student);
+                // Use set with merge: true to create or update documents
+                batch.set(studentRef, student, { merge: true });
             });
-
-            // Process deletes
-            currentStateMap.forEach((student, key) => {
-                const studentDocId = `${student.classId}-${student.id}`;
-                if (!finalStateMap.has(key)) {
-                    batch.delete(doc(db, 'students', studentDocId));
-                }
-            });
+            
+            // This logic is for handling deletions when a full list is passed.
+            // If the updater is just a partial list of changes, we avoid this.
+            if (typeof updater === 'function') {
+                const finalStateMap = new Map(dataToWrite.map(s => `${s.classId}-${s.id}`));
+                const currentState = await fetchData<Student>('students');
+                currentState.forEach(student => {
+                    const studentDocId = `${student.classId}-${student.id}`;
+                    if (!finalStateMap.has(studentDocId)) {
+                        batch.delete(doc(db, 'students', studentDocId));
+                    }
+                });
+            }
 
             await batch.commit();
 
-            // SSoT Refresh: After commit, refetch from Firestore to guarantee UI consistency.
+            // SSoT Refresh: After any write, always refetch from Firestore to guarantee UI consistency.
             const freshStudents = await fetchData<Student>('students');
             setStudentsState(freshStudents);
             
             console.log(`Students collection successfully updated.`);
+
         } catch (error) {
             console.error(`Transaction failed for students: `, error);
-            // Optionally rollback local state, but for now we'll just log the error
-            // setStudentsState(currentState); 
         }
     };
 
@@ -152,7 +157,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 }
             });
             await batch.commit();
-            setRewardsState(finalState);
+            const freshRewards = await fetchData<Reward>('rewards');
+            setRewardsState(freshRewards);
         } catch (error) {
             console.error("Failed to update rewards:", error);
             setRewardsState(currentState);
@@ -176,7 +182,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 }
             });
             await batch.commit();
-            setStocksState(finalState);
+            const freshStocks = await fetchData<Stock>('stocks');
+            setStocksState(freshStocks);
         } catch (error) {
             console.error("Failed to update stocks:", error);
             setStocksState(currentState);
@@ -200,7 +207,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 }
             });
             await batch.commit();
-            setClassesState(finalState);
+            const freshClasses = await fetchData<Class>('classes');
+            setClassesState(freshClasses);
         } catch (error) {
             console.error("Failed to update classes:", error);
             setClassesState(currentState);
@@ -224,7 +232,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 }
             });
             await batch.commit();
-            setTeachersState(finalState);
+            const freshTeachers = await fetchData<Teacher>('teachers');
+            setTeachersState(freshTeachers);
         } catch (error) {
             console.error("Failed to update teachers:", error);
             setTeachersState(currentState);
@@ -232,17 +241,16 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     };
 
   const setPlatformConfig = async (newConfig: Partial<PlatformConfig>) => {
-    setPlatformConfigState(prev => {
-        const updatedConfig = { ...(prev || { id: 'main' }), ...newConfig };
-        
-        const configDocRef = doc(db, 'config', 'main');
-        try {
-            setDoc(configDocRef, updatedConfig, { merge: true });
-        } catch(e) {
-            console.error("Failed to update platform config:", e);
+    const configDocRef = doc(db, 'config', 'main');
+    try {
+        await setDoc(configDocRef, newConfig, { merge: true });
+        const configSnap = await getDoc(configDocRef);
+        if (configSnap.exists()) {
+            setPlatformConfigState(configSnap.data() as PlatformConfig);
         }
-        return updatedConfig;
-    });
+    } catch(e) {
+        console.error("Failed to update platform config:", e);
+    }
   }
 
   const runDailyUpdates = useCallback(async () => {
