@@ -229,7 +229,7 @@ export default function TeacherDashboardPage() {
         ...studentToUpdate,
         redeemedRewards: (studentToUpdate.redeemedRewards || []).filter(r => r.redemptionId !== redemptionId)
     };
-    setStudents([updatedStudent]);
+    setStudents(currentStudents => currentStudents.map(s => (s.id === studentId && s.classId === classId) ? updatedStudent : s));
 
     toast({
         title: "已批准使用",
@@ -261,7 +261,7 @@ export default function TeacherDashboardPage() {
     const newHistory = [...(studentToUpdate.pointHistory || []), { points: pointsToChange, date: today, reason }];
     const updatedStudent = { ...studentToUpdate, points: studentToUpdate.points + pointsToChange, pointHistory: newHistory };
     
-    await setStudents([updatedStudent]);
+    await setStudents(currentStudents => currentStudents.map(s => (s.id === studentId && s.classId === selectedClassId) ? updatedStudent : s));
     
     if (role !== 'admin' && currentTeacher && !isDeducting) {
       await setTeachers(currentTeachers => currentTeachers.map(t => 
@@ -302,7 +302,11 @@ export default function TeacherDashboardPage() {
         return { ...student, points: student.points + pointsToChange, pointHistory: newHistory };
     });
 
-    await setStudents(updatedStudents);
+    await setStudents(currentStudents => {
+        const studentMap = new Map(currentStudents.map(s => [`${s.classId}-${s.id}`, s]));
+        updatedStudents.forEach(s => studentMap.set(`${s.classId}-${s.id}`, s));
+        return Array.from(studentMap.values());
+    });
     
     if (role !== 'admin' && currentTeacher && !isDeducting) {
       const totalPointsToChange = studentsInView.length * pointsToChange;
@@ -351,7 +355,7 @@ export default function TeacherDashboardPage() {
         challenges: [],
         fixedDeposits: [],
     };
-    setStudents([newStudent]);
+    setStudents(current => [...current, newStudent]);
     setIsAddStudentDialogOpen(false);
     toast({
         title: "已新增學生",
@@ -381,7 +385,7 @@ export default function TeacherDashboardPage() {
     }
 
     const updatedStudent = { ...studentToEdit, id: newId, name: newName };
-    setStudents([updatedStudent]);
+    setStudents(currentStudents => currentStudents.map(s => (s.id === studentToEdit.id && s.classId === studentToEdit.classId) ? updatedStudent : s));
     
     setStudentToEdit(null);
     toast({
@@ -397,27 +401,13 @@ export default function TeacherDashboardPage() {
   const handleConfirmDeleteStudent = async () => {
     if (!studentToDelete) return;
     
-    // In Firestore, we delete the document. `setStudents` isn't designed for deletion.
-    const studentDocId = `${studentToDelete.classId}-${studentToDelete.id}`;
-    const studentRef = doc(db, 'students', studentDocId);
-    try {
-        await deleteDoc(studentRef);
-        // After successful deletion, refetch all students to update the state
-        const allStudents = await (await getDocs(collection(db, 'students'))).docs.map(d => d.data() as Student);
-        // This is a hack because `setStudents` expects an updater.
-        // It's better if setStudents could handle deletion markers or refetch.
-        // For now, let's just update the local state manually.
-        const updatedLocalStudents = students.filter(s => s.id !== studentToDelete.id || s.classId !== studentToDelete.classId);
-        setStudents(updatedLocalStudents); // This will trigger a re-render. Ideally AppContext does this.
+    setStudents(current => current.filter(s => s.id !== studentToDelete.id || s.classId !== studentToDelete.classId));
 
-        toast({
-            title: "已刪除學生",
-            description: `已成功刪除學生 ${studentToDelete.name}。`,
-            variant: "destructive",
-        });
-    } catch (e) {
-        toast({ title: "刪除失敗", description: "從資料庫刪除學生時發生錯誤。", variant: "destructive" });
-    }
+    toast({
+        title: "已刪除學生",
+        description: `已成功刪除學生 ${studentToDelete.name}。`,
+        variant: "destructive",
+    });
     setStudentToDelete(null);
   };
 
@@ -433,7 +423,7 @@ export default function TeacherDashboardPage() {
     const newPassword = formData.get("new-password") as string;
     
     const updatedStudent = { ...studentToResetPassword, password: newPassword };
-    setStudents([updatedStudent]);
+    setStudents(currentStudents => currentStudents.map(s => (s.id === studentToResetPassword.id && s.classId === studentToResetPassword.classId) ? updatedStudent : s));
 
     setStudentToResetPassword(null);
     toast({
@@ -578,16 +568,13 @@ export default function TeacherDashboardPage() {
   const handleConfirmDeleteClass = () => {
     if (!classToDelete) return;
     
-    const studentsInClass = students.filter(s => s.classId === classToDelete.id);
-    // This is not an atomic operation and can lead to issues.
-    // A cloud function would be better. For now, we delete from the local state
-    // and hope the context handles the backend correctly.
-    const studentIdsToDelete = studentsInClass.map(s => `${s.classId}-${s.id}`);
-    const remainingStudents = students.filter(s => !studentIdsToDelete.includes(`${s.classId}-${s.id}`));
-    setStudents(remainingStudents); // This is a dangerous call, as it replaces the whole list.
-
+    // Remove students in that class
+    setStudents(prev => prev.filter(s => s.classId !== classToDelete.id));
+    
+    // Remove the class itself
     setClasses(prev => prev.filter(c => c.id !== classToDelete.id));
     
+    // Unassign any teacher from that class
     setTeachers(prev => prev.map(t => {
         if (t.classIds && t.classIds.includes(classToDelete.id)) {
             return { ...t, classIds: t.classIds.filter(id => id !== classToDelete.id) };
@@ -650,7 +637,7 @@ export default function TeacherDashboardPage() {
           toast({ title: "貸款已拒絕", description: `已拒絕 ${studentToUpdate.name} 的貸款申請。`, variant: "destructive" });
       }
       
-      setStudents([updatedStudent]);
+      setStudents(currentStudents => currentStudents.map(s => (s.id === studentId && s.classId === classId) ? updatedStudent : s));
   };
   
   
@@ -719,20 +706,22 @@ export default function TeacherDashboardPage() {
   
   const handleConfirmImport = async () => {
     setIsImporting(true);
-    const newStudents = stagedStudents.filter(s => s.status === 'valid' || s.status === 'duplicate').map(s => ({
-        id: s.id,
-        name: s.name,
-        password: s.password!,
-        classId: s.classId,
-        points: 0,
-        avatar: `https://picsum.photos/seed/${s.classId}-${s.id}/100`,
-        portfolio: [],
-        redeemedRewards: [],
-        loans: [],
-        pointHistory: [],
-        challenges: [],
-        fixedDeposits: [],
-    }));
+    const newStudents = stagedStudents
+        .filter(s => s.status === 'valid' || s.status === 'duplicate')
+        .map(s => ({
+            id: s.id,
+            name: s.name,
+            password: s.password!,
+            classId: s.classId,
+            points: 0,
+            avatar: `https://picsum.photos/seed/${s.classId}-${s.id}/100`,
+            portfolio: [],
+            redeemedRewards: [],
+            loans: [],
+            pointHistory: [],
+            challenges: [],
+            fixedDeposits: [],
+        }));
 
     if (newStudents.length === 0) {
         toast({ title: "沒有可匯入的學生", description: "請檢查您的 CSV 檔案，沒有找到可匯入或更新的新學生。", variant: "destructive" });
@@ -740,7 +729,7 @@ export default function TeacherDashboardPage() {
         return;
     }
 
-    await setStudents(newStudents);
+    await setStudents(currentStudents => [...currentStudents, ...newStudents]);
 
     toast({
         title: "匯入成功",
@@ -834,7 +823,7 @@ export default function TeacherDashboardPage() {
         )
     };
     
-    setStudents([updatedStudent]);
+    setStudents(current => current.map(s => (s.id === studentId && s.classId === classId) ? updatedStudent : s));
     
     toast({ title: "挑戰已批准", description: `已發送 ${pointsToAdd.toLocaleString()} 點給該學生。` });
   };
@@ -2048,5 +2037,6 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
 }
 
     
+
 
 

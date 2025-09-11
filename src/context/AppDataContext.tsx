@@ -22,7 +22,7 @@ import { isSameDay, startOfDay, differenceInCalendarDays, parseISO, isAfter } fr
 
 interface AppDataContextType {
   students: Student[];
-  setStudents: (updater: Student[]) => Promise<void>;
+  setStudents: (updater: Student[] | ((prev: Student[]) => Student[])) => Promise<void>;
   rewards: Reward[];
   setRewards: (updater: (prev: Reward[]) => Reward[]) => Promise<void>;
   stocks: Stock[];
@@ -94,10 +94,20 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       }
   }, []);
   
-    const setStudents = async (studentsToUpdate: Student[]) => {
+    const setStudents = async (updater: Student[] | ((prev: Student[]) => Student[])) => {
         try {
             const batch = writeBatch(db);
-            studentsToUpdate.forEach(student => {
+            const currentState = await fetchData<Student>('students');
+            const intendedState = typeof updater === 'function' ? updater(currentState) : updater;
+
+            // De-duplicate using a Map to ensure unique students by composite key
+            const studentMap = new Map<string, Student>();
+            currentState.forEach(student => studentMap.set(`${student.classId}-${student.id}`, student));
+            intendedState.forEach(student => studentMap.set(`${student.classId}-${student.id}`, student));
+            
+            const uniqueStudents = Array.from(studentMap.values());
+
+            uniqueStudents.forEach(student => {
                 const studentDocId = `${student.classId}-${student.id}`;
                 const studentRef = doc(db, 'students', studentDocId);
                 batch.set(studentRef, student, { merge: true });
@@ -105,16 +115,13 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             
             await batch.commit();
 
-            // After a successful write, re-fetch the entire collection from Firestore
-            // to ensure the local state is a perfect mirror of the database.
+            // After a successful write, refetch to ensure perfect sync
             const freshStudents = await fetchData<Student>('students');
             setStudentsState(freshStudents);
             
-            console.log(`Students collection successfully synchronized with ${freshStudents.length} students.`);
-
         } catch (error) {
             console.error(`Transaction failed for students: `, error);
-            // Optionally, re-fetch to revert to the last known good state from DB
+            // On failure, refetch to revert to the last known good state from DB
             const freshStudents = await fetchData<Student>('students');
             setStudentsState(freshStudents);
         }
