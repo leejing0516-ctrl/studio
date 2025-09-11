@@ -150,8 +150,7 @@ export default function TeacherLayout({
 
 
   const navItems = [
-    { href: "/teacher/dashboard", label: "儀表板", icon: LayoutDashboard, roles: ['admin', 'teacher', 'subject_teacher'] },
-    { href: "/teacher/announcements", label: "公告管理", icon: Megaphone, roles: ['admin', 'teacher'] },
+    { href: "/teacher/dashboard", label: "班級與點數管理", icon: LayoutDashboard, roles: ['admin', 'teacher', 'subject_teacher'] },
   ];
   
   const availableNavItems = navItems.filter(item => item.roles.includes(teacherRole || ''));
@@ -234,7 +233,7 @@ export default function TeacherLayout({
         <header className="flex h-14 items-center justify-between border-b bg-background/50 backdrop-blur-sm px-4 md:px-6 sticky top-0 z-20">
             <SidebarTrigger className="md:hidden" />
             <h1 className="text-lg font-semibold md:text-xl capitalize">
-                {pathname.includes('dashboard') ? '教師儀表板' : '公告管理'}
+                班級與點數管理
             </h1>
         </header>
         <main className="flex-1 p-4 md:p-6">{children}</main>

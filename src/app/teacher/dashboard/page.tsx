@@ -101,8 +101,8 @@ export default function TeacherDashboardPage() {
   const [sponsorLogoFiles, setSponsorLogoFiles] = useState<(File | null)[]>(Array(4).fill(null));
   const [sponsorLogoPreviews, setSponsorLogoPreviews] = useState<(string | null)[]>(platformConfig?.sponsorLogoUrls || Array(4).fill(null));
   const [isSavingSettings, setIsSavingSettings] = useState(false);
-  const [fixedDepositRate, setFixedDepositRate] = useState<number | string>((platformConfig?.fixedDepositInterestRate || 0) * 100);
-  const [loanInterestRate, setLoanInterestRate] = useState<number | string>((platformConfig?.loanInterestRate || 0) * 100);
+  const [fixedDepositRate, setFixedDepositRate] = useState<number | string>('');
+  const [loanInterestRate, setLoanInterestRate] = useState<number | string>('');
   
   // State for Central Bank
   const [isAdjustFundsDialogOpen, setIsAdjustFundsDialogOpen] = useState(false);
@@ -123,9 +123,11 @@ export default function TeacherDashboardPage() {
   const [isEditChallengeDialogOpen, setIsEditChallengeDialogOpen] = useState(false);
   const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(null);
   const [challengeToDelete, setChallengeToDelete] = useState<Challenge | null>(null);
+  
+  // State for Subject Teacher Class Management
+  const [isManageClassesDialogOpen, setIsManageClassesDialogOpen] = useState(false);
+  const [selectedClassesForSubjectTeacher, setSelectedClassesForSubjectTeacher] = useState<string[]>([]);
 
-  // Editing Teacher State
-  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
 
   // Effect for initializing component state from localStorage
   useEffect(() => {
@@ -138,8 +140,7 @@ export default function TeacherDashboardPage() {
         try {
             const parsedClassIds = JSON.parse(storedClassIds);
             setTeacherClassIds(parsedClassIds);
-            // If teacher is not admin, select their first class by default
-            if (storedRole === 'teacher' && parsedClassIds.length > 0) {
+             if (storedRole !== 'admin' && parsedClassIds.length > 0) {
                 setSelectedClassId(parsedClassIds[0]);
             }
         } catch {
@@ -154,6 +155,13 @@ export default function TeacherDashboardPage() {
         setSelectedClassId(classes[0].id);
     }
   }, [role, classes, selectedClassId]);
+  
+  useEffect(() => {
+    if (platformConfig) {
+        setFixedDepositRate((platformConfig.fixedDepositInterestRate || 0) * 100);
+        setLoanInterestRate((platformConfig.loanInterestRate || 0) * 100);
+    }
+  }, [platformConfig]);
 
   const currentTeacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
 
@@ -194,6 +202,7 @@ export default function TeacherDashboardPage() {
 
   const [isAddTeacherDialogOpen, setIsAddTeacherDialogOpen] = useState(false);
   const [isEditTeacherDialogOpen, setIsEditTeacherDialogOpen] = useState(false);
+  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
   const [teacherToResetPassword, setTeacherToResetPassword] = useState<Teacher | null>(null);
   
@@ -596,7 +605,7 @@ export default function TeacherDashboardPage() {
     setEditingTeacher(teacher);
     setIsEditTeacherDialogOpen(true);
   }
-
+  
   const handleUpdateTeacher = (updatedTeacherData: Partial<Teacher>) => {
     if (!editingTeacher) return;
     
@@ -944,6 +953,7 @@ export default function TeacherDashboardPage() {
 
   const handleAddStock = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const formData = new FormData(event.currentTarget);
     const ticker = (formData.get("ticker") as string).toUpperCase();
     
     if (stocks.some(s => s.ticker === ticker)) {
@@ -1085,6 +1095,31 @@ export default function TeacherDashboardPage() {
     }));
     
     toast({ title: "挑戰已批准", description: `已發送 ${pointsToAdd.toLocaleString()} 點給該學生。` });
+  };
+  
+  const handleOpenManageClasses = () => {
+    if (currentTeacher) {
+      setSelectedClassesForSubjectTeacher(currentTeacher.classIds || []);
+      setIsManageClassesDialogOpen(true);
+    }
+  };
+  
+  const handleSaveSubjectTeacherClasses = () => {
+    if (!teacherId) return;
+    setTeachers(prev => prev.map(t => 
+        t.id === teacherId ? { ...t, classIds: selectedClassesForSubjectTeacher } : t
+    ));
+    setTeacherClassIds(selectedClassesForSubjectTeacher); // Update local state as well
+     // Update localStorage
+    localStorage.setItem('teacherClassIds', JSON.stringify(selectedClassesForSubjectTeacher));
+    toast({ title: "任教班級已更新" });
+    setIsManageClassesDialogOpen(false);
+  };
+  
+  const handleSubjectClassSelection = (classId: string, isChecked: boolean) => {
+    setSelectedClassesForSubjectTeacher(prev => 
+        isChecked ? [...prev, classId] : prev.filter(id => id !== classId)
+    );
   };
 
   if (isLoading && !selectedClassId && role !== 'subject_teacher') {
@@ -1278,101 +1313,98 @@ export default function TeacherDashboardPage() {
             </Card>
         )}
     </div>
-    <Tabs defaultValue="students" className="animate-in fade-in-0 duration-500">
-      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-8' : role === 'teacher' ? 'grid-cols-4' : 'grid-cols-1'}`}>
-        <TabsTrigger value="students">學生管理</TabsTrigger>
+    <Tabs defaultValue={role === 'subject_teacher' ? 'classes' : 'students'} className="animate-in fade-in-0 duration-500">
+      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-7' : role === 'teacher' ? 'grid-cols-4' : 'grid-cols-2'}`}>
+        {role !== 'subject_teacher' && <TabsTrigger value="students">學生管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
+        {role === 'subject_teacher' && <TabsTrigger value="classes">班級管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="stocks">股票管理</TabsTrigger>}
         <TabsTrigger value="points">發送點數</TabsTrigger>
         {role !== 'subject_teacher' && <TabsTrigger value="rewards">獎勵管理</TabsTrigger>}
         {role !== 'subject_teacher' && <TabsTrigger value="challenges">挑戰管理</TabsTrigger>}
-        <TabsTrigger value="approvals">
-            審核中心
-            {(pendingRequests.length + loanRequests.length + challengeApprovals.length) > 0 && (
-                <Badge variant="destructive" className="ml-2">{(pendingRequests.length + loanRequests.length + challengeApprovals.length)}</Badge>
-            )}
-        </TabsTrigger>
         {role === 'admin' && <TabsTrigger value="settings">平台設定</TabsTrigger>}
       </TabsList>
       
-      <TabsContent value="students" className="mt-6">
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                    <CardTitle>學生名單</CardTitle>
-                    <CardDescription>
-                        新增、編輯、刪除或批次匯入目前所選班級的學生。
-                    </CardDescription>
-                </div>
-                 <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}>
-                        <Upload className="mr-2 h-4 w-4" />
-                        批次匯入
-                    </Button>
-                    <Button onClick={() => setIsAddStudentDialogOpen(true)}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        新增學生
-                    </Button>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                <TableHeader>
-                    <TableRow>
-                    <TableHead>編號</TableHead>
-                    <TableHead>姓名</TableHead>
-                    <TableHead>目前點數</TableHead>
-                    <TableHead className="text-right">操作</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {studentsInView.map((student) => (
-                    <TableRow key={student.id}>
-                        <TableCell className="font-mono">{student.id}</TableCell>
-                        <TableCell className="flex items-center gap-4">
-                        <Avatar>
-                            <AvatarImage src={student.avatar} data-ai-hint="student avatar" />
-                            <AvatarFallback>
-                                {student.name.slice(0, 2)}
-                            </AvatarFallback>
-                        </Avatar>
-                        <span className="font-medium">{student.name}</span>
-                        </TableCell>
-                        <TableCell>{student.points.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">
-                           <Button variant="ghost" size="icon" onClick={() => handleEditStudentClick(student)}>
-                                <Edit className="h-4 w-4" />
-                           </Button>
-                           <Button variant="ghost" size="icon" onClick={() => handleResetPasswordClick(student)}>
-                                <KeyRound className="h-4 w-4" />
-                           </Button>
-                           <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                   <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStudentClick(student)}>
-                                        <Trash2 className="h-4 w-4" />
-                                   </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            您確定要刪除學生「{student.name}」嗎？此操作將永久移除該學生的所有資料且無法復原。
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel onClick={() => setStudentToDelete(null)}>取消</AlertDialogCancel>
-                                        <AlertDialogAction onClick={handleConfirmDeleteStudent} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                           </AlertDialog>
-                        </TableCell>
-                    </TableRow>
-                    ))}
-                </TableBody>
-                </Table>
-            </CardContent>
-        </Card>
-      </TabsContent>
+      {role !== 'subject_teacher' && 
+        <TabsContent value="students" className="mt-6">
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle>學生名單</CardTitle>
+                        <CardDescription>
+                            新增、編輯、刪除或批次匯入目前所選班級的學生。
+                        </CardDescription>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}>
+                            <Upload className="mr-2 h-4 w-4" />
+                            批次匯入
+                        </Button>
+                        <Button onClick={() => setIsAddStudentDialogOpen(true)}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            新增學生
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                    <TableHeader>
+                        <TableRow>
+                        <TableHead>編號</TableHead>
+                        <TableHead>姓名</TableHead>
+                        <TableHead>目前點數</TableHead>
+                        <TableHead className="text-right">操作</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {studentsInView.map((student) => (
+                        <TableRow key={student.id}>
+                            <TableCell className="font-mono">{student.id}</TableCell>
+                            <TableCell className="flex items-center gap-4">
+                            <Avatar>
+                                <AvatarImage src={student.avatar} data-ai-hint="student avatar" />
+                                <AvatarFallback>
+                                    {student.name.slice(0, 2)}
+                                </AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium">{student.name}</span>
+                            </TableCell>
+                            <TableCell>{student.points.toLocaleString()}</TableCell>
+                            <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" onClick={() => handleEditStudentClick(student)}>
+                                    <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleResetPasswordClick(student)}>
+                                    <KeyRound className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStudentClick(student)}>
+                                            <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                您確定要刪除學生「{student.name}」嗎？此操作將永久移除該學生的所有資料且無法復原。
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel onClick={() => setStudentToDelete(null)}>取消</AlertDialogCancel>
+                                            <AlertDialogAction onClick={handleConfirmDeleteStudent} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                            </AlertDialog>
+                            </TableCell>
+                        </TableRow>
+                        ))}
+                    </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        </TabsContent>
+      }
 
       {role === 'admin' && (
         <>
@@ -1503,7 +1535,55 @@ export default function TeacherDashboardPage() {
                 </CardContent>
             </Card>
         </TabsContent>
+        </>
+      )}
 
+       {role === 'subject_teacher' && (
+         <TabsContent value="classes" className="mt-6">
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle>我的任教班級</CardTitle>
+                        <CardDescription>新增或移除您任教的班級。</CardDescription>
+                    </div>
+                    <Button onClick={handleOpenManageClasses}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        新增/管理班級
+                    </Button>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>班級 ID</TableHead>
+                                <TableHead>班級名稱</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                           {teacherClassIds.length > 0 ? teacherClassIds.map(classId => {
+                                const classInfo = classes.find(c => c.id === classId);
+                                return (
+                                    <TableRow key={classId}>
+                                        <TableCell>{classInfo?.id}</TableCell>
+                                        <TableCell>{classInfo?.name}</TableCell>
+                                    </TableRow>
+                                );
+                           }) : (
+                                <TableRow>
+                                    <TableCell colSpan={2} className="h-24 text-center">
+                                        您目前沒有設定任何任教班級。
+                                    </TableCell>
+                                </TableRow>
+                           )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+         </TabsContent>
+       )}
+
+      {role === 'admin' && (
+        <>
         <TabsContent value="stocks" className="mt-6">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
@@ -1682,29 +1762,28 @@ export default function TeacherDashboardPage() {
                 從您的點數餘額中發送點數給學生。
                 </CardDescription>
             </div>
-            {role !== 'subject_teacher' && (
-                <Button onClick={() => setIsBatchAwardDialogOpen(true)} disabled={!selectedClassId}>
-                    <Users className="mr-2 h-4 w-4" />
-                    全班批次發放
-                </Button>
-            )}
+             <Button onClick={() => setIsBatchAwardDialogOpen(true)} disabled={!selectedClassId || studentsInView.length === 0}>
+                <Users className="mr-2 h-4 w-4" />
+                全班批次發放
+            </Button>
           </CardHeader>
           <CardContent>
-            {(role === 'subject_teacher' || role === 'admin') && (
-                <div className="mb-6">
-                    <Label htmlFor="class-select-points">請先選擇班級</Label>
-                    <Select onValueChange={setSelectedClassId} value={selectedClassId}>
-                        <SelectTrigger id="class-select-points" className="w-full md:w-[280px]">
-                            <SelectValue placeholder="請選擇班級" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {classes.map(c => (
-                                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-            )}
+            <div className="mb-6">
+                <Label htmlFor="class-select-points">請先選擇班級</Label>
+                <Select onValueChange={setSelectedClassId} value={selectedClassId}>
+                    <SelectTrigger id="class-select-points" className="w-full md:w-[280px]">
+                        <SelectValue placeholder="請選擇班級" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {role !== 'subject_teacher' ? classes.map(c => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        )) : (currentTeacher?.classIds || []).map(id => {
+                            const classInfo = classes.find(c => c.id === id);
+                            return classInfo ? <SelectItem key={id} value={id}>{classInfo.name}</SelectItem> : null
+                        })}
+                    </SelectContent>
+                </Select>
+            </div>
 
             {selectedClassId ? (
                 <Table>
@@ -1717,7 +1796,7 @@ export default function TeacherDashboardPage() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {studentsInView.map((student) => (
+                    {studentsInView.length > 0 ? studentsInView.map((student) => (
                     <TableRow key={student.id}>
                         <TableCell className="flex items-center gap-4">
                         <Avatar>
@@ -1743,198 +1822,28 @@ export default function TeacherDashboardPage() {
                         <Button size="sm" type="submit" form={`points-form-${student.id}`}>發送</Button>
                         </TableCell>
                     </TableRow>
-                    ))}
+                    )) : (
+                        <TableRow>
+                           <TableCell colSpan={4} className="text-center h-24">此班級沒有學生。</TableCell>
+                        </TableRow>
+                    )}
                 </TableBody>
                 </Table>
             ) : (
                 <div className="text-center text-muted-foreground py-12">
-                    {role === 'subject_teacher' ? '請從上方選擇一個班級來查看學生名單。' : '沒有選擇班級。'}
+                    請從上方選擇一個班級來查看學生名單。
                 </div>
             )}
           </CardContent>
         </Card>
       </TabsContent>
-      <TabsContent value="rewards" className="mt-6">
-          <RewardsManagementTab />
-      </TabsContent>
-       <TabsContent value="approvals" className="mt-6 space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>獎勵使用請求</CardTitle>
-            <CardDescription>
-              批准學生提出的獎勵使用請求。批准後，獎勵將從學生的收藏中移除。
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>學生</TableHead>
-                   <TableHead>班級</TableHead>
-                  <TableHead>獎勵名称</TableHead>
-                   <TableHead>類型</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pendingRequests.length > 0 ? (
-                    pendingRequests.map(({ student, redemption }) => (
-                        <TableRow key={redemption.redemptionId}>
-                            <TableCell>{student.name}</TableCell>
-                            <TableCell>{classes.find(c => c.id === student.classId)?.name}</TableCell>
-                            <TableCell>{redemption.reward.name}</TableCell>
-                            <TableCell>
-                                <Badge variant={redemption.reward.scope === 'school' ? 'default' : 'secondary'}>
-                                    {redemption.reward.scope === 'school' ? '學校' : '班級'}
-                                </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                                <Button size="sm" onClick={() => handleApproveUsage(student.id, student.classId, redemption.redemptionId)}>同意使用</Button>
-                            </TableCell>
-                        </TableRow>
-                    ))
-                ) : (
-                    <TableRow>
-                        <TableCell colSpan={5} className="text-center h-24">
-                            目前沒有待處理的獎勵使用請求。
-                        </TableCell>
-                    </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-         <Card>
-          <CardHeader>
-            <CardTitle>最新兌換紀錄</CardTitle>
-            <CardDescription>
-              查看學生最近兌換了哪些獎勵。此處僅為紀錄，不需操作。
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>學生</TableHead>
-                   <TableHead>班級</TableHead>
-                  <TableHead>獎勵名称</TableHead>
-                  <TableHead>兌換時間</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentRedemptions.length > 0 ? (
-                    recentRedemptions.map(({ student, redemption }) => (
-                        <TableRow key={redemption.redemptionId}>
-                            <TableCell>{student.name}</TableCell>
-                            <TableCell>{classes.find(c => c.id === student.classId)?.name}</TableCell>
-                            <TableCell>{redemption.reward.name}</TableCell>
-                            <TableCell>{redemption.redemptionDate ? format(new Date(redemption.redemptionDate), 'yyyy-MM-dd HH:mm') : 'N/A'}</TableCell>
-                        </TableRow>
-                    ))
-                ) : (
-                    <TableRow>
-                        <TableCell colSpan={4} className="text-center h-24">
-                            最近沒有任何兌換紀錄。
-                        </TableCell>
-                    </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-         <Card>
-          <CardHeader>
-            <CardTitle>貸款申請</CardTitle>
-            <CardDescription>
-              審核學生的貸款申請。批准後點數將直接撥款。
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>學生</TableHead>
-                  <TableHead>申請金額</TableHead>
-                  <TableHead>還款期限</TableHead>
-                  <TableHead>理由</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loanRequests.length > 0 ? (
-                    loanRequests.map(({ student, loan }) => (
-                        <TableRow key={loan.id}>
-                            <TableCell>{student.name}</TableCell>
-                            <TableCell>{loan.amount.toLocaleString()} 點</TableCell>
-                            <TableCell>{format(new Date(loan.repaymentDate), 'yyyy-MM-dd')}</TableCell>
-                            <TableCell className="max-w-[200px] truncate">{loan.reason}</TableCell>
-                            <TableCell className="text-right space-x-2">
-                                <Button size="sm" variant="outline" className="text-success hover:text-success hover:bg-success/10 border-success/50 hover:border-success" onClick={() => handleLoanDecision(student.id, student.classId, loan.id, 'approve')}>
-                                  <Check className="mr-2"/>批准
-                                </Button>
-                                <Button size="sm" variant="outline" className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/50 hover:border-destructive" onClick={() => handleLoanDecision(student.id, student.classId, loan.id, 'reject')}>
-                                  <X className="mr-2"/>拒絕
-                                </Button>
-                            </TableCell>
-                        </TableRow>
-                    ))
-                ) : (
-                    <TableRow>
-                        <TableCell colSpan={5} className="text-center h-24">
-                            目前沒有待處理的貸款申請。
-                        </TableCell>
-                    </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>挑戰任務審核</CardTitle>
-            <CardDescription>
-              審核學生提交的已完成挑戰。批准後，點數將自動發送給學生。
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>學生</TableHead>
-                  <TableHead>班級</TableHead>
-                  <TableHead>挑戰名稱</TableHead>
-                  <TableHead>提交時間</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {challengeApprovals.length > 0 ? (
-                    challengeApprovals.map(({ student, studentChallenge, challenge }) => (
-                        <TableRow key={studentChallenge.challengeId}>
-                            <TableCell>{student.name}</TableCell>
-                            <TableCell>{classes.find(c => c.id === student.classId)?.name}</TableCell>
-                            <TableCell>{challenge?.name}</TableCell>
-                            <TableCell>{studentChallenge.acceptedDate ? formatDistanceToNow(new Date(studentChallenge.acceptedDate), { addSuffix: true, locale: zhTW }) : 'N/A'}</TableCell>
-                            <TableCell className="text-right">
-                                <Button size="sm" onClick={() => handleChallengeApproval(student.id, student.classId, studentChallenge.challengeId)}>
-                                    <Check className="mr-2" /> 批准並發送 {challenge?.points} 點
-                                </Button>
-                            </TableCell>
-                        </TableRow>
-                    ))
-                ) : (
-                     <TableRow>
-                        <TableCell colSpan={5} className="text-center h-24">
-                            目前沒有待審核的挑戰。
-                        </TableCell>
-                    </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </TabsContent>
-      <TabsContent value="challenges" className="mt-6">
+      {role !== 'subject_teacher' &&
+        <TabsContent value="rewards" className="mt-6">
+            <RewardsManagementTab />
+        </TabsContent>
+      }
+      {role !== 'subject_teacher' &&
+       <TabsContent value="challenges" className="mt-6">
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
@@ -1997,6 +1906,7 @@ export default function TeacherDashboardPage() {
             </CardContent>
         </Card>
       </TabsContent>
+    }
     </Tabs>
     </>
     );
@@ -2704,6 +2614,35 @@ export default function TeacherDashboardPage() {
             </form>
             </DialogContent>
         </Dialog>
+        {/* Dialog for Subject Teacher to manage classes */}
+        <Dialog open={isManageClassesDialogOpen} onOpenChange={setIsManageClassesDialogOpen}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>管理任教班級</DialogTitle>
+                    <DialogDescription>勾選您所有任教的班級。</DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                    <ScrollArea className="h-60 rounded-md border p-4">
+                        <div className="space-y-2">
+                            {classes.map(c => (
+                                <div key={c.id} className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id={`class-select-${c.id}`}
+                                        checked={selectedClassesForSubjectTeacher.includes(c.id)}
+                                        onCheckedChange={(checked) => handleSubjectClassSelection(c.id, !!checked)}
+                                    />
+                                    <Label htmlFor={`class-select-${c.id}`}>{c.name}</Label>
+                                </div>
+                            ))}
+                        </div>
+                    </ScrollArea>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
+                    <Button type="button" onClick={handleSaveSubjectTeacherClasses}>儲存變更</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </div>
   );
 }
@@ -2835,8 +2774,3 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
         </Dialog>
     )
 }
-
-
-    
-
-    
