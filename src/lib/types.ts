@@ -103,7 +103,7 @@ export type Teacher = {
     id: string;
     name: string;
     role: 'teacher' | 'admin' | 'subject_teacher';
-    classId?: string | null; // Homeroom teacher's classId. Null for unassigned or subject teachers.
+    classIds: string[]; // Homeroom teacher will have one, subject teacher can have multiple. Empty for admin/unassigned.
     password?: string; 
     pointBalance?: number;
 }

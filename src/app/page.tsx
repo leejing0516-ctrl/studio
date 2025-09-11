@@ -105,7 +105,7 @@ export default function HomePage() {
         localStorage.setItem('userRole', 'teacher');
         localStorage.setItem('teacherId', teacher.id);
         localStorage.setItem('teacherRole', teacher.role);
-        localStorage.setItem('teacherClassId', teacher.classId || 'admin');
+        localStorage.setItem('teacherClassIds', JSON.stringify(teacher.classIds)); // Store as JSON string
         localStorage.setItem('teacherName', teacher.name);
         router.push('/teacher/dashboard');
     } else {

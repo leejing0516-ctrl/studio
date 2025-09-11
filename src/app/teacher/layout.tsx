@@ -78,7 +78,7 @@ export default function TeacherLayout({
   const handleLogout = () => {
     localStorage.removeItem('teacherName');
     localStorage.removeItem('teacherRole');
-    localStorage.removeItem('teacherClassId');
+    localStorage.removeItem('teacherClassIds');
     localStorage.removeItem('teacherId');
     localStorage.removeItem('userRole');
     router.push('/');

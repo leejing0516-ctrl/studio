@@ -49,6 +49,8 @@ import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
 import { Textarea } from "@/components/ui/textarea";
 import { zhTW } from "date-fns/locale";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface StagedStudent {
     id: string;
@@ -80,7 +82,7 @@ export default function TeacherDashboardPage() {
 
   const [role, setRole] = useState<string | null>(null);
   const [teacherId, setTeacherId] = useState<string | null>(null);
-  const [teacherClassId, setTeacherClassId] = useState<string | null>(null);
+  const [teacherClassIds, setTeacherClassIds] = useState<string[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<string>('');
 
   // States for CSV import
@@ -122,24 +124,33 @@ export default function TeacherDashboardPage() {
   const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(null);
   const [challengeToDelete, setChallengeToDelete] = useState<Challenge | null>(null);
 
+  // Editing Teacher State
+  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
 
   useEffect(() => {
     const storedRole = localStorage.getItem('teacherRole');
     const storedTeacherId = localStorage.getItem('teacherId');
-    const storedClassId = localStorage.getItem('teacherClassId');
+    const storedClassIds = localStorage.getItem('teacherClassIds');
     setRole(storedRole);
     setTeacherId(storedTeacherId);
-    setTeacherClassId(storedClassId);
+    if (storedClassIds) {
+        try {
+            setTeacherClassIds(JSON.parse(storedClassIds));
+        } catch {
+            setTeacherClassIds([]);
+        }
+    }
     
     // Auto-select class based on role
-    if (storedRole === 'admin') {
-      if (classes.length > 0 && !selectedClassId) {
+    if (storedRole === 'admin' && classes.length > 0 && !selectedClassId) {
         setSelectedClassId(classes[0].id);
-      }
-    } else if (storedRole === 'teacher' && storedClassId) {
-      setSelectedClassId(storedClassId);
+    } else if (storedRole === 'teacher' && storedClassIds) {
+         const parsedClassIds = JSON.parse(storedClassIds);
+         if (parsedClassIds.length > 0 && !selectedClassId) {
+            setSelectedClassId(parsedClassIds[0]);
+         }
     }
-  }, [role, classes, teacherClassId, selectedClassId]);
+  }, [role, classes, teacherClassIds, selectedClassId]);
 
   const currentTeacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
 
@@ -154,15 +165,15 @@ export default function TeacherDashboardPage() {
               .filter(l => l.status === 'pending')
               .map(l => ({ student, loan: l }))
       ).filter(({ student }) => {
-          if (role === 'admin') return true; // Admins see all loan requests
-          // Homeroom teachers see their class's requests
-          return role === 'teacher' && student.classId === teacherClassId;
+          if (role === 'admin') return true;
+          return role === 'teacher' && (teacherClassIds || []).includes(student.classId);
       });
-  }, [students, role, teacherClassId]);
+  }, [students, role, teacherClassIds]);
 
 
   const [isAddRewardDialogOpen, setIsAddRewardDialogOpen] = useState(false);
   const [isEditRewardDialogOpen, setIsEditRewardDialogOpen] = useState(false);
+  const [rewardToDelete, setRewardToDelete] = useState<Reward | null>(null);
   const [editingReward, setEditingReward] = useState<Reward | null>(null);
   
   const rewardsInView = useMemo(() => {
@@ -174,13 +185,12 @@ export default function TeacherDashboardPage() {
 
   const [isAddStudentDialogOpen, setIsAddStudentDialogOpen] = useState(false);
   const [isEditStudentDialogOpen, setIsEditStudentDialogOpen] = useState(false);
-  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
 
   const [isAddTeacherDialogOpen, setIsAddTeacherDialogOpen] = useState(false);
   const [isEditTeacherDialogOpen, setIsEditTeacherDialogOpen] = useState(false);
-  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
   const [isResetTeacherPasswordDialogOpen, setIsResetTeacherPasswordDialogOpen] = useState(false);
   const [teacherToResetPassword, setTeacherToResetPassword] = useState<Teacher | null>(null);
@@ -190,7 +200,7 @@ export default function TeacherDashboardPage() {
   // States for Stock Management
   const [isAddStockDialogOpen, setIsAddStockDialogOpen] = useState(false);
   const [isEditStockDialogOpen, setIsEditStockDialogOpen] = useState(false);
-  const [editingStock, setEditingStock] = useState<Stock | null>(null);
+  const [stockToEdit, setStockToEdit] = useState<Stock | null>(null);
   const [stockToDelete, setStockToDelete] = useState<Stock | null>(null);
 
   const { toast } = useToast();
@@ -200,24 +210,22 @@ export default function TeacherDashboardPage() {
         (student.redeemedRewards || [])
             .filter(r => r.status === 'pending_use')
             .map(redemption => ({ student, redemption }))
-    ).filter(({ redemption }) => {
+    ).filter(({ redemption, student }) => {
         if (role === 'admin' && redemption.reward.scope === 'school') {
             return true;
         }
-        // Homeroom teachers see requests for rewards they provided
-        if (role === 'teacher' && redemption.reward.providerId === teacherId) {
+        if (role === 'teacher' && (teacherClassIds || []).includes(student.classId) && redemption.reward.providerId === teacherId) {
             return true;
         }
         return false;
     });
-  }, [students, role, teacherId]);
+  }, [students, role, teacherId, teacherClassIds]);
 
   const recentRedemptions = useMemo(() => {
      return students.flatMap(student => (student.redeemedRewards || []).map(r => ({student, redemption: r})))
         .filter(({ student }) => {
              if (role === 'admin') return true; // Admin sees all
-             if (role === 'teacher') return student.classId === teacherClassId;
-             return true; // Subject teachers see all for now
+             return (teacherClassIds || []).includes(student.classId);
         })
         .sort((a, b) => {
             if (!a.redemption.redemptionDate) return 1;
@@ -225,7 +233,7 @@ export default function TeacherDashboardPage() {
             return new Date(b.redemption.redemptionDate).getTime() - new Date(a.redemption.redemptionDate).getTime();
         })
         .slice(0, 10);
-  }, [students, role, teacherClassId]);
+  }, [students, role, teacherClassIds]);
   
   const challengeApprovals = useMemo(() => {
       const allChallenges = platformConfig?.challenges || [];
@@ -239,17 +247,15 @@ export default function TeacherDashboardPage() {
             }))
       ).filter(({ student, challenge }) => {
           if (!challenge) return false;
-          // Admin sees school challenges
           if (role === 'admin' && challenge.scope === 'school') {
              return true;
           }
-          // Teacher sees their own class challenges
-          if (role === 'teacher' && challenge.providerId === teacherId) {
+          if (role === 'teacher' && challenge.providerId === teacherId && (teacherClassIds || []).includes(student.classId)) {
             return true;
           }
           return false;
       });
-  }, [students, platformConfig?.challenges, role, teacherId]);
+  }, [students, platformConfig?.challenges, role, teacherId, teacherClassIds]);
 
   const handleApproveUsage = (studentId: string, classId: string, redemptionId: string) => {
     setStudents(currentStudents => currentStudents.map(student => {
@@ -429,16 +435,14 @@ export default function TeacherDashboardPage() {
     })
   }
 
-  const handleDeleteReward = (id: number) => {
-    const rewardToDelete = rewards.find(r => r.id === id);
-    setRewards(currentRewards => currentRewards.filter(reward => reward.id !== id));
-    if(rewardToDelete){
-        toast({
-            title: "已移除獎勵",
-            description: `${rewardToDelete.name} 已被移除。`,
-            variant: "destructive"
-        })
-    }
+  const handleDeleteReward = (reward: Reward) => {
+    setRewards(currentRewards => currentRewards.filter(r => r.id !== reward.id));
+    toast({
+        title: "已移除獎勵",
+        description: `${reward.name} 已被移除。`,
+        variant: "destructive"
+    });
+    setRewardToDelete(null);
   }
 
   const handleAddStudent = (event: React.FormEvent<HTMLFormElement>) => {
@@ -480,20 +484,20 @@ export default function TeacherDashboardPage() {
   }
   
   const handleEditStudentClick = (student: Student) => {
-    setEditingStudent(student);
+    setStudentToEdit(student);
     setIsEditStudentDialogOpen(true);
   }
 
   const handleUpdateStudent = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!editingStudent) return;
+    if (!studentToEdit) return;
 
     const formData = new FormData(event.currentTarget);
     const newId = formData.get("id") as string;
     const newName = formData.get("name") as string;
     
     // Check if the new ID already exists for another student in the same class
-    if (newId !== editingStudent.id && students.some(s => s.id === newId && s.classId === editingStudent.classId)) {
+    if (newId !== studentToEdit.id && students.some(s => s.id === newId && s.classId === studentToEdit.classId)) {
         toast({
             title: "更新失敗",
             description: `編號 ${newId} 已被此班級的其他學生使用。`,
@@ -503,14 +507,14 @@ export default function TeacherDashboardPage() {
     }
 
     setStudents(currentStudents => currentStudents.map(s => {
-        if (s.id === editingStudent.id && s.classId === editingStudent.classId) {
+        if (s.id === studentToEdit.id && s.classId === studentToEdit.classId) {
             return { ...s, id: newId, name: newName };
         }
         return s;
     }));
     
     setIsEditStudentDialogOpen(false);
-    setEditingStudent(null);
+    setStudentToEdit(null);
     toast({
         title: "學生資訊已更新",
         description: `已成功更新學生 ${newName} 的資訊。`
@@ -534,22 +538,22 @@ export default function TeacherDashboardPage() {
 
 
   const handleResetPasswordClick = (student: Student) => {
-    setEditingStudent(student);
+    setStudentToEdit(student);
     setIsResetPasswordDialogOpen(true);
   };
 
   const handleConfirmResetPassword = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!editingStudent) return;
+    if (!studentToEdit) return;
     const formData = new FormData(event.currentTarget);
     const newPassword = formData.get("new-password") as string;
 
-    setStudents(currentStudents => currentStudents.map(s => (s.id === editingStudent.id && s.classId === editingStudent.classId) ? { ...s, password: newPassword } : s));
+    setStudents(currentStudents => currentStudents.map(s => (s.id === studentToEdit.id && s.classId === studentToEdit.classId) ? { ...s, password: newPassword } : s));
     setIsResetPasswordDialogOpen(false);
-    setEditingStudent(null);
+    setStudentToEdit(null);
     toast({
         title: "密碼已重設",
-        description: `${editingStudent.name} 的密碼已更新。`
+        description: `${studentToEdit.name} 的密碼已更新。`
     });
   }
   
@@ -574,7 +578,7 @@ export default function TeacherDashboardPage() {
         id,
         name,
         role,
-        classId: role === 'teacher' && classId !== 'unassigned' ? classId : null,
+        classIds: role === 'teacher' && classId !== 'unassigned' ? [classId] : [],
         password: platformConfig?.teacherPassword || TEACHER_PASSWORD,
         pointBalance: 0,
     };
@@ -591,27 +595,11 @@ export default function TeacherDashboardPage() {
     setIsEditTeacherDialogOpen(true);
   }
 
-  const handleUpdateTeacher = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleUpdateTeacher = (updatedTeacherData: Teacher) => {
     if (!editingTeacher) return;
-    const formData = new FormData(event.currentTarget);
-    const newId = formData.get("id") as string;
-    const name = formData.get("name") as string;
-    const role = formData.get("role") as 'teacher' | 'subject_teacher';
-    const classIdValue = formData.get("classId") as string;
-    const newClassId = role === 'teacher' && classIdValue !== 'unassigned' ? classIdValue : null;
-
-    if (newId !== editingTeacher.id && teachers.some(t => t.id === newId)) {
-        toast({
-            title: "更新失敗",
-            description: `ID 為 ${newId} 的老師已存在。`,
-            variant: "destructive",
-        });
-        return;
-    }
-
+    
     setTeachers(currentTeachers => currentTeachers.map(t => 
-        t.id === editingTeacher.id ? { ...t, id: newId, name, role, classId: newClassId } : t
+        t.id === editingTeacher.id ? { ...t, ...updatedTeacherData } : t
     ));
 
     setIsEditTeacherDialogOpen(false);
@@ -948,7 +936,9 @@ export default function TeacherDashboardPage() {
   };
 
   const unassignedClasses = useMemo(() => {
-    const assignedClassIds = teachers.filter(t => t.role === 'teacher').map(t => t.classId).filter(Boolean);
+    const assignedClassIds = teachers
+        .filter(t => t.role === 'teacher')
+        .flatMap(t => t.classIds);
     return classes.filter(c => !assignedClassIds.includes(c.id));
   }, [classes, teachers]);
 
@@ -977,17 +967,17 @@ export default function TeacherDashboardPage() {
   };
 
   const handleEditStockClick = (stock: Stock) => {
-    setEditingStock(stock);
+    setStockToEdit(stock);
     setIsEditStockDialogOpen(true);
   };
 
   const handleUpdateStock = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!editingStock) return;
+    if (!stockToEdit) return;
     const formData = new FormData(event.currentTarget);
     
     const updatedStock: Stock = {
-        ...editingStock,
+        ...stockToEdit,
         name: formData.get("name") as string,
         price: Number(formData.get("price")),
         marketCap: formData.get("marketCap") as string,
@@ -995,7 +985,7 @@ export default function TeacherDashboardPage() {
     
     setStocks(current => current.map(s => s.ticker === updatedStock.ticker ? updatedStock : s));
     setIsEditStockDialogOpen(false);
-    setEditingStock(null);
+    setStockToEdit(null);
     toast({ title: "已更新股票", description: `${updatedStock.name} 的資訊已更新。` });
   };
   
@@ -1182,7 +1172,7 @@ export default function TeacherDashboardPage() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {rewardsInView.map((reward) => (
+                    {rewardsInView.length > 0 ? rewardsInView.map((reward) => (
                     <TableRow key={reward.id}>
                         <TableCell className="font-medium flex items-center gap-4">
                             <Image src={reward.image} alt={reward.name} width={40} height={40} className="rounded-md object-cover" />
@@ -1201,7 +1191,7 @@ export default function TeacherDashboardPage() {
                         </Button>
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setRewardToDelete(reward)}>
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
                             </AlertDialogTrigger>
@@ -1213,14 +1203,20 @@ export default function TeacherDashboardPage() {
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                    <AlertDialogCancel>取消</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDeleteReward(reward.id)} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                    <AlertDialogCancel onClick={() => setRewardToDelete(null)}>取消</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteReward(reward)} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
                         </TableCell>
                     </TableRow>
-                    ))}
+                    )) : (
+                        <TableRow>
+                            <TableCell colSpan={5} className="h-24 text-center">
+                                {role === 'admin' ? '尚未建立學校獎勵。' : '您尚未建立任何班級獎勵。'}
+                            </TableCell>
+                        </TableRow>
+                    )}
                 </TableBody>
                 </Table>
             </CardContent>
@@ -1230,7 +1226,7 @@ export default function TeacherDashboardPage() {
     );
   };
   
-    const mainDashboardContent = () => (
+  const mainDashboardContent = () => (
     <>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {role === 'admin' ? (
@@ -1284,19 +1280,19 @@ export default function TeacherDashboardPage() {
         )}
     </div>
     <Tabs defaultValue="students" className="animate-in fade-in-0 duration-500">
-      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-9' : role === 'teacher' ? 'grid-cols-5' : 'grid-cols-1'}`}>
-        {role !== 'subject_teacher' && <TabsTrigger value="students">學生管理</TabsTrigger>}
+      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-8' : role === 'teacher' ? 'grid-cols-4' : 'grid-cols-1'}`}>
+        <TabsTrigger value="students">學生管理</TabsTrigger>
         {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="stocks">股票管理</TabsTrigger>}
         <TabsTrigger value="points">發送點數</TabsTrigger>
         {role !== 'subject_teacher' && <TabsTrigger value="rewards">獎勵管理</TabsTrigger>}
         {role !== 'subject_teacher' && <TabsTrigger value="challenges">挑戰管理</TabsTrigger>}
-        {role !== 'subject_teacher' && <TabsTrigger value="approvals">
+        <TabsTrigger value="approvals">
             審核中心
             {(pendingRequests.length + loanRequests.length + challengeApprovals.length) > 0 && (
                 <Badge variant="destructive" className="ml-2">{(pendingRequests.length + loanRequests.length + challengeApprovals.length)}</Badge>
             )}
-        </TabsTrigger>}
+        </TabsTrigger>
         {role === 'admin' && <TabsTrigger value="settings">平台設定</TabsTrigger>}
       </TabsList>
       
@@ -1415,7 +1411,7 @@ export default function TeacherDashboardPage() {
                                             {roleNameMapping[teacher.role]}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell>{classes.find(c => c.id === teacher.classId)?.name || 'N/A'}</TableCell>
+                                    <TableCell>{teacher.classIds.map(id => classes.find(c => c.id === id)?.name).join(', ') || 'N/A'}</TableCell>
                                     <TableCell>{(teacher.pointBalance || 0).toLocaleString()}</TableCell>
                                     <TableCell className="text-right">
                                         <TooltipProvider>
@@ -1500,7 +1496,7 @@ export default function TeacherDashboardPage() {
                                 <TableRow key={c.id}>
                                     <TableCell>{c.id}</TableCell>
                                     <TableCell>{c.name}</TableCell>
-                                    <TableCell>{teachers.find(t => t.classId === c.id)?.name || 'N/A'}</TableCell>
+                                    <TableCell>{teachers.find(t => t.role === 'teacher' && t.classIds.includes(c.id))?.name || 'N/A'}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -1688,14 +1684,14 @@ export default function TeacherDashboardPage() {
                 </CardDescription>
             </div>
             {role !== 'subject_teacher' && (
-                <Button onClick={() => setIsBatchAwardDialogOpen(true)} disabled={role === 'subject_teacher' || !selectedClassId}>
+                <Button onClick={() => setIsBatchAwardDialogOpen(true)} disabled={!selectedClassId}>
                     <Users className="mr-2 h-4 w-4" />
                     全班批次發放
                 </Button>
             )}
           </CardHeader>
           <CardContent>
-            {role === 'subject_teacher' && (
+            {(role === 'subject_teacher' || role === 'admin') && (
                 <div className="mb-6">
                     <Label htmlFor="class-select-points">請先選擇班級</Label>
                     <Select onValueChange={setSelectedClassId} value={selectedClassId}>
@@ -1704,7 +1700,7 @@ export default function TeacherDashboardPage() {
                         </SelectTrigger>
                         <SelectContent>
                             {classes.map(c => (
-                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
@@ -2356,13 +2352,13 @@ export default function TeacherDashboardPage() {
             </DialogContent>
         </Dialog>
 
-        <Dialog open={isEditStudentDialogOpen} onOpenChange={(open) => {if(!open) setEditingStudent(null)}}>
+        <Dialog open={isEditStudentDialogOpen} onOpenChange={(open) => {if(!open) setStudentToEdit(null)}}>
             <DialogContent className="sm:max-w-[425px]">
                 <form onSubmit={handleUpdateStudent}>
             <DialogHeader>
                 <DialogTitle>編輯學生資訊</DialogTitle>
                 <DialogDescription>
-                更新「{editingStudent?.name}」的詳細資訊。
+                更新「{studentToEdit?.name}」的詳細資訊。
                 </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -2370,18 +2366,18 @@ export default function TeacherDashboardPage() {
                 <Label htmlFor="student-edit-id" className="text-right">
                     編號
                 </Label>
-                <Input id="student-edit-id" name="id" defaultValue={editingStudent?.id} className="col-span-3" required/>
+                <Input id="student-edit-id" name="id" defaultValue={studentToEdit?.id} className="col-span-3" required/>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="student-edit-name" className="text-right">
                     姓名
                 </Label>
-                <Input id="student-edit-name" name="name" defaultValue={editingStudent?.name} className="col-span-3" required/>
+                <Input id="student-edit-name" name="name" defaultValue={studentToEdit?.name} className="col-span-3" required/>
                 </div>
             </div>
             <DialogFooter>
                 <DialogClose asChild>
-                    <Button type="button" variant="secondary" onClick={() => setEditingStudent(null)}>取消</Button>
+                    <Button type="button" variant="secondary" onClick={() => setStudentToEdit(null)}>取消</Button>
                 </DialogClose>
                 <Button type="submit">儲存變更</Button>
             </DialogFooter>
@@ -2404,13 +2400,13 @@ export default function TeacherDashboardPage() {
             </AlertDialogContent>
         </AlertDialog>
 
-        <Dialog open={isResetPasswordDialogOpen} onOpenChange={(open) => {if(!open) setEditingStudent(null)}}>
+        <Dialog open={isResetPasswordDialogOpen} onOpenChange={(open) => {if(!open) setStudentToEdit(null)}}>
             <DialogContent className="sm:max-w-[425px]">
                 <form onSubmit={handleConfirmResetPassword}>
             <DialogHeader>
                 <DialogTitle>重設密碼</DialogTitle>
                 <DialogDescription>
-                為學生「{editingStudent?.name}」設定一組新密碼。
+                為學生「{studentToEdit?.name}」設定一組新密碼。
                 </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -2423,7 +2419,7 @@ export default function TeacherDashboardPage() {
             </div>
             <DialogFooter>
                 <DialogClose asChild>
-                    <Button type="button" variant="secondary" onClick={() => setEditingStudent(null)}>取消</Button>
+                    <Button type="button" variant="secondary" onClick={() => setStudentToEdit(null)}>取消</Button>
                 </DialogClose>
                 <Button type="submit">儲存密碼</Button>
             </DialogFooter>
@@ -2432,184 +2428,143 @@ export default function TeacherDashboardPage() {
         </Dialog>
         
         {/* Dialogs for Teachers and Classes (Admin only) */}
-        <Dialog open={isAddTeacherDialogOpen} onOpenChange={setIsAddTeacherDialogOpen}>
-            <DialogContent className="sm:max-w-[425px]">
-            <form onSubmit={handleAddTeacher}>
-                <DialogHeader>
-                <DialogTitle>新增老師</DialogTitle>
-                <DialogDescription>建立新的老師帳號並選擇指派的班級。</DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="teacher-id" className="text-right">老師 ID</Label>
-                        <Input id="teacher-id" name="id" className="col-span-3" required />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="teacher-name" className="text-right">姓名</Label>
-                        <Input id="teacher-name" name="name" className="col-span-3" required />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label className="text-right">角色</Label>
-                        <RadioGroup name="role" defaultValue="teacher" className="col-span-3 flex gap-4">
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="teacher" id="role-teacher" />
-                                <Label htmlFor="role-teacher">班級導師</Label>
+        {role === 'admin' && (
+            <>
+                <Dialog open={isAddTeacherDialogOpen} onOpenChange={setIsAddTeacherDialogOpen}>
+                    <DialogContent className="sm:max-w-[425px]">
+                    <form onSubmit={handleAddTeacher}>
+                        <DialogHeader>
+                        <DialogTitle>新增老師</DialogTitle>
+                        <DialogDescription>建立新的老師帳號並選擇指派的班級。</DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="teacher-id" className="text-right">老師 ID</Label>
+                                <Input id="teacher-id" name="id" className="col-span-3" required />
                             </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="subject_teacher" id="role-subject-teacher" />
-                                <Label htmlFor="role-subject-teacher">科任教師</Label>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="teacher-name" className="text-right">姓名</Label>
+                                <Input id="teacher-name" name="name" className="col-span-3" required />
                             </div>
-                        </RadioGroup>
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="teacher-class" className="text-right">指派班級</Label>
-                        <Select name="classId" defaultValue="unassigned">
-                            <SelectTrigger className="col-span-3">
-                                <SelectValue placeholder="選擇一個未指派的班級" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="unassigned">不指派 (科任/待命)</SelectItem>
-                                {unassignedClasses.map(c => (
-                                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-                <DialogFooter>
-                    <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
-                    <Button type="submit">新增老師</Button>
-                </DialogFooter>
-            </form>
-            </DialogContent>
-        </Dialog>
-        <Dialog open={isEditTeacherDialogOpen} onOpenChange={(open) => {if(!open) setEditingTeacher(null)}}>
-            <DialogContent className="sm:max-w-[425px]">
-                <form onSubmit={handleUpdateTeacher}>
-            <DialogHeader>
-                <DialogTitle>編輯老師資訊</DialogTitle>
-                <DialogDescription>
-                更新「{editingTeacher?.name}」的詳細資訊。
-                </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="edit-teacher-id" className="text-right">老師 ID</Label>
-                    <Input id="edit-teacher-id" name="id" defaultValue={editingTeacher?.id} className="col-span-3" required />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-teacher-name" className="text-right">
-                    姓名
-                </Label>
-                <Input id="edit-teacher-name" name="name" defaultValue={editingTeacher?.name} className="col-span-3" required/>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label className="text-right">角色</Label>
-                    <RadioGroup name="role" defaultValue={editingTeacher?.role} className="col-span-3 flex gap-4">
-                        <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="teacher" id="edit-role-teacher" />
-                            <Label htmlFor="edit-role-teacher">班級導師</Label>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label className="text-right">角色</Label>
+                                <RadioGroup name="role" defaultValue="teacher" className="col-span-3 flex gap-4">
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="teacher" id="role-teacher" />
+                                        <Label htmlFor="role-teacher">班級導師</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="subject_teacher" id="role-subject-teacher" />
+                                        <Label htmlFor="role-subject-teacher">科任教師</Label>
+                                    </div>
+                                </RadioGroup>
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="teacher-class" className="text-right">指派班級</Label>
+                                <Select name="classId" defaultValue="unassigned">
+                                    <SelectTrigger className="col-span-3">
+                                        <SelectValue placeholder="選擇一個未指派的班級" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="unassigned">不指派 (科任/待命)</SelectItem>
+                                        {unassignedClasses.map(c => (
+                                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="subject_teacher" id="edit-role-subject-teacher" />
-                            <Label htmlFor="edit-role-subject-teacher">科任教師</Label>
+                        <DialogFooter>
+                            <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
+                            <Button type="submit">新增老師</Button>
+                        </DialogFooter>
+                    </form>
+                    </DialogContent>
+                </Dialog>
+                
+                {editingTeacher && (
+                    <EditTeacherDialog
+                        isOpen={isEditTeacherDialogOpen}
+                        onOpenChange={setIsEditTeacherDialogOpen}
+                        teacher={editingTeacher}
+                        classes={classes}
+                        allTeachers={teachers}
+                        onSave={handleUpdateTeacher}
+                    />
+                )}
+
+                <Dialog open={isResetTeacherPasswordDialogOpen} onOpenChange={(open) => {if(!open) setTeacherToResetPassword(null)}}>
+                    <DialogContent className="sm:max-w-[425px]">
+                    <form onSubmit={handleConfirmResetTeacherPassword}>
+                        <DialogHeader>
+                        <DialogTitle>重設教師密碼</DialogTitle>
+                        <DialogDescription>為老師「{teacherToResetPassword?.name}」設定一組新密碼。</DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="new-password" className="text-right">新密碼</Label>
+                            <Input id="new-password" name="new-password" type="password" className="col-span-3" required />
                         </div>
-                    </RadioGroup>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="edit-teacher-class" className="text-right">指派班級</Label>
-                    <Select name="classId" defaultValue={editingTeacher?.classId || 'unassigned'}>
-                        <SelectTrigger className="col-span-3">
-                            <SelectValue placeholder="選擇班級" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="unassigned">不指派 (科任/待命)</SelectItem>
-                            {classes.map(c => (
-                                <SelectItem key={c.id} value={c.id} disabled={unassignedClasses.every(uc => uc.id !== c.id) && c.id !== editingTeacher?.classId}>
-                                    {c.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-            </div>
-            <DialogFooter>
-                <DialogClose asChild>
-                    <Button type="button" variant="secondary" onClick={() => setEditingTeacher(null)}>取消</Button>
-                </DialogClose>
-                <Button type="submit">儲存變更</Button>
-            </DialogFooter>
-            </form>
-            </DialogContent>
-        </Dialog>
-        <Dialog open={isResetTeacherPasswordDialogOpen} onOpenChange={(open) => {if(!open) setTeacherToResetPassword(null)}}>
-            <DialogContent className="sm:max-w-[425px]">
-            <form onSubmit={handleConfirmResetTeacherPassword}>
-                <DialogHeader>
-                <DialogTitle>重設教師密碼</DialogTitle>
-                <DialogDescription>為老師「{teacherToResetPassword?.name}」設定一組新密碼。</DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="new-password" className="text-right">新密碼</Label>
-                    <Input id="new-password" name="new-password" type="password" className="col-span-3" required />
-                </div>
-                </div>
-                <DialogFooter>
-                <DialogClose asChild>
-                    <Button type="button" variant="secondary" onClick={() => setTeacherToResetPassword(null)}>取消</Button>
-                </DialogClose>
-                <Button type="submit">儲存密碼</Button>
-                </DialogFooter>
-            </form>
-            </DialogContent>
-        </Dialog>
-        <AlertDialog open={!!teacherToDelete} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
-            <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
-                <AlertDialogDescription>
-                您確定要刪除老師「{teacherToDelete?.name}」嗎？此操作將永久移除该老師的帳號且無法復原。
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>取消</AlertDialogCancel>
-                <AlertDialogAction onClick={handleConfirmDeleteTeacher} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-            </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-        <Dialog open={isAddClassDialogOpen} onOpenChange={setIsAddClassDialogOpen}>
-            <DialogContent className="sm:max-w-[425px]">
-                <form onSubmit={handleAddClass}>
-            <DialogHeader>
-                <DialogTitle>新增班級</DialogTitle>
-                <DialogDescription>
-                建立一個新的班級。
-                </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="class-id" className="text-right">
-                    班級 ID
-                </Label>
-                <Input id="class-id" name="id" placeholder="例如 3A" className="col-span-3" required/>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="class-name" className="text-right">
-                    班級名稱
-                </Label>
-                <Input id="class-name" name="name" placeholder="例如 三年甲班" className="col-span-3" required/>
-                </div>
-            </div>
-            <DialogFooter>
-                <DialogClose asChild>
-                    <Button type="button" variant="secondary">取消</Button>
-                </DialogClose>
-                <Button type="submit">新增班級</Button>
-            </DialogFooter>
-            </form>
-            </DialogContent>
-        </Dialog>
+                        </div>
+                        <DialogFooter>
+                        <DialogClose asChild>
+                            <Button type="button" variant="secondary" onClick={() => setTeacherToResetPassword(null)}>取消</Button>
+                        </DialogClose>
+                        <Button type="submit">儲存密碼</Button>
+                        </DialogFooter>
+                    </form>
+                    </DialogContent>
+                </Dialog>
+
+                <AlertDialog open={!!teacherToDelete} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
+                    <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
+                        <AlertDialogDescription>
+                        您確定要刪除老師「{teacherToDelete?.name}」嗎？此操作將永久移除该老師的帳號且無法復原。
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>取消</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmDeleteTeacher} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                    </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+
+                <Dialog open={isAddClassDialogOpen} onOpenChange={setIsAddClassDialogOpen}>
+                    <DialogContent className="sm:max-w-[425px]">
+                        <form onSubmit={handleAddClass}>
+                    <DialogHeader>
+                        <DialogTitle>新增班級</DialogTitle>
+                        <DialogDescription>
+                        建立一個新的班級。
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="class-id" className="text-right">
+                            班級 ID
+                        </Label>
+                        <Input id="class-id" name="id" placeholder="例如 3A" className="col-span-3" required/>
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="class-name" className="text-right">
+                            班級名稱
+                        </Label>
+                        <Input id="class-name" name="name" placeholder="例如 三年甲班" className="col-span-3" required/>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button type="button" variant="secondary">取消</Button>
+                        </DialogClose>
+                        <Button type="submit">新增班級</Button>
+                    </DialogFooter>
+                    </form>
+                    </DialogContent>
+                </Dialog>
+            </>
+        )}
 
         {/* Dialogs for Stock Management (Admin only) */}
         <Dialog open={isAddStockDialogOpen} onOpenChange={setIsAddStockDialogOpen}>
@@ -2644,33 +2599,33 @@ export default function TeacherDashboardPage() {
                 </form>
             </DialogContent>
         </Dialog>
-        <Dialog open={isEditStockDialogOpen} onOpenChange={(open) => { if(!open) setEditingStock(null) }}>
+        <Dialog open={isEditStockDialogOpen} onOpenChange={(open) => { if(!open) setStockToEdit(null) }}>
             <DialogContent className="sm:max-w-[425px]">
                 <form onSubmit={handleUpdateStock}>
                     <DialogHeader>
                         <DialogTitle>編輯股票</DialogTitle>
-                        <DialogDescription>更新「{editingStock?.name}」的資訊。</DialogDescription>
+                        <DialogDescription>更新「{stockToEdit?.name}」的資訊。</DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="stock-edit-ticker" className="text-right">代碼</Label>
-                            <Input id="stock-edit-ticker" name="ticker" defaultValue={editingStock?.ticker} className="col-span-3 font-mono" disabled />
+                            <Input id="stock-edit-ticker" name="ticker" defaultValue={stockToEdit?.ticker} className="col-span-3 font-mono" disabled />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="stock-edit-name" className="text-right">公司名稱</Label>
-                            <Input id="stock-edit-name" name="name" defaultValue={editingStock?.name} className="col-span-3" required />
+                            <Input id="stock-edit-name" name="name" defaultValue={stockToEdit?.name} className="col-span-3" required />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="stock-edit-price" className="text-right">目前價格</Label>
-                            <Input id="stock-edit-price" name="price" type="number" step="0.01" defaultValue={editingStock?.price} className="col-span-3" required />
+                            <Input id="stock-edit-price" name="price" type="number" step="0.01" defaultValue={stockToEdit?.price} className="col-span-3" required />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="stock-edit-marketCap" className="text-right">市值</Label>
-                            <Input id="stock-edit-marketCap" name="marketCap" defaultValue={editingStock?.marketCap} className="col-span-3" required />
+                            <Input id="stock-edit-marketCap" name="marketCap" defaultValue={stockToEdit?.marketCap} className="col-span-3" required />
                         </div>
                     </div>
                     <DialogFooter>
-                        <DialogClose asChild><Button type="button" variant="secondary" onClick={() => setEditingStock(null)}>取消</Button></DialogClose>
+                        <DialogClose asChild><Button type="button" variant="secondary" onClick={() => setStockToEdit(null)}>取消</Button></DialogClose>
                         <Button type="submit">儲存變更</Button>
                     </DialogFooter>
                 </form>
@@ -2752,4 +2707,122 @@ export default function TeacherDashboardPage() {
         </Dialog>
     </div>
   );
+}
+
+// Separate component for the Edit Teacher Dialog to manage its own state
+interface EditTeacherDialogProps {
+    isOpen: boolean;
+    onOpenChange: (isOpen: boolean) => void;
+    teacher: Teacher;
+    classes: Class[];
+    allTeachers: Teacher[];
+    onSave: (updatedTeacher: Teacher) => void;
+}
+
+function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers, onSave }: EditTeacherDialogProps) {
+    const [name, setName] = useState(teacher.name);
+    const [role, setRole] = useState(teacher.role);
+    const [classIds, setClassIds] = useState<string[]>(teacher.classIds || []);
+
+    // Recalculate available classes for homeroom teacher assignment
+    const unassignedClasses = useMemo(() => {
+        const assignedClassIds = allTeachers
+            .filter(t => t.role === 'teacher' && t.id !== teacher.id) // Exclude current teacher
+            .flatMap(t => t.classIds);
+        return classes.filter(c => !assignedClassIds.includes(c.id));
+    }, [classes, allTeachers, teacher.id]);
+
+    useEffect(() => {
+        setName(teacher.name);
+        setRole(teacher.role);
+        setClassIds(teacher.classIds || []);
+    }, [teacher]);
+
+    const handleRoleChange = (newRole: 'teacher' | 'subject_teacher' | 'admin') => {
+        setRole(newRole);
+        // Reset class assignments when role changes
+        setClassIds([]);
+    };
+    
+    const handleHomeroomClassChange = (newClassId: string) => {
+        setClassIds(newClassId === 'unassigned' ? [] : [newClassId]);
+    };
+
+    const handleSubjectClassChange = (classId: string, isChecked: boolean) => {
+        setClassIds(prev => isChecked ? [...prev, classId] : prev.filter(id => id !== classId));
+    };
+
+    const handleSaveChanges = () => {
+        onSave({ ...teacher, name, role, classIds });
+    };
+
+    return (
+         <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>編輯老師資訊</DialogTitle>
+                    <DialogDescription>更新「{teacher.name}」的詳細資訊。</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="edit-teacher-name">姓名</Label>
+                        <Input id="edit-teacher-name" value={name} onChange={e => setName(e.target.value)} required />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>角色</Label>
+                        <RadioGroup value={role} onValueChange={handleRoleChange}>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="teacher" id="edit-role-teacher" />
+                                <Label htmlFor="edit-role-teacher">班級導師</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="subject_teacher" id="edit-role-subject-teacher" />
+                                <Label htmlFor="edit-role-subject-teacher">科任教師</Label>
+                            </div>
+                        </RadioGroup>
+                    </div>
+                    <div className="space-y-2">
+                         <Label>指派班級</Label>
+                        {role === 'teacher' && (
+                            <Select value={classIds[0] || 'unassigned'} onValueChange={handleHomeroomClassChange}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="選擇班級" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="unassigned">不指派</SelectItem>
+                                    {unassignedClasses.map(c => (
+                                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )}
+                        {role === 'subject_teacher' && (
+                            <ScrollArea className="h-40 rounded-md border p-4">
+                               <div className="space-y-2">
+                                 {classes.map(c => (
+                                    <div key={c.id} className="flex items-center space-x-2">
+                                        <Checkbox 
+                                            id={`class-${c.id}`} 
+                                            checked={classIds.includes(c.id)}
+                                            onCheckedChange={(checked) => handleSubjectClassChange(c.id, !!checked)}
+                                        />
+                                        <label htmlFor={`class-${c.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                            {c.name}
+                                        </label>
+                                    </div>
+                                ))}
+                               </div>
+                            </ScrollArea>
+                        )}
+                    </div>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button type="button" variant="secondary">取消</Button>
+                    </DialogClose>
+                    <Button type="button" onClick={handleSaveChanges}>儲存變更</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
 }
