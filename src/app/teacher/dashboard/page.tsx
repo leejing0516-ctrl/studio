@@ -129,7 +129,7 @@ export default function TeacherDashboardPage() {
 
   // Consolidated useEffect for initialization
   useEffect(() => {
-    // 1. Load data from localStorage
+    // This effect runs only once on mount to initialize the component's state
     const storedRole = localStorage.getItem('teacherRole');
     const storedTeacherId = localStorage.getItem('teacherId');
     const storedClassIdsStr = localStorage.getItem('teacherClassIds');
@@ -146,24 +146,23 @@ export default function TeacherDashboardPage() {
             // Ignore error, keep it as empty array
         }
     }
-
-    // 2. Set default class selection based on role
-    if (storedRole === 'admin' && classes.length > 0) {
-        setSelectedClassId(classes[0].id);
-    } else if (storedRole === 'teacher' && initialClassIds.length > 0) {
-        setSelectedClassId(initialClassIds[0]);
-    } else if (storedRole === 'subject_teacher' && initialClassIds.length > 0) {
-        setSelectedClassId(initialClassIds[0]);
-    }
-    
-    // 3. Set platform config values
+     // Set platform config values locally
     if (platformConfig) {
         setPlatformLogoPreview(platformConfig.platformLogoUrl || null);
         setSponsorLogoPreviews(platformConfig.sponsorLogoUrls || Array(4).fill(null));
         setFixedDepositRate((platformConfig.fixedDepositInterestRate || 0) * 100);
         setLoanInterestRate((platformConfig.loanInterestRate || 0) * 100);
     }
-  }, [platformConfig, classes]); // Depend on data from context
+  }, [platformConfig]); 
+  
+  useEffect(() => {
+    // This effect handles setting the default selected class once dependencies are ready
+    if (role === 'admin' && !selectedClassId && classes.length > 0) {
+        setSelectedClassId(classes[0].id);
+    } else if ((role === 'teacher' || role === 'subject_teacher') && !selectedClassId && teacherClassIds.length > 0) {
+        setSelectedClassId(teacherClassIds[0]);
+    }
+  }, [role, selectedClassId, classes, teacherClassIds]);
 
   const currentTeacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
 
@@ -197,7 +196,6 @@ export default function TeacherDashboardPage() {
   }, [rewards, role, teacherId]);
 
   const [isAddStudentDialogOpen, setIsAddStudentDialogOpen] = useState(false);
-  const [isEditStudentDialogOpen, setIsEditStudentDialogOpen] = useState(false);
   const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const [studentToResetPassword, setStudentToResetPassword] = useState<Student | null>(null);
@@ -498,7 +496,6 @@ export default function TeacherDashboardPage() {
   
   const handleEditStudentClick = (student: Student) => {
     setStudentToEdit(student);
-    setIsEditStudentDialogOpen(true);
   }
 
   const handleUpdateStudent = (event: React.FormEvent<HTMLFormElement>) => {
@@ -526,7 +523,6 @@ export default function TeacherDashboardPage() {
         return s;
     }));
     
-    setIsEditStudentDialogOpen(false);
     setStudentToEdit(null);
     toast({
         title: "學生資訊已更新",
@@ -953,6 +949,7 @@ export default function TeacherDashboardPage() {
 
   const handleAddStock = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const formData = new FormData(event.currentTarget);
     const ticker = (formData.get("ticker") as string).toUpperCase();
     
     if (stocks.some(s => s.ticker === ticker)) {
@@ -2406,36 +2403,36 @@ export default function TeacherDashboardPage() {
             </DialogContent>
         </Dialog>
 
-        <Dialog open={isEditStudentDialogOpen} onOpenChange={(open) => {if(!open) setStudentToEdit(null)}}>
+        <Dialog open={!!studentToEdit} onOpenChange={(open) => {if(!open) setStudentToEdit(null)}}>
             <DialogContent className="sm:max-w-[425px]">
                 <form onSubmit={handleUpdateStudent}>
-            <DialogHeader>
-                <DialogTitle>編輯學生資訊</DialogTitle>
-                <DialogDescription>
-                更新「{studentToEdit?.name}」的詳細資訊。
-                </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="student-edit-id" className="text-right">
-                    編號
-                </Label>
-                <Input id="student-edit-id" name="id" defaultValue={studentToEdit?.id} className="col-span-3" required/>
+                <DialogHeader>
+                    <DialogTitle>編輯學生資訊</DialogTitle>
+                    <DialogDescription>
+                    更新「{studentToEdit?.name}」的詳細資訊。
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="student-edit-id" className="text-right">
+                        編號
+                    </Label>
+                    <Input id="student-edit-id" name="id" defaultValue={studentToEdit?.id} className="col-span-3" required/>
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="student-edit-name" className="text-right">
+                        姓名
+                    </Label>
+                    <Input id="student-edit-name" name="name" defaultValue={studentToEdit?.name} className="col-span-3" required/>
+                    </div>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="student-edit-name" className="text-right">
-                    姓名
-                </Label>
-                <Input id="student-edit-name" name="name" defaultValue={studentToEdit?.name} className="col-span-3" required/>
-                </div>
-            </div>
-            <DialogFooter>
-                <DialogClose asChild>
-                    <Button type="button" variant="secondary" onClick={() => setStudentToEdit(null)}>取消</Button>
-                </DialogClose>
-                <Button type="submit">儲存變更</Button>
-            </DialogFooter>
-            </form>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button type="button" variant="secondary">取消</Button>
+                    </DialogClose>
+                    <Button type="submit">儲存變更</Button>
+                </DialogFooter>
+                </form>
             </DialogContent>
         </Dialog>
         
@@ -2458,7 +2455,7 @@ export default function TeacherDashboardPage() {
             </div>
             <DialogFooter>
                 <DialogClose asChild>
-                    <Button type="button" variant="secondary" onClick={() => setStudentToResetPassword(null)}>取消</Button>
+                    <Button type="button" variant="secondary">取消</Button>
                 </DialogClose>
                 <Button type="submit">儲存密碼</Button>
             </DialogFooter>
