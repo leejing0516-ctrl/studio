@@ -644,7 +644,7 @@ export default function TeacherDashboardPage() {
                     student.errors.push('缺少或無效的密碼');
                 }
 
-                if (student.status === 'valid' && students.some(s => s.id === student.id && s.classId === selectedClassId)) {
+                if (student.status === 'valid' && students.some(s => `${s.classId}-${s.id}` === `${selectedClassId}-${student.id}`)) {
                     student.status = 'duplicate';
                 }
 
@@ -674,7 +674,7 @@ export default function TeacherDashboardPage() {
         password: s.password!,
         classId: selectedClassId,
         points: 0,
-        avatar: `https://picsum.photos/seed/${s.id}/100`,
+        avatar: `https://picsum.photos/seed/${selectedClassId}-${s.id}/100`,
         portfolio: [],
         redeemedRewards: [],
         loans: [],
@@ -687,7 +687,6 @@ export default function TeacherDashboardPage() {
         const otherClassesStudents = currentStudents.filter(s => s.classId !== selectedClassId);
         const existingStudentsInClass = currentStudents.filter(s => s.classId === selectedClassId);
         
-        // Use a Map to handle potential duplicates within the new import vs existing
         const studentMap = new Map(existingStudentsInClass.map(s => [s.id, s]));
         newStudents.forEach(newStudent => {
             studentMap.set(newStudent.id, newStudent);
@@ -1044,9 +1043,9 @@ export default function TeacherDashboardPage() {
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
                                                         <AlertDialogTrigger asChild>
-                                                          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
-                                                              <Trash2 className="h-4 w-4" />
-                                                          </Button>
+                                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
                                                         </AlertDialogTrigger>
                                                     </TooltipTrigger>
                                                     <TooltipContent><p>刪除</p></TooltipContent>
@@ -1423,6 +1422,7 @@ export default function TeacherDashboardPage() {
                             type="number"
                             placeholder="要調整的點數"
                             value={adjustFundsAmount}
+                            min="1"
                             onChange={(e) => setAdjustFundsAmount(e.target.value === '' ? '' : Number(e.target.value))}
                             required 
                         />
@@ -1454,6 +1454,7 @@ export default function TeacherDashboardPage() {
                             type="number"
                             placeholder="要分配的點數量"
                             value={allocationAmount}
+                            min="1"
                             onChange={(e) => setAllocationAmount(e.target.value === '' ? '' : Number(e.target.value))}
                             required 
                         />
@@ -1973,3 +1974,4 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
         </Dialog>
     )
 }
+
