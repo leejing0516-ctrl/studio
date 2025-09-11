@@ -42,7 +42,7 @@ export default function AnnouncementsPage() {
                 </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                <div className="prose prose-sm max-w-none text-foreground whitespace-pre-wrap">
+                <div className="prose prose-sm max-w-none text-foreground">
                     {ann.content}
                 </div>
                 </AccordionContent>
