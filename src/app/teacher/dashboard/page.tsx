@@ -101,8 +101,8 @@ export default function TeacherDashboardPage() {
   const [sponsorLogoFiles, setSponsorLogoFiles] = useState<(File | null)[]>(Array(4).fill(null));
   const [sponsorLogoPreviews, setSponsorLogoPreviews] = useState<(string | null)[]>(platformConfig?.sponsorLogoUrls || Array(4).fill(null));
   const [isSavingSettings, setIsSavingSettings] = useState(false);
-  const [fixedDepositRate, setFixedDepositRate] = useState<number | string>('');
-  const [loanInterestRate, setLoanInterestRate] = useState<number | string>('');
+  const [fixedDepositRate, setFixedDepositRate] = useState<number | string>((platformConfig?.fixedDepositInterestRate || 0) * 100);
+  const [loanInterestRate, setLoanInterestRate] = useState<number | string>((platformConfig?.loanInterestRate || 0) * 100);
   
   // State for Central Bank
   const [isAdjustFundsDialogOpen, setIsAdjustFundsDialogOpen] = useState(false);
@@ -136,21 +136,24 @@ export default function TeacherDashboardPage() {
     setTeacherId(storedTeacherId);
     if (storedClassIds) {
         try {
-            setTeacherClassIds(JSON.parse(storedClassIds));
+            const parsedClassIds = JSON.parse(storedClassIds);
+            setTeacherClassIds(parsedClassIds);
+            // If teacher is not admin, select their first class by default
+            if (storedRole === 'teacher' && parsedClassIds.length > 0) {
+                setSelectedClassId(parsedClassIds[0]);
+            }
         } catch {
             setTeacherClassIds([]);
         }
     }
   }, []);
 
-  // Effect for auto-selecting class after initial data is loaded
+  // Effect for auto-selecting class for admin after initial data is loaded
   useEffect(() => {
     if (role === 'admin' && !selectedClassId && classes.length > 0) {
         setSelectedClassId(classes[0].id);
-    } else if (role === 'teacher' && !selectedClassId && teacherClassIds.length > 0) {
-        setSelectedClassId(teacherClassIds[0]);
     }
-  }, [role, classes, selectedClassId, teacherClassIds]);
+  }, [role, classes, selectedClassId]);
 
   const currentTeacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
 
@@ -192,7 +195,6 @@ export default function TeacherDashboardPage() {
   const [isAddTeacherDialogOpen, setIsAddTeacherDialogOpen] = useState(false);
   const [isEditTeacherDialogOpen, setIsEditTeacherDialogOpen] = useState(false);
   const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
-  const [isResetTeacherPasswordDialogOpen, setIsResetTeacherPasswordDialogOpen] = useState(false);
   const [teacherToResetPassword, setTeacherToResetPassword] = useState<Teacher | null>(null);
   
   const [isAddClassDialogOpen, setIsAddClassDialogOpen] = useState(false);
@@ -616,7 +618,6 @@ export default function TeacherDashboardPage() {
 
   const handleResetTeacherPasswordClick = (teacher: Teacher) => {
     setTeacherToResetPassword(teacher);
-    setIsResetTeacherPasswordDialogOpen(true);
   };
 
   const handleConfirmResetTeacherPassword = (event: React.FormEvent<HTMLFormElement>) => {
@@ -640,7 +641,6 @@ export default function TeacherDashboardPage() {
         description: `老師 ${teacherToResetPassword.name} 的密碼已成功重設。`
     });
 
-    setIsResetTeacherPasswordDialogOpen(false);
     setTeacherToResetPassword(null);
   };
   
@@ -944,7 +944,6 @@ export default function TeacherDashboardPage() {
 
   const handleAddStock = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
     const ticker = (formData.get("ticker") as string).toUpperCase();
     
     if (stocks.some(s => s.ticker === ticker)) {
@@ -1402,12 +1401,12 @@ export default function TeacherDashboardPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {teachers.filter(t => t.role !== 'admin').map(teacher => (
+                            {teachers.map(teacher => (
                                 <TableRow key={teacher.id}>
                                     <TableCell>{teacher.id}</TableCell>
                                     <TableCell>{teacher.name}</TableCell>
                                     <TableCell>
-                                        <Badge variant={teacher.role === 'teacher' ? 'default' : 'secondary'}>
+                                        <Badge variant={teacher.role === 'admin' ? 'destructive' : teacher.role === 'teacher' ? 'default' : 'secondary'}>
                                             {roleNameMapping[teacher.role]}
                                         </Badge>
                                     </TableCell>
@@ -2493,7 +2492,7 @@ export default function TeacherDashboardPage() {
                     />
                 )}
 
-                <Dialog open={isResetTeacherPasswordDialogOpen} onOpenChange={(open) => {if(!open) setTeacherToResetPassword(null)}}>
+                <Dialog open={!!teacherToResetPassword} onOpenChange={(open) => !open && setTeacherToResetPassword(null)}>
                     <DialogContent className="sm:max-w-[425px]">
                     <form onSubmit={handleConfirmResetTeacherPassword}>
                         <DialogHeader>
@@ -2774,7 +2773,7 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
                     </div>
                     <div className="space-y-2">
                         <Label>角色</Label>
-                        <RadioGroup value={currentRole} onValueChange={handleRoleChange}>
+                        <RadioGroup value={currentRole} onValueChange={(newRole) => handleRoleChange(newRole as any)}>
                             <div className="flex items-center space-x-2">
                                 <RadioGroupItem value="teacher" id="edit-role-teacher" />
                                 <Label htmlFor="edit-role-teacher">班級導師</Label>
@@ -2788,7 +2787,7 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
                     <div className="space-y-2">
                          <Label>指派班級</Label>
                         {currentRole === 'teacher' && (
-                            <Select value={currentClassIds[0] || 'unassigned'} onValueChange={handleHomeroomClassChange}>
+                            <Select value={(currentClassIds && currentClassIds[0]) || 'unassigned'} onValueChange={handleHomeroomClassChange}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="選擇班級" />
                                 </SelectTrigger>
@@ -2837,5 +2836,7 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
     )
 }
 
+
+    
 
     
