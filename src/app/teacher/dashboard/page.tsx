@@ -253,7 +253,7 @@ export default function TeacherDashboardPage() {
       }
     }
   
-    setStudents(currentStudents => currentStudents.map(student => {
+    await setStudents(currentStudents => currentStudents.map(student => {
         if (student.id === studentId && student.classId === selectedClassId) {
             const today = new Date().toISOString();
             const actionText = isDeducting ? "扣除" : "發放";
@@ -268,20 +268,18 @@ export default function TeacherDashboardPage() {
     if (role !== 'admin' && currentTeacher) {
         await setTeachers(currentTeachers => currentTeachers.map(t => {
             if (t.id === teacherId) {
-                const newBalance = (t.pointBalance || 0) + (isDeducting ? Math.abs(pointsToChange) : -pointsToChange);
+                const newBalance = (t.pointBalance || 0) - pointsToChange;
                 return { ...t, pointBalance: newBalance };
             }
             return t;
         }));
     }
   
-    setTimeout(() => {
-        const studentToUpdate = students.find(s => s.id === studentId && s.classId === selectedClassId);
-        toast({
-            title: `點數已${isDeducting ? '扣除' : '發放'}！`,
-            description: `您已成功對 ${studentToUpdate?.name} ${isDeducting ? '扣除' : '發放'} ${Math.abs(pointsToChange).toLocaleString()} 點。`
-        })
-    }, 1);
+    const studentToUpdate = students.find(s => s.id === studentId && s.classId === selectedClassId);
+    toast({
+        title: `點數已${isDeducting ? '扣除' : '發放'}！`,
+        description: `您已成功對 ${studentToUpdate?.name} ${isDeducting ? '扣除' : '發放'} ${Math.abs(pointsToChange).toLocaleString()} 點。`
+    })
   }
 
   const handleBatchAwardPoints = async () => {
@@ -292,9 +290,9 @@ export default function TeacherDashboardPage() {
     }
     const isDeducting = pointsToChange < 0;
     
-    if (role !== 'admin' && !isDeducting) {
+    if (role !== 'admin') {
       const totalPointsToAward = studentsInView.length * pointsToChange;
-      if (!currentTeacher || (currentTeacher.pointBalance || 0) < totalPointsToAward) {
+      if (!isDeducting && (!currentTeacher || (currentTeacher.pointBalance || 0) < totalPointsToAward)) {
         toast({ title: "點數餘額不足", description: `您的點數餘額不足以進行此次批次發放。需要 ${totalPointsToAward.toLocaleString()} 點，但您只有 ${(currentTeacher?.pointBalance || 0).toLocaleString()} 點。`, variant: "destructive" });
         return;
       }
@@ -316,7 +314,7 @@ export default function TeacherDashboardPage() {
       const totalPointsToChange = studentsInView.length * pointsToChange;
       await setTeachers(currentTeachers => currentTeachers.map(t => {
         if (t.id === teacherId) {
-          const newBalance = (t.pointBalance || 0) + (isDeducting ? Math.abs(totalPointsToChange) : -totalPointsToChange);
+          const newBalance = (t.pointBalance || 0) - totalPointsToChange;
           return { ...t, pointBalance: newBalance };
         }
         return t;
@@ -745,7 +743,14 @@ export default function TeacherDashboardPage() {
         return;
     }
 
-    await setStudents(newStudents);
+    await setStudents(currentStudents => {
+        const studentMap = new Map(currentStudents.map(s => [`${s.classId}-${s.id}`, s]));
+        newStudents.forEach(s => {
+            studentMap.set(`${s.classId}-${s.id}`, s);
+        });
+        return Array.from(studentMap.values());
+    });
+
 
     toast({
         title: "匯入成功",
@@ -2060,3 +2065,4 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
 
 
     
+

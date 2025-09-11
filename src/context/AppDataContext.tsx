@@ -95,48 +95,37 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   }, []);
   
     const setStudents = async (updater: Student[] | ((prev: Student[]) => Student[])) => {
+        const currentStudents = await fetchData<Student>('students');
+        let intendedState: Student[];
+
+        if (typeof updater === 'function') {
+            intendedState = updater(currentStudents);
+        } else {
+            intendedState = updater;
+        }
+
+        const studentMap = new Map<string, Student>();
+        intendedState.forEach(student => {
+            if (student && student.classId && student.id) {
+                studentMap.set(`${student.classId}-${student.id}`, student);
+            }
+        });
+        const uniqueStudents = Array.from(studentMap.values());
+
         try {
             const batch = writeBatch(db);
-            let dataToWrite: Student[];
-
-            // Determine the final list of students to write.
-            if (typeof updater === 'function') {
-                // If it's a function, we must get the current state first.
-                // This is less ideal as it might use a slightly stale local state.
-                // Should primarily be used for simple updates like single student changes.
-                 const currentState = students; // Use local state for immediate feedback
-                 dataToWrite = updater(currentState);
-            } else {
-                // If it's a direct array, it represents a list of changes to apply.
-                // We'll merge this with the full list from the DB to ensure completeness.
-                const allStudents = await fetchData<Student>('students');
-                const studentMap = new Map<string, Student>();
-                allStudents.forEach(student => studentMap.set(`${student.classId}-${student.id}`, student));
-                updater.forEach(student => studentMap.set(`${student.classId}-${student.id}`, student));
-                dataToWrite = Array.from(studentMap.values());
-            }
-            
-            // Ensure uniqueness before writing to DB
-            const uniqueStudentMap = new Map<string, Student>();
-            dataToWrite.forEach(student => {
-                 if (student && student.classId && student.id) {
-                    uniqueStudentMap.set(`${student.classId}-${student.id}`, student)
-                 }
-            });
-            const uniqueStudents = Array.from(uniqueStudentMap.values());
-
             uniqueStudents.forEach(student => {
                 const studentDocId = `${student.classId}-${student.id}`;
                 const studentRef = doc(db, 'students', studentDocId);
                 batch.set(studentRef, student, { merge: true });
             });
-            
+
             await batch.commit();
 
             // After a successful write, refetch to ensure perfect sync
             const freshStudents = await fetchData<Student>('students');
             setStudentsState(freshStudents);
-            
+
         } catch (error) {
             console.error(`Transaction failed for students: `, error);
             // On failure, refetch to revert to the last known good state from DB
@@ -146,7 +135,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const setRewards = async (updater: (prev: Reward[]) => Reward[]) => {
-        const currentState = rewards;
+        const currentState = await fetchData<Reward>('rewards');
         const finalState = updater(currentState);
         
         try {
@@ -172,7 +161,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     };
     
     const setStocks = async (updater: (prev: Stock[]) => Stock[]) => {
-        const currentState = stocks;
+        const currentState = await fetchData<Stock>('stocks');
         const finalState = updater(currentState);
         
         try {
@@ -197,7 +186,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const setClasses = async (updater: (prev: Class[]) => Class[]) => {
-        const currentState = classes;
+        const currentState = await fetchData<Class>('classes');
         const finalState = updater(currentState);
         
         try {
@@ -222,7 +211,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const setTeachers = async (updater: (prev: Teacher[]) => Teacher[]) => {
-        const currentState = teachers;
+        const currentState = await fetchData<Teacher>('teachers');
         const finalState = updater(currentState);
         
         try {
