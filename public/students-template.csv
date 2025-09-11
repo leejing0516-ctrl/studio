@@ -1,4 +1,4 @@
-id,name,password
-S101,王小明,pass101
-S102,陳美麗,pass102
-S103,李大偉,pass103
+classId,id,name,password
+6A,S001,陳囿嘉,001
+6A,S002,王大明,002
+6B,S003,李小美,003

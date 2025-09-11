@@ -35,7 +35,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -57,6 +56,7 @@ import { cn } from "@/lib/utils";
 
 
 interface StagedStudent {
+    classId: string;
     id: string;
     name: string;
     password?: string;
@@ -347,7 +347,7 @@ export default function TeacherDashboardPage() {
         classId: selectedClassId,
         password,
         points: 0,
-        avatar: `https://picsum.photos/seed/${id}/100`,
+        avatar: `https://picsum.photos/seed/${selectedClassId}-${id}/100`,
         portfolio: [],
         redeemedRewards: [],
         loans: [],
@@ -615,19 +615,29 @@ export default function TeacherDashboardPage() {
 
   const parseCsvFile = (file: File) => {
     setStagedStudents([]);
+    const existingStudentKeys = new Set(students.map(s => `${s.classId}-${s.id}`));
+    const allClassIds = new Set(classes.map(c => c.id));
+
     Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
         encoding: "utf-8",
         complete: (results) => {
             const parsedData: StagedStudent[] = results.data.map((row: any) => {
-                const student: StagedStudent = { id: '', name: '', password: '', status: 'valid', errors: [] };
+                const student: StagedStudent = { classId: '', id: '', name: '', password: '', status: 'valid', errors: [] };
                 
+                if (row.classId && typeof row.classId === 'string' && row.classId.trim() && allClassIds.has(row.classId.trim())) {
+                    student.classId = row.classId.trim();
+                } else {
+                    student.status = 'invalid';
+                    student.errors.push(`無效或不存在的班級ID: ${row.classId}`);
+                }
+
                 if (row.id && typeof row.id === 'string' && row.id.trim()) {
                     student.id = row.id.trim();
                 } else {
                     student.status = 'invalid';
-                    student.errors.push('缺少或無效的 ID');
+                    student.errors.push('缺少或無效的學生編號');
                 }
 
                 if (row.name && typeof row.name === 'string' && row.name.trim()) {
@@ -644,7 +654,7 @@ export default function TeacherDashboardPage() {
                     student.errors.push('缺少或無效的密碼');
                 }
 
-                if (student.status === 'valid' && students.some(s => `${s.classId}-${s.id}` === `${selectedClassId}-${student.id}`)) {
+                if (student.status === 'valid' && existingStudentKeys.has(`${student.classId}-${student.id}`)) {
                     student.status = 'duplicate';
                 }
 
@@ -660,10 +670,10 @@ export default function TeacherDashboardPage() {
   
  const handleConfirmImport = async () => {
     setIsImporting(true);
-    const validStudentsToImport = stagedStudents.filter(s => s.status === 'valid');
+    const validStudentsToImport = stagedStudents.filter(s => s.status === 'valid' || s.status === 'duplicate');
     
     if (validStudentsToImport.length === 0) {
-        toast({ title: "沒有可匯入的學生", description: "請檢查您的 CSV 檔案，沒有找到可匯入的新學生。", variant: "destructive" });
+        toast({ title: "沒有可匯入的學生", description: "請檢查您的 CSV 檔案，沒有找到可匯入或更新的新學生。", variant: "destructive" });
         setIsImporting(false);
         return;
     }
@@ -672,9 +682,9 @@ export default function TeacherDashboardPage() {
         id: s.id,
         name: s.name,
         password: s.password!,
-        classId: selectedClassId,
+        classId: s.classId,
         points: 0,
-        avatar: `https://picsum.photos/seed/${selectedClassId}-${s.id}/100`,
+        avatar: `https://picsum.photos/seed/${s.classId}-${s.id}/100`,
         portfolio: [],
         redeemedRewards: [],
         loans: [],
@@ -683,11 +693,20 @@ export default function TeacherDashboardPage() {
         fixedDeposits: [],
     }));
 
-    await setStudents(currentStudents => [...currentStudents, ...newStudents]);
+    await setStudents(currentStudents => {
+        const studentMap = new Map(currentStudents.map(s => [`${s.classId}-${s.id}`, s]));
+        newStudents.forEach(s => {
+            const key = `${s.classId}-${s.id}`;
+            const existingStudent = studentMap.get(key);
+            // Keep existing data like points, portfolio etc. when updating a student
+            studentMap.set(key, { ...(existingStudent || {}), ...s });
+        });
+        return Array.from(studentMap.values());
+    });
 
     toast({
         title: "匯入成功",
-        description: `已成功匯入 ${newStudents.length} 位學生到 ${classes.find(c=>c.id === selectedClassId)?.name}。`
+        description: `已成功處理 ${validStudentsToImport.length} 位學生資料。`
     });
 
     setIsImporting(false);
@@ -1355,7 +1374,7 @@ export default function TeacherDashboardPage() {
                             </TableHeader>
                             <TableBody>
                                 {challengeApprovals.length > 0 ? challengeApprovals.map(({student, studentChallenge, challenge}) => (
-                                     <TableRow key={`${student.id}-${studentChallenge.challengeId}`}>
+                                     <TableRow key={`${student.classId}-${student.id}-${studentChallenge.challengeId}`}>
                                         <TableCell>{student.name}</TableCell>
                                         <TableCell>{challenge?.name}</TableCell>
                                         <TableCell className="text-right">
@@ -1550,8 +1569,7 @@ export default function TeacherDashboardPage() {
                 <DialogHeader>
                     <DialogTitle>批次匯入學生</DialogTitle>
                     <DialogDescription>
-                        上傳一個 CSV 檔案來批次新增學生到「{classes.find(c => c.id === selectedClassId)?.name}」。
-                        檔案必須包含 `id`, `name`, 和 `password` 這三個欄位。
+                        上傳一個 CSV 檔案來批次新增或更新學生資料。檔案必須包含 `classId`, `id`, `name`, 和 `password` 這四個欄位。
                     </DialogDescription>
                     <p className="text-sm text-destructive font-medium">
                         重要提示：為避免乱碼，請務必將您的 CSV 檔案另存為 `UTF-8` 編碼格式後再上傳。
@@ -1574,19 +1592,21 @@ export default function TeacherDashboardPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>ID</TableHead>
+                                            <TableHead>班級ID</TableHead>
+                                            <TableHead>學生編號</TableHead>
                                             <TableHead>姓名</TableHead>
                                             <TableHead>狀態</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {stagedStudents.map((student, index) => (
-                                            <TableRow key={index}>
+                                            <TableRow key={`${student.classId}-${student.id}-${index}`}>
+                                                <TableCell>{student.classId}</TableCell>
                                                 <TableCell>{student.id}</TableCell>
                                                 <TableCell>{student.name}</TableCell>
                                                 <TableCell>
                                                     {student.status === 'valid' && <Badge variant="default">可匯入</Badge>}
-                                                    {student.status === 'duplicate' && <Badge variant="secondary">ID 重複</Badge>}
+                                                    {student.status === 'duplicate' && <Badge variant="secondary">將更新</Badge>}
                                                     {student.status === 'invalid' && (
                                                         <TooltipProvider>
                                                             <Tooltip>
@@ -1614,9 +1634,9 @@ export default function TeacherDashboardPage() {
                     </DialogClose>
                     <Button 
                         onClick={handleConfirmImport} 
-                        disabled={isImporting || stagedStudents.filter(s => s.status === 'valid').length === 0}
+                        disabled={isImporting || stagedStudents.filter(s => s.status === 'valid' || s.status === 'duplicate').length === 0}
                     >
-                        {isImporting ? '匯入中...' : `確認匯入 ${stagedStudents.filter(s => s.status === 'valid').length} 位學生`}
+                        {isImporting ? '匯入中...' : `確認匯入/更新 ${stagedStudents.filter(s => s.status === 'valid' || s.status === 'duplicate').length} 位學生`}
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -1972,5 +1992,6 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
     
 
     
+
 
 

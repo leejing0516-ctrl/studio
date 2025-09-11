@@ -96,7 +96,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   
     const setStudents = async (updater: Student[] | ((prev: Student[]) => Student[])) => {
         try {
-            const currentStudents = students;
+            const currentStudents = await fetchData<Student>('students');
             let dataToWrite: Student[];
 
             if (typeof updater === 'function') {
@@ -105,29 +105,28 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 dataToWrite = updater;
             }
 
-            // Deduplication logic using a Map
             const studentMap = new Map<string, Student>();
-            dataToWrite.forEach(student => {
+            // First, add all current students to the map
+            currentStudents.forEach(student => {
                 const key = `${student.classId}-${student.id}`;
                 studentMap.set(key, student);
             });
+            // Then, add or update with students from the updater, preserving existing data
+            dataToWrite.forEach(student => {
+                const key = `${student.classId}-${student.id}`;
+                const existingStudent = studentMap.get(key);
+                // Merge new student data with existing data, new data takes precedence
+                const mergedStudent = { ...(existingStudent || {}), ...student };
+                studentMap.set(key, mergedStudent);
+            });
+
             const uniqueStudents = Array.from(studentMap.values());
             
             const batch = writeBatch(db);
             uniqueStudents.forEach(student => {
                 const studentDocId = `${student.classId}-${student.id}`;
                 const studentRef = doc(db, 'students', studentDocId);
-                batch.set(studentRef, student, { merge: true });
-            });
-
-            const currentStateMap = new Map(currentStudents.map(s => `${s.classId}-${s.id}`));
-            uniqueStudents.forEach(student => {
-                currentStateMap.delete(`${student.classId}-${student.id}`);
-            });
-            
-            // Delete students that are not in the new list
-            currentStateMap.forEach((_, key) => {
-                batch.delete(doc(db, 'students', key));
+                batch.set(studentRef, student); // Use set instead of update to handle new students
             });
             
             await batch.commit();
@@ -135,7 +134,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             const freshStudents = await fetchData<Student>('students');
             setStudentsState(freshStudents);
             
-            console.log(`Students collection successfully updated.`);
+            console.log(`Students collection successfully updated with ${uniqueStudents.length} students.`);
 
         } catch (error) {
             console.error(`Transaction failed for students: `, error);
