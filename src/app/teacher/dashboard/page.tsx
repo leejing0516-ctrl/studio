@@ -969,6 +969,7 @@ export default function TeacherDashboardPage() {
 
   const handleAddStock = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const formData = new FormData(event.currentTarget);
     const ticker = (formData.get("ticker") as string).toUpperCase();
     
     if (stocks.some(s => s.ticker === ticker)) {
@@ -1334,7 +1335,7 @@ export default function TeacherDashboardPage() {
         {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
         {role === 'subject_teacher' && <TabsTrigger value="classes">班級管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="stocks">股票管理</TabsTrigger>}
-        <TabsTrigger value="points">發送點數</TabsTrigger>}
+        <TabsTrigger value="points">發送點數</TabsTrigger>
         {role !== 'subject_teacher' && <TabsTrigger value="rewards">獎勵管理</TabsTrigger>}
         {role !== 'subject_teacher' && <TabsTrigger value="challenges">挑戰管理</TabsTrigger>}
         {(role === 'admin' || role === 'teacher') && <TabsTrigger value="approvals">審核中心</TabsTrigger>}
@@ -2894,5 +2895,6 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
         </Dialog>
     )
 }
+
 
 
