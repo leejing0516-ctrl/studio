@@ -139,27 +139,23 @@ export default function TeacherDashboardPage() {
     setRole(storedRole);
     setTeacherId(storedTeacherId);
     
-    let initialClassIds: string[] = [];
     if (storedClassIdsStr && storedClassIdsStr !== 'undefined') {
         try {
-            initialClassIds = JSON.parse(storedClassIdsStr);
+            const initialClassIds = JSON.parse(storedClassIdsStr);
             setTeacherClassIds(initialClassIds);
+            if (storedRole !== 'admin' && initialClassIds.length > 0 && !selectedClassId) {
+                setSelectedClassId(initialClassIds[0]);
+            }
         } catch {}
     }
   }, []);
   
-  // Effect to set initial class selection
+  // Effect to set initial class selection for admin
   useEffect(() => {
-    if (role && classes.length > 0 && !selectedClassId) {
-        if (role === 'admin') {
-            if (classes[0]) {
-                setSelectedClassId(classes[0].id);
-            }
-        } else if (teacherClassIds.length > 0) {
-            setSelectedClassId(teacherClassIds[0]);
-        }
+    if (role === 'admin' && classes.length > 0 && !selectedClassId) {
+        setSelectedClassId(classes[0].id);
     }
-  }, [role, classes, teacherClassIds, selectedClassId]);
+  }, [role, classes, selectedClassId]);
 
   const currentTeacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
 
@@ -952,7 +948,12 @@ export default function TeacherDashboardPage() {
   const handleEditProjectClick = (project: FundraisingProject) => {
     setEditingProject(project);
     setProjectImagePreview(project.image);
-    setProjectDeadline(new Date(project.deadline));
+    const deadlineDate = new Date();
+    if (project.deadline && isValid(new Date(project.deadline))) {
+        setProjectDeadline(new Date(project.deadline));
+    } else {
+        setProjectDeadline(addDays(new Date(), 14));
+    }
     setIsEditProjectDialogOpen(true);
   };
   
@@ -1215,27 +1216,25 @@ export default function TeacherDashboardPage() {
                                                 <TooltipContent><p>重設密碼</p></TooltipContent>
                                             </Tooltip>
                                             <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <AlertDialog open={!!teacherToDelete && teacherToDelete.id === teacher.id} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
-                                                        <AlertDialogTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent>
-                                                            <AlertDialogHeader>
-                                                                <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
-                                                                <AlertDialogDescription>
-                                                                    您確定要刪除老師「{teacher.name}」嗎？此操作將永久移除该老師的帳號及其建立的獎勵與挑戰，且無法復原。
-                                                                </AlertDialogDescription>
-                                                            </AlertDialogHeader>
-                                                            <AlertDialogFooter>
-                                                                <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>取消</AlertDialogCancel>
-                                                                <AlertDialogAction onClick={handleConfirmDeleteTeacher} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-                                                            </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
-                                                </TooltipTrigger>
+                                                <AlertDialog open={!!teacherToDelete && teacherToDelete.id === teacher.id} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                                您確定要刪除老師「{teacher.name}」嗎？此操作將永久移除该老師的帳號及其建立的獎勵與挑戰，且無法復原。
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>取消</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={handleConfirmDeleteTeacher} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
                                                 <TooltipContent><p>刪除</p></TooltipContent>
                                             </Tooltip>
                                         </TooltipProvider>
@@ -2257,7 +2256,7 @@ export default function TeacherDashboardPage() {
                                         )}
                                         >
                                         <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {projectDeadline ? format(projectDeadline, "PPP") : <span>選擇一個日期</span>}
+                                        {projectDeadline && isValid(projectDeadline) ? format(projectDeadline, "PPP") : <span>選擇一個日期</span>}
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-0">
@@ -2454,5 +2453,7 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
         </Dialog>
     )
 }
+
+    
 
     
