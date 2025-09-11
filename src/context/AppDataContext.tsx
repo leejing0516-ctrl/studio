@@ -14,7 +14,7 @@ import {
     TEACHER_PASSWORD,
 } from '@/lib/placeholder-data';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDocs, writeBatch, setDoc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, writeBatch, setDoc, getDoc, updateDoc, deleteDoc, runTransaction } from 'firebase/firestore';
 import { isSameDay, startOfDay, differenceInCalendarDays, parseISO, isAfter } from 'date-fns';
 
 
@@ -94,54 +94,44 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       }
   }, []);
   
-const createUpdater = <T extends { id?: string | number; ticker?: string }>(
+  const createCollectionUpdater = <T extends { id?: string | number; ticker?: string }>(
     collectionName: string,
-    stateSetter: React.Dispatch<React.SetStateAction<T[]>>,
-    getPrevState: () => T[]
+    stateSetter: React.Dispatch<React.SetStateAction<T[]>>
   ) => {
     return async (updater: (prevState: T[]) => T[]) => {
-      const prevState = getPrevState();
-      const finalData = updater(prevState);
-  
-      const batch = writeBatch(db);
-      const prevIds = new Set(prevState.map(p => String(p.id ?? p.ticker)));
-      const finalIds = new Set(finalData.map(p => String(p.id ?? p.ticker)));
-  
-      // Add or update documents
-      finalData.forEach(item => {
-        const docId = String(item.id ?? item.ticker);
-        if (!docId) {
-            console.warn(`Item in ${collectionName} is missing a unique ID.`, item);
-            return;
-        }
-        const docRef = doc(db, collectionName, docId);
-        batch.set(docRef, { ...item });
-      });
-  
-      // Delete documents that are no longer in the list
-      prevIds.forEach(id => {
-        if (!finalIds.has(id)) {
-          const docRef = doc(db, collectionName, id);
-          batch.delete(docRef);
-        }
-      });
-  
+      const finalState = updater(await fetchData<T>(collectionName));
       try {
-        await batch.commit();
-        // Set state only after successful commit
-        stateSetter(finalData);
-      } catch (e) {
-        console.error(`Failed to update ${collectionName}`, e);
-        // Optional: handle error, maybe revert optimistic UI update
+        await runTransaction(db, async (transaction) => {
+          const collectionRef = collection(db, collectionName);
+          const snapshot = await getDocs(collectionRef);
+          
+          // Delete all existing documents in the collection
+          snapshot.docs.forEach(doc => transaction.delete(doc.ref));
+
+          // Add all documents from the new state
+          finalState.forEach(item => {
+             const docId = String(item.id ?? item.ticker);
+             if (docId) {
+                const newDocRef = doc(db, collectionName, docId);
+                transaction.set(newDocRef, item);
+             }
+          });
+        });
+        // If the transaction is successful, update the local state.
+        stateSetter(finalState);
+        console.log(`${collectionName} collection successfully updated.`);
+      } catch (error) {
+        console.error(`Transaction failed for ${collectionName}: `, error);
+        // Optionally, handle the error, e.g., by showing a toast notification.
       }
     };
   };
 
-  const setStudents = createUpdater<Student>('students', setStudentsState, () => students);
-  const setRewards = createUpdater<Reward>('rewards', setRewardsState, () => rewards);
-  const setStocks = createUpdater<Stock>('stocks', setStocksState, () => stocks);
-  const setClasses = createUpdater<Class>('classes', setClassesState, () => classes);
-  const setTeachers = createUpdater<Teacher>('teachers', setTeachersState, () => teachers);
+  const setStudents = createCollectionUpdater<Student>('students', setStudentsState);
+  const setRewards = createCollectionUpdater<Reward>('rewards', setRewardsState);
+  const setStocks = createCollectionUpdater<Stock>('stocks', setStocksState);
+  const setClasses = createCollectionUpdater<Class>('classes', setClassesState);
+  const setTeachers = createCollectionUpdater<Teacher>('teachers', setTeachersState);
   
   const setPlatformConfig = async (newConfig: Partial<PlatformConfig>) => {
     setPlatformConfigState(prev => {

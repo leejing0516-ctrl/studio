@@ -50,8 +50,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { zhTW } from 'date-fns/locale';
-import { db } from "@/lib/firebase";
-import { doc, writeBatch } from "firebase/firestore";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
@@ -663,7 +661,7 @@ export default function TeacherDashboardPage() {
   const handleConfirmImport = async () => {
     setIsImporting(true);
     const validStudentsToImport = stagedStudents.filter(s => s.status === 'valid');
-    
+
     const newStudents: Student[] = validStudentsToImport.map(s => ({
         id: s.id,
         name: s.name,
@@ -679,30 +677,22 @@ export default function TeacherDashboardPage() {
         fixedDeposits: [],
     }));
 
-    // Use a batch write to add all new students to Firestore
-    const batch = writeBatch(db);
-    newStudents.forEach(student => {
-        const studentRef = doc(db, 'students', student.id);
-        batch.set(studentRef, student);
-    });
-
     try {
-        await batch.commit();
-        // Only update the frontend state after the backend has been successfully updated
+        // Pass the complete new list to the context updater
         await setStudents(current => [...current, ...newStudents]);
+        
         toast({
             title: "匯入成功",
             description: `已成功匯入 ${newStudents.length} 位學生。`
         });
     } catch (error) {
-        console.error("Failed to import students to Firestore:", error);
+        console.error("Failed to import students:", error);
         toast({
             title: "匯入失敗",
-            description: "將學生資料儲存至資料庫時發生錯誤。",
+            description: "儲存學生資料時發生錯誤。",
             variant: "destructive"
         });
     }
-
 
     setIsImporting(false);
     setIsImportDialogOpen(false);
@@ -888,7 +878,7 @@ export default function TeacherDashboardPage() {
         )}
     </div>
     <Tabs defaultValue={role === 'subject_teacher' ? 'classes' : 'students'} className="animate-in fade-in-0 duration-500">
-        <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-3' : (role === 'teacher' ? 'grid-cols-2' : 'grid-cols-2')}`}>
+        <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-2' : (role === 'teacher' ? 'grid-cols-2' : 'grid-cols-2')}`}>
             {role !== 'subject_teacher' && <TabsTrigger value="students">學生管理</TabsTrigger>}
             {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
             {role === 'subject_teacher' && <TabsTrigger value="classes">班級管理</TabsTrigger>}
@@ -1045,11 +1035,9 @@ export default function TeacherDashboardPage() {
                                             <AlertDialog open={!!teacherToDelete && teacherToDelete.id === teacher.id} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
-                                                          <AlertDialogTrigger asChild>
-                                                              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
-                                                                  <Trash2 className="h-4 w-4" />
-                                                              </Button>
-                                                          </AlertDialogTrigger>
+                                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
                                                     </TooltipTrigger>
                                                     <TooltipContent><p>刪除</p></TooltipContent>
                                                 </Tooltip>
@@ -1979,3 +1967,4 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
     
 
     
+
