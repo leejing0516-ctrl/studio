@@ -1,5 +1,4 @@
 
-
 export type RedeemedRewardItem = {
   redemptionId: string; // A unique ID for this specific instance of the reward
   reward: Reward;
@@ -10,6 +9,7 @@ export type RedeemedRewardItem = {
 export type PointRecord = {
     points: number;
     date: string; // ISO date string of when the points were awarded
+    reason: string;
 }
 
 export type FixedDeposit = {
@@ -102,8 +102,8 @@ export type Class = {
 export type Teacher = {
     id: string;
     name: string;
-    role: 'teacher' | 'admin'; // admin is the principal
-    classId?: string | null; // classId for teachers, null for unassigned, undefined for admin
+    role: 'teacher' | 'admin' | 'subject_teacher';
+    classId?: string | null; // Homeroom teacher's classId. Null for unassigned or subject teachers.
     password?: string; 
     pointBalance?: number;
 }

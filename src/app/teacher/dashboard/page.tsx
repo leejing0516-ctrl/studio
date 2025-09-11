@@ -48,6 +48,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
 import { Textarea } from "@/components/ui/textarea";
 import { zhTW } from "date-fns/locale";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface StagedStudent {
     id: string;
@@ -98,8 +99,8 @@ export default function TeacherDashboardPage() {
   const [sponsorLogoFiles, setSponsorLogoFiles] = useState<(File | null)[]>(Array(4).fill(null));
   const [sponsorLogoPreviews, setSponsorLogoPreviews] = useState<(string | null)[]>(platformConfig?.sponsorLogoUrls || Array(4).fill(null));
   const [isSavingSettings, setIsSavingSettings] = useState(false);
-  const [fixedDepositRate, setFixedDepositRate] = useState<number | ''>(() => (platformConfig?.fixedDepositInterestRate || 0) * 100);
-  const [loanInterestRate, setLoanInterestRate] = useState<number | ''>(() => (platformConfig?.loanInterestRate || 0) * 100);
+  const [fixedDepositRate, setFixedDepositRate] = useState<number | ''>((platformConfig?.fixedDepositInterestRate || 0) * 100);
+  const [loanInterestRate, setLoanInterestRate] = useState<number | ''>((platformConfig?.loanInterestRate || 0) * 100);
   
   // State for Central Bank
   const [isAdjustFundsDialogOpen, setIsAdjustFundsDialogOpen] = useState(false);
@@ -130,25 +131,22 @@ export default function TeacherDashboardPage() {
     setTeacherId(storedTeacherId);
     setTeacherClassId(storedClassId);
     
+    // Auto-select class based on role
     if (storedRole === 'admin') {
       if (classes.length > 0 && !selectedClassId) {
         setSelectedClassId(classes[0].id);
       }
-    } else {
-      if (storedClassId) {
-        setSelectedClassId(storedClassId);
-      }
+    } else if (storedRole === 'teacher' && storedClassId) {
+      setSelectedClassId(storedClassId);
     }
-  }, [classes, role, teacherClassId, selectedClassId]);
+  }, [role, classes, teacherClassId, selectedClassId]);
 
   const currentTeacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
 
   const studentsInView = useMemo(() => {
-    if (role === 'admin') {
-      return students.filter(s => s.classId === selectedClassId);
-    }
-    return students.filter(s => s.classId === teacherClassId);
-  }, [role, students, selectedClassId, teacherClassId]);
+    if (!selectedClassId) return [];
+    return students.filter(s => s.classId === selectedClassId);
+  }, [students, selectedClassId]);
   
   const loanRequests = useMemo(() => {
       return students.flatMap(student => 
@@ -157,7 +155,8 @@ export default function TeacherDashboardPage() {
               .map(l => ({ student, loan: l }))
       ).filter(({ student }) => {
           if (role === 'admin') return true; // Admins see all loan requests
-          return student.classId === teacherClassId;
+          // Homeroom teachers see their class's requests
+          return role === 'teacher' && student.classId === teacherClassId;
       });
   }, [students, role, teacherClassId]);
 
@@ -205,6 +204,7 @@ export default function TeacherDashboardPage() {
         if (role === 'admin' && redemption.reward.scope === 'school') {
             return true;
         }
+        // Homeroom teachers see requests for rewards they provided
         if (role === 'teacher' && redemption.reward.providerId === teacherId) {
             return true;
         }
@@ -216,7 +216,8 @@ export default function TeacherDashboardPage() {
      return students.flatMap(student => (student.redeemedRewards || []).map(r => ({student, redemption: r})))
         .filter(({ student }) => {
              if (role === 'admin') return true; // Admin sees all
-             return student.classId === teacherClassId;
+             if (role === 'teacher') return student.classId === teacherClassId;
+             return true; // Subject teachers see all for now
         })
         .sort((a, b) => {
             if (!a.redemption.redemptionDate) return 1;
@@ -557,6 +558,7 @@ export default function TeacherDashboardPage() {
     const formData = new FormData(event.currentTarget);
     const id = formData.get("id") as string;
     const name = formData.get("name") as string;
+    const role = formData.get("role") as 'teacher' | 'subject_teacher';
     const classId = formData.get("classId") as string;
 
     if (teachers.some(t => t.id === id)) {
@@ -571,8 +573,8 @@ export default function TeacherDashboardPage() {
     const newTeacher: Teacher = {
         id,
         name,
-        classId: classId === 'unassigned' ? null : classId,
-        role: 'teacher',
+        role,
+        classId: role === 'teacher' && classId !== 'unassigned' ? classId : null,
         password: platformConfig?.teacherPassword || TEACHER_PASSWORD,
         pointBalance: 0,
     };
@@ -595,8 +597,9 @@ export default function TeacherDashboardPage() {
     const formData = new FormData(event.currentTarget);
     const newId = formData.get("id") as string;
     const name = formData.get("name") as string;
+    const role = formData.get("role") as 'teacher' | 'subject_teacher';
     const classIdValue = formData.get("classId") as string;
-    const newClassId = classIdValue === 'unassigned' ? null : classIdValue;
+    const newClassId = role === 'teacher' && classIdValue !== 'unassigned' ? classIdValue : null;
 
     if (newId !== editingTeacher.id && teachers.some(t => t.id === newId)) {
         toast({
@@ -608,7 +611,7 @@ export default function TeacherDashboardPage() {
     }
 
     setTeachers(currentTeachers => currentTeachers.map(t => 
-        t.id === editingTeacher.id ? { ...t, id: newId, name, classId: newClassId } : t
+        t.id === editingTeacher.id ? { ...t, id: newId, name, role, classId: newClassId } : t
     ));
 
     setIsEditTeacherDialogOpen(false);
@@ -945,7 +948,7 @@ export default function TeacherDashboardPage() {
   };
 
   const unassignedClasses = useMemo(() => {
-    const assignedClassIds = teachers.map(t => t.classId).filter(Boolean);
+    const assignedClassIds = teachers.filter(t => t.role === 'teacher').map(t => t.classId).filter(Boolean);
     return classes.filter(c => !assignedClassIds.includes(c.id));
   }, [classes, teachers]);
 
@@ -1095,7 +1098,7 @@ export default function TeacherDashboardPage() {
     toast({ title: "挑戰已批准", description: `已發送 ${pointsToAdd.toLocaleString()} 點給該學生。` });
   };
 
-  if (isLoading && !selectedClassId) {
+  if (isLoading && !selectedClassId && role !== 'subject_teacher') {
       return (
         <div className="flex items-center justify-center h-full">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -1103,12 +1106,22 @@ export default function TeacherDashboardPage() {
       )
   }
 
+  const roleNameMapping = {
+      admin: '校長',
+      teacher: '班級導師',
+      subject_teacher: '科任教師'
+  }
+
   const RewardsManagementTab = () => {
     const rewardsInView = useMemo(() => {
         if (role === 'admin') {
             return rewards.filter(r => r.scope === 'school');
         }
-        return rewards.filter(r => r.scope === 'class' && r.providerId === teacherId);
+        // Only homeroom teachers can manage rewards
+        if (role === 'teacher') {
+            return rewards.filter(r => r.scope === 'class' && r.providerId === teacherId);
+        }
+        return []; // Subject teachers can't manage rewards
     }, [rewards, role, teacherId]);
 
     const AllClassRewards = () => (
@@ -1216,9 +1229,9 @@ export default function TeacherDashboardPage() {
         </div>
     );
   };
-
-  return (
-    <div className="flex flex-col gap-6">
+  
+    const mainDashboardContent = () => (
+    <>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {role === 'admin' ? (
         <>
@@ -1271,19 +1284,19 @@ export default function TeacherDashboardPage() {
         )}
     </div>
     <Tabs defaultValue="students" className="animate-in fade-in-0 duration-500">
-      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-9' : 'grid-cols-5'}`}>
-        <TabsTrigger value="students">學生管理</TabsTrigger>
+      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-9' : role === 'teacher' ? 'grid-cols-5' : 'grid-cols-1'}`}>
+        {role !== 'subject_teacher' && <TabsTrigger value="students">學生管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="stocks">股票管理</TabsTrigger>}
         <TabsTrigger value="points">發送點數</TabsTrigger>
-        <TabsTrigger value="rewards">獎勵管理</TabsTrigger>
-        <TabsTrigger value="challenges">挑戰管理</TabsTrigger>
-        <TabsTrigger value="approvals">
+        {role !== 'subject_teacher' && <TabsTrigger value="rewards">獎勵管理</TabsTrigger>}
+        {role !== 'subject_teacher' && <TabsTrigger value="challenges">挑戰管理</TabsTrigger>}
+        {role !== 'subject_teacher' && <TabsTrigger value="approvals">
             審核中心
             {(pendingRequests.length + loanRequests.length + challengeApprovals.length) > 0 && (
                 <Badge variant="destructive" className="ml-2">{(pendingRequests.length + loanRequests.length + challengeApprovals.length)}</Badge>
             )}
-        </TabsTrigger>
+        </TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="settings">平台設定</TabsTrigger>}
       </TabsList>
       
@@ -1386,17 +1399,23 @@ export default function TeacherDashboardPage() {
                             <TableRow>
                                 <TableHead>ID</TableHead>
                                 <TableHead>姓名</TableHead>
+                                <TableHead>角色</TableHead>
                                 <TableHead>班級</TableHead>
                                 <TableHead>點數餘額</TableHead>
                                 <TableHead className="text-right">操作</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {teachers.filter(t => t.role === 'teacher').map(teacher => (
+                            {teachers.filter(t => t.role !== 'admin').map(teacher => (
                                 <TableRow key={teacher.id}>
                                     <TableCell>{teacher.id}</TableCell>
                                     <TableCell>{teacher.name}</TableCell>
-                                    <TableCell>{classes.find(c => c.id === teacher.classId)?.name || '未指派'}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={teacher.role === 'teacher' ? 'default' : 'secondary'}>
+                                            {roleNameMapping[teacher.role]}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell>{classes.find(c => c.id === teacher.classId)?.name || 'N/A'}</TableCell>
                                     <TableCell>{(teacher.pointBalance || 0).toLocaleString()}</TableCell>
                                     <TableCell className="text-right">
                                         <TooltipProvider>
@@ -1668,51 +1687,75 @@ export default function TeacherDashboardPage() {
                 從您的點數餘額中發送點數給學生。
                 </CardDescription>
             </div>
-            <Button onClick={() => setIsBatchAwardDialogOpen(true)} disabled={role !== 'admin' && !teacherClassId}>
-                <Users className="mr-2 h-4 w-4" />
-                全班批次發放
-            </Button>
+            {role !== 'subject_teacher' && (
+                <Button onClick={() => setIsBatchAwardDialogOpen(true)} disabled={role === 'subject_teacher' || !selectedClassId}>
+                    <Users className="mr-2 h-4 w-4" />
+                    全班批次發放
+                </Button>
+            )}
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>學生</TableHead>
-                  <TableHead>目前點數</TableHead>
-                  <TableHead className="w-[150px]">要發送的點數</TableHead>
-                  <TableHead className="text-right w-[100px]">操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {studentsInView.map((student) => (
-                  <TableRow key={student.id}>
-                    <TableCell className="flex items-center gap-4">
-                      <Avatar>
-                        <AvatarImage src={student.avatar} data-ai-hint="student avatar" />
-                        <AvatarFallback>
-                          {student.name.slice(0, 2)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="font-medium">{student.name}</span>
-                    </TableCell>
-                    <TableCell>{student.points.toLocaleString()}</TableCell>
-                    <TableCell>
-                      <form id={`points-form-${student.id}`} onSubmit={(e) => {
-                          e.preventDefault();
-                          const points = parseInt(new FormData(e.currentTarget).get('points') as string, 10);
-                          handleAwardPoints(student.id, points);
-                          (e.target as HTMLFormElement).reset();
-                      }}>
-                        <Input name="points" type="number" placeholder="例如 50" aria-label={`給 ${student.name} 的點數`} />
-                      </form>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button size="sm" type="submit" form={`points-form-${student.id}`}>發送</Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {role === 'subject_teacher' && (
+                <div className="mb-6">
+                    <Label htmlFor="class-select-points">請先選擇班級</Label>
+                    <Select onValueChange={setSelectedClassId} value={selectedClassId}>
+                        <SelectTrigger id="class-select-points" className="w-full md:w-[280px]">
+                            <SelectValue placeholder="請選擇班級" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {classes.map(c => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            )}
+
+            {selectedClassId ? (
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>學生</TableHead>
+                    <TableHead>目前點數</TableHead>
+                    <TableHead className="w-[150px]">要發送的點數</TableHead>
+                    <TableHead className="text-right w-[100px]">操作</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {studentsInView.map((student) => (
+                    <TableRow key={student.id}>
+                        <TableCell className="flex items-center gap-4">
+                        <Avatar>
+                            <AvatarImage src={student.avatar} data-ai-hint="student avatar" />
+                            <AvatarFallback>
+                            {student.name.slice(0, 2)}
+                            </AvatarFallback>
+                        </Avatar>
+                        <span className="font-medium">{student.name}</span>
+                        </TableCell>
+                        <TableCell>{student.points.toLocaleString()}</TableCell>
+                        <TableCell>
+                        <form id={`points-form-${student.id}`} onSubmit={(e) => {
+                            e.preventDefault();
+                            const points = parseInt(new FormData(e.currentTarget).get('points') as string, 10);
+                            handleAwardPoints(student.id, points);
+                            (e.target as HTMLFormElement).reset();
+                        }}>
+                            <Input name="points" type="number" placeholder="例如 50" aria-label={`給 ${student.name} 的點數`} />
+                        </form>
+                        </TableCell>
+                        <TableCell className="text-right">
+                        <Button size="sm" type="submit" form={`points-form-${student.id}`}>發送</Button>
+                        </TableCell>
+                    </TableRow>
+                    ))}
+                </TableBody>
+                </Table>
+            ) : (
+                <div className="text-center text-muted-foreground py-12">
+                    {role === 'subject_teacher' ? '請從上方選擇一個班級來查看學生名單。' : '沒有選擇班級。'}
+                </div>
+            )}
           </CardContent>
         </Card>
       </TabsContent>
@@ -1876,7 +1919,7 @@ export default function TeacherDashboardPage() {
                             <TableCell>{student.name}</TableCell>
                             <TableCell>{classes.find(c => c.id === student.classId)?.name}</TableCell>
                             <TableCell>{challenge?.name}</TableCell>
-                            <TableCell>{formatDistanceToNow(new Date(studentChallenge.acceptedDate), { addSuffix: true, locale: zhTW })}</TableCell>
+                            <TableCell>{studentChallenge.acceptedDate ? formatDistanceToNow(new Date(studentChallenge.acceptedDate), { addSuffix: true, locale: zhTW }) : 'N/A'}</TableCell>
                             <TableCell className="text-right">
                                 <Button size="sm" onClick={() => handleChallengeApproval(student.id, student.classId, studentChallenge.challengeId)}>
                                     <Check className="mr-2" /> 批准並發送 {challenge?.points} 點
@@ -1918,7 +1961,7 @@ export default function TeacherDashboardPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {(platformConfig?.challenges || []).filter(c => role === 'admin' ? c.scope === 'school' : c.scope === 'class' && c.providerId === teacherId)
+                        {(platformConfig?.challenges || []).filter(c => role === 'admin' ? c.scope === 'school' : (role === 'teacher' && c.scope === 'class' && c.providerId === teacherId))
                         .map(challenge => (
                             <TableRow key={challenge.id}>
                                 <TableCell>{challenge.name}</TableCell>
@@ -1960,721 +2003,753 @@ export default function TeacherDashboardPage() {
         </Card>
       </TabsContent>
     </Tabs>
+    </>
+    );
 
-    {/* Dialog for Adjusting School Funds */}
-    <Dialog open={isAdjustFundsDialogOpen} onOpenChange={setIsAdjustFundsDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-                <DialogTitle>調整學校總資金</DialogTitle>
-                <DialogDescription>
-                    增加（注入）或減少（移除）學校總資金。此操作會直接影響點數的總供給量。
-                </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-                <div className="space-y-2">
-                    <Label>操作類型</Label>
-                    <Select onValueChange={(value: 'add' | 'remove') => setAdjustFundsType(value)} defaultValue={adjustFundsType}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="選擇操作類型" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="add">增加資金 (注入)</SelectItem>
-                            <SelectItem value="remove">減少資金 (移除)</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-                 <div className="space-y-2">
-                    <Label htmlFor="adjust-funds-amount">金額</Label>
-                    <Input 
-                        id="adjust-funds-amount" 
-                        name="adjust-funds-amount" 
-                        type="number"
-                        placeholder="要調整的點數"
-                        value={adjustFundsAmount}
-                        onChange={(e) => setAdjustFundsAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                        required 
-                    />
-                </div>
-            </div>
-            <DialogFooter>
-                <DialogClose asChild>
-                    <Button type="button" variant="secondary">取消</Button>
-                </DialogClose>
-                <Button type="button" onClick={handleAdjustFunds}>確認調整</Button>
-            </DialogFooter>
-        </DialogContent>
-    </Dialog>
+  return (
+    <div className="flex flex-col gap-6">
+        {mainDashboardContent()}
 
-    {/* Dialog for Allocating Points to Teacher */}
-    <Dialog open={isAllocatePointsDialogOpen} onOpenChange={setIsAllocatePointsDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-                <DialogTitle>分配點數給老師</DialogTitle>
-                <DialogDescription>
-                    從學校總資金撥款給「{teacherToAllocate?.name}」老師。老師將能使用這些點數來獎勵學生。
-                </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-                <div className="space-y-2">
-                    <Label htmlFor="allocation-amount">分配金額</Label>
-                    <Input 
-                        id="allocation-amount" 
-                        type="number"
-                        placeholder="要分配的點數量"
-                        value={allocationAmount}
-                        onChange={(e) => setAllocationAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                        required 
-                    />
-                </div>
-                <div className="text-sm text-muted-foreground">
-                    目前學校總資金：{(platformConfig?.schoolFunds || 0).toLocaleString()} 點
-                </div>
-            </div>
-            <DialogFooter>
-                <DialogClose asChild>
-                    <Button type="button" variant="secondary" onClick={() => setTeacherToAllocate(null)}>取消</Button>
-                </DialogClose>
-                <Button type="button" onClick={handleAllocatePointsToTeacher}>確認撥款</Button>
-            </DialogFooter>
-        </DialogContent>
-    </Dialog>
-
-    {/* Dialog for Batch Awarding Points */}
-    <Dialog open={isBatchAwardDialogOpen} onOpenChange={setIsBatchAwardDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-                <DialogTitle>全班批次發放點數</DialogTitle>
-                <DialogDescription>
-                    為「{classes.find(c => c.id === selectedClassId)?.name}」的所有學生發送相同數量的點數。此操作無法復原。
-                </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="batch-award-amount" className="text-right">
-                        點數
-                    </Label>
-                    <Input 
-                        id="batch-award-amount" 
-                        name="batch-award-amount" 
-                        type="number" 
-                        className="col-span-3"
-                        placeholder="要發送的點數量"
-                        value={batchAwardAmount}
-                        onChange={(e) => setBatchAwardAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                        required 
-                    />
-                </div>
-            </div>
-            <DialogFooter>
-                <DialogClose asChild>
-                    <Button type="button" variant="secondary">取消</Button>
-                </DialogClose>
-                <Button type="button" onClick={handleBatchAwardPoints}>確認發放</Button>
-            </DialogFooter>
-        </DialogContent>
-    </Dialog>
-
-    {/* Dialogs for Rewards */}
-    <Dialog open={isAddRewardDialogOpen} onOpenChange={(open) => {
-        if (!open) {
-            setRewardImageFile(null);
-            setRewardImagePreview(null);
-        }
-        setIsAddRewardDialogOpen(open);
-    }}>
-        <DialogContent className="sm:max-w-[425px]">
-            <form onSubmit={handleAddReward}>
+        {/* Dialog for Adjusting School Funds */}
+        <Dialog open={isAdjustFundsDialogOpen} onOpenChange={setIsAdjustFundsDialogOpen}>
+            <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>新增獎勵</DialogTitle>
-                    <DialogDescription>填寫新獎勵項目的詳細資訊。</DialogDescription>
+                    <DialogTitle>調整學校總資金</DialogTitle>
+                    <DialogDescription>
+                        增加（注入）或減少（移除）學校總資金。此操作會直接影響點數的總供給量。
+                    </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                     <div className="space-y-2">
-                        <Label>獎勵圖片</Label>
-                        <div className="flex items-center gap-4">
-                            <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
-                                {rewardImagePreview ? (
-                                    <Image src={rewardImagePreview} alt="Reward preview" fill className="object-cover rounded-md" />
-                                ) : (
-                                    <ImageOff className="h-8 w-8 text-muted-foreground" />
-                                )}
-                            </div>
-                            <Input id="reward-image-upload" type="file" accept="image/*" onChange={handleRewardImageFileChange} className="max-w-xs" />
-                        </div>
+                        <Label>操作類型</Label>
+                        <Select onValueChange={(value: 'add' | 'remove') => setAdjustFundsType(value)} defaultValue={adjustFundsType}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="選擇操作類型" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="add">增加資金 (注入)</SelectItem>
+                                <SelectItem value="remove">減少資金 (移除)</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="add-name">名稱</Label>
-                        <Input id="add-name" name="name" required />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="add-description">描述</Label>
-                        <Input id="add-description" name="description" required />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="add-cost">費用</Label>
-                            <Input id="add-cost" name="cost" type="number" required />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="add-stock">庫存</Label>
-                            <Input id="add-stock" name="stock" type="number" required />
-                        </div>
+                        <Label htmlFor="adjust-funds-amount">金額</Label>
+                        <Input 
+                            id="adjust-funds-amount" 
+                            name="adjust-funds-amount" 
+                            type="number"
+                            placeholder="要調整的點數"
+                            value={adjustFundsAmount}
+                            onChange={(e) => setAdjustFundsAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                            required 
+                        />
                     </div>
                 </div>
                 <DialogFooter>
-                    <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
-                    <Button type="submit">新增獎勵</Button>
+                    <DialogClose asChild>
+                        <Button type="button" variant="secondary">取消</Button>
+                    </DialogClose>
+                    <Button type="button" onClick={handleAdjustFunds}>確認調整</Button>
                 </DialogFooter>
-            </form>
-        </DialogContent>
-    </Dialog>
+            </DialogContent>
+        </Dialog>
 
-    <Dialog open={isEditRewardDialogOpen} onOpenChange={(open) => {
-        if (!open) {
-            setEditingReward(null);
-            setRewardImageFile(null);
-            setRewardImagePreview(null);
-        }
-        setIsEditRewardDialogOpen(open);
-    }}>
-        <DialogContent className="sm:max-w-[425px]">
-            <form onSubmit={handleUpdateReward}>
+        {/* Dialog for Allocating Points to Teacher */}
+        <Dialog open={isAllocatePointsDialogOpen} onOpenChange={setIsAllocatePointsDialogOpen}>
+            <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>編輯獎勵</DialogTitle>
-                    <DialogDescription>更新「{editingReward?.name}」的詳細資訊。</DialogDescription>
+                    <DialogTitle>分配點數給老師</DialogTitle>
+                    <DialogDescription>
+                        從學校總資金撥款給「{teacherToAllocate?.name}」老師。老師將能使用這些點數來獎勵學生。
+                    </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
-                     <div className="space-y-2">
-                        <Label>獎勵圖片</Label>
-                        <div className="flex items-center gap-4">
-                             <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
-                                {rewardImagePreview ? (
-                                    <Image src={rewardImagePreview} alt="Reward preview" fill className="object-cover rounded-md" />
-                                ) : (
-                                    <ImageOff className="h-8 w-8 text-muted-foreground" />
-                                )}
-                            </div>
-                            <Input id="edit-reward-image-upload" type="file" accept="image/*" onChange={handleRewardImageFileChange} className="max-w-xs" />
-                        </div>
-                    </div>
                     <div className="space-y-2">
-                        <Label htmlFor="edit-name">名稱</Label>
-                        <Input id="edit-name" name="name" defaultValue={editingReward?.name} required />
+                        <Label htmlFor="allocation-amount">分配金額</Label>
+                        <Input 
+                            id="allocation-amount" 
+                            type="number"
+                            placeholder="要分配的點數量"
+                            value={allocationAmount}
+                            onChange={(e) => setAllocationAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                            required 
+                        />
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="edit-description">描述</Label>
-                        <Input id="edit-description" name="description" defaultValue={editingReward?.description} required />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="edit-cost">費用</Label>
-                            <Input id="edit-cost" name="cost" type="number" defaultValue={editingReward?.cost} required />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="edit-stock">庫存</Label>
-                            <Input id="edit-stock" name="stock" type="number" defaultValue={editingReward?.stock} required />
-                        </div>
+                    <div className="text-sm text-muted-foreground">
+                        目前學校總資金：{(platformConfig?.schoolFunds || 0).toLocaleString()} 點
                     </div>
                 </div>
                 <DialogFooter>
-                    <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
-                    <Button type="submit">儲存變更</Button>
+                    <DialogClose asChild>
+                        <Button type="button" variant="secondary" onClick={() => setTeacherToAllocate(null)}>取消</Button>
+                    </DialogClose>
+                    <Button type="button" onClick={handleAllocatePointsToTeacher}>確認撥款</Button>
                 </DialogFooter>
-            </form>
-        </DialogContent>
-    </Dialog>
-      
-      {/* Dialogs for Students */}
-      <Dialog open={isAddStudentDialogOpen} onOpenChange={setIsAddStudentDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-            <form onSubmit={handleAddStudent}>
-          <DialogHeader>
-            <DialogTitle>新增學生</DialogTitle>
-            <DialogDescription>
-              在「{classes.find(c => c.id === selectedClassId)?.name}」建立新的學生帳號。
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="student-add-id" className="text-right">
-                編號
-              </Label>
-              <Input id="student-add-id" name="id" className="col-span-3" required/>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="student-add-name" className="text-right">
-                姓名
-              </Label>
-              <Input id="student-add-name" name="name" className="col-span-3" required/>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="student-add-password" className="text-right">
-                密碼
-              </Label>
-              <Input id="student-add-password" name="password" type="password" className="col-span-3" required/>
-            </div>
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-                <Button type="button" variant="secondary">取消</Button>
-            </DialogClose>
-            <Button type="submit">新增學生</Button>
-          </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+            </DialogContent>
+        </Dialog>
 
-      <Dialog open={isImportDialogOpen} onOpenChange={(open) => {
+        {/* Dialog for Batch Awarding Points */}
+        <Dialog open={isBatchAwardDialogOpen} onOpenChange={setIsBatchAwardDialogOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle>全班批次發放點數</DialogTitle>
+                    <DialogDescription>
+                        為「{classes.find(c => c.id === selectedClassId)?.name}」的所有學生發送相同數量的點數。此操作無法復原。
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="batch-award-amount" className="text-right">
+                            點數
+                        </Label>
+                        <Input 
+                            id="batch-award-amount" 
+                            name="batch-award-amount" 
+                            type="number" 
+                            className="col-span-3"
+                            placeholder="要發送的點數量"
+                            value={batchAwardAmount}
+                            onChange={(e) => setBatchAwardAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                            required 
+                        />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button type="button" variant="secondary">取消</Button>
+                    </DialogClose>
+                    <Button type="button" onClick={handleBatchAwardPoints}>確認發放</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        {/* Dialogs for Rewards */}
+        <Dialog open={isAddRewardDialogOpen} onOpenChange={(open) => {
             if (!open) {
-                setFile(null);
-                setStagedStudents([]);
+                setRewardImageFile(null);
+                setRewardImagePreview(null);
             }
-            setIsImportDialogOpen(open);
+            setIsAddRewardDialogOpen(open);
         }}>
-        <DialogContent className="sm:max-w-2xl">
-            <DialogHeader>
-                <DialogTitle>批次匯入學生</DialogTitle>
-                <DialogDescription>
-                    上傳一個 CSV 檔案來批次新增學生到「{classes.find(c => c.id === selectedClassId)?.name}」。
-                    檔案必須包含 `id`, `name`, 和 `password` 這三個欄位。
-                </DialogDescription>
-                 <p className="text-sm text-destructive font-medium">
-                    重要提示：為避免乱碼，請務必將您的 CSV 檔案另存為 `UTF-8` 編碼格式後再上傳。
-                 </p>
-                 <a href="/students-template.csv" download className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1 w-fit">
-                    <Download className="h-3 w-3" />
-                    下載 CSV 範本
-                 </a>
-            </DialogHeader>
-             <div className="py-4 space-y-4">
-                <div className="grid w-full max-w-sm items-center gap-1.5">
-                    <Label htmlFor="csv-file">上傳 CSV 檔案</Label>
-                    <Input id="csv-file" type="file" accept=".csv" onChange={handleFileChange} />
-                </div>
-
-                {stagedStudents.length > 0 && (
-                    <div className="space-y-2">
-                        <h3 className="font-semibold">匯入預覽</h3>
-                        <Card className="max-h-64 overflow-y-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>ID</TableHead>
-                                        <TableHead>姓名</TableHead>
-                                        <TableHead>狀態</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {stagedStudents.map((student, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell>{student.id}</TableCell>
-                                            <TableCell>{student.name}</TableCell>
-                                            <TableCell>
-                                                {student.status === 'valid' && <Badge variant="default">可匯入</Badge>}
-                                                {student.status === 'duplicate' && <Badge variant="secondary">ID 重複</Badge>}
-                                                {student.status === 'invalid' && (
-                                                    <TooltipProvider>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <Badge variant="destructive">資料無效</Badge>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>
-                                                                <p>{student.errors.join(', ')}</p>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </Card>
+            <DialogContent className="sm:max-w-[425px]">
+                <form onSubmit={handleAddReward}>
+                    <DialogHeader>
+                        <DialogTitle>新增獎勵</DialogTitle>
+                        <DialogDescription>填寫新獎勵項目的詳細資訊。</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="space-y-2">
+                            <Label>獎勵圖片</Label>
+                            <div className="flex items-center gap-4">
+                                <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
+                                    {rewardImagePreview ? (
+                                        <Image src={rewardImagePreview} alt="Reward preview" fill className="object-cover rounded-md" />
+                                    ) : (
+                                        <ImageOff className="h-8 w-8 text-muted-foreground" />
+                                    )}
+                                </div>
+                                <Input id="reward-image-upload" type="file" accept="image/*" onChange={handleRewardImageFileChange} className="max-w-xs" />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="add-name">名稱</Label>
+                            <Input id="add-name" name="name" required />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="add-description">描述</Label>
+                            <Input id="add-description" name="description" required />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="add-cost">費用</Label>
+                                <Input id="add-cost" name="cost" type="number" required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="add-stock">庫存</Label>
+                                <Input id="add-stock" name="stock" type="number" required />
+                            </div>
+                        </div>
                     </div>
-                )}
-            </div>
-            <DialogFooter>
-                <DialogClose asChild>
-                    <Button variant="secondary">取消</Button>
-                </DialogClose>
-                <Button 
-                    onClick={handleConfirmImport} 
-                    disabled={isImporting || stagedStudents.filter(s => s.status === 'valid').length === 0}
-                >
-                    {isImporting ? '匯入中...' : `確認匯入 ${stagedStudents.filter(s => s.status === 'valid').length} 位學生`}
-                </Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                    <DialogFooter>
+                        <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
+                        <Button type="submit">新增獎勵</Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
 
-      <Dialog open={isEditStudentDialogOpen} onOpenChange={(open) => {if(!open) setEditingStudent(null)}}>
-        <DialogContent className="sm:max-w-[425px]">
-            <form onSubmit={handleUpdateStudent}>
-          <DialogHeader>
-            <DialogTitle>編輯學生資訊</DialogTitle>
-            <DialogDescription>
-              更新「{editingStudent?.name}」的詳細資訊。
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="student-edit-id" className="text-right">
-                編號
-              </Label>
-              <Input id="student-edit-id" name="id" defaultValue={editingStudent?.id} className="col-span-3" required/>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="student-edit-name" className="text-right">
-                姓名
-              </Label>
-              <Input id="student-edit-name" name="name" defaultValue={editingStudent?.name} className="col-span-3" required/>
-            </div>
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-                <Button type="button" variant="secondary" onClick={() => setEditingStudent(null)}>取消</Button>
-            </DialogClose>
-            <Button type="submit">儲存變更</Button>
-          </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-      
-      <AlertDialog open={!!studentToDelete} onOpenChange={(open) => !open && setStudentToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
-            <AlertDialogDescription>
-              您確定要刪除學生「{studentToDelete?.name}」嗎？此操作將永久移除該學生的所有資料且無法復原。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setStudentToDelete(null)}>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDeleteStudent} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <Dialog open={isResetPasswordDialogOpen} onOpenChange={(open) => {if(!open) setEditingStudent(null)}}>
-        <DialogContent className="sm:max-w-[425px]">
-            <form onSubmit={handleConfirmResetPassword}>
-          <DialogHeader>
-            <DialogTitle>重設密碼</DialogTitle>
-            <DialogDescription>
-              為學生「{editingStudent?.name}」設定一組新密碼。
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="new-password" className="text-right">
-                新密碼
-              </Label>
-              <Input id="new-password" name="new-password" type="password" className="col-span-3" required/>
-            </div>
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-                <Button type="button" variant="secondary" onClick={() => setEditingStudent(null)}>取消</Button>
-            </DialogClose>
-            <Button type="submit">儲存密碼</Button>
-          </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Dialogs for Teachers and Classes (Admin only) */}
-       <Dialog open={isAddTeacherDialogOpen} onOpenChange={setIsAddTeacherDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <form onSubmit={handleAddTeacher}>
+        <Dialog open={isEditRewardDialogOpen} onOpenChange={(open) => {
+            if (!open) {
+                setEditingReward(null);
+                setRewardImageFile(null);
+                setRewardImagePreview(null);
+            }
+            setIsEditRewardDialogOpen(open);
+        }}>
+            <DialogContent className="sm:max-w-[425px]">
+                <form onSubmit={handleUpdateReward}>
+                    <DialogHeader>
+                        <DialogTitle>編輯獎勵</DialogTitle>
+                        <DialogDescription>更新「{editingReward?.name}」的詳細資訊。</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="space-y-2">
+                            <Label>獎勵圖片</Label>
+                            <div className="flex items-center gap-4">
+                                <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
+                                    {rewardImagePreview ? (
+                                        <Image src={rewardImagePreview} alt="Reward preview" fill className="object-cover rounded-md" />
+                                    ) : (
+                                        <ImageOff className="h-8 w-8 text-muted-foreground" />
+                                    )}
+                                </div>
+                                <Input id="edit-reward-image-upload" type="file" accept="image/*" onChange={handleRewardImageFileChange} className="max-w-xs" />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-name">名稱</Label>
+                            <Input id="edit-name" name="name" defaultValue={editingReward?.name} required />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-description">描述</Label>
+                            <Input id="edit-description" name="description" defaultValue={editingReward?.description} required />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-cost">費用</Label>
+                                <Input id="edit-cost" name="cost" type="number" defaultValue={editingReward?.cost} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-stock">庫存</Label>
+                                <Input id="edit-stock" name="stock" type="number" defaultValue={editingReward?.stock} required />
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
+                        <Button type="submit">儲存變更</Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+        
+        {/* Dialogs for Students */}
+        <Dialog open={isAddStudentDialogOpen} onOpenChange={setIsAddStudentDialogOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+                <form onSubmit={handleAddStudent}>
             <DialogHeader>
-              <DialogTitle>新增老師</DialogTitle>
-              <DialogDescription>建立新的老師帳號並選擇指派的班級。</DialogDescription>
+                <DialogTitle>新增學生</DialogTitle>
+                <DialogDescription>
+                在「{classes.find(c => c.id === selectedClassId)?.name}」建立新的學生帳號。
+                </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="teacher-id" className="text-right">老師 ID</Label>
-                    <Input id="teacher-id" name="id" className="col-span-3" required />
+                <Label htmlFor="student-add-id" className="text-right">
+                    編號
+                </Label>
+                <Input id="student-add-id" name="id" className="col-span-3" required/>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="teacher-name" className="text-right">姓名</Label>
-                    <Input id="teacher-name" name="name" className="col-span-3" required />
+                <Label htmlFor="student-add-name" className="text-right">
+                    姓名
+                </Label>
+                <Input id="student-add-name" name="name" className="col-span-3" required/>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="teacher-class" className="text-right">班級</Label>
-                    <Select name="classId" defaultValue="unassigned">
+                <Label htmlFor="student-add-password" className="text-right">
+                    密碼
+                </Label>
+                <Input id="student-add-password" name="password" type="password" className="col-span-3" required/>
+                </div>
+            </div>
+            <DialogFooter>
+                <DialogClose asChild>
+                    <Button type="button" variant="secondary">取消</Button>
+                </DialogClose>
+                <Button type="submit">新增學生</Button>
+            </DialogFooter>
+            </form>
+            </DialogContent>
+        </Dialog>
+
+        <Dialog open={isImportDialogOpen} onOpenChange={(open) => {
+                if (!open) {
+                    setFile(null);
+                    setStagedStudents([]);
+                }
+                setIsImportDialogOpen(open);
+            }}>
+            <DialogContent className="sm:max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>批次匯入學生</DialogTitle>
+                    <DialogDescription>
+                        上傳一個 CSV 檔案來批次新增學生到「{classes.find(c => c.id === selectedClassId)?.name}」。
+                        檔案必須包含 `id`, `name`, 和 `password` 這三個欄位。
+                    </DialogDescription>
+                    <p className="text-sm text-destructive font-medium">
+                        重要提示：為避免乱碼，請務必將您的 CSV 檔案另存為 `UTF-8` 編碼格式後再上傳。
+                    </p>
+                    <a href="/students-template.csv" download className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1 w-fit">
+                        <Download className="h-3 w-3" />
+                        下載 CSV 範本
+                    </a>
+                </DialogHeader>
+                <div className="py-4 space-y-4">
+                    <div className="grid w-full max-w-sm items-center gap-1.5">
+                        <Label htmlFor="csv-file">上傳 CSV 檔案</Label>
+                        <Input id="csv-file" type="file" accept=".csv" onChange={handleFileChange} />
+                    </div>
+
+                    {stagedStudents.length > 0 && (
+                        <div className="space-y-2">
+                            <h3 className="font-semibold">匯入預覽</h3>
+                            <Card className="max-h-64 overflow-y-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>ID</TableHead>
+                                            <TableHead>姓名</TableHead>
+                                            <TableHead>狀態</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {stagedStudents.map((student, index) => (
+                                            <TableRow key={index}>
+                                                <TableCell>{student.id}</TableCell>
+                                                <TableCell>{student.name}</TableCell>
+                                                <TableCell>
+                                                    {student.status === 'valid' && <Badge variant="default">可匯入</Badge>}
+                                                    {student.status === 'duplicate' && <Badge variant="secondary">ID 重複</Badge>}
+                                                    {student.status === 'invalid' && (
+                                                        <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Badge variant="destructive">資料無效</Badge>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>
+                                                                    <p>{student.errors.join(', ')}</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </Card>
+                        </div>
+                    )}
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button variant="secondary">取消</Button>
+                    </DialogClose>
+                    <Button 
+                        onClick={handleConfirmImport} 
+                        disabled={isImporting || stagedStudents.filter(s => s.status === 'valid').length === 0}
+                    >
+                        {isImporting ? '匯入中...' : `確認匯入 ${stagedStudents.filter(s => s.status === 'valid').length} 位學生`}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        <Dialog open={isEditStudentDialogOpen} onOpenChange={(open) => {if(!open) setEditingStudent(null)}}>
+            <DialogContent className="sm:max-w-[425px]">
+                <form onSubmit={handleUpdateStudent}>
+            <DialogHeader>
+                <DialogTitle>編輯學生資訊</DialogTitle>
+                <DialogDescription>
+                更新「{editingStudent?.name}」的詳細資訊。
+                </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="student-edit-id" className="text-right">
+                    編號
+                </Label>
+                <Input id="student-edit-id" name="id" defaultValue={editingStudent?.id} className="col-span-3" required/>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="student-edit-name" className="text-right">
+                    姓名
+                </Label>
+                <Input id="student-edit-name" name="name" defaultValue={editingStudent?.name} className="col-span-3" required/>
+                </div>
+            </div>
+            <DialogFooter>
+                <DialogClose asChild>
+                    <Button type="button" variant="secondary" onClick={() => setEditingStudent(null)}>取消</Button>
+                </DialogClose>
+                <Button type="submit">儲存變更</Button>
+            </DialogFooter>
+            </form>
+            </DialogContent>
+        </Dialog>
+        
+        <AlertDialog open={!!studentToDelete} onOpenChange={(open) => !open && setStudentToDelete(null)}>
+            <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
+                <AlertDialogDescription>
+                您確定要刪除學生「{studentToDelete?.name}」嗎？此操作將永久移除該學生的所有資料且無法復原。
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setStudentToDelete(null)}>取消</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmDeleteStudent} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+            </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
+        <Dialog open={isResetPasswordDialogOpen} onOpenChange={(open) => {if(!open) setEditingStudent(null)}}>
+            <DialogContent className="sm:max-w-[425px]">
+                <form onSubmit={handleConfirmResetPassword}>
+            <DialogHeader>
+                <DialogTitle>重設密碼</DialogTitle>
+                <DialogDescription>
+                為學生「{editingStudent?.name}」設定一組新密碼。
+                </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="new-password" className="text-right">
+                    新密碼
+                </Label>
+                <Input id="new-password" name="new-password" type="password" className="col-span-3" required/>
+                </div>
+            </div>
+            <DialogFooter>
+                <DialogClose asChild>
+                    <Button type="button" variant="secondary" onClick={() => setEditingStudent(null)}>取消</Button>
+                </DialogClose>
+                <Button type="submit">儲存密碼</Button>
+            </DialogFooter>
+            </form>
+            </DialogContent>
+        </Dialog>
+        
+        {/* Dialogs for Teachers and Classes (Admin only) */}
+        <Dialog open={isAddTeacherDialogOpen} onOpenChange={setIsAddTeacherDialogOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+            <form onSubmit={handleAddTeacher}>
+                <DialogHeader>
+                <DialogTitle>新增老師</DialogTitle>
+                <DialogDescription>建立新的老師帳號並選擇指派的班級。</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="teacher-id" className="text-right">老師 ID</Label>
+                        <Input id="teacher-id" name="id" className="col-span-3" required />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="teacher-name" className="text-right">姓名</Label>
+                        <Input id="teacher-name" name="name" className="col-span-3" required />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label className="text-right">角色</Label>
+                        <RadioGroup name="role" defaultValue="teacher" className="col-span-3 flex gap-4">
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="teacher" id="role-teacher" />
+                                <Label htmlFor="role-teacher">班級導師</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="subject_teacher" id="role-subject-teacher" />
+                                <Label htmlFor="role-subject-teacher">科任教師</Label>
+                            </div>
+                        </RadioGroup>
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="teacher-class" className="text-right">指派班級</Label>
+                        <Select name="classId" defaultValue="unassigned">
+                            <SelectTrigger className="col-span-3">
+                                <SelectValue placeholder="選擇一個未指派的班級" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="unassigned">不指派 (科任/待命)</SelectItem>
+                                {unassignedClasses.map(c => (
+                                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
+                    <Button type="submit">新增老師</Button>
+                </DialogFooter>
+            </form>
+            </DialogContent>
+        </Dialog>
+        <Dialog open={isEditTeacherDialogOpen} onOpenChange={(open) => {if(!open) setEditingTeacher(null)}}>
+            <DialogContent className="sm:max-w-[425px]">
+                <form onSubmit={handleUpdateTeacher}>
+            <DialogHeader>
+                <DialogTitle>編輯老師資訊</DialogTitle>
+                <DialogDescription>
+                更新「{editingTeacher?.name}」的詳細資訊。
+                </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="edit-teacher-id" className="text-right">老師 ID</Label>
+                    <Input id="edit-teacher-id" name="id" defaultValue={editingTeacher?.id} className="col-span-3" required />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-teacher-name" className="text-right">
+                    姓名
+                </Label>
+                <Input id="edit-teacher-name" name="name" defaultValue={editingTeacher?.name} className="col-span-3" required/>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label className="text-right">角色</Label>
+                    <RadioGroup name="role" defaultValue={editingTeacher?.role} className="col-span-3 flex gap-4">
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="teacher" id="edit-role-teacher" />
+                            <Label htmlFor="edit-role-teacher">班級導師</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="subject_teacher" id="edit-role-subject-teacher" />
+                            <Label htmlFor="edit-role-subject-teacher">科任教師</Label>
+                        </div>
+                    </RadioGroup>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="edit-teacher-class" className="text-right">指派班級</Label>
+                    <Select name="classId" defaultValue={editingTeacher?.classId || 'unassigned'}>
                         <SelectTrigger className="col-span-3">
-                            <SelectValue placeholder="選擇一個未指派的班級" />
+                            <SelectValue placeholder="選擇班級" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="unassigned">未指派</SelectItem>
-                            {unassignedClasses.map(c => (
-                                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                            <SelectItem value="unassigned">不指派 (科任/待命)</SelectItem>
+                            {classes.map(c => (
+                                <SelectItem key={c.id} value={c.id} disabled={unassignedClasses.every(uc => uc.id !== c.id) && c.id !== editingTeacher?.classId}>
+                                    {c.name}
+                                </SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
                 </div>
             </div>
             <DialogFooter>
-                <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
-                <Button type="submit">新增老師</Button>
+                <DialogClose asChild>
+                    <Button type="button" variant="secondary" onClick={() => setEditingTeacher(null)}>取消</Button>
+                </DialogClose>
+                <Button type="submit">儲存變更</Button>
             </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={isEditTeacherDialogOpen} onOpenChange={(open) => {if(!open) setEditingTeacher(null)}}>
-        <DialogContent className="sm:max-w-[425px]">
-            <form onSubmit={handleUpdateTeacher}>
-          <DialogHeader>
-            <DialogTitle>編輯老師資訊</DialogTitle>
-            <DialogDescription>
-              更新「{editingTeacher?.name}」的詳細資訊。
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-teacher-id" className="text-right">老師 ID</Label>
-                <Input id="edit-teacher-id" name="id" defaultValue={editingTeacher?.id} className="col-span-3" required />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-teacher-name" className="text-right">
-                姓名
-              </Label>
-              <Input id="edit-teacher-name" name="name" defaultValue={editingTeacher?.name} className="col-span-3" required/>
-            </div>
-             <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-teacher-class" className="text-right">班級</Label>
-                <Select name="classId" defaultValue={editingTeacher?.classId || 'unassigned'}>
-                    <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="選擇班級" />
-                    </SelectTrigger>
-                    <SelectContent>
-                         <SelectItem value="unassigned">未指派</SelectItem>
-                        {classes.map(c => (
-                            <SelectItem key={c.id} value={c.id} disabled={unassignedClasses.every(uc => uc.id !== c.id) && c.id !== editingTeacher?.classId}>
-                                {c.name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-                <Button type="button" variant="secondary" onClick={() => setEditingTeacher(null)}>取消</Button>
-            </DialogClose>
-            <Button type="submit">儲存變更</Button>
-          </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={isResetTeacherPasswordDialogOpen} onOpenChange={(open) => {if(!open) setTeacherToResetPassword(null)}}>
-        <DialogContent className="sm:max-w-[425px]">
-          <form onSubmit={handleConfirmResetTeacherPassword}>
-            <DialogHeader>
-              <DialogTitle>重設教師密碼</DialogTitle>
-              <DialogDescription>為老師「{teacherToResetPassword?.name}」設定一組新密碼。</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="new-password" className="text-right">新密碼</Label>
-                <Input id="new-password" name="new-password" type="password" className="col-span-3" required />
-              </div>
-            </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button type="button" variant="secondary" onClick={() => setTeacherToResetPassword(null)}>取消</Button>
-              </DialogClose>
-              <Button type="submit">儲存密碼</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-       <AlertDialog open={!!teacherToDelete} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
-            <AlertDialogDescription>
-              您確定要刪除老師「{teacherToDelete?.name}」嗎？此操作將永久移除该老師的帳號且無法復原。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDeleteTeacher} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      <Dialog open={isAddClassDialogOpen} onOpenChange={setIsAddClassDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-            <form onSubmit={handleAddClass}>
-          <DialogHeader>
-            <DialogTitle>新增班級</DialogTitle>
-            <DialogDescription>
-              建立一個新的班級。
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="class-id" className="text-right">
-                班級 ID
-              </Label>
-              <Input id="class-id" name="id" placeholder="例如 3A" className="col-span-3" required/>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="class-name" className="text-right">
-                班級名稱
-              </Label>
-              <Input id="class-name" name="name" placeholder="例如 三年甲班" className="col-span-3" required/>
-            </div>
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-                <Button type="button" variant="secondary">取消</Button>
-            </DialogClose>
-            <Button type="submit">新增班級</Button>
-          </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-    {/* Dialogs for Stock Management (Admin only) */}
-    <Dialog open={isAddStockDialogOpen} onOpenChange={setIsAddStockDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-            <form onSubmit={handleAddStock}>
+            </form>
+            </DialogContent>
+        </Dialog>
+        <Dialog open={isResetTeacherPasswordDialogOpen} onOpenChange={(open) => {if(!open) setTeacherToResetPassword(null)}}>
+            <DialogContent className="sm:max-w-[425px]">
+            <form onSubmit={handleConfirmResetTeacherPassword}>
                 <DialogHeader>
-                    <DialogTitle>新增股票</DialogTitle>
-                    <DialogDescription>為市場新增一個可交易的股票。</DialogDescription>
+                <DialogTitle>重設教師密碼</DialogTitle>
+                <DialogDescription>為老師「{teacherToResetPassword?.name}」設定一組新密碼。</DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="stock-add-ticker" className="text-right">代碼</Label>
-                        <Input id="stock-add-ticker" name="ticker" className="col-span-3 font-mono" placeholder="EDU" required />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="stock-add-name" className="text-right">公司名稱</Label>
-                        <Input id="stock-add-name" name="name" className="col-span-3" placeholder="學習公司" required />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="stock-add-price" className="text-right">初始價格</Label>
-                        <Input id="stock-add-price" name="price" type="number" step="0.01" className="col-span-3" placeholder="150.00" required />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="stock-add-marketCap" className="text-right">市值</Label>
-                        <Input id="stock-add-marketCap" name="marketCap" className="col-span-3" placeholder="1.2兆" required />
-                    </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="new-password" className="text-right">新密碼</Label>
+                    <Input id="new-password" name="new-password" type="password" className="col-span-3" required />
+                </div>
                 </div>
                 <DialogFooter>
-                    <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
-                    <Button type="submit">新增股票</Button>
+                <DialogClose asChild>
+                    <Button type="button" variant="secondary" onClick={() => setTeacherToResetPassword(null)}>取消</Button>
+                </DialogClose>
+                <Button type="submit">儲存密碼</Button>
                 </DialogFooter>
             </form>
-        </DialogContent>
-    </Dialog>
-    <Dialog open={isEditStockDialogOpen} onOpenChange={(open) => { if(!open) setEditingStock(null) }}>
-        <DialogContent className="sm:max-w-[425px]">
-            <form onSubmit={handleUpdateStock}>
-                <DialogHeader>
-                    <DialogTitle>編輯股票</DialogTitle>
-                    <DialogDescription>更新「{editingStock?.name}」的資訊。</DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="stock-edit-ticker" className="text-right">代碼</Label>
-                        <Input id="stock-edit-ticker" name="ticker" defaultValue={editingStock?.ticker} className="col-span-3 font-mono" disabled />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="stock-edit-name" className="text-right">公司名稱</Label>
-                        <Input id="stock-edit-name" name="name" defaultValue={editingStock?.name} className="col-span-3" required />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="stock-edit-price" className="text-right">目前價格</Label>
-                        <Input id="stock-edit-price" name="price" type="number" step="0.01" defaultValue={editingStock?.price} className="col-span-3" required />
-                    </div>
-                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="stock-edit-marketCap" className="text-right">市值</Label>
-                        <Input id="stock-edit-marketCap" name="marketCap" defaultValue={editingStock?.marketCap} className="col-span-3" required />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <DialogClose asChild><Button type="button" variant="secondary" onClick={() => setEditingStock(null)}>取消</Button></DialogClose>
-                    <Button type="submit">儲存變更</Button>
-                </DialogFooter>
-            </form>
-        </DialogContent>
-    </Dialog>
-    <AlertDialog open={!!stockToDelete} onOpenChange={(open) => !open && setStockToDelete(null)}>
-        <AlertDialogContent>
+            </DialogContent>
+        </Dialog>
+        <AlertDialog open={!!teacherToDelete} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
+            <AlertDialogContent>
             <AlertDialogHeader>
                 <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
                 <AlertDialogDescription>
-                    您確定要刪除股票「{stockToDelete?.name}」嗎？此操作將永久移除該股票，並從所有學生的投資組合中移除此持股。此操作無法復原。
+                您確定要刪除老師「{teacherToDelete?.name}」嗎？此操作將永久移除该老師的帳號且無法復原。
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setStockToDelete(null)}>取消</AlertDialogCancel>
-                <AlertDialogAction onClick={handleConfirmDeleteStock} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>取消</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmDeleteTeacher} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
             </AlertDialogFooter>
-        </AlertDialogContent>
-    </AlertDialog>
-     {/* Dialogs for Challenges */}
-      <Dialog open={isAddChallengeDialogOpen} onOpenChange={setIsAddChallengeDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <form onSubmit={handleAddChallenge}>
+            </AlertDialogContent>
+        </AlertDialog>
+        <Dialog open={isAddClassDialogOpen} onOpenChange={setIsAddClassDialogOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+                <form onSubmit={handleAddClass}>
             <DialogHeader>
-              <DialogTitle>新增挑戰</DialogTitle>
-              <DialogDescription>建立一個新的挑戰任務，學生完成後可以獲得點數。</DialogDescription>
+                <DialogTitle>新增班級</DialogTitle>
+                <DialogDescription>
+                建立一個新的班級。
+                </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="challenge-name">挑戰名稱</Label>
-                <Input id="challenge-name" name="name" required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="challenge-description">任務說明</Label>
-                <Textarea id="challenge-description" name="description" required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="challenge-points">獎勵點數</Label>
-                <Input id="challenge-points" name="points" type="number" required />
-              </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="class-id" className="text-right">
+                    班級 ID
+                </Label>
+                <Input id="class-id" name="id" placeholder="例如 3A" className="col-span-3" required/>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="class-name" className="text-right">
+                    班級名稱
+                </Label>
+                <Input id="class-name" name="name" placeholder="例如 三年甲班" className="col-span-3" required/>
+                </div>
             </div>
             <DialogFooter>
-              <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
-              <Button type="submit">新增挑戰</Button>
+                <DialogClose asChild>
+                    <Button type="button" variant="secondary">取消</Button>
+                </DialogClose>
+                <Button type="submit">新增班級</Button>
             </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={isEditChallengeDialogOpen} onOpenChange={(open) => {if(!open) setEditingChallenge(null)}}>
-        <DialogContent className="sm:max-w-[425px]">
-          <form onSubmit={handleUpdateChallenge}>
-            <DialogHeader>
-              <DialogTitle>編輯挑戰</DialogTitle>
-              <DialogDescription>更新「{editingChallenge?.name}」的詳細資訊。</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-challenge-name">挑戰名稱</Label>
-                <Input id="edit-challenge-name" name="name" defaultValue={editingChallenge?.name} required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-challenge-description">任務說明</Label>
-                <Textarea id="edit-challenge-description" name="description" defaultValue={editingChallenge?.description} required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-challenge-points">獎勵點數</Label>
-                <Input id="edit-challenge-points" name="points" type="number" defaultValue={editingChallenge?.points} required />
-              </div>
-            </div>
-            <DialogFooter>
-                <Button type="button" variant="secondary" onClick={() => {
-                    setIsEditChallengeDialogOpen(false);
-                    setEditingChallenge(null);
-                }}>取消</Button>
-              <Button type="submit">儲存變更</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+            </form>
+            </DialogContent>
+        </Dialog>
+
+        {/* Dialogs for Stock Management (Admin only) */}
+        <Dialog open={isAddStockDialogOpen} onOpenChange={setIsAddStockDialogOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+                <form onSubmit={handleAddStock}>
+                    <DialogHeader>
+                        <DialogTitle>新增股票</DialogTitle>
+                        <DialogDescription>為市場新增一個可交易的股票。</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="stock-add-ticker" className="text-right">代碼</Label>
+                            <Input id="stock-add-ticker" name="ticker" className="col-span-3 font-mono" placeholder="EDU" required />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="stock-add-name" className="text-right">公司名稱</Label>
+                            <Input id="stock-add-name" name="name" className="col-span-3" placeholder="學習公司" required />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="stock-add-price" className="text-right">初始價格</Label>
+                            <Input id="stock-add-price" name="price" type="number" step="0.01" className="col-span-3" placeholder="150.00" required />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="stock-add-marketCap" className="text-right">市值</Label>
+                            <Input id="stock-add-marketCap" name="marketCap" className="col-span-3" placeholder="1.2兆" required />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
+                        <Button type="submit">新增股票</Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+        <Dialog open={isEditStockDialogOpen} onOpenChange={(open) => { if(!open) setEditingStock(null) }}>
+            <DialogContent className="sm:max-w-[425px]">
+                <form onSubmit={handleUpdateStock}>
+                    <DialogHeader>
+                        <DialogTitle>編輯股票</DialogTitle>
+                        <DialogDescription>更新「{editingStock?.name}」的資訊。</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="stock-edit-ticker" className="text-right">代碼</Label>
+                            <Input id="stock-edit-ticker" name="ticker" defaultValue={editingStock?.ticker} className="col-span-3 font-mono" disabled />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="stock-edit-name" className="text-right">公司名稱</Label>
+                            <Input id="stock-edit-name" name="name" defaultValue={editingStock?.name} className="col-span-3" required />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="stock-edit-price" className="text-right">目前價格</Label>
+                            <Input id="stock-edit-price" name="price" type="number" step="0.01" defaultValue={editingStock?.price} className="col-span-3" required />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="stock-edit-marketCap" className="text-right">市值</Label>
+                            <Input id="stock-edit-marketCap" name="marketCap" defaultValue={editingStock?.marketCap} className="col-span-3" required />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button type="button" variant="secondary" onClick={() => setEditingStock(null)}>取消</Button></DialogClose>
+                        <Button type="submit">儲存變更</Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+        <AlertDialog open={!!stockToDelete} onOpenChange={(open) => !open && setStockToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        您確定要刪除股票「{stockToDelete?.name}」嗎？此操作將永久移除該股票，並從所有學生的投資組合中移除此持股。此操作無法復原。
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setStockToDelete(null)}>取消</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirmDeleteStock} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+        {/* Dialogs for Challenges */}
+        <Dialog open={isAddChallengeDialogOpen} onOpenChange={setIsAddChallengeDialogOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+            <form onSubmit={handleAddChallenge}>
+                <DialogHeader>
+                <DialogTitle>新增挑戰</DialogTitle>
+                <DialogDescription>建立一個新的挑戰任務，學生完成後可以獲得點數。</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                    <Label htmlFor="challenge-name">挑戰名稱</Label>
+                    <Input id="challenge-name" name="name" required />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="challenge-description">任務說明</Label>
+                    <Textarea id="challenge-description" name="description" required />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="challenge-points">獎勵點數</Label>
+                    <Input id="challenge-points" name="points" type="number" required />
+                </div>
+                </div>
+                <DialogFooter>
+                <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
+                <Button type="submit">新增挑戰</Button>
+                </DialogFooter>
+            </form>
+            </DialogContent>
+        </Dialog>
+        <Dialog open={isEditChallengeDialogOpen} onOpenChange={(open) => {if(!open) setEditingChallenge(null)}}>
+            <DialogContent className="sm:max-w-[425px]">
+            <form onSubmit={handleUpdateChallenge}>
+                <DialogHeader>
+                <DialogTitle>編輯挑戰</DialogTitle>
+                <DialogDescription>更新「{editingChallenge?.name}」的詳細資訊。</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                    <Label htmlFor="edit-challenge-name">挑戰名稱</Label>
+                    <Input id="edit-challenge-name" name="name" defaultValue={editingChallenge?.name} required />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="edit-challenge-description">任務說明</Label>
+                    <Textarea id="edit-challenge-description" name="description" defaultValue={editingChallenge?.description} required />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="edit-challenge-points">獎勵點數</Label>
+                    <Input id="edit-challenge-points" name="points" type="number" defaultValue={editingChallenge?.points} required />
+                </div>
+                </div>
+                <DialogFooter>
+                    <Button type="button" variant="secondary" onClick={() => {
+                        setIsEditChallengeDialogOpen(false);
+                        setEditingChallenge(null);
+                    }}>取消</Button>
+                <Button type="submit">儲存變更</Button>
+                </DialogFooter>
+            </form>
+            </DialogContent>
+        </Dialog>
     </div>
   );
 }

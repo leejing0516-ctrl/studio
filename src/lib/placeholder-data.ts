@@ -2,7 +2,6 @@
 import type { Student, Reward, Stock, Class, Teacher, Challenge } from "./types";
 
 export const TEACHER_PASSWORD = "001"; // Shared password for all teachers for simplicity
-export const DAILY_INTEREST_RATE = 1; // 1 point per day for loans
 
 export const classes: Class[] = [
     { id: "6A", name: "六年甲班", announcements: [] },
@@ -22,6 +21,7 @@ export const teachers: Teacher[] = [
     { id: "teacher5B", name: "陳老師", role: "teacher", classId: "5B", password: TEACHER_PASSWORD, pointBalance: 8000 },
     { id: "teacher4A", name: "林老師", role: "teacher", classId: "4A", password: TEACHER_PASSWORD, pointBalance: 5000 },
     { id: "teacherUnassigned", name: "吳老師", role: "teacher", classId: null, password: TEACHER_PASSWORD, pointBalance: 0 },
+    { id: "subjectTeacher1", name: "張老師", role: "subject_teacher", classId: null, password: TEACHER_PASSWORD, pointBalance: 15000 },
 ];
 
 export const students: Student[] = [

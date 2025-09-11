@@ -150,9 +150,18 @@ export default function TeacherLayout({
 
 
   const navItems = [
-    { href: "/teacher/dashboard", label: "儀表板", icon: LayoutDashboard },
-    { href: "/teacher/announcements", label: "公告管理", icon: Megaphone },
+    { href: "/teacher/dashboard", label: "儀表板", icon: LayoutDashboard, roles: ['admin', 'teacher', 'subject_teacher'] },
+    { href: "/teacher/announcements", label: "公告管理", icon: Megaphone, roles: ['admin', 'teacher'] },
   ];
+  
+  const availableNavItems = navItems.filter(item => item.roles.includes(teacherRole || ''));
+
+  const roleNameMapping: { [key: string]: string } = {
+    admin: '校長',
+    teacher: '班級導師',
+    subject_teacher: '科任教師'
+  };
+
 
   if (!teacherName) {
     return <div>載入中...</div>; // Or a proper loading screen
@@ -172,7 +181,7 @@ export default function TeacherLayout({
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
-            {navItems.map((item) => (
+            {availableNavItems.map((item) => (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
                   asChild
@@ -201,7 +210,7 @@ export default function TeacherLayout({
                 </Avatar>
                 <div className="text-left group-data-[collapsible=icon]:hidden">
                   <p className="font-semibold">{teacherName}</p>
-                  <p className="text-xs text-muted-foreground">{teacherRole === 'admin' ? '校長' : '老師'}</p>
+                  <p className="text-xs text-muted-foreground">{roleNameMapping[teacherRole || ''] || '老師'}</p>
                 </div>
                 <ChevronDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
               </Button>
@@ -267,4 +276,3 @@ export default function TeacherLayout({
     </>
   );
 }
-    
