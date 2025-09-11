@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useContext, useEffect, useMemo, useCallback } from "react";
@@ -688,7 +689,7 @@ export default function TeacherDashboardPage() {
     try {
         await batch.commit();
         // Only update the frontend state after the backend has been successfully updated
-        setStudentsState(current => [...current, ...newStudents]);
+        await setStudents(current => [...current, ...newStudents]);
         toast({
             title: "匯入成功",
             description: `已成功匯入 ${newStudents.length} 位學生。`
@@ -1041,28 +1042,30 @@ export default function TeacherDashboardPage() {
                                                 </TooltipTrigger>
                                                 <TooltipContent><p>重設密碼</p></TooltipContent>
                                             </Tooltip>
-                                            <Tooltip>
-                                                <AlertDialog open={!!teacherToDelete && teacherToDelete.id === teacher.id} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
-                                                    <AlertDialogTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </AlertDialogTrigger>
-                                                    <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
-                                                            <AlertDialogDescription>
-                                                                您確定要刪除老師「{teacherToDelete?.name}」嗎？此操作將永久移除该老師的帳號及其建立的獎勵與挑戰，且無法復原。
-                                                            </AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>取消</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={handleConfirmDeleteTeacher} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
-                                                <TooltipContent><p>刪除</p></TooltipContent>
-                                            </Tooltip>
+                                            <AlertDialog open={!!teacherToDelete && teacherToDelete.id === teacher.id} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                          <AlertDialogTrigger asChild>
+                                                              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
+                                                                  <Trash2 className="h-4 w-4" />
+                                                              </Button>
+                                                          </AlertDialogTrigger>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent><p>刪除</p></TooltipContent>
+                                                </Tooltip>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            您確定要刪除老師「{teacherToDelete?.name}」嗎？此操作將永久移除该老師的帳號及其建立的獎勵與挑戰，且無法復原。
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>取消</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={handleConfirmDeleteTeacher} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
                                         </TooltipProvider>
                                     </TableCell>
                                 </TableRow>
