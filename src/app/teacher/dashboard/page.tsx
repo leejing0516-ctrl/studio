@@ -131,17 +131,27 @@ export default function TeacherDashboardPage() {
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const [studentToResetPassword, setStudentToResetPassword] = useState<Student | null>(null);
 
+  // One-time effect to load teacher info from localStorage and set initial class selection
   useEffect(() => {
     const storedRole = localStorage.getItem('teacherRole');
     const storedTeacherId = localStorage.getItem('teacherId');
     const storedClassIdsStr = localStorage.getItem('teacherClassIds');
+    
     setRole(storedRole);
     setTeacherId(storedTeacherId);
     
+    let initialClassIds: string[] = [];
     if (storedClassIdsStr && storedClassIdsStr !== 'undefined') {
         try {
-            setTeacherClassIds(JSON.parse(storedClassIdsStr));
+            initialClassIds = JSON.parse(storedClassIdsStr);
+            setTeacherClassIds(initialClassIds);
         } catch {}
+    }
+
+    if (storedRole === 'admin' && classes.length > 0) {
+        setSelectedClassId(classes[0].id);
+    } else if ((storedRole === 'teacher' || storedRole === 'subject_teacher') && initialClassIds.length > 0) {
+        setSelectedClassId(initialClassIds[0]);
     }
 
     if (platformConfig) {
@@ -150,15 +160,7 @@ export default function TeacherDashboardPage() {
         setFixedDepositRate((platformConfig.fixedDepositInterestRate || 0) * 100);
         setLoanInterestRate((platformConfig.loanInterestRate || 0) * 100);
     }
-  }, [platformConfig]);
-
-  useEffect(() => {
-    if (role === 'admin' && classes.length > 0 && !selectedClassId) {
-        setSelectedClassId(classes[0].id);
-    } else if ((role === 'teacher' || role === 'subject_teacher') && teacherClassIds.length > 0 && !selectedClassId) {
-        setSelectedClassId(teacherClassIds[0]);
-    }
-  }, [role, classes, teacherClassIds, selectedClassId]);
+  }, [classes, platformConfig]); // Depend on `classes` to ensure it's loaded before selecting
 
   const currentTeacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
 
@@ -282,24 +284,29 @@ export default function TeacherDashboardPage() {
       toast({ title: "無效的點數", description: "請輸入一個正數。", variant: "destructive" });
       return;
     }
-    
-    if (!currentTeacher || (currentTeacher.pointBalance || 0) < pointsToAdd) {
-        toast({ title: "點數餘額不足", description: "您的點數餘額不足以發放此次點數。", variant: "destructive" });
-        return;
+
+    if (role !== 'admin') {
+      if (!currentTeacher || (currentTeacher.pointBalance || 0) < pointsToAdd) {
+          toast({ title: "點數餘額不足", description: "您的點數餘額不足以發放此次點數。", variant: "destructive" });
+          return;
+      }
     }
 
     const today = new Date().toISOString();
     setStudents(currentStudents => currentStudents.map(s => {
         if (s.id === studentId && s.classId === selectedClassId) {
-            const newHistory = [...(s.pointHistory || []), { points: pointsToAdd, date: today, reason: `由老師 ${currentTeacher.name} 發放` }];
+            const reason = role === 'admin' ? `由校長 ${currentTeacher?.name} 發放` : `由老師 ${currentTeacher?.name} 發放`;
+            const newHistory = [...(s.pointHistory || []), { points: pointsToAdd, date: today, reason }];
             return { ...s, points: s.points + pointsToAdd, pointHistory: newHistory };
         }
         return s;
     }));
     
-    setTeachers(currentTeachers => currentTeachers.map(t => 
-        t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToAdd } : t
-    ));
+    if (role !== 'admin') {
+        setTeachers(currentTeachers => currentTeachers.map(t => 
+            t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToAdd } : t
+        ));
+    }
 
     const student = students.find(s => s.id === studentId && s.classId === selectedClassId);
     setTimeout(() => {
@@ -317,28 +324,35 @@ export default function TeacherDashboardPage() {
       return;
     }
     
-    const totalPointsToAward = studentsInView.length * pointsToAdd;
-    if (!currentTeacher || (currentTeacher.pointBalance || 0) < totalPointsToAward) {
-        toast({ title: "點數餘額不足", description: `您的點數餘額不足以進行此次批次發放。需要 ${totalPointsToAward.toLocaleString()} 點，但您只有 ${(currentTeacher.pointBalance || 0).toLocaleString()} 點。`, variant: "destructive" });
-        return;
+    if (role !== 'admin') {
+        const totalPointsToAward = studentsInView.length * pointsToAdd;
+        if (!currentTeacher || (currentTeacher.pointBalance || 0) < totalPointsToAward) {
+            toast({ title: "點數餘額不足", description: `您的點數餘額不足以進行此次批次發放。需要 ${totalPointsToAward.toLocaleString()} 點，但您只有 ${(currentTeacher.pointBalance || 0).toLocaleString()} 點。`, variant: "destructive" });
+            return;
+        }
     }
 
     const studentIdsInView = studentsInView.map(s => s.id);
     const today = new Date().toISOString();
+    const reason = role === 'admin' ? `由校長 ${currentTeacher?.name} 批次發放` : `由老師 ${currentTeacher?.name} 批次發放`;
+
     
     setStudents(currentStudents => 
       currentStudents.map(student => {
         if (student.classId === selectedClassId && studentIdsInView.includes(student.id)) {
-          const newHistory = [...(student.pointHistory || []), { points: pointsToAdd, date: today, reason: `由老師 ${currentTeacher.name} 批次發放` }];
+          const newHistory = [...(student.pointHistory || []), { points: pointsToAdd, date: today, reason }];
           return { ...student, points: student.points + pointsToAdd, pointHistory: newHistory };
         }
         return student;
       })
     );
     
-    setTeachers(currentTeachers => currentTeachers.map(t => 
-        t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - totalPointsToAward } : t
-    ));
+    if (role !== 'admin') {
+        const totalPointsToAward = studentsInView.length * pointsToAdd;
+        setTeachers(currentTeachers => currentTeachers.map(t => 
+            t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - totalPointsToAward } : t
+        ));
+    }
 
     const className = classes.find(c => c.id === selectedClassId)?.name || '此班級';
     toast({
@@ -645,7 +659,6 @@ export default function TeacherDashboardPage() {
   const handleConfirmDeleteTeacher = () => {
     if (!teacherToDelete) return;
     
-    // Cascade delete: remove rewards and challenges associated with this teacher
     const teacherIdToDelete = teacherToDelete.id;
     setRewards(currentRewards => currentRewards.filter(r => r.providerId !== teacherIdToDelete));
 
@@ -954,7 +967,6 @@ export default function TeacherDashboardPage() {
 
   const handleAddStock = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
     const ticker = (formData.get("ticker") as string).toUpperCase();
     
     if (stocks.some(s => s.ticker === ticker)) {
@@ -1320,7 +1332,7 @@ export default function TeacherDashboardPage() {
         {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
         {role === 'subject_teacher' && <TabsTrigger value="classes">班級管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="stocks">股票管理</TabsTrigger>}
-        <TabsTrigger value="points">發送點數</TabsTrigger>
+        <TabsTrigger value="points">發送點數</TabsTrigger>}
         {role !== 'subject_teacher' && <TabsTrigger value="rewards">獎勵管理</TabsTrigger>}
         {role !== 'subject_teacher' && <TabsTrigger value="challenges">挑戰管理</TabsTrigger>}
         {(role === 'admin' || role === 'teacher') && <TabsTrigger value="approvals">審核中心</TabsTrigger>}
@@ -2408,7 +2420,7 @@ export default function TeacherDashboardPage() {
             </DialogContent>
         </Dialog>
 
-        <Dialog open={!!studentToEdit} onOpenChange={(open) => {if(!open) setStudentToEdit(null)}}>
+        <Dialog open={!!studentToEdit} onOpenChange={(open) => !open && setStudentToEdit(null)}>
             <DialogContent className="sm:max-w-[425px]">
                 <form onSubmit={handleUpdateStudent}>
                 <DialogHeader>
@@ -2877,3 +2889,5 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
         </Dialog>
     )
 }
+
+    
