@@ -11,6 +11,7 @@ export const classes: Class[] = [
     { id: "4A", name: "四年甲班", announcements: [] },
     { id: "4B", "name": "四年乙班", announcements: [] },
     { id: "3A", "name": "三年甲班", announcements: [] },
+    { id: "3B", "name": "三年乙班", announcements: [] },
 ];
 
 export const teachers: Teacher[] = [
