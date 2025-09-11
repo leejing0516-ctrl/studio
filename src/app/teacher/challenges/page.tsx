@@ -90,7 +90,7 @@ export default function TeacherChallengesPage() {
         const description = formData.get("description") as string;
         const points = Number(formData.get("points"));
         
-        if (!teacherId) return;
+        if (!teacherId && role !== 'admin') return;
 
         const newChallenge: Challenge = {
             id: `challenge-${Date.now()}`,
@@ -98,7 +98,7 @@ export default function TeacherChallengesPage() {
             description,
             points,
             scope: challengeScope,
-            providerId: challengeScope === 'school' ? 'school_admin' : teacherId,
+            providerId: challengeScope === 'school' ? 'school_admin' : teacherId!,
         };
 
         const currentChallenges = platformConfig?.challenges || [];
@@ -212,7 +212,7 @@ export default function TeacherChallengesPage() {
                     </TableRow>
                 )) : (
                     <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center">目前沒有挑戰。</TableCell>
+                        <TableCell colSpan={isReadOnly ? 4 : 5} className="h-24 text-center">目前沒有挑戰。</TableCell>
                     </TableRow>
                 )}
             </TableBody>
@@ -251,7 +251,40 @@ export default function TeacherChallengesPage() {
                                 <CardDescription>檢視所有班級老師建立的挑戰。</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <ChallengeTable challenges={allClassChallenges} isReadOnly={true} />
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>挑戰名稱</TableHead>
+                                            <TableHead>描述</TableHead>
+                                            <TableHead>獎勵點數</TableHead>
+                                            <TableHead>提供者</TableHead>
+                                            <TableHead>班級</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {allClassChallenges.length > 0 ? allClassChallenges.map((challenge) => {
+                                            const provider = teachers.find(t => t.id === challenge.providerId);
+                                            return (
+                                                <TableRow key={challenge.id}>
+                                                    <TableCell className="font-medium">{challenge.name}</TableCell>
+                                                    <TableCell className="max-w-md">{challenge.description}</TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-1 font-semibold text-primary">
+                                                            <Coins className="h-4 w-4" />
+                                                            {challenge.points.toLocaleString()}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>{provider?.name || '未知老師'}</TableCell>
+                                                     <TableCell>{(provider?.classIds || []).join(', ')}</TableCell>
+                                                </TableRow>
+                                            )
+                                        }) : (
+                                            <TableRow>
+                                                <TableCell colSpan={5} className="h-24 text-center">目前沒有任何班級挑戰。</TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
                             </CardContent>
                         </Card>
                     </TabsContent>
@@ -334,3 +367,5 @@ export default function TeacherChallengesPage() {
         </div>
     )
 }
+
+    
