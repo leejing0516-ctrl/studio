@@ -65,7 +65,7 @@ export default function TeacherAnnouncementsPage() {
         const storedRole = localStorage.getItem('teacherRole');
         const storedClassIdsStr = localStorage.getItem('teacherClassIds');
         setRole(storedRole);
-        if (storedClassIdsStr) {
+        if (storedClassIdsStr && storedClassIdsStr !== 'undefined') {
             const ids = JSON.parse(storedClassIdsStr);
             setTeacherClassIds(ids);
             if (ids.length > 0) {
@@ -379,5 +379,7 @@ export default function TeacherAnnouncementsPage() {
         </div>
     )
 }
+
+    
 
     
