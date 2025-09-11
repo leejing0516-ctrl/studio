@@ -967,6 +967,7 @@ export default function TeacherDashboardPage() {
 
   const handleAddStock = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const formData = new FormData(event.currentTarget);
     const ticker = (formData.get("ticker") as string).toUpperCase();
     
     if (stocks.some(s => s.ticker === ticker)) {
@@ -1391,7 +1392,7 @@ export default function TeacherDashboardPage() {
                             <Button variant="ghost" size="icon" onClick={() => handleResetPasswordClick(student)}>
                                     <KeyRound className="h-4 w-4" />
                             </Button>
-                            <AlertDialog open={studentToDelete?.id === student.id && studentToDelete?.classId === student.classId} onOpenChange={(open) => !open && setStudentToDelete(null)}>
+                            <AlertDialog open={!!studentToDelete && studentToDelete.id === student.id && studentToDelete.classId === student.classId} onOpenChange={(open) => !open && setStudentToDelete(null)}>
                                     <AlertDialogTrigger asChild>
                                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStudentClick(student)}>
                                             <Trash2 className="h-4 w-4" />
@@ -1486,7 +1487,7 @@ export default function TeacherDashboardPage() {
                                             </Tooltip>
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
-                                                    <AlertDialog open={teacherToDelete?.id === teacher.id} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
+                                                    <AlertDialog open={!!teacherToDelete && teacherToDelete.id === teacher.id} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
                                                         <AlertDialogTrigger asChild>
                                                             <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
                                                                 <Trash2 className="h-4 w-4" />
@@ -1632,7 +1633,7 @@ export default function TeacherDashboardPage() {
                                         <Button variant="ghost" size="icon" onClick={() => handleEditStockClick(stock)}>
                                             <Edit className="h-4 w-4" />
                                         </Button>
-                                         <AlertDialog open={stockToDelete?.ticker === stock.ticker} onOpenChange={(open) => !open && setStockToDelete(null)}>
+                                         <AlertDialog open={!!stockToDelete && stockToDelete.ticker === stock.ticker} onOpenChange={(open) => !open && setStockToDelete(null)}>
                                             <AlertDialogTrigger asChild>
                                                 <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStockClick(stock)}>
                                                     <Trash2 className="h-4 w-4" />
@@ -1890,7 +1891,7 @@ export default function TeacherDashboardPage() {
                                     <Button variant="ghost" size="icon" onClick={() => handleEditChallengeClick(challenge)}>
                                         <Edit className="h-4 w-4" />
                                     </Button>
-                                    <AlertDialog open={challengeToDelete?.id === challenge.id} onOpenChange={(open) => !open && setChallengeToDelete(null)}>
+                                    <AlertDialog open={!!challengeToDelete && challengeToDelete.id === challenge.id} onOpenChange={(open) => !open && setChallengeToDelete(null)}>
                                         <AlertDialogTrigger asChild>
                                             <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setChallengeToDelete(challenge)}>
                                                 <Trash2 className="h-4 w-4" />
@@ -2889,5 +2890,3 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
         </Dialog>
     )
 }
-
-    
