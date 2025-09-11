@@ -683,7 +683,7 @@ export default function TeacherDashboardPage() {
         fixedDeposits: [],
     }));
 
-    await setStudents(newStudents);
+    await setStudents(currentStudents => [...currentStudents, ...newStudents]);
 
     toast({
         title: "匯入成功",
@@ -1443,7 +1443,7 @@ export default function TeacherDashboardPage() {
                         <Input 
                             id="allocation-amount" 
                             type="number"
-                            placeholder="要操作的點數量"
+                            placeholder="要操作的點数量"
                             value={allocationAmount}
                             min="1"
                             onChange={(e) => setAllocationAmount(e.target.value === '' ? '' : Number(e.target.value))}
@@ -1972,4 +1972,5 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
     
 
     
+
 

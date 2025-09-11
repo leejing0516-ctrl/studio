@@ -96,39 +96,42 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   
     const setStudents = async (updater: Student[] | ((prev: Student[]) => Student[])) => {
         try {
-            const batch = writeBatch(db);
+            const currentStudents = students;
             let dataToWrite: Student[];
 
             if (typeof updater === 'function') {
-                const currentState = await fetchData<Student>('students');
-                dataToWrite = updater(currentState);
+                dataToWrite = updater(currentStudents);
             } else {
                 dataToWrite = updater;
             }
 
+            // Deduplication logic using a Map
+            const studentMap = new Map<string, Student>();
             dataToWrite.forEach(student => {
+                const key = `${student.classId}-${student.id}`;
+                studentMap.set(key, student);
+            });
+            const uniqueStudents = Array.from(studentMap.values());
+            
+            const batch = writeBatch(db);
+            uniqueStudents.forEach(student => {
                 const studentDocId = `${student.classId}-${student.id}`;
                 const studentRef = doc(db, 'students', studentDocId);
-                // Use set with merge: true to create or update documents
                 batch.set(studentRef, student, { merge: true });
             });
-            
-            // This logic is for handling deletions when a full list is passed.
-            // If the updater is just a partial list of changes, we avoid this.
-            if (typeof updater === 'function') {
-                const finalStateMap = new Map(dataToWrite.map(s => `${s.classId}-${s.id}`));
-                const currentState = await fetchData<Student>('students');
-                currentState.forEach(student => {
-                    const studentDocId = `${student.classId}-${student.id}`;
-                    if (!finalStateMap.has(studentDocId)) {
-                        batch.delete(doc(db, 'students', studentDocId));
-                    }
-                });
-            }
 
+            const currentStateMap = new Map(currentStudents.map(s => `${s.classId}-${s.id}`));
+            uniqueStudents.forEach(student => {
+                currentStateMap.delete(`${student.classId}-${student.id}`);
+            });
+            
+            // Delete students that are not in the new list
+            currentStateMap.forEach((_, key) => {
+                batch.delete(doc(db, 'students', key));
+            });
+            
             await batch.commit();
 
-            // SSoT Refresh: After any write, always refetch from Firestore to guarantee UI consistency.
             const freshStudents = await fetchData<Student>('students');
             setStudentsState(freshStudents);
             
