@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Reward, Student, Teacher, Class, Loan, Stock, Challenge, StudentChallenge, FundraisingProject, Donation } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Settings, ImageOff, LineChart, Banknote, ShieldPlus, Coins, School, Flag, Hourglass, Percent, ShieldCheck, HeartHandshake } from "lucide-react";
+import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Settings, ImageOff, LineChart, Banknote, ShieldPlus, Coins, School, Flag, Hourglass, Percent, ShieldCheck, HeartHandshake, Gift, Briefcase } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -155,7 +155,7 @@ export default function TeacherDashboardPage() {
             setSelectedClassId(teacherClassIds[0]);
         }
     }
-  }, [role, classes, teacherClassIds]);
+  }, [role, classes, teacherClassIds, selectedClassId]);
 
   const currentTeacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
 
@@ -1145,13 +1145,15 @@ export default function TeacherDashboardPage() {
         )}
     </div>
     <Tabs defaultValue={role === 'subject_teacher' ? 'classes' : 'students'} className="animate-in fade-in-0 duration-500">
-      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-4' : (role === 'teacher' ? 'grid-cols-2' : 'grid-cols-2')}`}>
+      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-7' : (role === 'teacher' ? 'grid-cols-4' : 'grid-cols-2')}`}>
         {role !== 'subject_teacher' && <TabsTrigger value="students">學生管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="fundraising">募資管理</TabsTrigger>}
         {role === 'subject_teacher' && <TabsTrigger value="classes">班級管理</TabsTrigger>}
         <TabsTrigger value="points">發送點數</TabsTrigger>
         {(role === 'admin' || role === 'teacher') && <TabsTrigger value="approvals">審核中心</TabsTrigger>}
+        {(role === 'admin' || role === 'teacher') && <TabsTrigger value="rewards">獎勵管理</TabsTrigger>}
+        {role === 'admin' && <TabsTrigger value="stocks">股票管理</TabsTrigger>}
       </TabsList>
       
       {role !== 'subject_teacher' && 
@@ -1711,6 +1713,153 @@ export default function TeacherDashboardPage() {
             </div>
         </TabsContent>
       )}
+
+      {(role === 'admin' || role === 'teacher') && (
+        <TabsContent value="rewards" className="mt-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>獎勵管理</CardTitle>
+                  <CardDescription>
+                    {role === 'admin'
+                      ? "管理全校學生可以兌換的獎勵。"
+                      : "管理您班級學生可以兌換的限定獎勵。"}
+                  </CardDescription>
+                </div>
+                <Button onClick={() => {
+                  setRewardImagePreview(null);
+                  setRewardImageFile(null);
+                  setIsAddRewardDialogOpen(true);
+                }}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  新增獎勵
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>獎勵</TableHead>
+                      <TableHead>費用(點)</TableHead>
+                      <TableHead>庫存</TableHead>
+                      <TableHead className="text-right">操作</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {rewardsInView.map((reward) => (
+                      <TableRow key={reward.id}>
+                        <TableCell className="flex items-center gap-4">
+                          <Image
+                            src={reward.image}
+                            alt={reward.name}
+                            width={40}
+                            height={40}
+                            className="rounded-md object-cover"
+                          />
+                          <div>
+                            <p className="font-medium">{reward.name}</p>
+                            <p className="text-xs text-muted-foreground line-clamp-1">{reward.description}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>{reward.cost.toLocaleString()}</TableCell>
+                        <TableCell>{reward.stock}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleEditRewardClick(reward)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setRewardToDelete(reward)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  您確定要刪除獎勵「{reward.name}」嗎？此操作無法復原。
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel onClick={() => setRewardToDelete(null)}>取消</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteReward(reward)} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+        </TabsContent>
+      )}
+
+      {role === 'admin' && (
+          <TabsContent value="stocks" className="mt-6">
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle>股票市場管理</CardTitle>
+                        <CardDescription>管理虛擬市場中可供學生交易的股票。</CardDescription>
+                    </div>
+                    <Button onClick={() => setIsAddStockDialogOpen(true)}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        新增股票
+                    </Button>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>代碼</TableHead>
+                                <TableHead>公司名稱</TableHead>
+                                <TableHead>初始價格</TableHead>
+                                <TableHead>市值</TableHead>
+                                <TableHead className="text-right">操作</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {stocks.map(stock => (
+                                <TableRow key={stock.ticker}>
+                                    <TableCell>{stock.ticker}</TableCell>
+                                    <TableCell>{stock.name}</TableCell>
+                                    <TableCell>{stock.price.toLocaleString()}</TableCell>
+                                    <TableCell>{stock.marketCap}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleEditStockClick(stock)}>
+                                            <Edit className="h-4 w-4" />
+                                        </Button>
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                 <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStockClick(stock)}>
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>您確定要下市嗎？</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        您確定要將「{stock.name}」從市場上下市嗎？此操作將會把這支股票從所有學生的投資組合中移除。
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>取消</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={handleConfirmDeleteStock} className={buttonVariants({ variant: "destructive" })}>確定下市</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+          </TabsContent>
+      )}
+
     </Tabs>
     </>
     );
@@ -2278,6 +2427,176 @@ export default function TeacherDashboardPage() {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+
+        {/* Dialogs for Rewards */}
+        <Dialog open={isAddRewardDialogOpen} onOpenChange={(open) => { if(!open) { setRewardImageFile(null); setRewardImagePreview(null); } setIsAddRewardDialogOpen(open); }}>
+            <DialogContent className="sm:max-w-lg">
+                <form onSubmit={handleAddReward}>
+                    <DialogHeader>
+                        <DialogTitle>新增獎勵</DialogTitle>
+                        <DialogDescription>
+                            建立一個新的獎勵品項供學生兌換。
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="space-y-2">
+                            <Label>獎勵圖片</Label>
+                            <div className="flex items-center gap-4">
+                                <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
+                                    {rewardImagePreview ? (
+                                        <Image src={rewardImagePreview} alt="Reward preview" fill className="object-cover rounded-md" />
+                                    ) : (
+                                        <ImageOff className="h-8 w-8 text-muted-foreground" />
+                                    )}
+                                </div>
+                                <Input id="reward-image-upload" type="file" accept="image/*" onChange={handleRewardImageFileChange} className="max-w-xs" />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="reward-name">獎勵名稱</Label>
+                            <Input id="reward-name" name="name" required />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="reward-description">描述</Label>
+                            <Textarea id="reward-description" name="description" required />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="reward-cost">費用 (點數)</Label>
+                                <Input id="reward-cost" name="cost" type="number" required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="reward-stock">庫存</Label>
+                                <Input id="reward-stock" name="stock" type="number" required />
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
+                        <Button type="submit">新增獎勵</Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+        <Dialog open={isEditRewardDialogOpen} onOpenChange={(open) => { if(!open) { setEditingReward(null); setRewardImageFile(null); setRewardImagePreview(null); } setIsEditRewardDialogOpen(open); }}>
+            <DialogContent className="sm:max-w-lg">
+                 <form onSubmit={handleUpdateReward}>
+                    <DialogHeader>
+                        <DialogTitle>編輯獎勵</DialogTitle>
+                        <DialogDescription>
+                            修改「{editingReward?.name}」的詳細資訊。
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                         <div className="space-y-2">
+                            <Label>獎勵圖片</Label>
+                            <div className="flex items-center gap-4">
+                                <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
+                                    {rewardImagePreview ? (
+                                        <Image src={rewardImagePreview} alt="Reward preview" fill className="object-cover rounded-md" />
+                                    ) : (
+                                        <ImageOff className="h-8 w-8 text-muted-foreground" />
+                                    )}
+                                </div>
+                                <Input id="edit-reward-image-upload" type="file" accept="image/*" onChange={handleRewardImageFileChange} className="max-w-xs" />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-reward-name">獎勵名稱</Label>
+                            <Input id="edit-reward-name" name="name" defaultValue={editingReward?.name} required />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-reward-description">描述</Label>
+                            <Textarea id="edit-reward-description" name="description" defaultValue={editingReward?.description} required />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-reward-cost">費用 (點數)</Label>
+                                <Input id="edit-reward-cost" name="cost" type="number" defaultValue={editingReward?.cost} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-reward-stock">庫存</Label>
+                                <Input id="edit-reward-stock" name="stock" type="number" defaultValue={editingReward?.stock} required />
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
+                        <Button type="submit">儲存變更</Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+        
+        {/* Dialogs for Stocks (Admin only) */}
+        {role === 'admin' && (
+            <>
+              <Dialog open={isAddStockDialogOpen} onOpenChange={setIsAddStockDialogOpen}>
+                  <DialogContent className="sm:max-w-md">
+                      <form onSubmit={handleAddStock}>
+                          <DialogHeader>
+                              <DialogTitle>新增股票</DialogTitle>
+                              <DialogDescription>建立一支持新的股票至虛擬市場中。</DialogDescription>
+                          </DialogHeader>
+                          <div className="grid gap-4 py-4">
+                              <div className="space-y-2">
+                                  <Label htmlFor="stock-ticker">股票代碼 (Ticker)</Label>
+                                  <Input id="stock-ticker" name="ticker" placeholder="例如：EDU" required />
+                              </div>
+                              <div className="space-y-2">
+                                  <Label htmlFor="stock-name">公司名稱</Label>
+                                  <Input id="stock-name" name="name" placeholder="例如：學習公司" required />
+                              </div>
+                              <div className="space-y-2">
+                                  <Label htmlFor="stock-price">初始價格</Label>
+                                  <Input id="stock-price" name="price" type="number" required />
+                              </div>
+                              <div className="space-y-2">
+                                  <Label htmlFor="stock-marketCap">市值</Label>
+                                  <Input id="stock-marketCap" name="marketCap" placeholder="例如：1.2兆" required />
+                              </div>
+                          </div>
+                          <DialogFooter>
+                              <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
+                              <Button type="submit">新增股票</Button>
+                          </DialogFooter>
+                      </form>
+                  </DialogContent>
+              </Dialog>
+              <Dialog open={isEditStockDialogOpen} onOpenChange={(open) => { if (!open) setStockToEdit(null); setIsEditStockDialogOpen(open); }}>
+                  <DialogContent className="sm:max-w-md">
+                      <form onSubmit={handleUpdateStock}>
+                          <DialogHeader>
+                              <DialogTitle>編輯股票</DialogTitle>
+                              <DialogDescription>更新「{stockToEdit?.name}」的資訊。</DialogDescription>
+                          </DialogHeader>
+                          <div className="grid gap-4 py-4">
+                              <div className="space-y-2">
+                                  <Label htmlFor="edit-stock-ticker">股票代碼</Label>
+                                  <Input id="edit-stock-ticker" name="ticker" value={stockToEdit?.ticker} disabled />
+                              </div>
+                              <div className="space-y-2">
+                                  <Label htmlFor="edit-stock-name">公司名稱</Label>
+                                  <Input id="edit-stock-name" name="name" defaultValue={stockToEdit?.name} required />
+                              </div>
+                              <div className="space-y-2">
+                                  <Label htmlFor="edit-stock-price">目前價格</Label>
+                                  <Input id="edit-stock-price" name="price" type="number" defaultValue={stockToEdit?.price} required />
+                              </div>
+                              <div className="space-y-2">
+                                  <Label htmlFor="edit-stock-marketCap">市值</Label>
+                                  <Input id="edit-stock-marketCap" name="marketCap" defaultValue={stockToEdit?.marketCap} required />
+                              </div>
+                          </div>
+                          <DialogFooter>
+                              <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
+                              <Button type="submit">儲存變更</Button>
+                          </DialogFooter>
+                      </form>
+                  </DialogContent>
+              </Dialog>
+            </>
+        )}
     </div>
   );
 }
