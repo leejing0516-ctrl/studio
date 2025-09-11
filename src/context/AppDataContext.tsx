@@ -22,7 +22,7 @@ import { isSameDay, startOfDay, differenceInCalendarDays, parseISO, isAfter } fr
 
 interface AppDataContextType {
   students: Student[];
-  setStudents: (updater: Student[] | ((prev: Student[]) => Student[])) => Promise<void>;
+  setStudents: (updater: Student[]) => Promise<void>;
   rewards: Reward[];
   setRewards: (updater: (prev: Reward[]) => Reward[]) => Promise<void>;
   stocks: Stock[];
@@ -94,36 +94,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       }
   }, []);
   
-    const setStudents = async (updater: Student[] | ((prev: Student[]) => Student[])) => {
+    const setStudents = async (studentsToUpdate: Student[]) => {
         try {
-            // First, get the most up-to-date list of students from Firestore.
-            const currentStudents = await fetchData<Student>('students');
-            
-            // Calculate the next state based on the updater
-            let intendedState: Student[];
-            if (typeof updater === 'function') {
-                intendedState = updater(currentStudents);
-            } else {
-                // If it's a direct array, we assume it's a list of students to add/update
-                // so we merge it with the current state.
-                const studentMap = new Map(currentStudents.map(s => [`${s.classId}-${s.id}`, s]));
-                updater.forEach(s => {
-                    studentMap.set(`${s.classId}-${s.id}`, { ...studentMap.get(`${s.classId}-${s.id}`), ...s });
-                });
-                intendedState = Array.from(studentMap.values());
-            }
-
-            // Ensure the final list is unique using a Map. This is the authoritative deduplication step.
-            const studentMap = new Map<string, Student>();
-            intendedState.forEach(student => {
-                const key = `${student.classId}-${student.id}`;
-                studentMap.set(key, student);
-            });
-            const uniqueStudents = Array.from(studentMap.values());
-
-            // Write the clean, unique list to Firestore.
             const batch = writeBatch(db);
-            uniqueStudents.forEach(student => {
+            studentsToUpdate.forEach(student => {
                 const studentDocId = `${student.classId}-${student.id}`;
                 const studentRef = doc(db, 'students', studentDocId);
                 batch.set(studentRef, student, { merge: true });
@@ -131,13 +105,18 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             
             await batch.commit();
 
-            // After a successful write, update the local state with the same clean data.
-            setStudentsState(uniqueStudents);
+            // After a successful write, re-fetch the entire collection from Firestore
+            // to ensure the local state is a perfect mirror of the database.
+            const freshStudents = await fetchData<Student>('students');
+            setStudentsState(freshStudents);
             
-            console.log(`Students collection successfully updated with ${uniqueStudents.length} students.`);
+            console.log(`Students collection successfully synchronized with ${freshStudents.length} students.`);
 
         } catch (error) {
             console.error(`Transaction failed for students: `, error);
+            // Optionally, re-fetch to revert to the last known good state from DB
+            const freshStudents = await fetchData<Student>('students');
+            setStudentsState(freshStudents);
         }
     };
 
