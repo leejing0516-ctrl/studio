@@ -43,7 +43,7 @@ export default function AnnouncementsPage() {
                 </AccordionTrigger>
                 <AccordionContent>
                 <div className="prose prose-sm max-w-none text-foreground">
-                    {ann.content}
+                    <p>{ann.content}</p>
                 </div>
                 </AccordionContent>
             </AccordionItem>
@@ -90,4 +90,3 @@ export default function AnnouncementsPage() {
             </Card>
         </div>
     );
-}
