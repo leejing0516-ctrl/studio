@@ -230,54 +230,57 @@ export default function TeacherDashboardPage() {
     });
   };
 
-  const handleAwardPoints = (studentId: string, pointsToAdd: number) => {
-    if (!pointsToAdd || pointsToAdd <= 0) {
-      toast({ title: "無效的點數", description: "請輸入一個正數。", variant: "destructive" });
+  const handleAwardPoints = (studentId: string, pointsToChange: number) => {
+    if (!pointsToChange) {
+      toast({ title: "無效的點數", description: "請輸入一個非零的數字。", variant: "destructive" });
       return;
     }
+    const isDeducting = pointsToChange < 0;
   
-    if (role !== 'admin') {
-      if (!currentTeacher || (currentTeacher.pointBalance || 0) < pointsToAdd) {
+    if (role !== 'admin' && !isDeducting) {
+      if (!currentTeacher || (currentTeacher.pointBalance || 0) < pointsToChange) {
         toast({ title: "點數餘額不足", description: "您的點數餘額不足以發放此次點數。", variant: "destructive" });
         return;
       }
     }
   
     const today = new Date().toISOString();
-    const reason = role === 'admin' ? `由校長 ${currentTeacher?.name} 發放` : `由老師 ${currentTeacher?.name} 發放`;
+    const actionText = isDeducting ? "扣除" : "發放";
+    const reason = role === 'admin' ? `由校長 ${currentTeacher?.name} ${actionText}` : `由老師 ${currentTeacher?.name} ${actionText}`;
   
     setStudents(currentStudents => currentStudents.map(s => {
       if (s.id === studentId && s.classId === selectedClassId) {
-        const newHistory = [...(s.pointHistory || []), { points: pointsToAdd, date: today, reason }];
-        return { ...s, points: s.points + pointsToAdd, pointHistory: newHistory };
+        const newHistory = [...(s.pointHistory || []), { points: pointsToChange, date: today, reason }];
+        return { ...s, points: s.points + pointsToChange, pointHistory: newHistory };
       }
       return s;
     }));
     
     if (role !== 'admin' && currentTeacher) {
       setTeachers(currentTeachers => currentTeachers.map(t => 
-        t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToAdd } : t
+        t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToChange } : t
       ));
     }
   
     const student = students.find(s => s.id === studentId && s.classId === selectedClassId);
     setTimeout(() => {
         toast({
-            title: "點數已發送！",
-            description: `您已成功發送 ${pointsToAdd.toLocaleString()} 點給 ${student?.name}。`
+            title: `點數已${actionText}！`,
+            description: `您已成功對 ${student?.name} ${actionText} ${Math.abs(pointsToChange).toLocaleString()} 點。`
         })
     }, 1);
   }
 
   const handleBatchAwardPoints = () => {
-    const pointsToAdd = Number(batchAwardAmount);
-    if (!pointsToAdd || pointsToAdd <= 0) {
-      toast({ title: "無效的點數", description: "請輸入一個正數。", variant: "destructive" });
+    const pointsToChange = Number(batchAwardAmount);
+    if (!pointsToChange) {
+      toast({ title: "無效的點數", description: "請輸入一個非零的數字。", variant: "destructive" });
       return;
     }
+    const isDeducting = pointsToChange < 0;
     
-    if (role !== 'admin') {
-      const totalPointsToAward = studentsInView.length * pointsToAdd;
+    if (role !== 'admin' && !isDeducting) {
+      const totalPointsToAward = studentsInView.length * pointsToChange;
       if (!currentTeacher || (currentTeacher.pointBalance || 0) < totalPointsToAward) {
         toast({ title: "點數餘額不足", description: `您的點數餘額不足以進行此次批次發放。需要 ${totalPointsToAward.toLocaleString()} 點，但您只有 ${(currentTeacher?.pointBalance || 0).toLocaleString()} 點。`, variant: "destructive" });
         return;
@@ -286,30 +289,31 @@ export default function TeacherDashboardPage() {
   
     const studentIdsInView = studentsInView.map(s => s.id);
     const today = new Date().toISOString();
-    const reason = role === 'admin' ? `由校長 ${currentTeacher?.name} 批次發放` : `由老師 ${currentTeacher?.name} 批次發放`;
+    const actionText = isDeducting ? "批次扣除" : "批次發放";
+    const reason = role === 'admin' ? `由校長 ${currentTeacher?.name} ${actionText}` : `由老師 ${currentTeacher?.name} ${actionText}`;
   
     
     setStudents(currentStudents => 
       currentStudents.map(student => {
         if (student.classId === selectedClassId && studentIdsInView.includes(student.id)) {
-          const newHistory = [...(student.pointHistory || []), { points: pointsToAdd, date: today, reason }];
-          return { ...student, points: student.points + pointsToAdd, pointHistory: newHistory };
+          const newHistory = [...(student.pointHistory || []), { points: pointsToChange, date: today, reason }];
+          return { ...student, points: student.points + pointsToChange, pointHistory: newHistory };
         }
         return student;
       })
     );
     
     if (role !== 'admin' && currentTeacher) {
-      const totalPointsToAward = studentsInView.length * pointsToAdd;
+      const totalPointsToChange = studentsInView.length * pointsToChange;
       setTeachers(currentTeachers => currentTeachers.map(t => 
-        t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - totalPointsToAward } : t
+        t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - totalPointsToChange } : t
       ));
     }
   
     const className = classes.find(c => c.id === selectedClassId)?.name || '此班級';
     toast({
-        title: "批次發放成功！",
-        description: `您已成功發送 ${pointsToAdd.toLocaleString()} 點給 ${className} 的所有學生。`
+        title: `批次${isDeducting ? '扣除' : '發放'}成功！`,
+        description: `您已成功對 ${className} 的所有學生${isDeducting ? '扣除' : '發送'} ${Math.abs(pointsToChange).toLocaleString()} 點。`
     });
   
     setIsBatchAwardDialogOpen(false);
@@ -859,7 +863,7 @@ export default function TeacherDashboardPage() {
         )}
     </div>
     <Tabs defaultValue={role === 'subject_teacher' ? 'classes' : 'students'} className="animate-in fade-in-0 duration-500">
-      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-4' : (role === 'teacher' ? 'grid-cols-3' : 'grid-cols-2')}`}>
+      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-3' : (role === 'teacher' ? 'grid-cols-2' : 'grid-cols-2')}`}>
         {role !== 'subject_teacher' && <TabsTrigger value="students">學生管理</TabsTrigger>}
         {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
         {role === 'subject_teacher' && <TabsTrigger value="classes">班級管理</TabsTrigger>}
@@ -1126,14 +1130,14 @@ export default function TeacherDashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-                <CardTitle>發送點數</CardTitle>
+                <CardTitle>發送/扣除點數</CardTitle>
                 <CardDescription>
-                從您的點數餘額中發送點數給學生。
+                發送點數給學生，或輸入負數來扣除點數。
                 </CardDescription>
             </div>
              <Button onClick={() => setIsBatchAwardDialogOpen(true)} disabled={!selectedClassId || studentsInView.length === 0}>
                 <Users className="mr-2 h-4 w-4" />
-                全班批次發放
+                全班批次操作
             </Button>
           </CardHeader>
           <CardContent>
@@ -1160,7 +1164,7 @@ export default function TeacherDashboardPage() {
                     <TableRow>
                     <TableHead>學生</TableHead>
                     <TableHead>目前點數</TableHead>
-                    <TableHead className="w-[150px]">要發送的點數</TableHead>
+                    <TableHead className="w-[150px]">要發送/扣除的點數</TableHead>
                     <TableHead className="text-right w-[100px]">操作</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -1184,11 +1188,11 @@ export default function TeacherDashboardPage() {
                             handleAwardPoints(student.id, points);
                             (e.target as HTMLFormElement).reset();
                         }}>
-                            <Input name="points" type="number" placeholder="例如 50" aria-label={`給 ${student.name} 的點數`} />
+                            <Input name="points" type="number" placeholder="例如 50 或 -50" aria-label={`給 ${student.name} 的點數`} />
                         </form>
                         </TableCell>
                         <TableCell className="text-right">
-                        <Button size="sm" type="submit" form={`points-form-${student.id}`}>發送</Button>
+                        <Button size="sm" type="submit" form={`points-form-${student.id}`}>執行</Button>
                         </TableCell>
                     </TableRow>
                     )) : (
@@ -1445,9 +1449,9 @@ export default function TeacherDashboardPage() {
         <Dialog open={isBatchAwardDialogOpen} onOpenChange={setIsBatchAwardDialogOpen}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>全班批次發放點數</DialogTitle>
+                    <DialogTitle>全班批次發放/扣除點數</DialogTitle>
                     <DialogDescription>
-                        為「{classes.find(c => c.id === selectedClassId)?.name}」的所有學生發送相同數量的點數。此操作無法復原。
+                        為「{classes.find(c => c.id === selectedClassId)?.name}」的所有學生發送或扣除相同數量的點數。此操作無法復原。
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -1460,7 +1464,7 @@ export default function TeacherDashboardPage() {
                             name="batch-award-amount" 
                             type="number" 
                             className="col-span-3"
-                            placeholder="要發送的點數量"
+                            placeholder="正數為發放，負數為扣除"
                             value={batchAwardAmount}
                             onChange={(e) => setBatchAwardAmount(e.target.value === '' ? '' : Number(e.target.value))}
                             required 
@@ -1471,7 +1475,7 @@ export default function TeacherDashboardPage() {
                     <DialogClose asChild>
                         <Button type="button" variant="secondary">取消</Button>
                     </DialogClose>
-                    <Button type="button" onClick={handleBatchAwardPoints}>確認發放</Button>
+                    <Button type="button" onClick={handleBatchAwardPoints}>確認操作</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -1943,3 +1947,5 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
         </Dialog>
     )
 }
+
+    
