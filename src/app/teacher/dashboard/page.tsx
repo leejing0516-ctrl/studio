@@ -694,7 +694,13 @@ export default function TeacherDashboardPage() {
         fixedDeposits: [],
     }));
 
-    await setStudents(newStudents);
+    await setStudents(currentStudents => {
+        const studentMap = new Map(currentStudents.map(s => [`${s.classId}-${s.id}`, s]));
+        newStudents.forEach(s => {
+            studentMap.set(`${s.classId}-${s.id}`, s);
+        });
+        return Array.from(studentMap.values());
+    });
 
     toast({
         title: "匯入成功",
@@ -709,8 +715,8 @@ export default function TeacherDashboardPage() {
   
   const handleAdjustFunds = () => {
     const amount = Number(adjustFundsAmount);
-    if (!amount) {
-        toast({ title: "無效的金額", description: "請輸入一個有效的金額。", variant: "destructive" });
+    if (!amount || amount <= 0) {
+        toast({ title: "無效的金額", description: "請輸入一個大於 0 的有效金額。", variant: "destructive" });
         return;
     }
 
@@ -903,7 +909,7 @@ export default function TeacherDashboardPage() {
                     <div>
                         <CardTitle>學生名單</CardTitle>
                         <CardDescription>
-                            新增、編輯、刪除或批次匯入目前所選班級的學生。
+                            新增、編輯、刪除或批次匯入學生。
                         </CardDescription>
                     </div>
                     <div className="flex gap-2">
@@ -911,7 +917,7 @@ export default function TeacherDashboardPage() {
                             <Upload className="mr-2 h-4 w-4" />
                             批次匯入
                         </Button>
-                        <Button onClick={() => setIsAddStudentDialogOpen(true)}>
+                        <Button onClick={() => setIsAddStudentDialogOpen(true)} disabled={!selectedClassId}>
                             <PlusCircle className="mr-2 h-4 w-4" />
                             新增學生
                         </Button>
@@ -1044,11 +1050,11 @@ export default function TeacherDashboardPage() {
                                             <AlertDialog open={!!teacherToDelete && teacherToDelete.id === teacher.id} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
-                                                        <AlertDialogTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </AlertDialogTrigger>
+                                                      <AlertDialogTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                      </AlertDialogTrigger>
                                                     </TooltipTrigger>
                                                     <TooltipContent><p>刪除</p></TooltipContent>
                                                 </Tooltip>

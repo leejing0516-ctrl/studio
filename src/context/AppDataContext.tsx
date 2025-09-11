@@ -111,22 +111,21 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 const key = `${student.classId}-${student.id}`;
                 studentMap.set(key, student);
             });
-            // Then, add or update with students from the updater, preserving existing data
+            // Then, add or update with students from the new data
             dataToWrite.forEach(student => {
                 const key = `${student.classId}-${student.id}`;
-                const existingStudent = studentMap.get(key);
-                // Merge new student data with existing data, new data takes precedence
-                const mergedStudent = { ...(existingStudent || {}), ...student };
+                const existingStudent = studentMap.get(key) || {};
+                const mergedStudent = { ...existingStudent, ...student };
                 studentMap.set(key, mergedStudent);
             });
-
+            
             const uniqueStudents = Array.from(studentMap.values());
             
             const batch = writeBatch(db);
             uniqueStudents.forEach(student => {
                 const studentDocId = `${student.classId}-${student.id}`;
                 const studentRef = doc(db, 'students', studentDocId);
-                batch.set(studentRef, student); // Use set instead of update to handle new students
+                batch.set(studentRef, student, { merge: true });
             });
             
             await batch.commit();
