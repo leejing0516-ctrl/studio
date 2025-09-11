@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Reward, Student, Teacher, Class, Loan, StudentChallenge, FundraisingProject, Donation } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Banknote, ShieldPlus, Coins, Flag, Hourglass, ShieldCheck, Gift, Briefcase } from "lucide-react";
+import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Banknote, ShieldPlus, Coins, Flag, Hourglass, ShieldCheck, Gift, Briefcase, HeartHandshake, LineChart } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -230,7 +230,7 @@ export default function TeacherDashboardPage() {
     });
   };
 
-  const handleAwardPoints = (studentId: string, pointsToChange: number) => {
+  const handleAwardPoints = async (studentId: string, pointsToChange: number) => {
     if (!pointsToChange) {
       toast({ title: "無效的點數", description: "請輸入一個非零的數字。", variant: "destructive" });
       return;
@@ -248,7 +248,7 @@ export default function TeacherDashboardPage() {
     const actionText = isDeducting ? "扣除" : "發放";
     const reason = role === 'admin' ? `由校長 ${currentTeacher?.name} ${actionText}` : `由老師 ${currentTeacher?.name} ${actionText}`;
   
-    setStudents(currentStudents => currentStudents.map(s => {
+    await setStudents(currentStudents => currentStudents.map(s => {
       if (s.id === studentId && s.classId === selectedClassId) {
         const newHistory = [...(s.pointHistory || []), { points: pointsToChange, date: today, reason }];
         return { ...s, points: s.points + pointsToChange, pointHistory: newHistory };
@@ -257,7 +257,7 @@ export default function TeacherDashboardPage() {
     }));
     
     if (role !== 'admin' && currentTeacher) {
-      setTeachers(currentTeachers => currentTeachers.map(t => 
+      await setTeachers(currentTeachers => currentTeachers.map(t => 
         t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToChange } : t
       ));
     }
@@ -271,7 +271,7 @@ export default function TeacherDashboardPage() {
     }, 1);
   }
 
-  const handleBatchAwardPoints = () => {
+  const handleBatchAwardPoints = async () => {
     const pointsToChange = Number(batchAwardAmount);
     if (!pointsToChange) {
       toast({ title: "無效的點數", description: "請輸入一個非零的數字。", variant: "destructive" });
@@ -293,7 +293,7 @@ export default function TeacherDashboardPage() {
     const reason = role === 'admin' ? `由校長 ${currentTeacher?.name} ${actionText}` : `由老師 ${currentTeacher?.name} ${actionText}`;
   
     
-    setStudents(currentStudents => 
+    await setStudents(currentStudents => 
       currentStudents.map(student => {
         if (student.classId === selectedClassId && studentIdsInView.includes(student.id)) {
           const newHistory = [...(student.pointHistory || []), { points: pointsToChange, date: today, reason }];
@@ -305,7 +305,7 @@ export default function TeacherDashboardPage() {
     
     if (role !== 'admin' && currentTeacher) {
       const totalPointsToChange = studentsInView.length * pointsToChange;
-      setTeachers(currentTeachers => currentTeachers.map(t => 
+      await setTeachers(currentTeachers => currentTeachers.map(t => 
         t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - totalPointsToChange } : t
       ));
     }
@@ -653,7 +653,7 @@ export default function TeacherDashboardPage() {
     });
   }
   
-  const handleConfirmImport = () => {
+  const handleConfirmImport = async () => {
     setIsImporting(true);
     const validStudentsToImport = stagedStudents.filter(s => s.status === 'valid');
     
@@ -672,7 +672,7 @@ export default function TeacherDashboardPage() {
         fixedDeposits: [],
     }));
 
-    setStudents(current => [...current, ...newStudents]);
+    await setStudents(current => [...current, ...newStudents]);
 
     toast({
         title: "匯入成功",
@@ -863,13 +863,14 @@ export default function TeacherDashboardPage() {
         )}
     </div>
     <Tabs defaultValue={role === 'subject_teacher' ? 'classes' : 'students'} className="animate-in fade-in-0 duration-500">
-      <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-3' : (role === 'teacher' ? 'grid-cols-2' : 'grid-cols-2')}`}>
-        {role !== 'subject_teacher' && <TabsTrigger value="students">學生管理</TabsTrigger>}
-        {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
-        {role === 'subject_teacher' && <TabsTrigger value="classes">班級管理</TabsTrigger>}
-        <TabsTrigger value="points">發送點數</TabsTrigger>
-        {(role === 'admin' || role === 'teacher') && <TabsTrigger value="approvals">審核中心</TabsTrigger>}
-      </TabsList>
+        <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-4' : (role === 'teacher' ? 'grid-cols-3' : 'grid-cols-2')}`}>
+            {role !== 'subject_teacher' && <TabsTrigger value="students">學生管理</TabsTrigger>}
+            {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
+            {role === 'subject_teacher' && <TabsTrigger value="classes">班級管理</TabsTrigger>}
+            <TabsTrigger value="points">發送點數</TabsTrigger>
+            {(role === 'admin' || role === 'teacher') && <TabsTrigger value="approvals">審核中心</TabsTrigger>}
+        </TabsList>
+
       
       {role !== 'subject_teacher' && 
         <TabsContent value="students" className="mt-6">
@@ -1017,27 +1018,25 @@ export default function TeacherDashboardPage() {
                                                 <TooltipContent><p>重設密碼</p></TooltipContent>
                                             </Tooltip>
                                             <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <AlertDialog open={!!teacherToDelete && teacherToDelete.id === teacher.id} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
-                                                        <AlertDialogTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent>
-                                                            <AlertDialogHeader>
-                                                                <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
-                                                                <AlertDialogDescription>
-                                                                    您確定要刪除老師「{teacherToDelete?.name}」嗎？此操作將永久移除该老師的帳號及其建立的獎勵與挑戰，且無法復原。
-                                                                </AlertDialogDescription>
-                                                            </AlertDialogHeader>
-                                                            <AlertDialogFooter>
-                                                                <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>取消</AlertDialogCancel>
-                                                                <AlertDialogAction onClick={handleConfirmDeleteTeacher} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-                                                            </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
-                                                </TooltipTrigger>
+                                                <AlertDialog open={!!teacherToDelete && teacherToDelete.id === teacher.id} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                                您確定要刪除老師「{teacherToDelete?.name}」嗎？此操作將永久移除该老師的帳號及其建立的獎勵與挑戰，且無法復原。
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>取消</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={handleConfirmDeleteTeacher} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
                                                 <TooltipContent><p>刪除</p></TooltipContent>
                                             </Tooltip>
                                         </TooltipProvider>
