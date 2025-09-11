@@ -684,17 +684,25 @@ export default function TeacherDashboardPage() {
     }));
 
     await setStudents(currentStudents => {
-        // Create a map of existing students for quick lookup
-        const studentMap = new Map(currentStudents.map(s => [s.id, s]));
+        // Create a map of existing students for quick lookup, using a composite key
+        const studentMap = new Map(currentStudents.map(s => [`${s.classId}-${s.id}`, s]));
+        
         newStudents.forEach(newStudent => {
-            studentMap.set(newStudent.id, newStudent);
+            const compositeKey = `${newStudent.classId}-${newStudent.id}`;
+            studentMap.set(compositeKey, newStudent);
         });
-        return Array.from(studentMap.values());
+
+        // The final list is the combination of all students from all classes
+        const otherClassesStudents = currentStudents.filter(s => s.classId !== selectedClassId);
+        const updatedClassStudents = Array.from(studentMap.values()).filter(s => s.classId === selectedClassId);
+        
+        return [...otherClassesStudents, ...updatedClassStudents];
     });
+
 
     toast({
         title: "匯入成功",
-        description: `已成功匯入 ${newStudents.length} 位學生。`
+        description: `已成功匯入 ${newStudents.length} 位學生到 ${classes.find(c=>c.id === selectedClassId)?.name}。`
     });
 
     setIsImporting(false);
@@ -1964,11 +1972,3 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
         </Dialog>
     )
 }
-
-    
-
-    
-
-
-
-

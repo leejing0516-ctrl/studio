@@ -100,19 +100,30 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
         try {
             const batch = writeBatch(db);
-            const currentIds = new Set(currentState.map(s => s.id));
             
             finalState.forEach(student => {
-                const studentRef = doc(db, 'students', student.id);
+                // IMPORTANT: Use a composite key to ensure document uniqueness across classes
+                const studentDocId = `${student.classId}-${student.id}`;
+                const studentRef = doc(db, 'students', studentDocId);
                 batch.set(studentRef, student);
             });
 
+            // Handle deletions by comparing the final state with the initial state
+            const finalIds = new Set(finalState.map(s => `${s.classId}-${s.id}`));
+            currentState.forEach(student => {
+                const studentDocId = `${student.classId}-${student.id}`;
+                if (!finalIds.has(studentDocId)) {
+                    batch.delete(doc(db, 'students', studentDocId));
+                }
+            });
+
             await batch.commit();
-            setStudentsState(finalState);
+            setStudentsState(finalState); // Update local state only after successful commit
             console.log(`Students collection successfully updated.`);
         } catch (error) {
             console.error(`Transaction failed for students: `, error);
-            setStudentsState(currentState); // Rollback optimistic update
+            // Optionally rollback local state, but for now we'll just log the error
+            // setStudentsState(currentState); 
         }
     };
 
@@ -305,7 +316,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         
         if (needsUpdate) {
             studentsModified = true;
-            const studentRef = doc(db, 'students', student.id);
+            const studentDocId = `${student.classId}-${student.id}`;
+            const studentRef = doc(db, 'students', studentDocId);
             studentBatch.update(studentRef, {
                 points: studentPoints,
                 pointHistory: studentPointHistory,
@@ -353,9 +365,13 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             console.log(`Seeding collection: ${name}`);
             writesPending = true;
             data.forEach((item: any) => {
-                const docId = item.id ? String(item.id) : (item.ticker || null);
+                let docId = item.id;
+                if (name === 'stocks') docId = item.ticker;
+                // Use a composite key for students to ensure uniqueness
+                if (name === 'students') docId = `${item.classId}-${item.id}`;
+
                 if (docId) {
-                    const itemDocRef = doc(db, name, docId);
+                    const itemDocRef = doc(db, name, String(docId));
                     batch.set(itemDocRef, { ...item });
                 }
             });
