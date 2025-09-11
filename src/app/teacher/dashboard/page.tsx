@@ -684,23 +684,14 @@ export default function TeacherDashboardPage() {
     }));
 
     await setStudents(currentStudents => {
-        // Keep all students from other classes
-        const otherClassesStudents = currentStudents.filter(s => s.classId !== selectedClassId);
-        // Get existing students in the current class to avoid duplicates
-        const existingStudentsInClass = currentStudents.filter(s => s.classId === selectedClassId);
-        
-        // Create a map of new students for efficient lookup
-        const newStudentsMap = new Map(newStudents.map(s => [s.id, s]));
+        // Use a Map to ensure uniqueness based on a composite key.
+        const studentMap = new Map(currentStudents.map(s => [`${s.classId}-${s.id}`, s]));
 
-        // Combine existing students with new ones, overwriting duplicates from the CSV
-        const updatedClassStudentsMap = new Map(existingStudentsInClass.map(s => [s.id, s]));
-        newStudentsMap.forEach((student, id) => {
-            updatedClassStudentsMap.set(id, student);
+        newStudents.forEach(s => {
+            studentMap.set(`${s.classId}-${s.id}`, s);
         });
         
-        const updatedClassStudents = Array.from(updatedClassStudentsMap.values());
-
-        return [...otherClassesStudents, ...updatedClassStudents];
+        return Array.from(studentMap.values());
     });
 
     toast({
@@ -1983,5 +1974,7 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
 }
 
 
+
+    
 
     
