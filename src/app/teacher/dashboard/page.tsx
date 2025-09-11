@@ -88,7 +88,7 @@ export default function TeacherDashboardPage() {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [stagedStudents, setStagedStudents] = useState<StagedStudent[]>([]);
   const [file, setFile] = useState<File | null>(null);
-  const [isImporting, setIsImporting] = useState(isImporting);
+  const [isImporting, setIsImporting] = useState(false);
 
   // State for Batch Award Points
   const [isBatchAwardDialogOpen, setIsBatchAwardDialogOpen] = useState(false);
@@ -135,7 +135,7 @@ export default function TeacherDashboardPage() {
     const storedClassIdsStr = localStorage.getItem('teacherClassIds');
     setRole(storedRole);
     setTeacherId(storedTeacherId);
-    if (storedClassIdsStr) {
+    if (storedClassIdsStr && storedClassIdsStr !== 'undefined') {
         try {
             const parsedClassIds = JSON.parse(storedClassIdsStr);
             setTeacherClassIds(parsedClassIds);
@@ -150,16 +150,16 @@ export default function TeacherDashboardPage() {
   }, [platformConfig]);
 
   // Effect for auto-selecting class after initial data is loaded.
-  useEffect(() => {
-    // For admin: select first class if none is selected
-    if (role === 'admin' && !selectedClassId && classes.length > 0) {
-      setSelectedClassId(classes[0].id);
-    }
-    // For teacher: select their class if none is selected
-    else if (role === 'teacher' && teacherClassIds.length > 0 && !selectedClassId) {
-      setSelectedClassId(teacherClassIds[0]);
-    }
-  }, [role, classes, teacherClassIds, selectedClassId]);
+    useEffect(() => {
+        // For admin: select first class if none is selected
+        if (role === 'admin' && !selectedClassId && classes.length > 0) {
+            setSelectedClassId(classes[0].id);
+        }
+        // For teacher: select their class if none is selected
+        else if (role === 'teacher' && teacherClassIds.length > 0 && !selectedClassId) {
+            setSelectedClassId(teacherClassIds[0]);
+        }
+    }, [role, classes, teacherClassIds, selectedClassId]);
 
   
 
@@ -951,6 +951,7 @@ export default function TeacherDashboardPage() {
 
   const handleAddStock = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const formData = new FormData(event.currentTarget);
     const ticker = (formData.get("ticker") as string).toUpperCase();
     
     if (stocks.some(s => s.ticker === ticker)) {
@@ -2544,10 +2545,10 @@ export default function TeacherDashboardPage() {
                         </div>
                         </div>
                         <DialogFooter>
-                        <DialogClose asChild>
-                            <Button type="button" variant="secondary" onClick={() => setTeacherToResetPassword(null)}>取消</Button>
-                        </DialogClose>
-                        <Button type="submit">儲存密碼</Button>
+                            <DialogClose asChild>
+                                <Button type="button" variant="secondary">取消</Button>
+                            </DialogClose>
+                            <Button type="submit">儲存密碼</Button>
                         </DialogFooter>
                     </form>
                     </DialogContent>
