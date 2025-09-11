@@ -658,11 +658,16 @@ export default function TeacherDashboardPage() {
     });
   }
   
-  const handleConfirmImport = async () => {
+ const handleConfirmImport = async () => {
     setIsImporting(true);
-    
-    // Get new students from the parsed CSV file that are valid for import
+
     const validStudentsToImport = stagedStudents.filter(s => s.status === 'valid');
+    if (validStudentsToImport.length === 0) {
+        toast({ title: "沒有可匯入的學生", description: "請檢查您的 CSV 檔案，沒有找到可匯入的新學生。", variant: "destructive" });
+        setIsImporting(false);
+        return;
+    }
+
     const newStudentObjects: Student[] = validStudentsToImport.map(s => ({
         id: s.id,
         name: s.name,
@@ -679,17 +684,13 @@ export default function TeacherDashboardPage() {
     }));
 
     try {
-        // Create the final, complete list of all students
-        // 1. Get all students who are NOT in the currently selected class
-        const otherClassesStudents = students.filter(s => s.classId !== selectedClassId);
-        // 2. Get all students who are ALREADY in the selected class (these will not be overwritten)
-        const existingStudentsInClass = students.filter(s => s.classId === selectedClassId);
-        // 3. Combine them with the new students for this class
-        const finalStudentList = [...otherClassesStudents, ...existingStudentsInClass, ...newStudentObjects];
+        await setStudents((currentStudents) => {
+            const otherClassesStudents = currentStudents.filter(s => s.classId !== selectedClassId);
+            const existingStudentsInClass = currentStudents.filter(s => s.classId === selectedClassId);
+            const finalStudentList = [...otherClassesStudents, ...existingStudentsInClass, ...newStudentObjects];
+            return finalStudentList;
+        });
 
-        // Pass the complete new list to the context updater
-        await setStudents(() => finalStudentList);
-        
         toast({
             title: "匯入成功",
             description: `已成功匯入 ${newStudentObjects.length} 位學生至 ${classes.find(c => c.id === selectedClassId)?.name}。`
@@ -707,7 +708,7 @@ export default function TeacherDashboardPage() {
     setIsImportDialogOpen(false);
     setStagedStudents([]);
     setFile(null);
-  };
+};
   
   const handleAdjustFunds = () => {
     const amount = Number(adjustFundsAmount);
@@ -1042,14 +1043,12 @@ export default function TeacherDashboardPage() {
                                                 <TooltipContent><p>重設密碼</p></TooltipContent>
                                             </Tooltip>
                                             <AlertDialog open={!!teacherToDelete && teacherToDelete.id === teacher.id} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent><p>刪除</p></TooltipContent>
-                                                </Tooltip>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </AlertDialogTrigger>
+                                                <TooltipContent><p>刪除</p></TooltipContent>
                                                 <AlertDialogContent>
                                                     <AlertDialogHeader>
                                                         <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
@@ -1976,5 +1975,6 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
     
 
     
+
 
 
