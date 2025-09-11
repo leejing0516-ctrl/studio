@@ -121,6 +121,7 @@ export default function TeacherDashboardPage() {
   const [isAddProjectDialogOpen, setIsAddProjectDialogOpen] = useState(false);
   const [isEditProjectDialogOpen, setIsEditProjectDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<FundraisingProject | null>(null);
+  const [projectToDelete, setProjectToDelete] = useState<FundraisingProject | null>(null);
   const [projectImageFile, setProjectImageFile] = useState<File | null>(null);
   const [projectImagePreview, setProjectImagePreview] = useState<string | null>(null);
   const [projectDeadline, setProjectDeadline] = useState<Date | undefined>(addDays(new Date(), 14));
@@ -948,11 +949,12 @@ export default function TeacherDashboardPage() {
   const handleEditProjectClick = (project: FundraisingProject) => {
     setEditingProject(project);
     setProjectImagePreview(project.image);
-    const deadlineDate = new Date();
+    // Ensure deadline is a valid date or provide a default
+    const initialDate = new Date(); // A valid date object
     if (project.deadline && isValid(new Date(project.deadline))) {
-        setProjectDeadline(new Date(project.deadline));
+      setProjectDeadline(new Date(project.deadline));
     } else {
-        setProjectDeadline(addDays(new Date(), 14));
+      setProjectDeadline(addDays(new Date(), 14)); // Default to 14 days from now
     }
     setIsEditProjectDialogOpen(true);
   };
@@ -989,6 +991,19 @@ export default function TeacherDashboardPage() {
     });
     toast({ title: "已更新專案", description: `專案「${updatedProject.title}」已更新。` });
     setIsEditProjectDialogOpen(false);
+  };
+
+  const handleDeleteFundraisingProjectClick = (project: FundraisingProject) => {
+    setProjectToDelete(project);
+  };
+
+  const handleConfirmDeleteProject = () => {
+    if (!projectToDelete) return;
+    setPlatformConfig({
+        fundraisingProjects: (platformConfig?.fundraisingProjects || []).filter(p => p.id !== projectToDelete.id)
+    });
+    toast({ title: "已刪除專案", description: `專案「${projectToDelete.title}」已被刪除。`, variant: "destructive" });
+    setProjectToDelete(null);
   };
 
   if (isLoading) {
@@ -1216,25 +1231,11 @@ export default function TeacherDashboardPage() {
                                                 <TooltipContent><p>重設密碼</p></TooltipContent>
                                             </Tooltip>
                                             <Tooltip>
-                                                <AlertDialog open={!!teacherToDelete && teacherToDelete.id === teacher.id} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
-                                                    <AlertDialogTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </AlertDialogTrigger>
-                                                    <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
-                                                            <AlertDialogDescription>
-                                                                您確定要刪除老師「{teacher.name}」嗎？此操作將永久移除该老師的帳號及其建立的獎勵與挑戰，且無法復原。
-                                                            </AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>取消</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={handleConfirmDeleteTeacher} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                  <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacherClick(teacher)}>
+                                                    <Trash2 className="h-4 w-4" />
+                                                  </Button>
+                                                </AlertDialogTrigger>
                                                 <TooltipContent><p>刪除</p></TooltipContent>
                                             </Tooltip>
                                         </TooltipProvider>
@@ -1244,6 +1245,20 @@ export default function TeacherDashboardPage() {
                         </TableBody>
                     </Table>
                 </CardContent>
+                 <AlertDialog open={!!teacherToDelete} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                您確定要刪除老師「{teacherToDelete?.name}」嗎？此操作將永久移除该老師的帳號及其建立的獎勵與挑戰，且無法復原。
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>取消</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleConfirmDeleteTeacher} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </Card>
              <Card>
                 <CardHeader  className="flex flex-row items-center justify-between">
@@ -1659,10 +1674,29 @@ export default function TeacherDashboardPage() {
                                         進度：{project.currentAmount.toLocaleString()} / {project.goal.toLocaleString()} 點
                                     </p>
                                 </div>
-                                <div className="flex flex-col gap-2 md:items-end">
+                                <div className="flex flex-col md:flex-row md:items-start gap-2">
                                    <Button size="sm" onClick={() => handleEditProjectClick(project)}>
                                         <Edit className="mr-2"/>編輯
                                     </Button>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button size="sm" variant="destructive">
+                                                <Trash2 className="mr-2" />刪除
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>您確定要刪除專案嗎？</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    您確定要刪除募資專案「{project.title}」嗎？此操作無法復原。
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>取消</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleConfirmDeleteProject()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
                                 </div>
                             </div>
                             <details className="mt-4">
@@ -2291,6 +2325,20 @@ export default function TeacherDashboardPage() {
                 </form>
             </DialogContent>
         </Dialog>
+         <AlertDialog open={!!projectToDelete} onOpenChange={(open) => !open && setProjectToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>您確定要刪除專案嗎？</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        您確定要刪除募資專案「{projectToDelete?.title}」嗎？此操作無法復原。
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setProjectToDelete(null)}>取消</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirmDeleteProject} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
 
 
         {/* Dialog for Subject Teacher to manage classes */}
