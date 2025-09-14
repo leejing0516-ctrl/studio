@@ -36,6 +36,7 @@ import {
   Bell,
   Mail,
   HeartHandshake,
+  Repeat,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -91,6 +92,7 @@ export default function StudentLayout({
                 loans: foundStudent.loans,
                 challenges: foundStudent.challenges,
                 fixedDeposits: foundStudent.fixedDeposits,
+                habits: foundStudent.habits,
             });
         } else {
              router.push('/');
@@ -117,6 +119,7 @@ export default function StudentLayout({
                     loans: latestStudentData.loans,
                     challenges: latestStudentData.challenges,
                     fixedDeposits: latestStudentData.fixedDeposits || [],
+                    habits: latestStudentData.habits || [],
                 });
             }
         } else if (studentData.student) {
@@ -129,7 +132,7 @@ export default function StudentLayout({
   const student = studentData.student;
   
   const handleLogout = () => {
-    setStudentData({ student: null, points: 0, portfolio: [], redeemedRewards: [], loans: [], challenges: [], fixedDeposits: [] });
+    setStudentData({ student: null, points: 0, portfolio: [], redeemedRewards: [], loans: [], challenges: [], fixedDeposits: [], habits: [] });
     localStorage.removeItem('studentId');
     localStorage.removeItem('studentClassId');
     localStorage.removeItem('userRole');
@@ -187,6 +190,7 @@ export default function StudentLayout({
     { href: "/dashboard", label: "儀表板", icon: LayoutDashboard },
     { href: "/announcements", label: "最新公告", icon: Megaphone },
     { href: "/challenges", label: "挑戰任務", icon: Flag },
+    { href: "/habits", label: "習慣養成", icon: Repeat },
     { href: "/fundraising", label: "募資平台", icon: HeartHandshake },
     { href: "/my-collection", label: "我的收藏", icon: Package },
     { href: "/rewards", label: "獎勵商店", icon: Gift },
@@ -288,7 +292,7 @@ export default function StudentLayout({
                 <div className="flex items-center gap-2">
                     <SidebarTrigger className="md:hidden" />
                     <h1 className="text-lg font-semibold md:text-xl capitalize">
-                        {pathname.split("/").pop()?.replace('-', ' ') || '儀表板'}
+                        {navItems.find(item => item.href === pathname)?.label || '儀表板'}
                     </h1>
                 </div>
                  <Popover>

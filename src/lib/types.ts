@@ -64,6 +64,20 @@ export type StudentChallenge = {
     completedDate?: string; // ISO date string
 };
 
+export type StudentHabit = {
+  id: string;
+  title: string;
+  description: string;
+  status: 'pending_approval' | 'active' | 'completed' | 'rejected';
+  requestDate: string; // ISO date string
+  approvalDate?: string; // ISO date string
+  rejectionReason?: string; // If rejected
+  startDate?: string; // ISO date string
+  endDate?: string; // ISO date string
+  points: number; // Set by teacher
+  checkIns: string[]; // Array of ISO date strings for daily check-ins
+};
+
 export type Student = {
   id: string; // Student ID within the class
   name: string;
@@ -77,6 +91,7 @@ export type Student = {
   pointHistory: PointRecord[];
   challenges: StudentChallenge[];
   fixedDeposits: FixedDeposit[];
+  habits?: StudentHabit[];
 };
 
 export type Reward = {

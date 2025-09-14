@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import Link from "next/link";
@@ -28,6 +29,7 @@ import {
   LineChart,
   HeartHandshake,
   Gift,
+  Repeat,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -157,6 +159,7 @@ export default function TeacherLayout({
     { href: "/teacher/announcements", label: "公告管理", icon: Megaphone, roles: ['admin', 'teacher'] },
     { href: "/teacher/rewards", label: "獎勵管理", icon: Gift, roles: ['admin', 'teacher'] },
     { href: "/teacher/challenges", label: "挑戰管理", icon: Flag, roles: ['admin', 'teacher'] },
+    { href: "/teacher/habits", label: "習慣審核", icon: Repeat, roles: ['admin', 'teacher'] },
     { href: "/teacher/stocks", label: "股票管理", icon: LineChart, roles: ['admin'] },
     { href: "/teacher/fundraising", label: "募資管理", icon: HeartHandshake, roles: ['admin'] },
     { href: "/teacher/settings", label: "平台設定", icon: Settings, roles: ['admin'] },
