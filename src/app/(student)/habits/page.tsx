@@ -50,7 +50,7 @@ export default function HabitsPage() {
   }, [currentStudent]);
 
 
-  const handleHabitRequest = (e: React.FormEvent) => {
+  const handleHabitRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentStudent || !habitTitle || !habitDescription) {
       toast({ title: "請填寫完整資訊", variant: "destructive" });
@@ -67,7 +67,7 @@ export default function HabitsPage() {
       checkIns: [],
     };
 
-    setStudents(currentStudents => currentStudents.map(s => {
+    await setStudents(currentStudents => currentStudents.map(s => {
       if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
         return { ...s, habits: [...(s.habits || []), newHabit] };
       }
@@ -80,10 +80,10 @@ export default function HabitsPage() {
     setHabitDescription("");
   };
   
-  const handleCheckIn = (habitId: string) => {
+  const handleCheckIn = async (habitId: string) => {
     if (!currentStudent) return;
     
-    setStudents(currentStudents => currentStudents.map(s => {
+    await setStudents(currentStudents => currentStudents.map(s => {
       if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
         return {
             ...s,
@@ -201,45 +201,47 @@ export default function HabitsPage() {
       </div>
 
        <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
-        <form onSubmit={handleHabitRequest}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>申請新的習慣養成計畫</DialogTitle>
-              <DialogDescription>
-                寫下你想挑戰的習慣，送出後老師會為你評估獎勵點數。習慣挑戰為期 21 天。
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-4 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="habit-title">習慣標題</Label>
-                <Input
-                  id="habit-title"
-                  value={habitTitle}
-                  onChange={(e) => setHabitTitle(e.target.value)}
-                  placeholder="例如：每日運動 30 分鐘"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="habit-description">簡單描述</Label>
-                <Textarea
-                  id="habit-description"
-                  value={habitDescription}
-                  onChange={(e) => setHabitDescription(e.target.value)}
-                  placeholder="例如：我希望每天都能在晚餐後到公園散步或慢跑，保持身體健康。"
-                  required
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="secondary" type="button">取消</Button>
-              </DialogClose>
-              <Button type="submit">送出申請</Button>
-            </DialogFooter>
-          </DialogContent>
-        </form>
+        <DialogContent>
+            <form onSubmit={handleHabitRequest}>
+                <DialogHeader>
+                  <DialogTitle>申請新的習慣養成計畫</DialogTitle>
+                  <DialogDescription>
+                    寫下你想挑戰的習慣，送出後老師會為你評估獎勵點數。習慣挑戰為期 21 天。
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-4 space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="habit-title">習慣標題</Label>
+                    <Input
+                      id="habit-title"
+                      value={habitTitle}
+                      onChange={(e) => setHabitTitle(e.target.value)}
+                      placeholder="例如：每日運動 30 分鐘"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="habit-description">簡單描述</Label>
+                    <Textarea
+                      id="habit-description"
+                      value={habitDescription}
+                      onChange={(e) => setHabitDescription(e.target.value)}
+                      placeholder="例如：我希望每天都能在晚餐後到公園散步或慢跑，保持身體健康。"
+                      required
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="secondary" type="button">取消</Button>
+                  </DialogClose>
+                  <Button type="submit">送出申請</Button>
+                </DialogFooter>
+            </form>
+        </DialogContent>
       </Dialog>
     </div>
   );
 }
+
+    
