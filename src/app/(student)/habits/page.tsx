@@ -192,27 +192,23 @@ export default function HabitsPage() {
       : 0;
 
     return (
-        <Card className="flex flex-col">
-            <CardHeader className="flex flex-row justify-between items-start">
-                <div className="space-y-1.5">
-                    <CardTitle className="flex items-center gap-2">
-                       <Goal /> {habit.title}
-                    </CardTitle>
-                    <CardDescription>{habit.description}</CardDescription>
-                </div>
-                 <div className="flex items-center gap-2 flex-shrink-0">
-                    {habit.status !== 'completed' && (
-                        <Badge variant={habit.status === 'active' ? 'default' : habit.status === 'pending_approval' ? 'secondary' : 'destructive'}>
-                            {
-                                {
-                                    'pending_approval': '待審核',
-                                    'active': '進行中',
-                                    'rejected': '已拒絕',
-                                }[habit.status]
-                            }
-                        </Badge>
-                    )}
-                 </div>
+        <Card className="flex flex-col relative">
+            {habit.status !== 'completed' && (
+                <Badge className="absolute top-2 right-2 z-10" variant={habit.status === 'active' ? 'default' : habit.status === 'pending_approval' ? 'secondary' : 'destructive'}>
+                    {
+                        {
+                            'pending_approval': '待審核',
+                            'active': '進行中',
+                            'rejected': '已拒絕',
+                        }[habit.status]
+                    }
+                </Badge>
+            )}
+            <CardHeader>
+                <CardTitle className="flex items-start justify-between">
+                    <span className="flex items-center gap-2 pr-8"><Goal /> {habit.title}</span>
+                </CardTitle>
+                <CardDescription>{habit.description}</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow space-y-4">
                  {habit.status === 'pending_approval' && (
@@ -399,7 +395,12 @@ export default function HabitsPage() {
                                 <ImageOff className="h-8 w-8 text-muted-foreground" />
                             )}
                         </div>
-                        <Input id="checkin-image-upload" type="file" accept="image/*" onChange={handleCheckInImageChange} className="max-w-xs" />
+                        <div>
+                            <Input id="checkin-image-upload" type="file" accept="image/*" onChange={handleCheckInImageChange} className="sr-only" />
+                             <Label htmlFor="checkin-image-upload" className={buttonVariants({ variant: "outline" })}>
+                                選擇檔案
+                            </Label>
+                        </div>
                     </div>
                 </div>
                 <div className="space-y-2">

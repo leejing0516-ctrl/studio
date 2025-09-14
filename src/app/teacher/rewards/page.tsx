@@ -352,7 +352,12 @@ export default function TeacherRewardsPage() {
                                             <ImageOff className="h-8 w-8 text-muted-foreground" />
                                         )}
                                     </div>
-                                    <Input id="image-upload" type="file" accept="image/*" onChange={handleRewardImageFileChange} className="max-w-xs" />
+                                    <div>
+                                        <Input id="image-upload" type="file" accept="image/*" onChange={handleRewardImageFileChange} className="sr-only" />
+                                        <Label htmlFor="image-upload" className={buttonVariants({ variant: 'outline' })}>
+                                            選擇檔案
+                                        </Label>
+                                    </div>
                                 </div>
                             </div>
                             <div className="space-y-2">
@@ -407,7 +412,12 @@ export default function TeacherRewardsPage() {
                                             <ImageOff className="h-8 w-8 text-muted-foreground" />
                                         )}
                                     </div>
-                                    <Input id="edit-image-upload" type="file" accept="image/*" onChange={handleRewardImageFileChange} className="max-w-xs" />
+                                    <div>
+                                        <Input id="edit-image-upload" type="file" accept="image/*" onChange={handleRewardImageFileChange} className="sr-only" />
+                                        <Label htmlFor="edit-image-upload" className={buttonVariants({ variant: 'outline' })}>
+                                            選擇檔案
+                                        </Label>
+                                    </div>
                                 </div>
                             </div>
                             <div className="space-y-2">

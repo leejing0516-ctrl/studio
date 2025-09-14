@@ -321,7 +321,12 @@ export default function TeacherFundraisingPage() {
                                         <ImageOff className="h-8 w-8 text-muted-foreground" />
                                     )}
                                 </div>
-                                <Input id="project-image-upload" type="file" accept="image/*" onChange={handleProjectImageFileChange} className="max-w-xs" />
+                                <div>
+                                    <Input id="project-image-upload" type="file" accept="image/*" onChange={handleProjectImageFileChange} className="sr-only" />
+                                    <Label htmlFor="project-image-upload" className={buttonVariants({ variant: 'outline' })}>
+                                        選擇檔案
+                                    </Label>
+                                </div>
                             </div>
                         </div>
                         <div className="space-y-2">
@@ -397,7 +402,12 @@ export default function TeacherFundraisingPage() {
                                         <ImageOff className="h-8 w-8 text-muted-foreground" />
                                     )}
                                 </div>
-                                <Input id="edit-project-image-upload" type="file" accept="image/*" onChange={handleProjectImageFileChange} className="max-w-xs" />
+                                <div>
+                                    <Input id="edit-project-image-upload" type="file" accept="image/*" onChange={handleProjectImageFileChange} className="sr-only" />
+                                    <Label htmlFor="edit-project-image-upload" className={buttonVariants({ variant: 'outline' })}>
+                                        選擇檔案
+                                    </Label>
+                                </div>
                             </div>
                         </div>
                         <div className="space-y-2">

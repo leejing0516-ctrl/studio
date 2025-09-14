@@ -10,7 +10,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, ImageOff, X, Percent } from "lucide-react";
 import { Label } from "@/components/ui/label";
@@ -194,8 +194,13 @@ export default function TeacherSettingsPage() {
                         )}
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="logo-upload">上傳 Logo (PNG)</Label>
-                        <Input id="logo-upload" type="file" accept="image/png" onChange={handleLogoFileChange} className="max-w-xs" />
+                        <Label>上傳 Logo (PNG)</Label>
+                        <div>
+                            <Input id="logo-upload" type="file" accept="image/png" onChange={handleLogoFileChange} className="sr-only" />
+                            <Label htmlFor="logo-upload" className={buttonVariants({ variant: 'outline' })}>
+                                選擇檔案
+                            </Label>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
@@ -222,9 +227,14 @@ export default function TeacherSettingsPage() {
                                     </div>
                                 )}
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor={`sponsor-logo-upload-${index}`}>上傳 Logo {index + 1}</Label>
-                                <Input id={`sponsor-logo-upload-${index}`} type="file" accept="image/png" onChange={(e) => handleSponsorLogoFileChange(e, index)} className="max-w-xs"/>
+                             <div className="space-y-2">
+                                <Label>Logo {index + 1}</Label>
+                                <div>
+                                    <Input id={`sponsor-logo-upload-${index}`} type="file" accept="image/png" onChange={(e) => handleSponsorLogoFileChange(e, index)} className="sr-only"/>
+                                    <Label htmlFor={`sponsor-logo-upload-${index}`} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+                                        選擇檔案
+                                    </Label>
+                                </div>
                             </div>
                         </div>
                     ))}

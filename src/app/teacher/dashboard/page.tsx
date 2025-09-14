@@ -1651,9 +1651,15 @@ export default function TeacherDashboardPage() {
                     </a>
                 </DialogHeader>
                 <div className="py-4 space-y-4">
-                    <div className="grid w-full max-w-sm items-center gap-1.5">
-                        <Label htmlFor="csv-file">上傳 CSV 檔案</Label>
-                        <Input id="csv-file" type="file" accept=".csv" onChange={handleFileChange} />
+                    <div className="space-y-2">
+                        <Label>上傳 CSV 檔案</Label>
+                        <div>
+                            <Input id="csv-file" type="file" accept=".csv" onChange={handleFileChange} className="sr-only" />
+                            <Label htmlFor="csv-file" className={buttonVariants({ variant: "outline" })}>
+                                <Upload className="mr-2 h-4 w-4" />
+                                {file ? file.name : "選擇檔案"}
+                            </Label>
+                        </div>
                     </div>
 
                     {stagedStudents.length > 0 && (
@@ -2065,4 +2071,5 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
 
 
     
+
 
