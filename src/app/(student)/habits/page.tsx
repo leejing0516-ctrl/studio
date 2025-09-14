@@ -141,9 +141,9 @@ export default function HabitsPage() {
     return (
         <Card className="flex flex-col">
             <CardHeader>
-                <div className="flex justify-between items-start">
-                    <CardTitle className="flex items-center gap-2 pr-8"><Goal /> {habit.title}</CardTitle>
-                     <div className="flex items-center gap-2">
+                <div className="flex justify-between items-start gap-2">
+                    <CardTitle className="flex items-center gap-2 flex-1"><Goal /> {habit.title}</CardTitle>
+                    <div className="flex items-center gap-2 flex-shrink-0">
                         <Badge variant={habit.status === 'active' ? 'default' : habit.status === 'pending_approval' ? 'secondary' : habit.status === 'completed' ? 'default' : 'destructive'}>
                             {
                                 {
@@ -255,42 +255,44 @@ export default function HabitsPage() {
       </AlertDialog>
 
        <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
-        <form onSubmit={handleHabitRequest}>
-            <DialogHeader>
-                <DialogTitle>申請新的習慣養成計畫</DialogTitle>
-                <DialogDescription>
-                寫下你想挑戰的習慣，送出後老師會為你評估獎勵點數。習慣挑戰為期 21 天。
-                </DialogDescription>
-            </DialogHeader>
-            <div className="py-4 space-y-4">
-                <div className="space-y-2">
-                <Label htmlFor="habit-title">習慣標題</Label>
-                <Input
-                    id="habit-title"
-                    value={habitTitle}
-                    onChange={(e) => setHabitTitle(e.target.value)}
-                    placeholder="例如：每日運動 30 分鐘"
-                    required
-                />
+        <DialogContent>
+            <form onSubmit={handleHabitRequest}>
+                <DialogHeader>
+                    <DialogTitle>申請新的習慣養成計畫</DialogTitle>
+                    <DialogDescription>
+                    寫下你想挑戰的習慣，送出後老師會為你評估獎勵點數。習慣挑戰為期 21 天。
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4 space-y-4">
+                    <div className="space-y-2">
+                    <Label htmlFor="habit-title">習慣標題</Label>
+                    <Input
+                        id="habit-title"
+                        value={habitTitle}
+                        onChange={(e) => setHabitTitle(e.target.value)}
+                        placeholder="例如：每日運動 30 分鐘"
+                        required
+                    />
+                    </div>
+                    <div className="space-y-2">
+                    <Label htmlFor="habit-description">簡單描述</Label>
+                    <Textarea
+                        id="habit-description"
+                        value={habitDescription}
+                        onChange={(e) => setHabitDescription(e.target.value)}
+                        placeholder="例如：我希望每天都能在晚餐後到公園散步或慢跑，保持身體健康。"
+                        required
+                    />
+                    </div>
                 </div>
-                <div className="space-y-2">
-                <Label htmlFor="habit-description">簡單描述</Label>
-                <Textarea
-                    id="habit-description"
-                    value={habitDescription}
-                    onChange={(e) => setHabitDescription(e.target.value)}
-                    placeholder="例如：我希望每天都能在晚餐後到公園散步或慢跑，保持身體健康。"
-                    required
-                />
-                </div>
-            </div>
-            <DialogFooter>
-                <DialogClose asChild>
-                <Button variant="secondary" type="button">取消</Button>
-                </DialogClose>
-                <Button type="submit">送出申請</Button>
-            </DialogFooter>
-        </form>
+                <DialogFooter>
+                    <DialogClose asChild>
+                    <Button variant="secondary" type="button">取消</Button>
+                    </DialogClose>
+                    <Button type="submit">送出申請</Button>
+                </DialogFooter>
+            </form>
+        </DialogContent>
       </Dialog>
     </div>
   );
