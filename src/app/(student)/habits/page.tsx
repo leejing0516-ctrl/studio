@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useContext, useMemo } from "react";
@@ -182,36 +181,40 @@ export default function HabitsPage() {
       ? Math.min(Math.floor((habit.checkIns.length / HABIT_DURATION) * 100), 100)
       : habit.status === 'completed' ? 100 : 0;
       
-    const daysRemaining = habit.status === 'active' && habit.endDate
+    const daysRemaining = habit.status === 'active' && habit.endDate && isAfter(new Date(habit.endDate), today)
       ? differenceInDays(new Date(habit.endDate), today)
       : 0;
 
     return (
-        <Card className="flex flex-col relative">
-             <Badge variant={habit.status === 'active' ? 'default' : habit.status === 'pending_approval' ? 'secondary' : habit.status === 'completed' ? 'default' : 'destructive'} className="absolute top-2 right-2 z-10">
-                {
-                    {
-                        'pending_approval': '待審核',
-                        'active': '進行中',
-                        'completed': '已完成',
-                        'rejected': '已拒絕',
-                    }[habit.status]
-                }
-            </Badge>
+        <Card className="flex flex-col">
             <CardHeader>
                 <div className="flex justify-between items-start gap-2">
-                    <CardTitle className="flex items-center gap-2 flex-1">
-                        <Goal /> {habit.title}
-                    </CardTitle>
-                     {(habit.status === 'pending_approval' || habit.status === 'rejected') && (
-                         <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive flex-shrink-0" onClick={() => setHabitToDelete(habit)}>
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                         </AlertDialogTrigger>
-                    )}
+                    <div className="flex-1 space-y-1.5">
+                        <CardTitle className="flex items-center gap-2">
+                            <Goal /> {habit.title}
+                        </CardTitle>
+                        <CardDescription>{habit.description}</CardDescription>
+                    </div>
+                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                         <Badge variant={habit.status === 'active' ? 'default' : habit.status === 'pending_approval' ? 'secondary' : habit.status === 'completed' ? 'default' : 'destructive'}>
+                            {
+                                {
+                                    'pending_approval': '待審核',
+                                    'active': '進行中',
+                                    'completed': '已完成',
+                                    'rejected': '已拒絕',
+                                }[habit.status]
+                            }
+                        </Badge>
+                         {(habit.status === 'pending_approval' || habit.status === 'rejected') && (
+                             <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => setHabitToDelete(habit)}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                             </AlertDialogTrigger>
+                        )}
+                    </div>
                 </div>
-                <CardDescription>{habit.description}</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow space-y-4">
                  {habit.status === 'pending_approval' && (
@@ -230,9 +233,9 @@ export default function HabitsPage() {
                  {habit.status === 'active' && (
                     <div className="space-y-3">
                         <Progress value={progress} />
-                        <div className="grid grid-cols-2 text-sm text-muted-foreground">
+                        <div className="flex justify-between text-sm text-muted-foreground">
                              <span>進度: {habit.checkIns.length} / {HABIT_DURATION} 天</span>
-                             <span className="text-right">{daysRemaining > 0 ? `剩下 ${daysRemaining} 天` : '最後一天！'}</span>
+                             <span>{daysRemaining > 0 ? `剩下 ${daysRemaining} 天` : '最後一天！'}</span>
                         </div>
                     </div>
                 )}
