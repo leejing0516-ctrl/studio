@@ -10,14 +10,14 @@ import {
   CardDescription,
   CardFooter,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
-import { PlusCircle, Repeat, Target, Clock, Coins, Check, AlertTriangle, BadgeCheck, CircleOff } from "lucide-react";
+import { PlusCircle, Repeat, Target, Clock, Coins, Check, AlertTriangle, BadgeCheck, CircleOff, Trash2 } from "lucide-react";
 import { addDays, format, isAfter, startOfDay, differenceInDays, isSameDay } from "date-fns";
 import type { StudentHabit } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,17 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const HABIT_DURATION = 21;
 
@@ -42,6 +53,7 @@ export default function HabitsPage() {
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
   const [habitTitle, setHabitTitle] = useState("");
   const [habitDescription, setHabitDescription] = useState("");
+  const [habitToDelete, setHabitToDelete] = useState<StudentHabit | null>(null);
 
   const currentStudent = students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId);
 
@@ -97,6 +109,23 @@ export default function HabitsPage() {
     toast({ title: "打卡成功！", description: "今天的習慣已完成，繼續保持！" });
   };
   
+  const handleDeleteHabit = async () => {
+    if (!currentStudent || !habitToDelete) return;
+    
+    await setStudents(currentStudents => currentStudents.map(s => {
+      if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
+        return {
+            ...s,
+            habits: (s.habits || []).filter(h => h.id !== habitToDelete.id)
+        }
+      }
+      return s;
+    }));
+
+    toast({ title: "已刪除申請", description: "您的習慣養成申請已被移除。", variant: "destructive"});
+    setHabitToDelete(null);
+  };
+  
   const HabitCard = ({ habit }: { habit: StudentHabit }) => {
     const today = startOfDay(new Date());
     const hasCheckedInToday = habit.checkIns.some(ci => isSameDay(startOfDay(new Date(ci)), today));
@@ -113,17 +142,26 @@ export default function HabitsPage() {
         <Card className="flex flex-col">
             <CardHeader>
                 <div className="flex justify-between items-start">
-                    <CardTitle className="flex items-center gap-2"><Target /> {habit.title}</CardTitle>
-                    <Badge variant={habit.status === 'active' ? 'default' : habit.status === 'pending_approval' ? 'secondary' : habit.status === 'completed' ? 'default' : 'destructive'}>
-                        {
+                    <CardTitle className="flex items-center gap-2 pr-8"><Target /> {habit.title}</CardTitle>
+                     <div className="flex items-center gap-2">
+                        <Badge variant={habit.status === 'active' ? 'default' : habit.status === 'pending_approval' ? 'secondary' : habit.status === 'completed' ? 'default' : 'destructive'}>
                             {
-                                'pending_approval': '待審核',
-                                'active': '進行中',
-                                'completed': '已完成',
-                                'rejected': '已拒絕',
-                            }[habit.status]
-                        }
-                    </Badge>
+                                {
+                                    'pending_approval': '待審核',
+                                    'active': '進行中',
+                                    'completed': '已完成',
+                                    'rejected': '已拒絕',
+                                }[habit.status]
+                            }
+                        </Badge>
+                        {(habit.status === 'pending_approval' || habit.status === 'rejected') && (
+                             <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => setHabitToDelete(habit)}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                             </AlertDialogTrigger>
+                        )}
+                    </div>
                 </div>
                 <CardDescription>{habit.description}</CardDescription>
             </CardHeader>
@@ -186,19 +224,35 @@ export default function HabitsPage() {
         </CardHeader>
       </Card>
       
-      <div>
-        <h2 className="text-2xl font-bold mb-4">我的習慣計畫</h2>
-         {studentHabits.length === 0 ? (
-          <Card className="text-center p-12">
-            <CardTitle className="mt-4">尚未建立任何習慣計畫</CardTitle>
-            <CardDescription className="mt-2">點擊上面的按鈕，開始你的第一個 21 天挑戰吧！</CardDescription>
-          </Card>
-        ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {studentHabits.map(h => <HabitCard key={h.id} habit={h} />)}
-          </div>
-        )}
-      </div>
+      <AlertDialog onOpenChange={(open) => {if (!open) setHabitToDelete(null)}}>
+        <div>
+            <h2 className="text-2xl font-bold mb-4">我的習慣計畫</h2>
+            {studentHabits.length === 0 ? (
+            <Card className="text-center p-12">
+                <CardTitle className="mt-4">尚未建立任何習慣計畫</CardTitle>
+                <CardDescription className="mt-2">點擊上面的按鈕，開始你的第一個 21 天挑戰吧！</CardDescription>
+            </Card>
+            ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {studentHabits.map(h => <HabitCard key={h.id} habit={h} />)}
+            </div>
+            )}
+        </div>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>確定要刪除嗎？</AlertDialogTitle>
+            <AlertDialogDescription>
+              您確定要刪除「{habitToDelete?.title}」這個習慣養成申請嗎？此操作無法復原。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteHabit} className={buttonVariants({ variant: "destructive" })}>
+              確定刪除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
        <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
         <DialogContent>
