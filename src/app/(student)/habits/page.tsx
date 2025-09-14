@@ -195,17 +195,17 @@ export default function HabitsPage() {
                         </CardTitle>
                         <CardDescription>{habit.description}</CardDescription>
                     </div>
-                </div>
-                 <Badge variant={habit.status === 'active' ? 'default' : habit.status === 'pending_approval' ? 'secondary' : habit.status === 'completed' ? 'default' : 'destructive'} className="absolute top-2 right-2 z-10">
-                    {
+                     <Badge variant={habit.status === 'active' ? 'default' : habit.status === 'pending_approval' ? 'secondary' : habit.status === 'completed' ? 'default' : 'destructive'}>
                         {
-                            'pending_approval': '待審核',
-                            'active': '進行中',
-                            'completed': '已完成',
-                            'rejected': '已拒絕',
-                        }[habit.status]
-                    }
-                </Badge>
+                            {
+                                'pending_approval': '待審核',
+                                'active': '進行中',
+                                'completed': '已完成',
+                                'rejected': '已拒絕',
+                            }[habit.status]
+                        }
+                    </Badge>
+                </div>
             </CardHeader>
             <CardContent className="flex-grow space-y-4">
                  {habit.status === 'pending_approval' && (
@@ -296,7 +296,7 @@ export default function HabitsPage() {
                 <CardDescription className="mt-2">點擊上面的按鈕，開始你的第一個 21 天挑戰吧！</CardDescription>
             </Card>
             ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-6">
                 {studentHabits.map(h => <HabitCard key={h.id} habit={h} />)}
             </div>
             )}
@@ -318,8 +318,8 @@ export default function HabitsPage() {
       </AlertDialog>
 
        <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
-        <form onSubmit={handleHabitRequest}>
-            <DialogContent>
+        <DialogContent>
+            <form onSubmit={handleHabitRequest}>
                 <DialogHeader>
                     <DialogTitle>申請新的習慣養成計畫</DialogTitle>
                     <DialogDescription>
@@ -354,8 +354,8 @@ export default function HabitsPage() {
                     </DialogClose>
                     <Button type="submit">送出申請</Button>
                 </DialogFooter>
-            </DialogContent>
-        </form>
+            </form>
+        </DialogContent>
       </Dialog>
       
       {/* Check-in Dialog */}
