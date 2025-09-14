@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
 import { PlusCircle, Repeat, Target, Clock, Coins, Check, AlertTriangle, BadgeCheck, CircleOff, Trash2, Goal, ImageOff, Notebook } from "lucide-react";
-import { addDays, format, isAfter, startOfDay, differenceInDays, isSameDay } from "date-fns";
+import { addDays, format, isAfter, startOfDay, differenceInDays, isSameDay, isValid } from "date-fns";
 import type { StudentHabit, HabitCheckIn } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -402,7 +402,9 @@ export default function HabitsPage() {
                     <div className="space-y-6">
                     {viewingHabitHistory?.checkIns.slice().reverse().map((checkIn, index) => (
                         <div key={index}>
-                            <p className="font-semibold mb-2">{format(new Date(checkIn.date), 'yyyy年MM月dd日')}</p>
+                            <p className="font-semibold mb-2">
+                                {isValid(new Date(checkIn.date)) ? format(new Date(checkIn.date), 'yyyy年MM月dd日') : '無效日期'}
+                            </p>
                             <div className="flex gap-4 items-start">
                                 {checkIn.imageUrl && (
                                      <Image src={checkIn.imageUrl} alt={`Check-in for ${checkIn.date}`} width={128} height={128} className="rounded-md object-cover w-32 h-32 shrink-0"/>
@@ -429,3 +431,5 @@ export default function HabitsPage() {
     </div>
   );
 }
+
+    
