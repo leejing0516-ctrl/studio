@@ -34,11 +34,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
-import { format, formatDistanceToNow, addDays, startOfDay, differenceInDays } from "date-fns";
+import { format, formatDistanceToNow, addDays, startOfDay, differenceInDays, isAfter } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useRouter } from "next/navigation";
+import { Label } from "@/components/ui/label";
 
 const HABIT_DURATION = 21;
 
