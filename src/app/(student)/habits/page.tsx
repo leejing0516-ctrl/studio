@@ -169,7 +169,7 @@ export default function HabitsPage() {
       return s;
     }));
 
-    toast({ title: "已刪除申請", description: "您的習慣養成申請已被移除。", variant: "destructive"});
+    toast({ title: "已刪除計畫", description: "您的習慣養成計畫已被移除。", variant: "destructive"});
     setHabitToDelete(null);
   };
   
@@ -187,24 +187,25 @@ export default function HabitsPage() {
 
     return (
         <Card className="flex flex-col relative">
+             {habit.status !== 'completed' && (
+                 <Badge variant={habit.status === 'active' ? 'default' : habit.status === 'pending_approval' ? 'secondary' : 'destructive'} className="absolute top-2 right-2 z-10">
+                    {
+                        {
+                            'pending_approval': '待審核',
+                            'active': '進行中',
+                            'rejected': '已拒絕',
+                        }[habit.status]
+                    }
+                </Badge>
+             )}
             <CardHeader>
                 <div className="flex justify-between items-start gap-2">
-                    <div className="flex-1 space-y-1.5">
+                    <div className="flex-1 space-y-1.5 pr-8">
                         <CardTitle className="flex items-center gap-2">
-                            <Goal /> {habit.title}
+                           <Goal /> {habit.title}
                         </CardTitle>
                         <CardDescription>{habit.description}</CardDescription>
                     </div>
-                     <Badge variant={habit.status === 'active' ? 'default' : habit.status === 'pending_approval' ? 'secondary' : habit.status === 'completed' ? 'default' : 'destructive'}>
-                        {
-                            {
-                                'pending_approval': '待審核',
-                                'active': '進行中',
-                                'completed': '已完成',
-                                'rejected': '已拒絕',
-                            }[habit.status]
-                        }
-                    </Badge>
                 </div>
             </CardHeader>
             <CardContent className="flex-grow space-y-4">
@@ -212,13 +213,11 @@ export default function HabitsPage() {
                     <div className="text-center text-muted-foreground p-4 bg-muted/50 rounded-md">
                         <Clock className="mx-auto h-8 w-8 mb-2" />
                         <p>等待老師評估並設定點數獎勵...</p>
-                         <AlertDialog>
-                             <AlertDialogTrigger asChild>
-                                <Button variant="link" size="sm" className="text-destructive h-auto p-0 mt-2" onClick={() => setHabitToDelete(habit)}>
-                                    刪除申請
-                                </Button>
-                             </AlertDialogTrigger>
-                         </AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="link" size="sm" className="text-destructive h-auto p-0 mt-2" onClick={() => setHabitToDelete(habit)}>
+                                刪除申請
+                            </Button>
+                        </AlertDialogTrigger>
                     </div>
                 )}
                  {habit.status === 'rejected' && (
@@ -226,20 +225,25 @@ export default function HabitsPage() {
                         <CircleOff className="mx-auto h-8 w-8 mb-2" />
                         <p className="font-semibold">此申請已被拒絕</p>
                         {habit.rejectionReason && <p className="text-xs mt-1">理由：{habit.rejectionReason}</p>}
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="link" size="sm" className="text-destructive h-auto p-0 mt-2" onClick={() => setHabitToDelete(habit)}>
-                                    刪除紀錄
-                                </Button>
-                            </AlertDialogTrigger>
-                        </AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="link" size="sm" className="text-destructive h-auto p-0 mt-2" onClick={() => setHabitToDelete(habit)}>
+                                刪除紀錄
+                            </Button>
+                        </AlertDialogTrigger>
                     </div>
                 )}
                  {habit.status === 'active' && (
                     <div className="space-y-3">
+                        <div className="flex justify-between items-center mb-1">
+                             <p className="text-sm text-muted-foreground">進度: {habit.checkIns.length} / {HABIT_DURATION} 天</p>
+                              <AlertDialogTrigger asChild>
+                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setHabitToDelete(habit)}>
+                                     <Trash2 className="h-4 w-4" />
+                                 </Button>
+                             </AlertDialogTrigger>
+                        </div>
                         <Progress value={progress} />
                         <div className="flex justify-between text-sm text-muted-foreground">
-                             <span>進度: {habit.checkIns.length} / {HABIT_DURATION} 天</span>
                              <span>{daysRemaining > 0 ? `剩下 ${daysRemaining} 天` : '最後一天！'}</span>
                         </div>
                     </div>
@@ -247,7 +251,7 @@ export default function HabitsPage() {
                 {habit.status === 'completed' && (
                     <div className="text-center text-green-600 p-4 bg-green-500/10 rounded-md">
                         <BadgeCheck className="mx-auto h-8 w-8 mb-2" />
-                        <p>恭喜完成！點數已由老師發放。</p>
+                        <p>恭喜完成！獲得了 {habit.points.toLocaleString()} 點！</p>
                     </div>
                 )}
             </CardContent>
@@ -305,7 +309,7 @@ export default function HabitsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>確定要刪除嗎？</AlertDialogTitle>
             <AlertDialogDescription>
-              您確定要刪除「{habitToDelete?.title}」這個習慣養成申請/紀錄嗎？此操作無法復原。
+              您確定要刪除「{habitToDelete?.title}」這個習慣養成計畫嗎？此操作無法復原。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -438,5 +442,3 @@ export default function HabitsPage() {
     </div>
   );
 }
-
-    
