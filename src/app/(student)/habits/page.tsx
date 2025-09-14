@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
-import { PlusCircle, Repeat, Target, Clock, Coins, Check, AlertTriangle, BadgeCheck, CircleOff, Trash2, Goal, ImageOff, Notebook } from "lucide-react";
+import { PlusCircle, Repeat, Target, Clock, Coins, Check, AlertTriangle, BadgeCheck, CircleOff, Trash2, Goal, ImageOff, Notebook, Eye } from "lucide-react";
 import { addDays, format, isAfter, startOfDay, differenceInDays, isSameDay, isValid } from "date-fns";
 import type { StudentHabit, HabitCheckIn } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
@@ -186,7 +186,7 @@ export default function HabitsPage() {
       : 0;
 
     return (
-        <Card className="flex flex-col">
+        <Card className="flex flex-col relative">
             <CardHeader>
                 <div className="flex justify-between items-start gap-2">
                     <div className="flex-1 space-y-1.5">
@@ -195,32 +195,30 @@ export default function HabitsPage() {
                         </CardTitle>
                         <CardDescription>{habit.description}</CardDescription>
                     </div>
-                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                         <Badge variant={habit.status === 'active' ? 'default' : habit.status === 'pending_approval' ? 'secondary' : habit.status === 'completed' ? 'default' : 'destructive'}>
-                            {
-                                {
-                                    'pending_approval': '待審核',
-                                    'active': '進行中',
-                                    'completed': '已完成',
-                                    'rejected': '已拒絕',
-                                }[habit.status]
-                            }
-                        </Badge>
-                         {(habit.status === 'pending_approval' || habit.status === 'rejected') && (
-                             <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => setHabitToDelete(habit)}>
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                             </AlertDialogTrigger>
-                        )}
-                    </div>
                 </div>
+                 <Badge variant={habit.status === 'active' ? 'default' : habit.status === 'pending_approval' ? 'secondary' : habit.status === 'completed' ? 'default' : 'destructive'} className="absolute top-2 right-2 z-10">
+                    {
+                        {
+                            'pending_approval': '待審核',
+                            'active': '進行中',
+                            'completed': '已完成',
+                            'rejected': '已拒絕',
+                        }[habit.status]
+                    }
+                </Badge>
             </CardHeader>
             <CardContent className="flex-grow space-y-4">
                  {habit.status === 'pending_approval' && (
                     <div className="text-center text-muted-foreground p-4 bg-muted/50 rounded-md">
                         <Clock className="mx-auto h-8 w-8 mb-2" />
                         <p>等待老師評估並設定點數獎勵...</p>
+                         <AlertDialog>
+                             <AlertDialogTrigger asChild>
+                                <Button variant="link" size="sm" className="text-destructive h-auto p-0 mt-2" onClick={() => setHabitToDelete(habit)}>
+                                    刪除申請
+                                </Button>
+                             </AlertDialogTrigger>
+                         </AlertDialog>
                     </div>
                 )}
                  {habit.status === 'rejected' && (
@@ -228,6 +226,13 @@ export default function HabitsPage() {
                         <CircleOff className="mx-auto h-8 w-8 mb-2" />
                         <p className="font-semibold">此申請已被拒絕</p>
                         {habit.rejectionReason && <p className="text-xs mt-1">理由：{habit.rejectionReason}</p>}
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="link" size="sm" className="text-destructive h-auto p-0 mt-2" onClick={() => setHabitToDelete(habit)}>
+                                    刪除紀錄
+                                </Button>
+                            </AlertDialogTrigger>
+                        </AlertDialog>
                     </div>
                 )}
                  {habit.status === 'active' && (
@@ -251,19 +256,18 @@ export default function HabitsPage() {
                     <Coins className="h-5 w-5" />
                     <span>{habit.points > 0 ? `+${habit.points.toLocaleString()}`: '???'}</span>
                 </div>
-                 {habit.status === 'active' && (
-                    <div className="flex gap-2">
-                        {habit.checkIns.length > 0 && 
-                            <Button variant="outline" size="sm" onClick={() => setViewingHabitHistory(habit)}>查看紀錄</Button>
-                        }
+                 <div className="flex items-center gap-2">
+                    {(habit.status === 'active' || habit.status === 'completed') && habit.checkIns.length > 0 && (
+                        <Button variant="outline" size="sm" onClick={() => setViewingHabitHistory(habit)}>
+                            <Eye className="mr-1 h-4 w-4" /> 查看紀錄
+                        </Button>
+                    )}
+                    {habit.status === 'active' && (
                         <Button onClick={() => setCheckInHabit(habit)} disabled={hasCheckedInToday}>
                             <Check className="mr-2"/> {hasCheckedInToday ? '今日已打卡' : '今日打卡'}
                         </Button>
-                    </div>
-                )}
-                 {habit.status === 'completed' && habit.checkIns.length > 0 && 
-                    <Button variant="outline" size="sm" onClick={() => setViewingHabitHistory(habit)}>查看完整紀錄</Button>
-                 }
+                    )}
+                </div>
             </CardFooter>
         </Card>
     )
@@ -301,7 +305,7 @@ export default function HabitsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>確定要刪除嗎？</AlertDialogTitle>
             <AlertDialogDescription>
-              您確定要刪除「{habitToDelete?.title}」這個習慣養成申請嗎？此操作無法復原。
+              您確定要刪除「{habitToDelete?.title}」這個習慣養成申請/紀錄嗎？此操作無法復原。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
