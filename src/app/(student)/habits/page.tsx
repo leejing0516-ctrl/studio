@@ -139,29 +139,29 @@ export default function HabitsPage() {
       : 0;
 
     return (
-        <Card className="flex flex-col">
+        <Card className="flex flex-col relative">
+             <Badge variant={habit.status === 'active' ? 'default' : habit.status === 'pending_approval' ? 'secondary' : habit.status === 'completed' ? 'default' : 'destructive'} className="absolute top-2 right-2 z-10">
+                {
+                    {
+                        'pending_approval': '待審核',
+                        'active': '進行中',
+                        'completed': '已完成',
+                        'rejected': '已拒絕',
+                    }[habit.status]
+                }
+            </Badge>
             <CardHeader>
                 <div className="flex justify-between items-start gap-2">
-                    <CardTitle className="flex items-center gap-2 flex-1"><Goal /> {habit.title}</CardTitle>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                        <Badge variant={habit.status === 'active' ? 'default' : habit.status === 'pending_approval' ? 'secondary' : habit.status === 'completed' ? 'default' : 'destructive'}>
-                            {
-                                {
-                                    'pending_approval': '待審核',
-                                    'active': '進行中',
-                                    'completed': '已完成',
-                                    'rejected': '已拒絕',
-                                }[habit.status]
-                            }
-                        </Badge>
-                        {(habit.status === 'pending_approval' || habit.status === 'rejected') && (
-                             <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => setHabitToDelete(habit)}>
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                             </AlertDialogTrigger>
-                        )}
-                    </div>
+                    <CardTitle className="flex items-center gap-2 flex-1">
+                        <Goal /> {habit.title}
+                    </CardTitle>
+                     {(habit.status === 'pending_approval' || habit.status === 'rejected') && (
+                         <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive flex-shrink-0" onClick={() => setHabitToDelete(habit)}>
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                         </AlertDialogTrigger>
+                    )}
                 </div>
                 <CardDescription>{habit.description}</CardDescription>
             </CardHeader>
@@ -195,7 +195,7 @@ export default function HabitsPage() {
                     </div>
                 )}
             </CardContent>
-            <CardFooter className="flex justify-between items-center bg-muted/50 p-4">
+            <CardFooter className="flex justify-between items-center bg-muted/50 p-4 mt-auto">
                 <div className="flex items-center gap-2 font-bold text-lg text-primary">
                     <Coins className="h-5 w-5" />
                     <span>{habit.points > 0 ? `+${habit.points.toLocaleString()}`: '???'}</span>
@@ -255,8 +255,8 @@ export default function HabitsPage() {
       </AlertDialog>
 
        <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
-        <DialogContent>
-            <form onSubmit={handleHabitRequest}>
+        <form onSubmit={handleHabitRequest}>
+            <DialogContent>
                 <DialogHeader>
                     <DialogTitle>申請新的習慣養成計畫</DialogTitle>
                     <DialogDescription>
@@ -291,13 +291,9 @@ export default function HabitsPage() {
                     </DialogClose>
                     <Button type="submit">送出申請</Button>
                 </DialogFooter>
-            </form>
-        </DialogContent>
+            </DialogContent>
+        </form>
       </Dialog>
     </div>
   );
 }
-
-    
-
-    
