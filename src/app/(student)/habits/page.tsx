@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
-import { PlusCircle, Repeat, Target, Clock, Coins, Check, AlertTriangle, BadgeCheck, CircleOff, Trash2 } from "lucide-react";
+import { PlusCircle, Repeat, Target, Clock, Coins, Check, AlertTriangle, BadgeCheck, CircleOff, Trash2, Goal } from "lucide-react";
 import { addDays, format, isAfter, startOfDay, differenceInDays, isSameDay } from "date-fns";
 import type { StudentHabit } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
@@ -142,7 +142,7 @@ export default function HabitsPage() {
         <Card className="flex flex-col">
             <CardHeader>
                 <div className="flex justify-between items-start">
-                    <CardTitle className="flex items-center gap-2 pr-8"><Target /> {habit.title}</CardTitle>
+                    <CardTitle className="flex items-center gap-2 pr-8"><Goal /> {habit.title}</CardTitle>
                      <div className="flex items-center gap-2">
                         <Badge variant={habit.status === 'active' ? 'default' : habit.status === 'pending_approval' ? 'secondary' : habit.status === 'completed' ? 'default' : 'destructive'}>
                             {
@@ -183,8 +183,8 @@ export default function HabitsPage() {
                     <div className="space-y-3">
                         <Progress value={progress} />
                         <div className="flex justify-between text-sm text-muted-foreground">
-                            <span>進度: {habit.checkIns.length} / {HABIT_DURATION} 天</span>
-                            <span>{daysRemaining > 0 ? `剩下 ${daysRemaining} 天` : '最後一天！'}</span>
+                             <span>進度: {habit.checkIns.length} / {HABIT_DURATION} 天</span>
+                             <span>{daysRemaining > 0 ? `剩下 ${daysRemaining} 天` : '最後一天！'}</span>
                         </div>
                     </div>
                 )}
@@ -255,47 +255,47 @@ export default function HabitsPage() {
       </AlertDialog>
 
        <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
-        <DialogContent>
-            <form onSubmit={handleHabitRequest}>
-                <DialogHeader>
-                  <DialogTitle>申請新的習慣養成計畫</DialogTitle>
-                  <DialogDescription>
-                    寫下你想挑戰的習慣，送出後老師會為你評估獎勵點數。習慣挑戰為期 21 天。
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="py-4 space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="habit-title">習慣標題</Label>
-                    <Input
-                      id="habit-title"
-                      value={habitTitle}
-                      onChange={(e) => setHabitTitle(e.target.value)}
-                      placeholder="例如：每日運動 30 分鐘"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="habit-description">簡單描述</Label>
-                    <Textarea
-                      id="habit-description"
-                      value={habitDescription}
-                      onChange={(e) => setHabitDescription(e.target.value)}
-                      placeholder="例如：我希望每天都能在晚餐後到公園散步或慢跑，保持身體健康。"
-                      required
-                    />
-                  </div>
+        <form onSubmit={handleHabitRequest}>
+            <DialogHeader>
+                <DialogTitle>申請新的習慣養成計畫</DialogTitle>
+                <DialogDescription>
+                寫下你想挑戰的習慣，送出後老師會為你評估獎勵點數。習慣挑戰為期 21 天。
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+                <div className="space-y-2">
+                <Label htmlFor="habit-title">習慣標題</Label>
+                <Input
+                    id="habit-title"
+                    value={habitTitle}
+                    onChange={(e) => setHabitTitle(e.target.value)}
+                    placeholder="例如：每日運動 30 分鐘"
+                    required
+                />
                 </div>
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button variant="secondary" type="button">取消</Button>
-                  </DialogClose>
-                  <Button type="submit">送出申請</Button>
-                </DialogFooter>
-            </form>
-        </DialogContent>
+                <div className="space-y-2">
+                <Label htmlFor="habit-description">簡單描述</Label>
+                <Textarea
+                    id="habit-description"
+                    value={habitDescription}
+                    onChange={(e) => setHabitDescription(e.target.value)}
+                    placeholder="例如：我希望每天都能在晚餐後到公園散步或慢跑，保持身體健康。"
+                    required
+                />
+                </div>
+            </div>
+            <DialogFooter>
+                <DialogClose asChild>
+                <Button variant="secondary" type="button">取消</Button>
+                </DialogClose>
+                <Button type="submit">送出申請</Button>
+            </DialogFooter>
+        </form>
       </Dialog>
     </div>
   );
 }
+
+    
 
     
