@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useContext, useEffect, useMemo } from "react";
+import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -20,8 +21,8 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { Student, StudentHabit } from "@/lib/types";
-import { Check, X, Coins, Loader2 } from "lucide-react";
+import type { Student, StudentHabit, HabitCheckIn } from "@/lib/types";
+import { Check, X, Coins, Loader2, Eye } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +33,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { format, formatDistanceToNow, addDays, startOfDay, differenceInDays, isAfter } from "date-fns";
@@ -40,6 +42,8 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useRouter } from "next/navigation";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 
 const HABIT_DURATION = 21;
 
@@ -55,6 +59,8 @@ export default function TeacherHabitsPage() {
     const [pointsToAward, setPointsToAward] = useState<{ [key: string]: number | '' }>({});
     const [rejectionReason, setRejectionReason] = useState<string>("");
     const [habitToReject, setHabitToReject] = useState<{ student: Student, habit: StudentHabit } | null>(null);
+    
+    const [viewingHabitHistory, setViewingHabitHistory] = useState<StudentHabit | null>(null);
     
 
     useEffect(() => {
@@ -90,9 +96,9 @@ export default function TeacherHabitsPage() {
     const activeHabits = useMemo(() => {
         return relevantStudents.flatMap(student => 
             (student.habits || [])
-                .filter(h => h.status === 'active')
+                .filter(h => h.status === 'active' || h.status === 'completed')
                 .map(habit => ({ student, habit }))
-        );
+        ).sort((a, b) => new Date(b.habit.requestDate).getTime() - new Date(a.habit.requestDate).getTime());
     }, [relevantStudents]);
     
     const handleApproveHabit = (studentId: string, classId: string, habitId: string) => {
@@ -186,7 +192,7 @@ export default function TeacherHabitsPage() {
             <Tabs defaultValue="requests">
                 <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="requests">待審核申請</TabsTrigger>
-                    <TabsTrigger value="active">進行中追蹤</TabsTrigger>
+                    <TabsTrigger value="active">進度追蹤</TabsTrigger>
                 </TabsList>
                 <TabsContent value="requests" className="mt-6">
                     <Card>
@@ -244,7 +250,7 @@ export default function TeacherHabitsPage() {
                 <TabsContent value="active" className="mt-6">
                     <Card>
                         <CardHeader>
-                            <CardTitle>進行中的習慣挑戰</CardTitle>
+                            <CardTitle>進行中/已完成的習慣挑戰</CardTitle>
                             <CardDescription>追蹤學生的挑戰進度，並在他們完成後發放獎勵。</CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -260,7 +266,7 @@ export default function TeacherHabitsPage() {
                                 <TableBody>
                                     {activeHabits.length > 0 ? activeHabits.map(({student, habit}) => {
                                         const progress = Math.min(Math.floor((habit.checkIns.length / HABIT_DURATION) * 100), 100);
-                                        const isCompleted = habit.checkIns.length >= HABIT_DURATION || (habit.endDate && isAfter(new Date(), new Date(habit.endDate)));
+                                        const isDueForCompletion = habit.status === 'active' && (habit.checkIns.length >= HABIT_DURATION || (habit.endDate && isAfter(new Date(), new Date(habit.endDate))));
                                         return (
                                             <TableRow key={habit.id}>
                                                 <TableCell>{student.name}</TableCell>
@@ -272,10 +278,15 @@ export default function TeacherHabitsPage() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    {isCompleted ? (
+                                                    <Button variant="outline" size="sm" className="mr-2" onClick={() => setViewingHabitHistory(habit)}>
+                                                        <Eye className="mr-1 h-4 w-4"/> 查看紀錄
+                                                    </Button>
+                                                    {isDueForCompletion ? (
                                                         <Button size="sm" onClick={() => handleAwardHabitPoints(student.id, student.classId, habit)}>
                                                             <Coins className="mr-2" />發放 {habit.points} 點
                                                         </Button>
+                                                    ) : habit.status === 'completed' ? (
+                                                        <span className="text-sm text-green-600 font-semibold">已發放</span>
                                                     ) : (
                                                         <span className="text-sm text-muted-foreground">進行中...</span>
                                                     )}
@@ -317,6 +328,46 @@ export default function TeacherHabitsPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            
+             {/* History Dialog */}
+            <Dialog open={!!viewingHabitHistory} onOpenChange={(open) => {if(!open) setViewingHabitHistory(null)}}>
+                <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>歷程回顧：{viewingHabitHistory?.title}</DialogTitle>
+                        <DialogDescription>查看學生的每日打卡紀錄。</DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <ScrollArea className="h-96 pr-4">
+                            <div className="space-y-6">
+                            {(viewingHabitHistory?.checkIns || []).slice().reverse().map((checkIn, index) => (
+                                <div key={index}>
+                                    <p className="font-semibold mb-2">{format(new Date(checkIn.date), 'yyyy年MM月dd日')}</p>
+                                    <div className="flex gap-4 items-start">
+                                        {checkIn.imageUrl && (
+                                            <Image src={checkIn.imageUrl} alt={`Check-in for ${checkIn.date}`} width={128} height={128} className="rounded-md object-cover w-32 h-32 shrink-0"/>
+                                        )}
+                                        {checkIn.note ? (
+                                            <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md flex-1">
+                                                <p>{checkIn.note}</p>
+                                            </div>
+                                        ) : (
+                                            !checkIn.imageUrl && <p className="text-sm text-muted-foreground">這天只留下了打卡紀錄。</p>
+                                        )}
+                                    </div>
+                                    {index < viewingHabitHistory!.checkIns.length - 1 && <Separator className="mt-6"/>}
+                                </div>
+                            ))}
+                             {viewingHabitHistory?.checkIns.length === 0 && (
+                                <p className="text-center text-muted-foreground py-8">該學生尚未有任何打卡紀錄。</p>
+                             )}
+                            </div>
+                        </ScrollArea>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button>關閉</Button></DialogClose>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

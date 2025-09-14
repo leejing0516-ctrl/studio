@@ -64,6 +64,12 @@ export type StudentChallenge = {
     completedDate?: string; // ISO date string
 };
 
+export type HabitCheckIn = {
+  date: string; // ISO date string of the check-in
+  note?: string;
+  imageUrl?: string;
+};
+
 export type StudentHabit = {
   id: string;
   title: string;
@@ -75,7 +81,7 @@ export type StudentHabit = {
   startDate?: string; // ISO date string
   endDate?: string; // ISO date string
   points: number; // Set by teacher
-  checkIns: string[]; // Array of ISO date strings for daily check-ins
+  checkIns: HabitCheckIn[]; // Array of check-in records
 };
 
 export type Student = {

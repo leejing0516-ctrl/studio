@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useContext, useMemo } from "react";
+import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -17,9 +18,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
-import { PlusCircle, Repeat, Target, Clock, Coins, Check, AlertTriangle, BadgeCheck, CircleOff, Trash2, Goal } from "lucide-react";
+import { PlusCircle, Repeat, Target, Clock, Coins, Check, AlertTriangle, BadgeCheck, CircleOff, Trash2, Goal, ImageOff, Notebook } from "lucide-react";
 import { addDays, format, isAfter, startOfDay, differenceInDays, isSameDay } from "date-fns";
-import type { StudentHabit } from "@/lib/types";
+import type { StudentHabit, HabitCheckIn } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -42,8 +43,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 
 const HABIT_DURATION = 21;
+
+const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
 
 export default function HabitsPage() {
   const { studentData } = useContext(StudentDataContext);
@@ -54,6 +66,13 @@ export default function HabitsPage() {
   const [habitTitle, setHabitTitle] = useState("");
   const [habitDescription, setHabitDescription] = useState("");
   const [habitToDelete, setHabitToDelete] = useState<StudentHabit | null>(null);
+  
+  const [checkInHabit, setCheckInHabit] = useState<StudentHabit | null>(null);
+  const [checkInNote, setCheckInNote] = useState("");
+  const [checkInImageFile, setCheckInImageFile] = useState<File | null>(null);
+  const [checkInImagePreview, setCheckInImagePreview] = useState<string | null>(null);
+
+  const [viewingHabitHistory, setViewingHabitHistory] = useState<StudentHabit | null>(null);
 
   const currentStudent = students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId);
 
@@ -92,21 +111,50 @@ export default function HabitsPage() {
     setHabitDescription("");
   };
   
-  const handleCheckIn = async (habitId: string) => {
-    if (!currentStudent) return;
+  const handleCheckInImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        setCheckInImageFile(file);
+        setCheckInImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleConfirmCheckIn = async () => {
+    if (!currentStudent || !checkInHabit) return;
+
+    let imageUrl: string | undefined = undefined;
+    if (checkInImageFile) {
+        try {
+            imageUrl = await fileToDataUrl(checkInImageFile);
+        } catch (error) {
+            toast({ title: "圖片上傳失敗", variant: "destructive" });
+            return;
+        }
+    }
+
+    const newCheckIn: HabitCheckIn = {
+      date: new Date().toISOString(),
+      note: checkInNote,
+      imageUrl: imageUrl,
+    };
     
     await setStudents(currentStudents => currentStudents.map(s => {
       if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
         return {
             ...s,
             habits: (s.habits || []).map(h => 
-                h.id === habitId ? { ...h, checkIns: [...h.checkIns, new Date().toISOString()] } : h
+                h.id === checkInHabit.id ? { ...h, checkIns: [...h.checkIns, newCheckIn] } : h
             )
         }
       }
       return s;
     }));
+
     toast({ title: "打卡成功！", description: "今天的習慣已完成，繼續保持！" });
+    setCheckInHabit(null);
+    setCheckInNote("");
+    setCheckInImageFile(null);
+    setCheckInImagePreview(null);
   };
   
   const handleDeleteHabit = async () => {
@@ -128,7 +176,7 @@ export default function HabitsPage() {
   
   const HabitCard = ({ habit }: { habit: StudentHabit }) => {
     const today = startOfDay(new Date());
-    const hasCheckedInToday = habit.checkIns.some(ci => isSameDay(startOfDay(new Date(ci)), today));
+    const hasCheckedInToday = habit.checkIns.some(ci => isSameDay(startOfDay(new Date(ci.date)), today));
     
     const progress = habit.status === 'active' && habit.startDate
       ? Math.min(Math.floor((habit.checkIns.length / HABIT_DURATION) * 100), 100)
@@ -182,9 +230,9 @@ export default function HabitsPage() {
                  {habit.status === 'active' && (
                     <div className="space-y-3">
                         <Progress value={progress} />
-                        <div className="flex justify-between text-sm text-muted-foreground">
+                        <div className="grid grid-cols-2 text-sm text-muted-foreground">
                              <span>進度: {habit.checkIns.length} / {HABIT_DURATION} 天</span>
-                             <span>{daysRemaining > 0 ? `剩下 ${daysRemaining} 天` : '最後一天！'}</span>
+                             <span className="text-right">{daysRemaining > 0 ? `剩下 ${daysRemaining} 天` : '最後一天！'}</span>
                         </div>
                     </div>
                 )}
@@ -201,10 +249,18 @@ export default function HabitsPage() {
                     <span>{habit.points > 0 ? `+${habit.points.toLocaleString()}`: '???'}</span>
                 </div>
                  {habit.status === 'active' && (
-                    <Button onClick={() => handleCheckIn(habit.id)} disabled={hasCheckedInToday}>
-                        <Check className="mr-2"/> {hasCheckedInToday ? '今日已打卡' : '今日打卡'}
-                    </Button>
+                    <div className="flex gap-2">
+                        {habit.checkIns.length > 0 && 
+                            <Button variant="outline" size="sm" onClick={() => setViewingHabitHistory(habit)}>查看紀錄</Button>
+                        }
+                        <Button onClick={() => setCheckInHabit(habit)} disabled={hasCheckedInToday}>
+                            <Check className="mr-2"/> {hasCheckedInToday ? '今日已打卡' : '今日打卡'}
+                        </Button>
+                    </div>
                 )}
+                 {habit.status === 'completed' && habit.checkIns.length > 0 && 
+                    <Button variant="outline" size="sm" onClick={() => setViewingHabitHistory(habit)}>查看完整紀錄</Button>
+                 }
             </CardFooter>
         </Card>
     )
@@ -287,12 +343,88 @@ export default function HabitsPage() {
                 </div>
                 <DialogFooter>
                     <DialogClose asChild>
-                    <Button variant="secondary" type="button">取消</Button>
+                      <Button variant="secondary" type="button">取消</Button>
                     </DialogClose>
                     <Button type="submit">送出申請</Button>
                 </DialogFooter>
             </DialogContent>
         </form>
+      </Dialog>
+      
+      {/* Check-in Dialog */}
+      <Dialog open={!!checkInHabit} onOpenChange={(open) => {if(!open) setCheckInHabit(null)}}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle>今日打卡：{checkInHabit?.title}</DialogTitle>
+                <DialogDescription>記錄你今天的努力！上傳一張證明照片並寫下你的心得。</DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+                 <div className="space-y-2">
+                    <Label>上傳證明照片（選填）</Label>
+                    <div className="flex items-center gap-4">
+                        <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
+                            {checkInImagePreview ? (
+                                <Image src={checkInImagePreview} alt="Check-in preview" fill className="object-cover rounded-md" />
+                            ) : (
+                                <ImageOff className="h-8 w-8 text-muted-foreground" />
+                            )}
+                        </div>
+                        <Input id="checkin-image-upload" type="file" accept="image/*" onChange={handleCheckInImageChange} className="max-w-xs" />
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="checkin-note">心得筆記（選填）</Label>
+                    <Textarea 
+                        id="checkin-note"
+                        value={checkInNote}
+                        onChange={(e) => setCheckInNote(e.target.value)}
+                        placeholder="記錄今天的心情、遇到的困難或成就感..."
+                        rows={4}
+                    />
+                </div>
+            </div>
+            <DialogFooter>
+                <DialogClose asChild><Button variant="secondary">取消</Button></DialogClose>
+                <Button onClick={handleConfirmCheckIn}>確認打卡</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* History Dialog */}
+      <Dialog open={!!viewingHabitHistory} onOpenChange={(open) => {if(!open) setViewingHabitHistory(null)}}>
+        <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+                <DialogTitle>歷程回顧：{viewingHabitHistory?.title}</DialogTitle>
+                <DialogDescription>這是你過去努力的證明！</DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+                <ScrollArea className="h-96 pr-4">
+                    <div className="space-y-6">
+                    {viewingHabitHistory?.checkIns.slice().reverse().map((checkIn, index) => (
+                        <div key={index}>
+                            <p className="font-semibold mb-2">{format(new Date(checkIn.date), 'yyyy年MM月dd日')}</p>
+                            <div className="flex gap-4 items-start">
+                                {checkIn.imageUrl && (
+                                     <Image src={checkIn.imageUrl} alt={`Check-in for ${checkIn.date}`} width={128} height={128} className="rounded-md object-cover w-32 h-32 shrink-0"/>
+                                )}
+                                {checkIn.note ? (
+                                    <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md flex-1">
+                                        <p>{checkIn.note}</p>
+                                    </div>
+                                ) : (
+                                    !checkIn.imageUrl && <p className="text-sm text-muted-foreground">這天只留下了打卡紀錄。</p>
+                                )}
+                            </div>
+                            {index < viewingHabitHistory.checkIns.length - 1 && <Separator className="mt-6"/>}
+                        </div>
+                    ))}
+                    </div>
+                </ScrollArea>
+            </div>
+            <DialogFooter>
+                <DialogClose asChild><Button>關閉</Button></DialogClose>
+            </DialogFooter>
+        </DialogContent>
       </Dialog>
     </div>
   );
