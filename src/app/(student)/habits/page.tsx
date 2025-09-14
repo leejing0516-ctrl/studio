@@ -44,6 +44,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 const HABIT_DURATION = 21;
 
@@ -78,6 +80,10 @@ export default function HabitsPage() {
   const studentHabits = useMemo(() => {
     return (currentStudent?.habits || []).sort((a,b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
   }, [currentStudent]);
+  
+  const hasActiveOrPendingHabit = useMemo(() => {
+    return studentHabits.some(h => h.status === 'active' || h.status === 'pending_approval');
+  }, [studentHabits]);
 
 
   const handleHabitRequest = async (e: React.FormEvent) => {
@@ -186,27 +192,27 @@ export default function HabitsPage() {
       : 0;
 
     return (
-        <Card className="flex flex-col relative">
-             {habit.status !== 'completed' && (
-                 <Badge variant={habit.status === 'active' ? 'default' : habit.status === 'pending_approval' ? 'secondary' : 'destructive'} className="absolute top-2 right-2 z-10">
-                    {
-                        {
-                            'pending_approval': '待審核',
-                            'active': '進行中',
-                            'rejected': '已拒絕',
-                        }[habit.status]
-                    }
-                </Badge>
-             )}
-            <CardHeader>
-                <div className="flex justify-between items-start gap-2">
-                    <div className="flex-1 space-y-1.5 pr-8">
-                        <CardTitle className="flex items-center gap-2">
-                           <Goal /> {habit.title}
-                        </CardTitle>
-                        <CardDescription>{habit.description}</CardDescription>
-                    </div>
+        <Card className="flex flex-col">
+            <CardHeader className="flex flex-row justify-between items-start">
+                <div className="space-y-1.5">
+                    <CardTitle className="flex items-center gap-2">
+                       <Goal /> {habit.title}
+                    </CardTitle>
+                    <CardDescription>{habit.description}</CardDescription>
                 </div>
+                 <div className="flex items-center gap-2 flex-shrink-0">
+                    {habit.status !== 'completed' && (
+                        <Badge variant={habit.status === 'active' ? 'default' : habit.status === 'pending_approval' ? 'secondary' : 'destructive'}>
+                            {
+                                {
+                                    'pending_approval': '待審核',
+                                    'active': '進行中',
+                                    'rejected': '已拒絕',
+                                }[habit.status]
+                            }
+                        </Badge>
+                    )}
+                 </div>
             </CardHeader>
             <CardContent className="flex-grow space-y-4">
                  {habit.status === 'pending_approval' && (
@@ -285,9 +291,22 @@ export default function HabitsPage() {
             <CardTitle>建立新的習慣養成計畫</CardTitle>
             <CardDescription>設定一個你想持續 21 天的好習慣，讓老師為你的努力設定獎勵！</CardDescription>
           </div>
-          <Button onClick={() => setIsRequestDialogOpen(true)}>
-            <PlusCircle className="mr-2"/> 申請新習慣
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div tabIndex={0}>
+                    <Button onClick={() => setIsRequestDialogOpen(true)} disabled={hasActiveOrPendingHabit}>
+                        <PlusCircle className="mr-2"/> 申請新習慣
+                    </Button>
+                </div>
+              </TooltipTrigger>
+              {hasActiveOrPendingHabit && (
+                <TooltipContent>
+                  <p>您已有一個進行中的習慣計畫，請先完成它。</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
         </CardHeader>
       </Card>
       
