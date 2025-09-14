@@ -36,7 +36,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
-import { format, formatDistanceToNow, addDays, startOfDay, differenceInDays, isAfter } from "date-fns";
+import { format, formatDistanceToNow, addDays, startOfDay, differenceInDays, isAfter, isValid } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -341,7 +341,9 @@ export default function TeacherHabitsPage() {
                             <div className="space-y-6">
                             {(viewingHabitHistory?.checkIns || []).slice().reverse().map((checkIn, index) => (
                                 <div key={index}>
-                                    <p className="font-semibold mb-2">{format(new Date(checkIn.date), 'yyyy年MM月dd日')}</p>
+                                    <p className="font-semibold mb-2">
+                                        {isValid(new Date(checkIn.date)) ? format(new Date(checkIn.date), 'yyyy年MM月dd日') : '無效日期'}
+                                    </p>
                                     <div className="flex gap-4 items-start">
                                         {checkIn.imageUrl && (
                                             <Image src={checkIn.imageUrl} alt={`Check-in for ${checkIn.date}`} width={128} height={128} className="rounded-md object-cover w-32 h-32 shrink-0"/>
@@ -371,3 +373,5 @@ export default function TeacherHabitsPage() {
         </div>
     );
 }
+
+    
