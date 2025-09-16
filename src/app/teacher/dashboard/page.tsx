@@ -408,17 +408,23 @@ export default function TeacherDashboardPage() {
     setStudentToDelete(student);
   };
   
-  const handleConfirmDeleteStudent = () => {
+  const handleConfirmDeleteStudent = async () => {
     if (!studentToDelete) return;
-    
-    setStudents(current => current.filter(s => s.id !== studentToDelete.id || s.classId !== studentToDelete.classId));
-
-    toast({
-        title: "已刪除學生",
-        description: `已成功刪除學生 ${studentToDelete.name}。`,
-        variant: "destructive",
-    });
-    setStudentToDelete(null);
+    try {
+        await setStudents(current => current.filter(s => s.id !== studentToDelete!.id || s.classId !== studentToDelete!.classId));
+        toast({
+            title: "已刪除學生",
+            description: `已成功刪除學生 ${studentToDelete.name}。`,
+        });
+    } catch(e) {
+        toast({
+            title: "刪除失敗",
+            description: "刪除學生時發生錯誤，資料已還原。",
+            variant: "destructive"
+        })
+    } finally {
+        setStudentToDelete(null);
+    }
   };
 
 
@@ -2062,15 +2068,3 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
         </Dialog>
     )
 }
-
-    
-
-
-
-
-
-    
-
-
-
-

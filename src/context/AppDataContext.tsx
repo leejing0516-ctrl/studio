@@ -95,42 +95,47 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   }, []);
   
     const setStudents = async (updater: Student[] | ((prev: Student[]) => Student[])) => {
-        const currentStudents = await fetchData<Student>('students');
+        const originalState = students;
         let intendedState: Student[];
 
         if (typeof updater === 'function') {
-            intendedState = updater(currentStudents);
+            intendedState = updater(originalState);
         } else {
             intendedState = updater;
         }
 
-        const studentMap = new Map<string, Student>();
-        intendedState.forEach(student => {
-            if (student && student.classId && student.id) {
-                studentMap.set(`${student.classId}-${student.id}`, student);
-            }
-        });
-        const uniqueStudents = Array.from(studentMap.values());
+        // Optimistic UI update
+        setStudentsState(intendedState);
 
         try {
             const batch = writeBatch(db);
-            uniqueStudents.forEach(student => {
+            const originalStudentKeys = new Set(originalState.map(s => `${s.classId}-${s.id}`));
+            const intendedStudentKeys = new Set(intendedState.map(s => `${s.classId}-${s.id}`));
+
+            // Handle additions and updates
+            intendedState.forEach(student => {
                 const studentDocId = `${student.classId}-${student.id}`;
                 const studentRef = doc(db, 'students', studentDocId);
                 batch.set(studentRef, student, { merge: true });
             });
 
-            await batch.commit();
+            // Handle deletions
+            originalState.forEach(student => {
+                const studentDocId = `${student.classId}-${student.id}`;
+                if (!intendedStudentKeys.has(studentDocId)) {
+                    const studentRef = doc(db, 'students', studentDocId);
+                    batch.delete(studentRef);
+                }
+            });
 
-            // After a successful write, refetch to ensure perfect sync
-            const freshStudents = await fetchData<Student>('students');
-            setStudentsState(freshStudents);
+            await batch.commit();
 
         } catch (error) {
             console.error(`Transaction failed for students: `, error);
-            // On failure, refetch to revert to the last known good state from DB
-            const freshStudents = await fetchData<Student>('students');
-            setStudentsState(freshStudents);
+            // Rollback on failure
+            setStudentsState(originalState);
+            // Optionally, show an error toast to the user
+            throw error;
         }
     };
 
@@ -442,23 +447,27 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         // If data was just seeded, the state is already up-to-date.
         // Otherwise, fetch from Firestore.
         if (!dataWasSeeded) {
-            const [classesData, teachersData, stocksData, rewardsData] = await Promise.all([
+            const [classesData, teachersData, stocksData, rewardsData, studentsData] = await Promise.all([
                 fetchData<Class>('classes'),
                 fetchData<Teacher>('teachers'),
                 fetchData<Stock>('stocks'), // Stocks are public
                 fetchData<Reward>('rewards'), // Rewards are public
+                fetchData<Student>('students'), // Also load students here initially
             ]);
             setClassesState(classesData);
             setTeachersState(teachersData);
             setStocksState(stocksData);
             setRewardsState(rewardsData);
+            setStudentsState(studentsData);
         } else {
-             const [stocksData, rewardsData] = await Promise.all([
+             const [stocksData, rewardsData, studentsData] = await Promise.all([
                 fetchData<Stock>('stocks'),
                 fetchData<Reward>('rewards'),
+                fetchData<Student>('students'),
              ]);
              setStocksState(stocksData);
              setRewardsState(rewardsData);
+             setStudentsState(studentsData);
         }
     } catch (error) {
         console.error("Error initializing public data from Firestore:", error);
