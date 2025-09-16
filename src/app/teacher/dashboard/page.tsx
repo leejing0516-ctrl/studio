@@ -408,10 +408,10 @@ export default function TeacherDashboardPage() {
     setStudentToDelete(student);
   };
   
-  const handleConfirmDeleteStudent = async () => {
+  const handleConfirmDeleteStudent = () => {
     if (!studentToDelete) return;
     
-    await setStudents(current => current.filter(s => s.id !== studentToDelete.id || s.classId !== studentToDelete.classId));
+    setStudents(current => current.filter(s => s.id !== studentToDelete.id || s.classId !== studentToDelete.classId));
 
     toast({
         title: "已刪除學生",
@@ -1005,11 +1005,11 @@ export default function TeacherDashboardPage() {
                             <Button variant="ghost" size="icon" onClick={() => handleResetPasswordClick(student)}>
                                     <KeyRound className="h-4 w-4" />
                             </Button>
-                                   <AlertDialog open={!!studentToDelete && studentToDelete.id === student.id && studentToDelete.classId === student.classId} onOpenChange={(open) => !open && setStudentToDelete(null)}>
+                                   <AlertDialog>
                                     <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStudentClick(student)}>
-                                            <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStudentClick(student)}>
+                                                <Trash2 className="h-4 w-4" />
+                                        </Button>
                                     </AlertDialogTrigger>
                                     <AlertDialogContent>
                                         <AlertDialogHeader>
@@ -1019,11 +1019,11 @@ export default function TeacherDashboardPage() {
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
-                                            <AlertDialogCancel onClick={() => setStudentToDelete(null)}>取消</AlertDialogCancel>
+                                            <AlertDialogCancel>取消</AlertDialogCancel>
                                             <AlertDialogAction onClick={handleConfirmDeleteStudent} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
                                         </AlertDialogFooter>
                                     </AlertDialogContent>
-                            </AlertDialog>
+                                   </AlertDialog>
                             </TableCell>
                         </TableRow>
                         ))}
@@ -1098,7 +1098,7 @@ export default function TeacherDashboardPage() {
                                                 </TooltipTrigger>
                                                 <TooltipContent><p>重設密碼</p></TooltipContent>
                                             </Tooltip>
-                                            <AlertDialog open={!!teacherToDelete && teacherToDelete.id === teacher.id} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
+                                            <AlertDialog>
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
                                                       <AlertDialogTrigger asChild>
@@ -1117,7 +1117,7 @@ export default function TeacherDashboardPage() {
                                                         </AlertDialogDescription>
                                                     </AlertDialogHeader>
                                                     <AlertDialogFooter>
-                                                        <AlertDialogCancel onClick={() => setTeacherToDelete(null)}>取消</AlertDialogCancel>
+                                                        <AlertDialogCancel>取消</AlertDialogCancel>
                                                         <AlertDialogAction onClick={handleConfirmDeleteTeacher} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
                                                     </AlertDialogFooter>
                                                 </AlertDialogContent>
@@ -1158,7 +1158,7 @@ export default function TeacherDashboardPage() {
                                     <TableCell>{c.name}</TableCell>
                                     <TableCell>{teachers.find(t => t.role === 'teacher' && t.classIds && t.classIds.includes(c.id))?.name || 'N/A'}</TableCell>
                                     <TableCell className="text-right">
-                                        <AlertDialog open={!!classToDelete && classToDelete.id === c.id} onOpenChange={(open) => !open && setClassToDelete(null)}>
+                                        <AlertDialog>
                                             <AlertDialogTrigger asChild>
                                                 <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteClassClick(c)}>
                                                     <Trash2 className="h-4 w-4" />
@@ -2071,5 +2071,6 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
 
 
     
+
 
 
