@@ -114,7 +114,6 @@ export default function TeacherLayout({
     localStorage.removeItem('impersonator');
 
     toast({ title: "已返回校長身份" });
-    router.push('/teacher/dashboard');
     router.refresh();
   }
 
