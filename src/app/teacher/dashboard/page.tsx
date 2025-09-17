@@ -1029,11 +1029,25 @@ export default function TeacherDashboardPage() {
                             <Button variant="ghost" size="icon" onClick={() => handleResetPasswordClick(student)}>
                                     <KeyRound className="h-4 w-4" />
                             </Button>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStudentClick(student)}>
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </AlertDialogTrigger>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStudentClick(student)}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            您確定要刪除學生「{student.name}」嗎？此操作將永久移除該學生的所有資料且無法復原。
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>取消</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleConfirmDeleteStudent} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                             </TableCell>
                         </TableRow>
                         ))}
