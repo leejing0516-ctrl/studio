@@ -30,6 +30,7 @@ import {
   HeartHandshake,
   Gift,
   Repeat,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,18 +68,24 @@ export default function TeacherLayout({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
+  const [isImpersonating, setIsImpersonating] = useState(false);
+
 
   useEffect(() => {
     const id = localStorage.getItem('teacherId');
     const name = localStorage.getItem('teacherName');
     const role = localStorage.getItem('teacherRole');
+    const impersonator = localStorage.getItem('impersonator');
+    
     setTeacherId(id);
     setTeacherName(name);
     setTeacherRole(role);
+    setIsImpersonating(!!impersonator);
+    
     if (!localStorage.getItem('userRole')?.includes('teacher')) {
       router.push('/');
     }
-  }, [router]);
+  }, [router, pathname]); // Depend on pathname to re-check on navigation
   
   const handleLogout = () => {
     localStorage.removeItem('teacherName');
@@ -86,7 +93,29 @@ export default function TeacherLayout({
     localStorage.removeItem('teacherClassIds');
     localStorage.removeItem('teacherId');
     localStorage.removeItem('userRole');
+    localStorage.removeItem('impersonator');
     router.push('/');
+  }
+
+  const handleStopImpersonating = () => {
+    const originalAdminId = localStorage.getItem('impersonator');
+    const originalAdmin = teachers.find(t => t.id === originalAdminId);
+    if (!originalAdmin) {
+      toast({ title: "返回失敗", description: "找不到原始管理員身份，請重新登入。", variant: "destructive" });
+      handleLogout();
+      return;
+    }
+    
+    localStorage.setItem('userRole', 'teacher');
+    localStorage.setItem('teacherId', originalAdmin.id);
+    localStorage.setItem('teacherRole', originalAdmin.role);
+    localStorage.setItem('teacherClassIds', JSON.stringify(originalAdmin.classIds));
+    localStorage.setItem('teacherName', originalAdmin.name);
+    localStorage.removeItem('impersonator');
+
+    toast({ title: "已返回校長身份" });
+    router.push('/teacher/dashboard');
+    router.refresh();
   }
 
   const handleChangePassword = async () => {
@@ -262,6 +291,15 @@ export default function TeacherLayout({
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
+        {isImpersonating && (
+          <div className="sticky top-0 z-30 flex items-center justify-center gap-2 bg-yellow-400 p-2 text-center text-sm font-semibold text-yellow-900">
+            <AlertTriangle className="h-4 w-4" />
+            <span>您正在以 {teacherName} 的身份模擬登入。</span>
+            <Button size="sm" variant="link" className="h-auto p-0 text-yellow-900 underline" onClick={handleStopImpersonating}>
+              返回校長身份
+            </Button>
+          </div>
+        )}
         <header className="flex h-14 items-center justify-between border-b bg-background/50 backdrop-blur-sm px-4 md:px-6 sticky top-0 z-20">
             <SidebarTrigger className="md:hidden" />
             <h1 className="text-lg font-semibold md:text-xl capitalize">

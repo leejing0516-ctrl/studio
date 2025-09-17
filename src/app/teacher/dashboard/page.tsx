@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Reward, Student, Teacher, Class, Loan, StudentChallenge, FundraisingProject } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Banknote, ShieldPlus, Coins, Flag, Hourglass, ShieldCheck, Gift, Briefcase, HeartHandshake, LineChart } from "lucide-react";
+import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Banknote, ShieldPlus, Coins, Flag, Hourglass, ShieldCheck, Gift, Briefcase, HeartHandshake, LineChart, UserCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -54,6 +54,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { useRouter } from 'next/navigation';
 
 
 interface StagedStudent {
@@ -74,6 +75,7 @@ export default function TeacherDashboardPage() {
     rewards, setRewards,
     isLoading, platformConfig, setPlatformConfig 
   } = useContext(AppDataContext);
+  const router = useRouter();
 
   const [role, setRole] = useState<string | null>(null);
   const [teacherId, setTeacherId] = useState<string | null>(null);
@@ -360,6 +362,7 @@ export default function TeacherDashboardPage() {
         pointHistory: [],
         challenges: [],
         fixedDeposits: [],
+        habits: [],
     };
     setStudents(current => [...current, newStudent]);
     setIsAddStudentDialogOpen(false);
@@ -741,6 +744,7 @@ export default function TeacherDashboardPage() {
             pointHistory: [],
             challenges: [],
             fixedDeposits: [],
+            habits: [],
         }));
 
     if (newStudents.length === 0) {
@@ -880,6 +884,21 @@ export default function TeacherDashboardPage() {
         isChecked ? [...prev, classId] : prev.filter(id => id !== classId)
     );
   };
+
+  const handleImpersonate = (teacher: Teacher) => {
+    if (!teacherId || role !== 'admin') return;
+
+    localStorage.setItem('impersonator', teacherId); // Store original admin ID
+    localStorage.setItem('userRole', 'teacher');
+    localStorage.setItem('teacherId', teacher.id);
+    localStorage.setItem('teacherRole', teacher.role);
+    localStorage.setItem('teacherClassIds', JSON.stringify(teacher.classIds));
+    localStorage.setItem('teacherName', teacher.name);
+
+    toast({ title: `正在模擬 ${teacher.name} 的身份`, description: "您現在將以該老師的視角瀏覽。" });
+    router.push('/teacher/dashboard');
+    router.refresh(); // Force a full refresh to re-read localStorage
+  }
 
 
   if (isLoading) {
@@ -1064,6 +1083,16 @@ export default function TeacherDashboardPage() {
                                     <TableCell>{(teacher.pointBalance || 0).toLocaleString()}</TableCell>
                                     <TableCell className="text-right">
                                         <TooltipProvider>
+                                            {teacher.role !== 'admin' && (
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button variant="ghost" size="icon" onClick={() => handleImpersonate(teacher)}>
+                                                        <UserCheck className="h-4 w-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent><p>模擬登入</p></TooltipContent>
+                                            </Tooltip>
+                                            )}
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
                                                     <Button variant="ghost" size="icon" onClick={() => { setTeacherToAllocate(teacher); setIsAllocatePointsDialogOpen(true); }}>
