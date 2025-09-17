@@ -114,7 +114,7 @@ export default function TeacherLayout({
     localStorage.removeItem('impersonator');
 
     toast({ title: "已返回校長身份" });
-    router.refresh();
+    window.location.reload();
   }
 
   const handleChangePassword = async () => {
