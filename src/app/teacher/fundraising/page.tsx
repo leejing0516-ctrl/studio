@@ -49,6 +49,8 @@ import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
 
+const MAX_FILE_SIZE = 800 * 1024; // 800KB
+
 const fileToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -95,6 +97,14 @@ export default function TeacherFundraisingPage() {
   const handleProjectImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+        if (file.size > MAX_FILE_SIZE) {
+            toast({
+                title: "圖片檔案太大",
+                description: `請選擇小於 ${MAX_FILE_SIZE / 1024}KB 的圖片。`,
+                variant: "destructive",
+            });
+            return;
+        }
         setProjectImageFile(file);
         setProjectImagePreview(URL.createObjectURL(file));
     }
@@ -312,7 +322,7 @@ export default function TeacherFundraisingPage() {
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="space-y-2">
-                            <Label>專案圖片</Label>
+                            <Label>專案圖片 (建議大小上限 800KB)</Label>
                             <div className="flex items-center gap-4">
                                 <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
                                     {projectImagePreview ? (
@@ -393,7 +403,7 @@ export default function TeacherFundraisingPage() {
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                          <div className="space-y-2">
-                            <Label>專案圖片</Label>
+                            <Label>專案圖片 (建議大小上限 800KB)</Label>
                             <div className="flex items-center gap-4">
                                 <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
                                     {projectImagePreview ? (

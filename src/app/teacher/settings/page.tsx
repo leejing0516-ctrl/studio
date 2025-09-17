@@ -18,6 +18,8 @@ import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
 
+const MAX_FILE_SIZE = 800 * 1024; // 800KB
+
 const fileToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -59,6 +61,14 @@ export default function TeacherSettingsPage() {
     const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            if (file.size > MAX_FILE_SIZE) {
+                toast({
+                    title: "圖片檔案太大",
+                    description: `請選擇小於 ${MAX_FILE_SIZE / 1024}KB 的圖片。`,
+                    variant: "destructive",
+                });
+                return;
+            }
             setPlatformLogoFile(file);
             setPlatformLogoPreview(URL.createObjectURL(file));
         }
@@ -67,6 +77,14 @@ export default function TeacherSettingsPage() {
     const handleSponsorLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
         const file = e.target.files?.[0];
         if (file) {
+            if (file.size > MAX_FILE_SIZE) {
+                toast({
+                    title: "圖片檔案太大",
+                    description: `請選擇小於 ${MAX_FILE_SIZE / 1024}KB 的圖片。`,
+                    variant: "destructive",
+                });
+                return;
+            }
             setSponsorLogoFiles(prev => {
                 const newFiles = [...prev];
                 newFiles[index] = file;
@@ -183,7 +201,7 @@ export default function TeacherSettingsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>平台 Logo 設定</CardTitle>
-                    <CardDescription>上傳平台 Logo。此 Logo 將顯示在登入頁面和側邊欄中。建議使用透明背景的 PNG 檔案。</CardDescription>
+                    <CardDescription>上傳平台 Logo。此 Logo 將顯示在登入頁面和側邊欄中。建議使用透明背景的 PNG 檔案 (大小上限 800KB)。</CardDescription>
                 </CardHeader>
                 <CardContent className="flex items-center gap-6">
                      <div className="w-32 h-32 bg-muted rounded-md flex items-center justify-center">
@@ -207,7 +225,7 @@ export default function TeacherSettingsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>贊助商 Logo 設定</CardTitle>
-                    <CardDescription>上傳最多四個贊助商 Logo。這些 Logo 將顯示在頁面底部的頁尾区域。建議使用透明背景的 PNG 檔案，並確保所有 Logo 寬度一致。</CardDescription>
+                    <CardDescription>上傳最多四個贊助商 Logo。這些 Logo 將顯示在頁面底部的頁尾区域。建議使用透明背景的 PNG 檔案 (大小上限 800KB)，並確保所有 Logo 寬度一致。</CardDescription>
                 </CardHeader>
                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                     {Array.from({ length: 4 }).map((_, index) => (
