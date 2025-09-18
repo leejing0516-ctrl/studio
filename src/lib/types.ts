@@ -105,11 +105,11 @@ export type Student = {
   avatar: string;
   password?: string;
   portfolio: PortfolioItem[];
-  redeemedRewards: RedeemedRewardItem[];
-  loans: Loan[];
+  redeemedRewards?: RedeemedRewardItem[];
+  loans?: Loan[];
   pointHistory: PointRecord[];
-  challenges: StudentChallenge[];
-  fixedDeposits: FixedDeposit[];
+  challenges?: StudentChallenge[];
+  fixedDeposits?: FixedDeposit[];
   habits?: StudentHabit[];
 };
 
