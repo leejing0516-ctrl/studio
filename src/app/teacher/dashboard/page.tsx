@@ -35,6 +35,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -250,7 +251,7 @@ export default function TeacherDashboardPage() {
     }
 
     try {
-        await runDbTransaction(async (transaction) => {
+        await runDbTransaction(async (transaction: any) => {
             const studentRef = doc(db, 'students', `${selectedClassId}-${studentId}`);
             const teacherRef = doc(db, 'teachers', teacherId);
 
@@ -326,7 +327,7 @@ export default function TeacherDashboardPage() {
     const totalPointsToChange = studentsInView.length * pointsToChange;
 
     try {
-        await runDbTransaction(async (transaction) => {
+        await runDbTransaction(async (transaction: any) => {
             if (role !== 'admin' && !isDeducting) {
                 const teacherRef = doc(db, 'teachers', teacherId);
                 const teacherDoc = await transaction.get(teacherRef);
@@ -536,7 +537,7 @@ export default function TeacherDashboardPage() {
     };
 
     try {
-        await runDbTransaction(async (transaction) => {
+        await runDbTransaction(async (transaction: any) => {
             const teacherRef = doc(db, 'teachers', id);
             const docSnap = await transaction.get(teacherRef);
             if (docSnap.exists()) {
@@ -1091,15 +1092,17 @@ export default function TeacherDashboardPage() {
                             </TableCell>
                             <TableCell>{student.points.toLocaleString()}</TableCell>
                             <TableCell className="text-right">
-                            <Button variant="ghost" size="icon" onClick={() => handleEditStudentClick(student)}>
-                                    <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleResetPasswordClick(student)}>
-                                    <KeyRound className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStudentClick(student)}>
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
+                                <Button variant="ghost" size="icon" onClick={() => handleEditStudentClick(student)}>
+                                        <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => handleResetPasswordClick(student)}>
+                                        <KeyRound className="h-4 w-4" />
+                                </Button>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStudentClick(student)}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </AlertDialogTrigger>
                             </TableCell>
                         </TableRow>
                         ))}
@@ -2164,4 +2167,3 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
         </Dialog>
     )
 }
-
