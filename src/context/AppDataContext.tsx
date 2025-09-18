@@ -14,7 +14,7 @@ import {
     TEACHER_PASSWORD,
 } from '@/lib/placeholder-data';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDocs, writeBatch, setDoc, getDoc, updateDoc, deleteDoc, runTransaction } from 'firebase/firestore';
+import { collection, doc, getDocs, writeBatch, setDoc, getDoc, updateDoc, deleteDoc, runTransaction, Transaction } from 'firebase/firestore';
 import { isSameDay, startOfDay, differenceInCalendarDays, parseISO, isAfter } from 'date-fns';
 
 
@@ -37,7 +37,7 @@ interface AppDataContextType {
   isMarketOpen: boolean;
   loadSensitiveData: () => Promise<{students: Student[], rewards: Reward[], stocks: Stock[]}>;
   seedInitialData: () => Promise<void>;
-  runTransaction: (updateFunction: (transaction: any) => Promise<any>) => Promise<any>;
+  runTransaction: (updateFunction: (transaction: Transaction) => Promise<any>) => Promise<any>;
   fetchBackups: () => Promise<Backup[]>;
   createBackup: () => Promise<void>;
   restoreFromBackup: (backup: Backup) => Promise<void>;
@@ -502,7 +502,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [fetchData, rewards, stocks]);
   
-  const handleRunTransaction = useCallback(async (updateFunction: (transaction: any) => Promise<any>) => {
+  const handleRunTransaction = useCallback(async (updateFunction: (transaction: Transaction) => Promise<any>) => {
     return await runTransaction(db, updateFunction);
   }, []);
 

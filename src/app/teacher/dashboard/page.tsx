@@ -250,14 +250,20 @@ export default function TeacherDashboardPage() {
         return;
     }
 
+    const impersonatorId = localStorage.getItem('impersonator');
+    const actingTeacherId = impersonatorId || teacherId;
+    const isImpersonating = !!impersonatorId;
+
     try {
         await runDbTransaction(async (transaction: any) => {
             const studentRef = doc(db, 'students', `${selectedClassId}-${studentId}`);
-            const teacherRef = doc(db, 'teachers', teacherId);
-
+            
+            // Only fetch teacher doc if not admin and not deducting
+            const isDeducting = pointsToChange < 0;
+            const teacherRef = doc(db, 'teachers', actingTeacherId);
             const [studentDoc, teacherDoc] = await Promise.all([
                 transaction.get(studentRef),
-                role !== 'admin' ? transaction.get(teacherRef) : Promise.resolve(null)
+                (role !== 'admin' || isImpersonating) && !isDeducting ? transaction.get(teacherRef) : Promise.resolve(null)
             ]);
 
             if (!studentDoc.exists()) {
@@ -265,9 +271,7 @@ export default function TeacherDashboardPage() {
             }
             const currentStudentData = studentDoc.data() as Student;
 
-            const isDeducting = pointsToChange < 0;
-
-            if (role !== 'admin' && !isDeducting) {
+            if ((role !== 'admin' || isImpersonating) && !isDeducting) {
                 const currentTeacherData = teacherDoc?.data() as Teacher;
                 if (!currentTeacherData || (currentTeacherData.pointBalance || 0) < pointsToChange) {
                     throw new Error("您的點數餘額不足以發放此次點數。");
@@ -276,7 +280,7 @@ export default function TeacherDashboardPage() {
             }
 
             const actionText = isDeducting ? "扣除" : "發放";
-            const reason = `由 ${role === 'admin' ? '校長' : '老師'} ${currentTeacher?.name} ${actionText}`;
+            const reason = `由 ${currentTeacher?.name} ${actionText}`;
             
             const newHistoryEntry = { points: pointsToChange, date: new Date().toISOString(), reason };
 
@@ -290,7 +294,7 @@ export default function TeacherDashboardPage() {
         setStudents(currentStudents => currentStudents.map(s => {
             if (s.id === studentId && s.classId === selectedClassId) {
                 const actionText = pointsToChange < 0 ? "扣除" : "發放";
-                const reason = `由 ${role === 'admin' ? '校長' : '老師'} ${currentTeacher?.name} ${actionText}`;
+                const reason = `由 ${currentTeacher?.name} ${actionText}`;
                 return {
                     ...s,
                     points: s.points + pointsToChange,
@@ -300,9 +304,9 @@ export default function TeacherDashboardPage() {
             return s;
         }));
 
-        if (role !== 'admin' && pointsToChange > 0) {
+        if ((role !== 'admin' || isImpersonating) && pointsToChange > 0) {
             setTeachers(currentTeachers => currentTeachers.map(t =>
-                t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToChange } : t
+                t.id === actingTeacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToChange } : t
             ));
         }
 
@@ -325,11 +329,16 @@ export default function TeacherDashboardPage() {
     }
     const isDeducting = pointsToChange < 0;
     const totalPointsToChange = studentsInView.length * pointsToChange;
+    
+    const impersonatorId = localStorage.getItem('impersonator');
+    const actingTeacherId = impersonatorId || teacherId;
+    const isImpersonating = !!impersonatorId;
+
 
     try {
         await runDbTransaction(async (transaction: any) => {
-            if (role !== 'admin' && !isDeducting) {
-                const teacherRef = doc(db, 'teachers', teacherId);
+            if ((role !== 'admin' || isImpersonating) && !isDeducting) {
+                const teacherRef = doc(db, 'teachers', actingTeacherId);
                 const teacherDoc = await transaction.get(teacherRef);
                 const currentTeacherData = teacherDoc.data() as Teacher;
                 if (!currentTeacherData || (currentTeacherData.pointBalance || 0) < totalPointsToChange) {
@@ -342,7 +351,7 @@ export default function TeacherDashboardPage() {
             const studentDocs = await Promise.all(studentPromises);
 
             const actionText = isDeducting ? "批次扣除" : "批次發放";
-            const reason = `由 ${role === 'admin' ? '校長' : '老師'} ${currentTeacher?.name} ${actionText}`;
+            const reason = `由 ${currentTeacher?.name} ${actionText}`;
             const newHistoryEntry = { points: pointsToChange, date: new Date().toISOString(), reason };
 
             studentDocs.forEach((studentDoc) => {
@@ -360,7 +369,7 @@ export default function TeacherDashboardPage() {
         setStudents(currentStudents => currentStudents.map(s => {
             if (s.classId === selectedClassId) {
                  const actionText = pointsToChange < 0 ? "批次扣除" : "批次發放";
-                 const reason = `由 ${role === 'admin' ? '校長' : '老師'} ${currentTeacher?.name} ${actionText}`;
+                 const reason = `由 ${currentTeacher?.name} ${actionText}`;
                 return {
                     ...s,
                     points: s.points + pointsToChange,
@@ -370,9 +379,9 @@ export default function TeacherDashboardPage() {
             return s;
         }));
 
-        if (role !== 'admin' && !isDeducting) {
+        if ((role !== 'admin' || isImpersonating) && !isDeducting) {
             setTeachers(currentTeachers => currentTeachers.map(t =>
-                t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - totalPointsToChange } : t
+                t.id === actingTeacherId ? { ...t, pointBalance: (t.pointBalance || 0) - totalPointsToChange } : t
             ));
         }
 
