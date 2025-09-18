@@ -14,7 +14,6 @@ import {
 } from '@/lib/placeholder-data';
 import { db } from '@/lib/firebase';
 import { collection, doc, getDocs, writeBatch, setDoc, getDoc, updateDoc, deleteDoc, runTransaction, Transaction, query, orderBy, limit } from 'firebase/firestore';
-import { isSameDay, startOfDay, differenceInCalendarDays, parseISO, isAfter } from 'date-fns';
 
 
 // --- Cloud-based Data Management ---
@@ -87,7 +86,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isMarketOpen, setIsMarketOpen] = useState(checkMarketOpen());
   const stockUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const dailyUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Generic fetch function
   const fetchData = useCallback(async <T,>(collectionName: string): Promise<T[]> => {
@@ -262,146 +260,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
-  const runDailyUpdates = useCallback(async () => {
-    const now = new Date();
-    const currentHour = now.getHours();
-    console.log(`Checking if daily updates should be run at ${now.toLocaleTimeString()}`);
-    
-    // Condition 1: Only run at or after noon.
-    if (currentHour < 12) {
-      console.log("It's before noon. Skipping daily updates.");
-      return;
-    }
-
-    try {
-        // Condition 2: Check if a daily backup for today already exists.
-        const latestBackupQuery = query(collection(db, 'backups'), orderBy('createdAt', 'desc'), limit(1));
-        const latestBackupSnap = await getDocs(latestBackupQuery);
-        const today = startOfDay(new Date());
-        
-        if (!latestBackupSnap.empty) {
-            const latestBackup = latestBackupSnap.docs[0].data() as Backup;
-            const lastBackupDate = startOfDay(new Date(latestBackup.createdAt));
-
-            if (isSameDay(lastBackupDate, today) && latestBackup.description?.includes("每日自動備份")) {
-                console.log("Daily auto-backup has already been run today. Skipping all daily tasks.");
-                return;
-            }
-        }
-        
-        console.log("Running daily tasks: Interest calculation, deposits, and auto-backup...");
-
-        const allStudents = await fetchData<Student>('students');
-        if (allStudents.length === 0) {
-            console.log("No students found, skipping daily tasks.");
-            return;
-        }
-        
-        let studentsModified = false;
-        const studentBatch = writeBatch(db);
-
-        allStudents.forEach(student => {
-            let needsUpdate = false;
-            let studentPoints = student.points;
-            let studentPointHistory = [...(student.pointHistory || [])];
-            
-            const updatedLoans = (student.loans || []).map(loan => {
-                if (loan.status !== 'active' && loan.status !== 'overdue') return loan;
-                
-                const lastUpdate = startOfDay(loan.lastInterestAccruedDate ? parseISO(loan.lastInterestAccruedDate) : parseISO(loan.approvalDate!));
-                const daysSinceLastUpdate = differenceInCalendarDays(today, lastUpdate);
-                
-                let updatedLoan = {...loan};
-                if (daysSinceLastUpdate > 0) {
-                    updatedLoan.interest += daysSinceLastUpdate * loan.amount * loan.interestRate;
-                    updatedLoan.lastInterestAccruedDate = today.toISOString();
-                    needsUpdate = true;
-                }
-                const repaymentDate = startOfDay(parseISO(loan.repaymentDate));
-                if (isAfter(today, repaymentDate) && updatedLoan.status === 'active') {
-                    updatedLoan.status = 'overdue';
-                    needsUpdate = true;
-                }
-                return updatedLoan;
-            });
-            
-            const updatedDeposits = (student.fixedDeposits || []).map(deposit => {
-                if (deposit.status !== 'active') return deposit;
-
-                const maturityDate = startOfDay(parseISO(deposit.maturityDate));
-                if (isAfter(today, maturityDate) || isSameDay(today, maturityDate)) {
-                    const interestGained = Math.floor(deposit.amount * deposit.interestRate * differenceInCalendarDays(maturityDate, parseISO(deposit.startDate)));
-                    studentPoints += deposit.amount + interestGained;
-                    studentPointHistory.push({
-                        points: deposit.amount + interestGained,
-                        date: today.toISOString(),
-                        reason: `定存 #${deposit.id.slice(-4)} 到期結算`
-                    });
-                    needsUpdate = true;
-                    return {
-                        ...deposit,
-                        status: 'settled' as const,
-                        interestEarned: interestGained,
-                    };
-                }
-                return deposit;
-            });
-            
-            if (needsUpdate) {
-                studentsModified = true;
-                const studentDocId = `${student.classId}-${student.id}`;
-                const studentRef = doc(db, 'students', studentDocId);
-                studentBatch.update(studentRef, {
-                    points: studentPoints,
-                    pointHistory: studentPointHistory,
-                    loans: updatedLoans,
-                    fixedDeposits: updatedDeposits,
-                });
-            }
-        });
-        
-        if (studentsModified) {
-            console.log(`Found students needing daily updates. Adding to batch...`);
-        }
-
-        console.log("Performing automated daily backup...");
-        const backupId = new Date().toISOString();
-        const backupRef = doc(db, 'backups', backupId);
-        const studentsToBackup: StudentBackup[] = allStudents.map(s => ({
-            id: s.id,
-            classId: s.classId,
-            points: s.points,
-        }));
-        studentBatch.set(backupRef, {
-            id: backupId,
-            createdAt: backupId,
-            description: "每日自動備份",
-            students: studentsToBackup,
-        });
-        console.log("New daily backup added to batch.");
-        
-        const backupsQuery = query(collection(db, 'backups'), orderBy('createdAt', 'desc'));
-        const backupSnaps = await getDocs(backupsQuery);
-        if (backupSnaps.docs.length >= 7) { 
-            console.log(`Pruning old backups. Found ${backupSnaps.docs.length}, keeping 7.`);
-            const backupsToDelete = backupSnaps.docs.slice(6); 
-            backupsToDelete.forEach(docToDelete => {
-                console.log(`Scheduling deletion for backup: ${docToDelete.id}`);
-                studentBatch.delete(docToDelete.ref);
-            });
-        }
-        
-        await studentBatch.commit();
-        console.log("Successfully committed all daily tasks to Firestore.");
-        
-        const updatedStudents = await fetchData<Student>('students');
-        setStudentsState(updatedStudents);
-
-    } catch(error) {
-        console.error("Error during daily updates:", error);
-    }
-  }, [fetchData]);
-
   const seedInitialData = useCallback(async () => {
     console.log("Checking if initial data seeding is necessary...");
     const collectionsToSeed = [
@@ -555,7 +413,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     const newBackup: Backup = {
       id: backupId,
       createdAt: backupId,
-      description: description || "手動備份 (Manual Backup)",
+      description: description || "手動備份",
       students: studentsToBackup,
     };
 
@@ -630,16 +488,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         }
     }, 5 * 60 * 1000); // Check every 5 minutes
 
-    const firstRun = setTimeout(() => runDailyUpdates(), 10000); // Run once 10s after startup
-    if (dailyUpdateIntervalRef.current) clearInterval(dailyUpdateIntervalRef.current);
-    dailyUpdateIntervalRef.current = setInterval(runDailyUpdates, 3600000); // Run every hour to check if it's a new day
-
     return () => {
-        clearTimeout(firstRun);
         if (stockUpdateIntervalRef.current) clearInterval(stockUpdateIntervalRef.current);
-        if (dailyUpdateIntervalRef.current) clearInterval(dailyUpdateIntervalRef.current);
     };
-  }, [initializePublicData, runDailyUpdates]);
+  }, [initializePublicData]);
 
   return (
     <AppDataContext.Provider value={{ 
@@ -663,5 +515,3 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     </AppDataContext.Provider>
   );
 };
-
-    

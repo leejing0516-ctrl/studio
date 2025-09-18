@@ -133,7 +133,7 @@ export default function TeacherBackupPage() {
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                     <CardTitle>資料備份與還原</CardTitle>
-                    <CardDescription>系統會每晚自動備份，並僅保留最近七天的資料。您也可以在此手動建立緊急備份，或從過去的備份中還原資料。</CardDescription>
+                    <CardDescription>您可以在此手動建立緊急備份，或從過去的備份中還原所有學生的點數資料。</CardDescription>
                 </div>
                 <Button onClick={handleCreateBackup} disabled={isCreating}>
                     {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <PlusCircle className="mr-2 h-4 w-4" />}
