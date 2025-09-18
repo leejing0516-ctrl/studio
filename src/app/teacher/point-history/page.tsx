@@ -75,14 +75,10 @@ export default function PointHistoryPage() {
         const studentsToCalculate = students.filter(s => s.classId === selectedClassId);
 
         const results = studentsToCalculate.map(student => {
-            let historicalPoints = student.points;
-            
-            const transactionsAfterTarget = (student.pointHistory || [])
-                .filter(record => new Date(record.date) > combinedDateTime);
+            const transactionsBeforeTarget = (student.pointHistory || [])
+                .filter(record => new Date(record.date) <= combinedDateTime);
 
-            for (const record of transactionsAfterTarget) {
-                historicalPoints -= record.points;
-            }
+            const historicalPoints = transactionsBeforeTarget.reduce((acc, record) => acc + record.points, 0);
 
             return {
                 id: student.id,
@@ -174,7 +170,7 @@ export default function PointHistoryPage() {
                     <CardHeader>
                         <CardTitle>計算結果</CardTitle>
                         <CardDescription>
-                            班級「{classes.find(c => c.id === selectedClassId)?.name}」在 {format(targetDate!, 'yyyy/MM/dd')} {targetTime} 的點數狀態。
+                            班級「{classes.find(c => c.id === selectedClassId)?.name}」在 {targetDate ? format(targetDate, 'yyyy/MM/dd') : ''} {targetTime} 的點數狀態。
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
