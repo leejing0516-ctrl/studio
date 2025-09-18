@@ -160,22 +160,6 @@ export type Announcement = {
     date: string; // ISO date string
 };
 
-export type BackupRecord = {
-    students: Student[];
-    rewards: Reward[];
-    stocks: Stock[];
-    teachers: Teacher[];
-    classes: Class[];
-    platformConfig: PlatformConfig | null;
-}
-
-export type Backup = {
-    id: string; // doc id
-    name: string; // display name
-    createdAt: string; // ISO string
-    record: BackupRecord;
-}
-
 export type PlatformConfig = {
     id: 'main';
     schoolFunds?: number;
