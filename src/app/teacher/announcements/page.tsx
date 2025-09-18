@@ -274,7 +274,7 @@ export default function TeacherAnnouncementsPage() {
                                 {classes.map(c => (
                                     <div key={c.id} className="mb-6">
                                         <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><GraduationCap /> {c.name}</h3>
-                                        <AnnouncementTable announcements={c.announcements} type="class" />
+                                        <AnnouncementTable announcements={c.announcements || []} type="class" />
                                     </div>
                                 ))}
                             </CardContent>
