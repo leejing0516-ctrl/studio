@@ -264,7 +264,15 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const runDailyUpdates = useCallback(async () => {
-    console.log("Checking if daily updates should be run...");
+    const now = new Date();
+    const currentHour = now.getHours();
+    console.log(`Checking if daily updates should be run at ${now.toLocaleTimeString()}`);
+    
+    // Only proceed if it's 12 PM or later
+    if (currentHour < 12) {
+      console.log("It's not yet 12 PM. Skipping daily updates.");
+      return;
+    }
 
     try {
         // More robust check: See if the latest backup is from today.
@@ -451,7 +459,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             challenges: initialChallenges,
             fundraisingProjects: [],
             fixedDepositInterestRate: 0.01, // 1% daily
-            loanInterestRate: 0.005, // 0.5% daily
+            loanInterestRate: 0.005, // 0.5% daily,
         };
         batch.set(configDocRef, initialConfig, { merge: true });
         setPlatformConfigState(prev => ({ ...(prev || { id: 'main' }), ...initialConfig }));
