@@ -1068,46 +1068,48 @@ export default function TeacherDashboardPage() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                    <TableHeader>
-                        <TableRow>
-                        <TableHead>編號</TableHead>
-                        <TableHead>姓名</TableHead>
-                        <TableHead>目前點數</TableHead>
-                        <TableHead className="text-right">操作</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {studentsInView.map((student) => (
-                        <TableRow key={`${student.classId}-${student.id}`}>
-                            <TableCell className="font-mono">{student.id}</TableCell>
-                            <TableCell className="flex items-center gap-4">
-                            <Avatar>
-                                <AvatarImage src={student.avatar} data-ai-hint="student avatar" />
-                                <AvatarFallback>
-                                    {student.name.slice(0, 2)}
-                                </AvatarFallback>
-                            </Avatar>
-                            <span className="font-medium">{student.name}</span>
-                            </TableCell>
-                            <TableCell>{student.points.toLocaleString()}</TableCell>
-                            <TableCell className="text-right">
-                                <Button variant="ghost" size="icon" onClick={() => handleEditStudentClick(student)}>
-                                        <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" onClick={() => handleResetPasswordClick(student)}>
-                                        <KeyRound className="h-4 w-4" />
-                                </Button>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStudentClick(student)}>
-                                        <Trash2 className="h-4 w-4" />
+                    <AlertDialog>
+                        <Table>
+                        <TableHeader>
+                            <TableRow>
+                            <TableHead>編號</TableHead>
+                            <TableHead>姓名</TableHead>
+                            <TableHead>目前點數</TableHead>
+                            <TableHead className="text-right">操作</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {studentsInView.map((student) => (
+                            <TableRow key={`${student.classId}-${student.id}`}>
+                                <TableCell className="font-mono">{student.id}</TableCell>
+                                <TableCell className="flex items-center gap-4">
+                                <Avatar>
+                                    <AvatarImage src={student.avatar} data-ai-hint="student avatar" />
+                                    <AvatarFallback>
+                                        {student.name.slice(0, 2)}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <span className="font-medium">{student.name}</span>
+                                </TableCell>
+                                <TableCell>{student.points.toLocaleString()}</TableCell>
+                                <TableCell className="text-right">
+                                    <Button variant="ghost" size="icon" onClick={() => handleEditStudentClick(student)}>
+                                            <Edit className="h-4 w-4" />
                                     </Button>
-                                </AlertDialogTrigger>
-                            </TableCell>
-                        </TableRow>
-                        ))}
-                    </TableBody>
-                    </Table>
+                                    <Button variant="ghost" size="icon" onClick={() => handleResetPasswordClick(student)}>
+                                            <KeyRound className="h-4 w-4" />
+                                    </Button>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStudentClick(student)}>
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                </TableCell>
+                            </TableRow>
+                            ))}
+                        </TableBody>
+                        </Table>
+                    </AlertDialog>
                 </CardContent>
             </Card>
         </TabsContent>
@@ -1247,7 +1249,7 @@ export default function TeacherDashboardPage() {
                                     <TableCell>{c.name}</TableCell>
                                     <TableCell>{teachers.find(t => t.role === 'teacher' && t.classIds && t.classIds.includes(c.id))?.name || 'N/A'}</TableCell>
                                     <TableCell className="text-right">
-                                        <AlertDialog>
+                                        <AlertDialog onOpenChange={(open) => { if (!open) setClassToDelete(null)}}>
                                             <AlertDialogTrigger asChild>
                                                 <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteClassClick(c)}>
                                                     <Trash2 className="h-4 w-4" />
@@ -1257,7 +1259,7 @@ export default function TeacherDashboardPage() {
                                                 <AlertDialogHeader>
                                                     <AlertDialogTitle>您確定要刪除班級嗎？</AlertDialogTitle>
                                                     <AlertDialogDescription>
-                                                        刪除「{c.name}」將會永久刪除該班級內的所有學生資料，此操作無法復原。
+                                                        刪除「{classToDelete?.name}」將會永久刪除該班級內的所有學生資料，此操作無法復原。
                                                     </AlertDialogDescription>
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter>
