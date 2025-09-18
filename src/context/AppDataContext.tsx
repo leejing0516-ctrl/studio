@@ -2,7 +2,7 @@
 "use client";
 
 import { createContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
-import type { Student, Reward, Class, Teacher, Stock, PlatformConfig, Loan, Announcement, Challenge, FundraisingProject, Backup, StudentBackup } from '@/lib/types';
+import type { Student, Reward, Class, Teacher, Stock, PlatformConfig, Loan, Announcement, Challenge, FundraisingProject } from '@/lib/types';
 import { 
     students as initialStudents, 
     rewards as initialRewards,
@@ -36,10 +36,6 @@ interface AppDataContextType {
   loadSensitiveData: () => Promise<{students: Student[], rewards: Reward[], stocks: Stock[]}>;
   seedInitialData: () => Promise<void>;
   runTransaction: (updateFunction: (transaction: Transaction) => Promise<any>) => Promise<any>;
-  fetchBackups: () => Promise<Backup[]>;
-  createBackup: (description?: string) => Promise<void>;
-  restoreFromBackup: (backup: Backup) => Promise<void>;
-  deleteBackup: (backupId: string) => Promise<void>;
 }
 
 const defaultState: AppDataContextType = {
@@ -60,10 +56,6 @@ const defaultState: AppDataContextType = {
   loadSensitiveData: async () => ({ students: [], rewards: [], stocks: [] }),
   seedInitialData: async () => {},
   runTransaction: async () => {},
-  fetchBackups: async () => [],
-  createBackup: async () => {},
-  restoreFromBackup: async () => {},
-  deleteBackup: async () => {},
 };
 
 export const AppDataContext = createContext<AppDataContextType>(defaultState);
@@ -392,74 +384,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     return await runTransaction(db, updateFunction);
   }, []);
 
-  const fetchBackups = useCallback(async (): Promise<Backup[]> => {
-    const backupsQuery = query(collection(db, 'backups'), orderBy('createdAt', 'desc'));
-    const snapshot = await getDocs(backupsQuery);
-    return snapshot.docs.map(doc => doc.data() as Backup);
-  }, []);
-
-  const createBackup = useCallback(async (description?: string): Promise<void> => {
-    const now = new Date();
-    const backupId = now.toISOString();
-    const backupRef = doc(db, 'backups', backupId);
-
-    const studentsToBackup: StudentBackup[] = students.map(s => ({
-      id: s.id,
-      classId: s.classId,
-      points: s.points
-    }));
-
-    const newBackup: Backup = {
-      id: backupId,
-      createdAt: backupId,
-      description: description || "手動備份",
-      students: studentsToBackup,
-    };
-
-    await setDoc(backupRef, newBackup);
-  }, [students]);
-
-  const restoreFromBackup = useCallback(async (backup: Backup): Promise<void> => {
-      try {
-        const batch = writeBatch(db);
-        backup.students.forEach(studentBackup => {
-          const studentDocId = `${studentBackup.classId}-${studentBackup.id}`;
-          const studentRef = doc(db, 'students', studentDocId);
-          batch.update(studentRef, { points: studentBackup.points });
-        });
-        await batch.commit();
-
-        const updatedStudents = await fetchData<Student>('students');
-        setStudentsState(updatedStudents);
-
-      } catch (error) {
-        console.error("Failed to restore from backup:", error);
-        throw error;
-      }
-  }, [fetchData]);
-
-  const deleteBackup = useCallback(async (backupId: string): Promise<void> => {
-    try {
-      const backupRef = doc(db, 'backups', backupId);
-      await deleteDoc(backupRef);
-    } catch (error) {
-      console.error("Failed to delete backup:", error);
-      throw error;
-    }
-  }, []);
-
-
   useEffect(() => {
     initializePublicData();
-
-    // Set up a simple interval to check if the market should be open or closed.
-    const marketCheckInterval = setInterval(() => {
-      setIsMarketOpen(checkMarketOpen());
-    }, 60000); // Check every minute
-
-    return () => {
-      clearInterval(marketCheckInterval);
-    };
   }, [initializePublicData]);
 
   return (
@@ -475,14 +401,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         loadSensitiveData,
         seedInitialData,
         runTransaction: handleRunTransaction,
-        fetchBackups,
-        createBackup,
-        restoreFromBackup,
-        deleteBackup,
     }}>
       {children}
     </AppDataContext.Provider>
   );
 };
-
-    

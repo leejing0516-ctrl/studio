@@ -31,8 +31,6 @@ import {
   Gift,
   Repeat,
   AlertTriangle,
-  History,
-  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -193,8 +191,6 @@ export default function TeacherLayout({
     { href: "/teacher/stocks", label: "股票管理", icon: LineChart, roles: ['admin'] },
     { href: "/teacher/fundraising", label: "募資管理", icon: HeartHandshake, roles: ['admin'] },
     { href: "/teacher/settings", label: "平台設定", icon: Settings, roles: ['admin'] },
-    { href: "/teacher/backup", label: "資料備份還原", icon: History, roles: ['admin'] },
-    { href: "/teacher/point-history", label: "點數時光機", icon: Clock, roles: ['admin'] },
   ];
   
   const availableNavItems = navItems.filter(item => item.roles.includes(teacherRole || ''));
