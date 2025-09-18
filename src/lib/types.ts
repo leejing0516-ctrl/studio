@@ -1,5 +1,18 @@
 
 
+export type StudentBackup = {
+  id: string; // Student ID
+  classId: string;
+  points: number;
+};
+
+export type Backup = {
+  id: string; // ISO timestamp, used as document ID
+  createdAt: string; // ISO date string
+  students: StudentBackup[];
+};
+
+
 export type Donation = {
   studentId: string;
   studentName: string;

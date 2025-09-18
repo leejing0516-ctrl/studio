@@ -3,7 +3,7 @@
 "use client";
 
 import { createContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
-import type { Student, Reward, Class, Teacher, Stock, PlatformConfig, Loan, Announcement, Challenge, FundraisingProject } from '@/lib/types';
+import type { Student, Reward, Class, Teacher, Stock, PlatformConfig, Loan, Announcement, Challenge, FundraisingProject, Backup, StudentBackup } from '@/lib/types';
 import { 
     students as initialStudents, 
     rewards as initialRewards,
@@ -37,6 +37,10 @@ interface AppDataContextType {
   isMarketOpen: boolean;
   loadSensitiveData: () => Promise<{students: Student[], rewards: Reward[], stocks: Stock[]}>;
   seedInitialData: () => Promise<void>;
+  runTransaction: (updateFunction: (transaction: any) => Promise<any>) => Promise<any>;
+  fetchBackups: () => Promise<Backup[]>;
+  createBackup: () => Promise<void>;
+  restoreFromBackup: (backup: Backup) => Promise<void>;
 }
 
 const defaultState: AppDataContextType = {
@@ -56,6 +60,10 @@ const defaultState: AppDataContextType = {
   isMarketOpen: false,
   loadSensitiveData: async () => ({ students: [], rewards: [], stocks: [] }),
   seedInitialData: async () => {},
+  runTransaction: async () => {},
+  fetchBackups: async () => [],
+  createBackup: async () => {},
+  restoreFromBackup: async () => {},
 };
 
 export const AppDataContext = createContext<AppDataContextType>(defaultState);
@@ -493,6 +501,56 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         setIsLoading(false);
     }
   }, [fetchData, rewards, stocks]);
+  
+  const handleRunTransaction = useCallback(async (updateFunction: (transaction: any) => Promise<any>) => {
+    return await runTransaction(db, updateFunction);
+  }, []);
+
+  const fetchBackups = useCallback(async (): Promise<Backup[]> => {
+    const backups = await fetchData<Backup>('backups');
+    return backups.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [fetchData]);
+
+  const createBackup = useCallback(async (): Promise<void> => {
+    const now = new Date();
+    const backupId = now.toISOString();
+    const backupRef = doc(db, 'backups', backupId);
+
+    const studentsToBackup: StudentBackup[] = students.map(s => ({
+      id: s.id,
+      classId: s.classId,
+      points: s.points
+    }));
+
+    const newBackup: Backup = {
+      id: backupId,
+      createdAt: backupId,
+      students: studentsToBackup,
+    };
+
+    await setDoc(backupRef, newBackup);
+  }, [students]);
+
+  const restoreFromBackup = useCallback(async (backup: Backup): Promise<void> => {
+      try {
+        const batch = writeBatch(db);
+        backup.students.forEach(studentBackup => {
+          const studentDocId = `${studentBackup.classId}-${studentBackup.id}`;
+          const studentRef = doc(db, 'students', studentDocId);
+          batch.update(studentRef, { points: studentBackup.points });
+        });
+        await batch.commit();
+
+        // Refresh local data after restore
+        const updatedStudents = await fetchData<Student>('students');
+        setStudentsState(updatedStudents);
+
+      } catch (error) {
+        console.error("Failed to restore from backup:", error);
+        throw error;
+      }
+  }, [fetchData]);
+
 
   useEffect(() => {
     initializePublicData();
@@ -555,6 +613,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         isMarketOpen,
         loadSensitiveData,
         seedInitialData,
+        runTransaction: handleRunTransaction,
+        fetchBackups,
+        createBackup,
+        restoreFromBackup,
     }}>
       {children}
     </AppDataContext.Provider>
