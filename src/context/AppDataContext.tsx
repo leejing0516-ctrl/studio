@@ -384,7 +384,17 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     initializePublicData();
+
+    // Set up an interval to check if the market is open
+    const marketInterval = setInterval(() => {
+      setIsMarketOpen(checkMarketOpen());
+    }, 60000); // Check every minute
+
+    return () => {
+      clearInterval(marketInterval);
+    };
   }, [initializePublicData]);
+
 
   return (
     <AppDataContext.Provider value={{ 
@@ -404,3 +414,5 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     </AppDataContext.Provider>
   );
 };
+
+    
