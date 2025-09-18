@@ -384,36 +384,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     initializePublicData();
-
-    // Market open/close check
-    const marketCheckInterval = setInterval(() => {
-        setIsMarketOpen(checkMarketOpen());
-    }, 60 * 1000); // Check every minute
-
-    // Stock price simulation
-    const stockUpdateInterval = setInterval(() => {
-        if (!checkMarketOpen()) return;
-
-        setStocksState(prevStocks => {
-            const updatedStocks = prevStocks.map(stock => {
-                const changePercent = (Math.random() - 0.5) * 0.02; // max 1% change
-                const change = stock.price * changePercent;
-                const newPrice = Math.max(1, stock.price + change); // prevent price from going below 1
-                return {
-                    ...stock,
-                    price: newPrice,
-                    change: change,
-                    changePercent: changePercent * 100
-                };
-            });
-            return updatedStocks;
-        });
-    }, 5000); // Update every 5 seconds
-
-    return () => {
-        clearInterval(marketCheckInterval);
-        clearInterval(stockUpdateInterval);
-    };
   }, [initializePublicData]);
 
   return (
@@ -434,3 +404,5 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     </AppDataContext.Provider>
   );
 };
+
+    
