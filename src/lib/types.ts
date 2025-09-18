@@ -39,7 +39,7 @@ export type FixedDeposit = {
   amount: number;
   startDate: string; // ISO date string
   maturityDate: string; // ISO date string
-  status: 'active' | 'settled';
+  status: 'active' | 'matured';
   interestRate: number; // The daily rate at the time of deposit
   interestEarned: number;
 };
@@ -160,6 +160,22 @@ export type Announcement = {
     date: string; // ISO date string
 };
 
+export type BackupRecord = {
+    students: Student[];
+    rewards: Reward[];
+    stocks: Stock[];
+    teachers: Teacher[];
+    classes: Class[];
+    platformConfig: PlatformConfig | null;
+}
+
+export type Backup = {
+    id: string; // doc id
+    name: string; // display name
+    createdAt: string; // ISO string
+    record: BackupRecord;
+}
+
 export type PlatformConfig = {
     id: 'main';
     schoolFunds?: number;
@@ -171,4 +187,5 @@ export type PlatformConfig = {
     fundraisingProjects?: FundraisingProject[];
     fixedDepositInterestRate?: number;
     loanInterestRate?: number;
+    lastAutoBackupDate?: string;
 }

@@ -2,7 +2,7 @@
 "use client";
 
 import { createContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
-import type { Student, Reward, Class, Teacher, Stock, PlatformConfig, Loan, Announcement, Challenge, FundraisingProject } from '@/lib/types';
+import type { Student, Reward, Class, Teacher, Stock, PlatformConfig, Loan, Announcement, Challenge, FundraisingProject, PointRecord, FixedDeposit, StudentHabit, Backup, BackupRecord } from '@/lib/types';
 import { 
     students as initialStudents, 
     rewards as initialRewards,
@@ -81,11 +81,9 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   // Generic fetch function
   const fetchData = useCallback(async <T,>(collectionName: string): Promise<T[]> => {
       try {
-        const collectionRef = collection(db, collectionName);
-        const snapshot = await getDocs(collectionRef);
-        // It's okay for collections to be empty initially.
-        return snapshot.docs
-            .map(doc => ({ ...doc.data() } as T));
+        const q = query(collection(db, collectionName));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ ...doc.data() } as T));
       } catch (error) {
         console.error(`Error fetching ${collectionName}:`, error);
         return [];
