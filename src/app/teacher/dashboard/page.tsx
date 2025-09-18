@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Reward, Student, Teacher, Class, Loan, StudentChallenge, FundraisingProject } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Banknote, ShieldPlus, Coins, Flag, Hourglass, ShieldCheck, Gift, Briefcase, HeartHandshake, LineChart, UserCheck } from "lucide-react";
+import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Banknote, ShieldPlus, Coins, Flag, Hourglass, ShieldCheck, Gift, Briefcase, HeartHandshake, LineChart, UserCheck, AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -258,20 +258,21 @@ export default function TeacherDashboardPage() {
         await runDbTransaction(async (transaction: any) => {
             const studentRef = doc(db, 'students', `${selectedClassId}-${studentId}`);
             
-            // Only fetch teacher doc if not admin and not deducting
             const isDeducting = pointsToChange < 0;
+            const needsBalanceCheck = role === 'teacher' && !isImpersonating && !isDeducting;
+            
             const teacherRef = doc(db, 'teachers', actingTeacherId);
+            
             const [studentDoc, teacherDoc] = await Promise.all([
                 transaction.get(studentRef),
-                (role !== 'admin' || isImpersonating) && !isDeducting ? transaction.get(teacherRef) : Promise.resolve(null)
+                needsBalanceCheck ? transaction.get(teacherRef) : Promise.resolve(null)
             ]);
 
             if (!studentDoc.exists()) {
                 throw new Error("找不到學生資料。");
             }
-            const currentStudentData = studentDoc.data() as Student;
 
-            if ((role !== 'admin' || isImpersonating) && !isDeducting) {
+            if (needsBalanceCheck) {
                 const currentTeacherData = teacherDoc?.data() as Teacher;
                 if (!currentTeacherData || (currentTeacherData.pointBalance || 0) < pointsToChange) {
                     throw new Error("您的點數餘額不足以發放此次點數。");
@@ -279,9 +280,9 @@ export default function TeacherDashboardPage() {
                 transaction.update(teacherRef, { pointBalance: (currentTeacherData.pointBalance || 0) - pointsToChange });
             }
 
+            const currentStudentData = studentDoc.data() as Student;
             const actionText = isDeducting ? "扣除" : "發放";
             const reason = `由 ${currentTeacher?.name} ${actionText}`;
-            
             const newHistoryEntry = { points: pointsToChange, date: new Date().toISOString(), reason };
 
             transaction.update(studentRef, {
@@ -293,7 +294,7 @@ export default function TeacherDashboardPage() {
         // Optimistically update local state after successful transaction
         setStudents(currentStudents => currentStudents.map(s => {
             if (s.id === studentId && s.classId === selectedClassId) {
-                const actionText = pointsToChange < 0 ? "扣除" : "發放";
+                const actionText = pointsToChange < 0 ? '扣除' : '發放';
                 const reason = `由 ${currentTeacher?.name} ${actionText}`;
                 return {
                     ...s,
@@ -304,7 +305,9 @@ export default function TeacherDashboardPage() {
             return s;
         }));
 
-        if ((role !== 'admin' || isImpersonating) && pointsToChange > 0) {
+        const isDeducting = pointsToChange < 0;
+        const needsBalanceCheck = role === 'teacher' && !isImpersonating && !isDeducting;
+        if (needsBalanceCheck) {
             setTeachers(currentTeachers => currentTeachers.map(t =>
                 t.id === actingTeacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToChange } : t
             ));
@@ -327,17 +330,18 @@ export default function TeacherDashboardPage() {
       toast({ title: "無效的操作", description: "請輸入點數、選擇班級或重新登入。", variant: "destructive" });
       return;
     }
+
     const isDeducting = pointsToChange < 0;
+    const impersonatorId = localStorage.getItem('impersonator');
+    const isImpersonating = !!impersonatorId;
+    const actingTeacherId = impersonatorId || teacherId;
+    
+    const needsBalanceCheck = role === 'teacher' && !isImpersonating && !isDeducting;
     const totalPointsToChange = studentsInView.length * pointsToChange;
     
-    const impersonatorId = localStorage.getItem('impersonator');
-    const actingTeacherId = impersonatorId || teacherId;
-    const isImpersonating = !!impersonatorId;
-
-
     try {
         await runDbTransaction(async (transaction: any) => {
-            if ((role !== 'admin' || isImpersonating) && !isDeducting) {
+            if (needsBalanceCheck) {
                 const teacherRef = doc(db, 'teachers', actingTeacherId);
                 const teacherDoc = await transaction.get(teacherRef);
                 const currentTeacherData = teacherDoc.data() as Teacher;
@@ -379,7 +383,7 @@ export default function TeacherDashboardPage() {
             return s;
         }));
 
-        if ((role !== 'admin' || isImpersonating) && !isDeducting) {
+        if (needsBalanceCheck) {
             setTeachers(currentTeachers => currentTeachers.map(t =>
                 t.id === actingTeacherId ? { ...t, pointBalance: (t.pointBalance || 0) - totalPointsToChange } : t
             ));
