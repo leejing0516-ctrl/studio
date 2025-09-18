@@ -85,7 +85,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [platformConfig, setPlatformConfigState] = useState<PlatformConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMarketOpen, setIsMarketOpen] = useState(checkMarketOpen());
-  const stockUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Generic fetch function
   const fetchData = useCallback(async <T,>(collectionName: string): Promise<T[]> => {
