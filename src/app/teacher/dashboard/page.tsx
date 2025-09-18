@@ -84,6 +84,7 @@ export default function TeacherDashboardPage() {
   const [teacherId, setTeacherId] = useState<string | null>(null);
   const [teacherClassIds, setTeacherClassIds] = useState<string[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<string>('');
+  const [isImpersonating, setIsImpersonating] = useState(false);
 
   // States for CSV import
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -119,9 +120,11 @@ export default function TeacherDashboardPage() {
     const storedRole = localStorage.getItem('teacherRole');
     const storedTeacherId = localStorage.getItem('teacherId');
     const storedClassIdsStr = localStorage.getItem('teacherClassIds');
+    const impersonatorId = localStorage.getItem('impersonator');
     
     setRole(storedRole);
     setTeacherId(storedTeacherId);
+    setIsImpersonating(!!impersonatorId);
     
     if (storedClassIdsStr && storedClassIdsStr !== 'undefined') {
         try {
@@ -245,71 +248,71 @@ export default function TeacherDashboardPage() {
   };
 
   const handleAwardPoints = async (studentId: string, pointsToChange: number) => {
-    if (!pointsToChange || !teacherId) {
+    const activeTeacherId = localStorage.getItem('impersonator') || teacherId;
+    if (!pointsToChange || !activeTeacherId) {
         toast({ title: "無效的操作", description: "請輸入一個非零的數字或重新登入。", variant: "destructive" });
         return;
     }
 
     const isDeducting = pointsToChange < 0;
-    const isImpersonating = !!localStorage.getItem('impersonator');
-    const needsTeacherBalanceCheck = role === 'teacher' && !isImpersonating && !isDeducting;
-    const needsSchoolFundsCheck = role === 'admin' && !isImpersonating && !isDeducting;
-
+    
+    const isTeacherActing = role === 'teacher' && !isImpersonating;
+    const isAdminActing = role === 'admin' && !isImpersonating;
+    
     try {
         await runDbTransaction(async (transaction: any) => {
             const studentRef = doc(db, 'students', `${selectedClassId}-${studentId}`);
-            const teacherRef = doc(db, 'teachers', teacherId);
+            const teacherRef = doc(db, 'teachers', activeTeacherId);
             const configRef = doc(db, 'config', 'main');
 
             // --- 1. All Reads First ---
             const studentDoc = await transaction.get(studentRef);
-            let teacherDoc;
-            let configDoc;
-
-            if (needsTeacherBalanceCheck) {
-                teacherDoc = await transaction.get(teacherRef);
-            }
-            if (needsSchoolFundsCheck) {
-                configDoc = await transaction.get(configRef);
-            }
-
+            let teacherDoc, configDoc;
+            if (isTeacherActing) teacherDoc = await transaction.get(teacherRef);
+            if (isAdminActing) configDoc = await transaction.get(configRef);
+            
             // --- 2. Verification ---
-            if (!studentDoc.exists()) {
-                throw new Error("找不到學生資料。");
+            if (!studentDoc.exists()) throw new Error("找不到學生資料。");
+
+            const studentData = studentDoc.data() as Student;
+            if (isDeducting && studentData.points < Math.abs(pointsToChange)) {
+                throw new Error(`${studentData.name} 的點數不足以扣除。`);
             }
             
-            if (needsTeacherBalanceCheck) {
-                const currentTeacherData = teacherDoc?.data() as Teacher;
-                if (!currentTeacherData || (currentTeacherData.pointBalance || 0) < pointsToChange) {
+            if (isTeacherActing && !isDeducting) {
+                const teacherData = teacherDoc?.data() as Teacher;
+                if (!teacherData || (teacherData.pointBalance || 0) < pointsToChange) {
                     throw new Error("您的點數餘額不足以發放此次點數。");
                 }
             }
-            
-            if (needsSchoolFundsCheck) {
-                const currentConfigData = configDoc?.data() as PlatformConfig;
-                if (!currentConfigData || (currentConfigData.schoolFunds || 0) < pointsToChange) {
-                     throw new Error("學校總資金不足以發放此次點數。");
+             if (isAdminActing && !isDeducting) {
+                const configData = configDoc?.data() as PlatformConfig;
+                if (!configData || (configData.schoolFunds || 0) < pointsToChange) {
+                    throw new Error("學校總資金不足以發放此次點數。");
                 }
             }
-            
+
             // --- 3. All Writes Last ---
-            if (needsTeacherBalanceCheck) {
-                 const currentTeacherData = teacherDoc?.data() as Teacher;
-                 transaction.update(teacherRef, { pointBalance: (currentTeacherData.pointBalance || 0) - pointsToChange });
+            // Update provider's balance
+            if (isTeacherActing) {
+                const teacherData = teacherDoc?.data() as Teacher;
+                // For deduction, points are returned to teacher. For awarding, points are taken.
+                transaction.update(teacherRef, { pointBalance: (teacherData.pointBalance || 0) - pointsToChange });
             }
-            if (needsSchoolFundsCheck) {
-                const currentConfigData = configDoc?.data() as PlatformConfig;
-                transaction.update(configRef, { schoolFunds: (currentConfigData.schoolFunds || 0) - pointsToChange });
+            if (isAdminActing) {
+                 const configData = configDoc?.data() as PlatformConfig;
+                 // Same logic for admin and school funds
+                 transaction.update(configRef, { schoolFunds: (configData.schoolFunds || 0) - pointsToChange });
             }
 
-            const currentStudentData = studentDoc.data() as Student;
+            // Update student's points and history
             const actionText = isDeducting ? "扣除" : "發放";
             const reason = `由 ${currentTeacher?.name} ${actionText}`;
             const newHistoryEntry = { points: pointsToChange, date: new Date().toISOString(), reason };
 
             transaction.update(studentRef, {
-                points: currentStudentData.points + pointsToChange,
-                pointHistory: [...(currentStudentData.pointHistory || []), newHistoryEntry]
+                points: studentData.points + pointsToChange,
+                pointHistory: [...(studentData.pointHistory || []), newHistoryEntry]
             });
         });
 
@@ -327,19 +330,17 @@ export default function TeacherDashboardPage() {
             return s;
         }));
 
-        if (needsTeacherBalanceCheck) {
+        if (isTeacherActing) {
             setTeachers(currentTeachers => currentTeachers.map(t =>
-                t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToChange } : t
+                t.id === activeTeacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToChange } : t
             ));
         }
-        
-        if (needsSchoolFundsCheck) {
+        if (isAdminActing) {
            setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - pointsToChange });
         }
 
-
         toast({
-            title: `點數已${pointsToChange < 0 ? '扣除' : '發放'}！`,
+            title: `點數已${isDeducting ? '扣除' : '發放'}！`,
             description: `操作成功。`
         });
 
@@ -351,61 +352,54 @@ export default function TeacherDashboardPage() {
 
   const handleBatchAwardPoints = async () => {
     const pointsToChange = Number(batchAwardAmount);
-    if (!pointsToChange || studentsInView.length === 0 || !teacherId) {
+    const activeTeacherId = localStorage.getItem('impersonator') || teacherId;
+    if (!pointsToChange || studentsInView.length === 0 || !activeTeacherId) {
       toast({ title: "無效的操作", description: "請輸入點數、選擇班級或重新登入。", variant: "destructive" });
       return;
     }
 
     const isDeducting = pointsToChange < 0;
-    const isImpersonating = !!localStorage.getItem('impersonator');
-    const needsTeacherBalanceCheck = role === 'teacher' && !isImpersonating && !isDeducting;
-    const needsSchoolFundsCheck = role === 'admin' && !isImpersonating && !isDeducting;
     const totalPointsToChange = studentsInView.length * pointsToChange;
+    const isTeacherActing = role === 'teacher' && !isImpersonating;
+    const isAdminActing = role === 'admin' && !isImpersonating;
     
     try {
         await runDbTransaction(async (transaction: any) => {
-            const teacherRef = doc(db, 'teachers', teacherId);
+            const teacherRef = doc(db, 'teachers', activeTeacherId);
             const configRef = doc(db, 'config', 'main');
             
             // --- 1. All Reads First ---
-            let teacherDoc;
-            let configDoc;
-
-            if (needsTeacherBalanceCheck) {
-                teacherDoc = await transaction.get(teacherRef);
-            }
-            if (needsSchoolFundsCheck) {
-                configDoc = await transaction.get(configRef);
-            }
+            let teacherDoc, configDoc;
+            if (isTeacherActing) teacherDoc = await transaction.get(teacherRef);
+            if (isAdminActing) configDoc = await transaction.get(configRef);
 
             const studentPromises = studentsInView.map(s => transaction.get(doc(db, 'students', `${s.classId}-${s.id}`)));
             const studentDocs = await Promise.all(studentPromises);
 
             // --- 2. Verification ---
-            if (needsTeacherBalanceCheck) {
-                const currentTeacherData = teacherDoc?.data() as Teacher;
-                if (!currentTeacherData || (currentTeacherData.pointBalance || 0) < totalPointsToChange) {
+            if (isTeacherActing && !isDeducting) {
+                const teacherData = teacherDoc?.data() as Teacher;
+                if (!teacherData || (teacherData.pointBalance || 0) < totalPointsToChange) {
                     throw new Error(`您的點數餘額不足。需要 ${totalPointsToChange.toLocaleString()} 點。`);
                 }
             }
 
-            if (needsSchoolFundsCheck) {
-                const currentConfigData = configDoc?.data() as PlatformConfig;
-                if (!currentConfigData || (currentConfigData.schoolFunds || 0) < totalPointsToChange) {
+            if (isAdminActing && !isDeducting) {
+                const configData = configDoc?.data() as PlatformConfig;
+                if (!configData || (configData.schoolFunds || 0) < totalPointsToChange) {
                      throw new Error(`學校總資金不足。需要 ${totalPointsToChange.toLocaleString()} 點。`);
                 }
             }
             
             // --- 3. All Writes Last ---
-            if (needsTeacherBalanceCheck) {
-                 const currentTeacherData = teacherDoc?.data() as Teacher;
-                 transaction.update(teacherRef, { pointBalance: (currentTeacherData.pointBalance || 0) - totalPointsToChange });
+             if (isTeacherActing) {
+                const teacherData = teacherDoc?.data() as Teacher;
+                transaction.update(teacherRef, { pointBalance: (teacherData.pointBalance || 0) - totalPointsToChange });
             }
-            if (needsSchoolFundsCheck) {
-                const currentConfigData = configDoc?.data() as PlatformConfig;
-                transaction.update(configRef, { schoolFunds: (currentConfigData.schoolFunds || 0) - totalPointsToChange });
+            if (isAdminActing) {
+                 const configData = configDoc?.data() as PlatformConfig;
+                 transaction.update(configRef, { schoolFunds: (configData.schoolFunds || 0) - totalPointsToChange });
             }
-
 
             const actionText = isDeducting ? "批次扣除" : "批次發放";
             const reason = `由 ${currentTeacher?.name} ${actionText}`;
@@ -414,6 +408,11 @@ export default function TeacherDashboardPage() {
             studentDocs.forEach((studentDoc) => {
                 if (studentDoc.exists()) {
                     const studentData = studentDoc.data() as Student;
+                     if (isDeducting && studentData.points < Math.abs(pointsToChange)) {
+                        // Skip this student if they don't have enough points, but don't fail the whole batch
+                        console.warn(`Skipping ${studentData.name} due to insufficient points.`);
+                        return;
+                    }
                     transaction.update(studentDoc.ref, {
                         points: studentData.points + pointsToChange,
                         pointHistory: [...(studentData.pointHistory || []), newHistoryEntry]
@@ -425,6 +424,9 @@ export default function TeacherDashboardPage() {
         // --- 4. Optimistically update local state after successful transaction ---
         setStudents(currentStudents => currentStudents.map(s => {
             if (s.classId === selectedClassId) {
+                 if (isDeducting && s.points < Math.abs(pointsToChange)) {
+                    return s; // Skip update for this student
+                 }
                  const actionText = pointsToChange < 0 ? "批次扣除" : "批次發放";
                  const reason = `由 ${currentTeacher?.name} ${actionText}`;
                 return {
@@ -436,16 +438,14 @@ export default function TeacherDashboardPage() {
             return s;
         }));
 
-        if (needsTeacherBalanceCheck) {
+        if (isTeacherActing) {
             setTeachers(currentTeachers => currentTeachers.map(t =>
-                t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - totalPointsToChange } : t
+                t.id === activeTeacherId ? { ...t, pointBalance: (t.pointBalance || 0) - totalPointsToChange } : t
             ));
         }
-        
-        if (needsSchoolFundsCheck) {
+        if (isAdminActing) {
             setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - totalPointsToChange });
         }
-
 
         toast({
             title: `批次${isDeducting ? '扣除' : '發放'}成功！`,
