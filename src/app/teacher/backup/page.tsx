@@ -116,11 +116,11 @@ export default function TeacherBackupPage() {
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                     <CardTitle>資料備份與還原</CardTitle>
-                    <CardDescription>手動建立學生點數的備份，或從過去的備份中還原資料。此操作無法復原。</CardDescription>
+                    <CardDescription>系統會每晚自動備份，並僅保留最近七天的資料。您也可以在此手動建立緊急備份，或從過去的備份中還原資料。</CardDescription>
                 </div>
                 <Button onClick={handleCreateBackup} disabled={isCreating}>
                     {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <PlusCircle className="mr-2 h-4 w-4" />}
-                    建立新備份
+                    手動建立備份
                 </Button>
             </CardHeader>
             <CardContent>
@@ -136,7 +136,7 @@ export default function TeacherBackupPage() {
                         {backups.length > 0 ? backups.map(backup => (
                             <TableRow key={backup.id}>
                                 <TableCell className="font-medium">{format(new Date(backup.createdAt), "yyyy/MM/dd HH:mm:ss")}</TableCell>
-                                <TableCell>包含 {backup.students.length} 位學生的點數資料</TableCell>
+                                <TableCell>{backup.description || `包含 ${backup.students.length} 位學生的點數資料`}</TableCell>
                                 <TableCell className="text-right">
                                     <Button variant="destructive" size="sm" onClick={() => setBackupToRestore(backup)} disabled={isRestoring}>
                                       <History className="mr-2" />

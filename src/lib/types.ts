@@ -10,6 +10,7 @@ export type Backup = {
   id: string; // ISO timestamp, used as document ID
   createdAt: string; // ISO date string
   students: StudentBackup[];
+  description?: string;
 };
 
 
@@ -127,7 +128,7 @@ export type Reward = {
 
 export type Challenge = {
   id: string;
-  name: string;
+  name:string;
   description: string;
   points: number;
   scope: 'school' | 'class';
@@ -184,4 +185,5 @@ export type PlatformConfig = {
     fundraisingProjects?: FundraisingProject[];
     fixedDepositInterestRate?: number;
     loanInterestRate?: number;
+    lastAutoBackupDate?: string; // ISO date string
 }
