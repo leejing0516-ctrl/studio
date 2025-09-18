@@ -22,10 +22,12 @@ import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { redeemRewardTransaction } from "@/lib/actions";
 
 export default function RewardsPage() {
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isRedeeming, setIsRedeeming] = useState(false);
   const { toast } = useToast();
   const { studentData } = useContext(StudentDataContext);
   const { students, setStudents, rewards, setRewards, platformConfig, setPlatformConfig, teachers, setTeachers } = useContext(AppDataContext);
@@ -77,70 +79,88 @@ export default function RewardsPage() {
         });
         return;
     }
+    if (reward.stock <= 0) {
+        toast({
+            title: "庫存不足",
+            description: `「${reward.name}」已經被兌換完畢了。`,
+            variant: "destructive",
+        });
+        return;
+    }
     setSelectedReward(reward);
     setIsConfirmOpen(true);
   };
 
-  const handleConfirmRedeem = () => {
+  const handleConfirmRedeem = async () => {
     if (!selectedReward || !student) {
         setIsConfirmOpen(false);
         return;
     };
-
-    if (studentData.points < selectedReward.cost) {
-      toast({
-          title: "點數不足",
-          description: `您需要 ${selectedReward.cost.toLocaleString()} 點來兌換此獎勵。`,
-          variant: "destructive",
-      });
-    } else {
-      const newPoints = studentData.points - selectedReward.cost;
-      
-      const newRedeemedReward = {
-        redemptionId: `${selectedReward.id}-${Date.now()}`,
-        reward: selectedReward,
-        status: 'collected' as const,
-        redemptionDate: new Date().toISOString(),
-      };
-
-      // Find the student in the global list and update them
-      setStudents(currentStudents => 
-        currentStudents.map(s => {
-            if (s.id === student.id && s.classId === student.classId) {
-                return {
-                    ...s,
-                    points: newPoints,
-                    redeemedRewards: [...(s.redeemedRewards || []), newRedeemedReward],
-                };
-            }
-            return s;
-        })
-      );
-      
-      // Update reward stock
-      setRewards(currentRewards => currentRewards.map(r =>
-        r.id === selectedReward.id ? { ...r, stock: r.stock - 1 } : r
-      ));
-      
-      // Return points to the provider
-      if (selectedReward.scope === 'school') {
-        if (platformConfig?.schoolFunds !== undefined) {
-            setPlatformConfig({ schoolFunds: platformConfig.schoolFunds + selectedReward.cost });
-        }
-      } else {
-        setTeachers(currentTeachers => currentTeachers.map(t =>
-            t.id === selectedReward.providerId ? { ...t, pointBalance: (t.pointBalance || 0) + selectedReward.cost } : t
-        ));
-      }
-
-      toast({
-        title: "兌換成功！",
-        description: `您已成功兌換「${selectedReward.name}」。前往「我的收藏」查看！`,
-      });
-    }
     
-    setIsConfirmOpen(false);
-    setSelectedReward(null);
+    setIsRedeeming(true);
+
+    try {
+        const result = await redeemRewardTransaction({
+            studentId: student.id,
+            classId: student.classId,
+            rewardId: selectedReward.id,
+        });
+
+        // After successful transaction, update the frontend state
+        // This is now just a UI update, the source of truth is the backend
+        if (result.success) {
+            setStudents(currentStudents => 
+                currentStudents.map(s => {
+                    if (s.id === student.id && s.classId === student.classId) {
+                        return {
+                            ...s,
+                            points: s.points - selectedReward.cost,
+                            redeemedRewards: [...(s.redeemedRewards || []), result.newRedeemedItem!],
+                        };
+                    }
+                    return s;
+                })
+            );
+            
+            setRewards(currentRewards => currentRewards.map(r =>
+                r.id === selectedReward.id ? { ...r, stock: r.stock - 1 } : r
+            ));
+            
+            if (selectedReward.scope === 'school') {
+                if (platformConfig?.schoolFunds !== undefined) {
+                    setPlatformConfig({ schoolFunds: platformConfig.schoolFunds + selectedReward.cost });
+                }
+            } else {
+                setTeachers(currentTeachers => currentTeachers.map(t =>
+                    t.id === selectedReward.providerId ? { ...t, pointBalance: (t.pointBalance || 0) + selectedReward.cost } : t
+                ));
+            }
+
+            toast({
+                title: "兌換成功！",
+                description: `您已成功兌換「${selectedReward.name}」。前往「我的收藏」查看！`,
+            });
+        } else {
+            // If the transaction failed, show the error message from the server
+            toast({
+                title: "兌換失敗",
+                description: result.error,
+                variant: "destructive",
+            });
+        }
+
+    } catch (error) {
+        console.error("Redemption transaction failed:", error);
+        toast({
+            title: "兌換失敗",
+            description: "發生未知錯誤，請稍後再試。",
+            variant: "destructive",
+        });
+    } finally {
+        setIsRedeeming(false);
+        setIsConfirmOpen(false);
+        setSelectedReward(null);
+    }
   };
 
   const RewardCard = ({ reward }: { reward: Reward }) => (
@@ -224,10 +244,14 @@ export default function RewardsPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setSelectedReward(null)}>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmRedeem}>確定</AlertDialogAction>
+            <AlertDialogAction onClick={handleConfirmRedeem} disabled={isRedeeming}>
+                {isRedeeming ? "兌換中..." : "確定"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
   );
 }
+
+    
