@@ -37,26 +37,19 @@ export default function RewardsPage() {
   const { classRewards, schoolRewards } = useMemo(() => {
     if (!student) return { classRewards: [], schoolRewards: [] };
     
-    // Find the current student's homeroom teacher based on their classId.
-    // A teacher is a homeroom teacher if their role is 'teacher' and their classIds array includes the student's classId.
-    const homeroomTeacher = teachers.find(t => 
-        t.role === 'teacher' && Array.isArray(t.classIds) && t.classIds.includes(student.classId)
-    );
+    const teacherForClass = teachers.find(t => Array.isArray(t.classIds) && t.classIds.includes(student.classId));
 
     const availableRewards = rewards.filter(reward => {
-        // A reward is invalid if its provider no longer exists.
         const providerExists = reward.scope === 'school' || teachers.some(t => t.id === reward.providerId);
         if (!providerExists) {
             return false;
         }
 
-        // School rewards are always available.
         if (reward.scope === 'school') {
             return true;
         }
 
-        // Class rewards are available only if provided by the student's homeroom teacher.
-        if (reward.scope === 'class' && homeroomTeacher && reward.providerId === homeroomTeacher.id) {
+        if (reward.scope === 'class' && teacherForClass && reward.providerId === teacherForClass.id) {
             return true;
         }
 
@@ -105,10 +98,10 @@ export default function RewardsPage() {
             classId: student.classId,
             rewardId: selectedReward.id,
         });
-
-        // After successful transaction, update the frontend state
-        // This is now just a UI update, the source of truth is the backend
-        if (result.success) {
+        
+        if (result.success && result.newRedeemedItem) {
+            // Update frontend state based on the successful transaction
+            // This is a more robust way than updating each state slice separately.
             setStudents(currentStudents => 
                 currentStudents.map(s => {
                     if (s.id === student.id && s.classId === student.classId) {
@@ -253,5 +246,3 @@ export default function RewardsPage() {
     </>
   );
 }
-
-    
