@@ -38,7 +38,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
-import { subMonths, format } from "date-fns";
+import { subMonths, format, isSameDay, startOfDay } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 
 
@@ -104,6 +104,15 @@ export default function StocksPage() {
         });
         return;
       }
+      // Day trading prevention
+      if (holding.lastPurchaseDate && isSameDay(new Date(holding.lastPurchaseDate), startOfDay(new Date()))) {
+         toast({
+          title: "無法賣出",
+          description: "今日買入的股票，當日不可賣出。",
+          variant: "destructive"
+        });
+        return;
+      }
     }
 
     setIsTradeDialogOpen(true);
@@ -146,13 +155,15 @@ export default function StocksPage() {
       );
       
       let newPortfolio: PortfolioItem[];
+      const todayString = new Date().toISOString();
+
       if (existingHolding) {
         newPortfolio = currentStudent.portfolio.map((item) => {
           if (item.ticker === selectedStock.ticker) {
             const newShares = item.shares + tradeShares;
             const newTotalCost = item.avgCost * item.shares + totalCost;
             const newAvgCost = newTotalCost / newShares;
-            return { ...item, shares: newShares, avgCost: newAvgCost };
+            return { ...item, shares: newShares, avgCost: newAvgCost, lastPurchaseDate: todayString };
           }
           return item;
         });
@@ -164,6 +175,7 @@ export default function StocksPage() {
             name: selectedStock.name,
             shares: tradeShares,
             avgCost: selectedStock.price,
+            lastPurchaseDate: todayString,
           },
         ];
       }
@@ -182,6 +194,15 @@ export default function StocksPage() {
           title: "持股不足",
           description: `您沒有足夠的 ${selectedStock.name} 股份可供出售。您目前持有 ${holding?.shares || 0} 股。`,
           variant: "destructive",
+        });
+        return;
+      }
+      // Day trading prevention check again
+      if (holding.lastPurchaseDate && isSameDay(new Date(holding.lastPurchaseDate), startOfDay(new Date()))) {
+         toast({
+          title: "無法賣出",
+          description: "今日買入的股票，當日不可賣出。",
+          variant: "destructive"
         });
         return;
       }

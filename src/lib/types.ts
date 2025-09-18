@@ -147,6 +147,7 @@ export type PortfolioItem = {
   name: string;
   shares: number;
   avgCost: number;
+  lastPurchaseDate?: string; // ISO date string
 };
 
 export type Class = {
