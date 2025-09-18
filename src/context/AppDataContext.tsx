@@ -268,37 +268,36 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     const currentHour = now.getHours();
     console.log(`Checking if daily updates should be run at ${now.toLocaleTimeString()}`);
     
-    // Only proceed if it's 12 PM or later
+    // 1. Time check: Only proceed if it's 12 PM (midday) or later.
     if (currentHour < 12) {
-      console.log("It's not yet 12 PM. Skipping daily updates.");
+      console.log("It's before noon. Skipping daily updates.");
       return;
     }
 
     try {
-        // More robust check: See if the latest backup is from today.
+        // 2. Idempotency check: See if an auto-backup for today already exists.
         const latestBackupQuery = query(collection(db, 'backups'), orderBy('createdAt', 'desc'), limit(1));
         const latestBackupSnap = await getDocs(latestBackupQuery);
+        const today = startOfDay(new Date());
         
         if (!latestBackupSnap.empty) {
             const latestBackup = latestBackupSnap.docs[0].data() as Backup;
             const lastBackupDate = startOfDay(new Date(latestBackup.createdAt));
-            const today = startOfDay(new Date());
 
             if (isSameDay(lastBackupDate, today) && latestBackup.description?.includes("每日自動備份")) {
-                console.log("Daily auto-backup has already been run today. Skipping.");
+                console.log("Daily auto-backup has already been run today. Skipping all daily tasks.");
                 return;
             }
         }
         
-        console.log("Running daily updates for loans, deposits, and auto-backup...");
+        console.log("Running daily tasks: Interest calculation, deposits, and auto-backup...");
 
         const allStudents = await fetchData<Student>('students');
         if (allStudents.length === 0) {
-            console.log("No students found, skipping daily updates.");
+            console.log("No students found, skipping daily tasks.");
             return;
         }
         
-        const today = startOfDay(new Date());
         let studentsModified = false;
         const studentBatch = writeBatch(db);
 
@@ -386,9 +385,9 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         // --- Backup Pruning Logic (Keep last 7) ---
         const backupsQuery = query(collection(db, 'backups'), orderBy('createdAt', 'desc'));
         const backupSnaps = await getDocs(backupsQuery);
-        if (backupSnaps.docs.length > 6) { // 6 because we just added one
+        if (backupSnaps.docs.length >= 7) { // Using >= to be safe
             console.log(`Pruning old backups. Found ${backupSnaps.docs.length}, keeping 7.`);
-            const backupsToDelete = backupSnaps.docs.slice(7);
+            const backupsToDelete = backupSnaps.docs.slice(6); // Keep the 7 newest (0-6), delete the rest.
             backupsToDelete.forEach(docToDelete => {
                 console.log(`Scheduling deletion for backup: ${docToDelete.id}`);
                 studentBatch.delete(docToDelete.ref);
@@ -397,7 +396,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         
         // Commit all batched writes (student updates, new backup, old backup deletions)
         await studentBatch.commit();
-        console.log("Successfully committed all daily updates to Firestore.");
+        console.log("Successfully committed all daily tasks to Firestore.");
         
         // After successful commit, refresh the local student state
         const updatedStudents = await fetchData<Student>('students');
