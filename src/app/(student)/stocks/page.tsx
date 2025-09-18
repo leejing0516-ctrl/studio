@@ -40,7 +40,7 @@ import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
 import { subMonths, format, isSameDay, startOfDay } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 
@@ -58,7 +58,7 @@ export default function StocksPage() {
   const [tradeShares, setTradeShares] = useState(0);
   const { toast } = useToast();
   const { studentData } = useContext(StudentDataContext);
-  const { students, setStudents, stocks: marketStocks, isMarketOpen, runTransaction, setPlatformConfig } = useContext(AppDataContext);
+  const { students, setStudents, stocks: marketStocks, isMarketOpen, runTransaction, setPlatformConfig, platformConfig } = useContext(AppDataContext);
   
   const currentStudent = students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId) || studentData.student;
   
@@ -165,12 +165,12 @@ export default function StocksPage() {
                 const newPoints = studentData.points - totalCost;
                 newSchoolFunds += totalCost;
                 
-                const existingHolding = studentData.portfolio.find(item => item.ticker === selectedStock.ticker);
+                const existingHolding = (studentData.portfolio || []).find(item => item.ticker === selectedStock.ticker);
                 let newPortfolio: PortfolioItem[];
                 const todayString = new Date().toISOString();
 
                 if (existingHolding) {
-                    newPortfolio = studentData.portfolio.map(item => {
+                    newPortfolio = (studentData.portfolio || []).map(item => {
                         if (item.ticker === selectedStock.ticker) {
                             const newShares = item.shares + tradeShares;
                             const newTotalCost = item.avgCost * item.shares + totalCost;
@@ -181,7 +181,7 @@ export default function StocksPage() {
                     });
                 } else {
                     newPortfolio = [
-                        ...studentData.portfolio,
+                        ...(studentData.portfolio || []),
                         {
                             ticker: selectedStock.ticker,
                             name: selectedStock.name,
@@ -196,7 +196,7 @@ export default function StocksPage() {
                 transaction.update(configRef, { schoolFunds: newSchoolFunds });
 
             } else { // Sell
-                const holding = studentData.portfolio.find(item => item.ticker === selectedStock.ticker);
+                const holding = (studentData.portfolio || []).find(item => item.ticker === selectedStock.ticker);
                 if (!holding || holding.shares < tradeShares) {
                     throw new Error(`您沒有足夠的 ${selectedStock.name} 股份可供出售。`);
                 }
@@ -210,7 +210,7 @@ export default function StocksPage() {
                 const newPoints = studentData.points + totalCost;
                 newSchoolFunds -= totalCost;
                 
-                const newPortfolio = studentData.portfolio.map(item => {
+                const newPortfolio = (studentData.portfolio || []).map(item => {
                     if (item.ticker === selectedStock.ticker) {
                         return { ...item, shares: item.shares - tradeShares };
                     }
@@ -223,10 +223,7 @@ export default function StocksPage() {
         });
         
         // Optimistic UI update after successful transaction
-        const newSchoolFunds = await (async () => {
-             const configDoc = await getDoc(doc(db, 'config', 'main'));
-             return configDoc.exists() ? (configDoc.data() as PlatformConfig).schoolFunds || 0 : 0;
-        })();
+        const updatedSchoolFunds = platformConfig?.schoolFunds ? (tradeType === 'buy' ? platformConfig.schoolFunds + totalCost : platformConfig.schoolFunds - totalCost) : 0;
         
         setStudents(currentStudents => currentStudents.map(s => {
             if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
@@ -261,7 +258,8 @@ export default function StocksPage() {
             }
             return s;
         }));
-        setPlatformConfig({ schoolFunds: newSchoolFunds });
+        
+        setPlatformConfig({ schoolFunds: updatedSchoolFunds });
 
         toast({
             title: `${tradeType === 'buy' ? '買入' : '賣出'}成功！`,
@@ -472,4 +470,5 @@ export default function StocksPage() {
         </DialogContent>
       </Dialog>
     </>
-    
+  );
+}
