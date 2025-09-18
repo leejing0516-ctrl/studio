@@ -52,7 +52,7 @@ export type FixedDeposit = {
   amount: number;
   startDate: string; // ISO date string
   maturityDate: string; // ISO date string
-  status: 'active' | 'matured' | 'settled';
+  status: 'active' | 'settled';
   interestRate: number; // The daily rate at the time of deposit
   interestEarned: number;
 };
@@ -67,6 +67,7 @@ export type Loan = {
   interest: number;
   interestRate: number; // The daily rate for this loan
   approvalDate?: string; // ISO date string, set when loan is approved
+  approverId?: string; // ID of the teacher/admin who approved the loan
   lastInterestAccruedDate?: string; // ISO date string, last time interest was calculated
 }
 

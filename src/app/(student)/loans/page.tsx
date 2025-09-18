@@ -14,7 +14,7 @@ import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
 import { Calendar as CalendarIcon, Landmark, AlertTriangle, CheckCircle, Hourglass, Info } from "lucide-react";
 import { format, addDays, startOfDay } from "date-fns";
-import type { Loan } from "@/lib/types";
+import type { Loan, Teacher, PlatformConfig } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -32,7 +32,7 @@ const LOAN_LIMIT = 500;
 
 export default function LoansPage() {
   const { studentData } = useContext(StudentDataContext);
-  const { students, setStudents, platformConfig } = useContext(AppDataContext);
+  const { students, setStudents, platformConfig, setPlatformConfig, teachers, setTeachers } = useContext(AppDataContext);
   const { toast } = useToast();
 
   const [loanAmount, setLoanAmount] = useState<number | "">(100);
@@ -97,6 +97,18 @@ export default function LoansPage() {
         return;
     }
 
+    // Repay points to the approver
+    if (loanToRepay.approverId) {
+      if (loanToRepay.approverId === 'principal') {
+          setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) + totalRepayment });
+      } else {
+          setTeachers(currentTeachers => currentTeachers.map(t => 
+              t.id === loanToRepay.approverId ? { ...t, pointBalance: (t.pointBalance || 0) + totalRepayment } : t
+          ));
+      }
+    }
+    
+    // Update student's state
     setStudents(currentStudents => currentStudents.map(s => {
         if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
             return {
