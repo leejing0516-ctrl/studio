@@ -20,7 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Stock, PortfolioItem } from "@/lib/types";
+import type { Stock, PortfolioItem, Student, PlatformConfig } from "@/lib/types";
 import { ArrowUp, ArrowDown, Briefcase } from "lucide-react";
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Area, AreaChart, XAxis, YAxis } from "recharts"
@@ -40,6 +40,8 @@ import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
 import { subMonths, format, isSameDay, startOfDay } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 
 const chartConfig: ChartConfig = {
@@ -56,7 +58,7 @@ export default function StocksPage() {
   const [tradeShares, setTradeShares] = useState(0);
   const { toast } = useToast();
   const { studentData } = useContext(StudentDataContext);
-  const { students, setStudents, stocks: marketStocks, isMarketOpen } = useContext(AppDataContext);
+  const { students, setStudents, stocks: marketStocks, isMarketOpen, runTransaction, setPlatformConfig } = useContext(AppDataContext);
   
   const currentStudent = students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId) || studentData.student;
   
@@ -118,15 +120,8 @@ export default function StocksPage() {
     setIsTradeDialogOpen(true);
     setTradeShares(0);
   };
-  
-  const updateStudentInGlobalList = (updatedStudent: any) => {
-    setStudents(currentStudents => currentStudents.map(s => 
-        (s.id === updatedStudent.id && s.classId === updatedStudent.classId) ? updatedStudent : s
-    ));
-  };
 
-
-  const handleConfirmTrade = () => {
+  const handleConfirmTrade = async () => {
     if (!selectedStock || tradeShares <= 0 || !currentStudent) {
       toast({
         title: "交易失敗",
@@ -139,91 +134,146 @@ export default function StocksPage() {
 
     const totalCost = tradeShares * selectedStock.price;
 
-    if (tradeType === "buy") {
-      if (currentStudent.points < totalCost) {
+    try {
+        await runTransaction(async (transaction) => {
+            const studentDocId = `${currentStudent.classId}-${currentStudent.id}`;
+            const studentRef = doc(db, 'students', studentDocId);
+            const configRef = doc(db, 'config', 'main');
+
+            // --- 1. All Reads First ---
+            const [studentDoc, configDoc] = await Promise.all([
+                transaction.get(studentRef),
+                transaction.get(configRef)
+            ]);
+
+            if (!studentDoc.exists()) {
+                throw new Error("找不到您的學生帳戶。");
+            }
+            if (!configDoc.exists()) {
+                throw new Error("找不到系統設定。");
+            }
+            
+            const studentData = studentDoc.data() as Student;
+            const configData = configDoc.data() as PlatformConfig;
+            let newSchoolFunds = configData.schoolFunds || 0;
+
+            if (tradeType === "buy") {
+                if (studentData.points < totalCost) {
+                    throw new Error(`您的點數不足。需要 ${totalCost.toLocaleString()} 點。`);
+                }
+                
+                const newPoints = studentData.points - totalCost;
+                newSchoolFunds += totalCost;
+                
+                const existingHolding = studentData.portfolio.find(item => item.ticker === selectedStock.ticker);
+                let newPortfolio: PortfolioItem[];
+                const todayString = new Date().toISOString();
+
+                if (existingHolding) {
+                    newPortfolio = studentData.portfolio.map(item => {
+                        if (item.ticker === selectedStock.ticker) {
+                            const newShares = item.shares + tradeShares;
+                            const newTotalCost = item.avgCost * item.shares + totalCost;
+                            const newAvgCost = newTotalCost / newShares;
+                            return { ...item, shares: newShares, avgCost: newAvgCost, lastPurchaseDate: todayString };
+                        }
+                        return item;
+                    });
+                } else {
+                    newPortfolio = [
+                        ...studentData.portfolio,
+                        {
+                            ticker: selectedStock.ticker,
+                            name: selectedStock.name,
+                            shares: tradeShares,
+                            avgCost: selectedStock.price,
+                            lastPurchaseDate: todayString,
+                        },
+                    ];
+                }
+
+                transaction.update(studentRef, { points: newPoints, portfolio: newPortfolio });
+                transaction.update(configRef, { schoolFunds: newSchoolFunds });
+
+            } else { // Sell
+                const holding = studentData.portfolio.find(item => item.ticker === selectedStock.ticker);
+                if (!holding || holding.shares < tradeShares) {
+                    throw new Error(`您沒有足夠的 ${selectedStock.name} 股份可供出售。`);
+                }
+                if (holding.lastPurchaseDate && isSameDay(new Date(holding.lastPurchaseDate), startOfDay(new Date()))) {
+                    throw new Error("今日買入的股票，當日不可賣出。");
+                }
+                if (newSchoolFunds < totalCost) {
+                    throw new Error("市場資金不足，無法完成此交易。");
+                }
+
+                const newPoints = studentData.points + totalCost;
+                newSchoolFunds -= totalCost;
+                
+                const newPortfolio = studentData.portfolio.map(item => {
+                    if (item.ticker === selectedStock.ticker) {
+                        return { ...item, shares: item.shares - tradeShares };
+                    }
+                    return item;
+                }).filter(item => item.shares > 0);
+
+                transaction.update(studentRef, { points: newPoints, portfolio: newPortfolio });
+                transaction.update(configRef, { schoolFunds: newSchoolFunds });
+            }
+        });
+        
+        // Optimistic UI update after successful transaction
+        const newSchoolFunds = await (async () => {
+             const configDoc = await getDoc(doc(db, 'config', 'main'));
+             return configDoc.exists() ? (configDoc.data() as PlatformConfig).schoolFunds || 0 : 0;
+        })();
+        
+        setStudents(currentStudents => currentStudents.map(s => {
+            if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
+                if (tradeType === 'buy') {
+                    const newPoints = s.points - totalCost;
+                    const existingHolding = s.portfolio.find(item => item.ticker === selectedStock.ticker);
+                    let newPortfolio: PortfolioItem[];
+                    if (existingHolding) {
+                        newPortfolio = s.portfolio.map(item => {
+                           if (item.ticker === selectedStock.ticker) {
+                                const newShares = item.shares + tradeShares;
+                                const newTotalCost = item.avgCost * item.shares + totalCost;
+                                const newAvgCost = newTotalCost / newShares;
+                                return { ...item, shares: newShares, avgCost: newAvgCost, lastPurchaseDate: new Date().toISOString() };
+                            }
+                            return item;
+                        });
+                    } else {
+                         newPortfolio = [...s.portfolio, { ticker: selectedStock.ticker, name: selectedStock.name, shares: tradeShares, avgCost: selectedStock.price, lastPurchaseDate: new Date().toISOString() }];
+                    }
+                    return { ...s, points: newPoints, portfolio: newPortfolio };
+                } else { // sell
+                     const newPoints = s.points + totalCost;
+                     const newPortfolio = s.portfolio.map(item => {
+                        if (item.ticker === selectedStock.ticker) {
+                            return { ...item, shares: item.shares - tradeShares };
+                        }
+                        return item;
+                    }).filter(item => item.shares > 0);
+                    return { ...s, points: newPoints, portfolio: newPortfolio };
+                }
+            }
+            return s;
+        }));
+        setPlatformConfig({ schoolFunds: newSchoolFunds });
+
         toast({
-          title: "點數不足",
-          description: `您需要 ${totalCost.toLocaleString()} 點才能完成此交易。`,
-          variant: "destructive",
+            title: `${tradeType === 'buy' ? '買入' : '賣出'}成功！`,
+            description: `您已成功${tradeType === 'buy' ? '買入' : '賣出'} ${tradeShares} 股 ${selectedStock.name}。`,
         });
-        return;
-      }
 
-      const newPoints = currentStudent.points - totalCost;
-      const existingHolding = currentStudent.portfolio.find(
-        (item) => item.ticker === selectedStock.ticker
-      );
-      
-      let newPortfolio: PortfolioItem[];
-      const todayString = new Date().toISOString();
-
-      if (existingHolding) {
-        newPortfolio = currentStudent.portfolio.map((item) => {
-          if (item.ticker === selectedStock.ticker) {
-            const newShares = item.shares + tradeShares;
-            const newTotalCost = item.avgCost * item.shares + totalCost;
-            const newAvgCost = newTotalCost / newShares;
-            return { ...item, shares: newShares, avgCost: newAvgCost, lastPurchaseDate: todayString };
-          }
-          return item;
-        });
-      } else {
-        newPortfolio = [
-          ...currentStudent.portfolio,
-          {
-            ticker: selectedStock.ticker,
-            name: selectedStock.name,
-            shares: tradeShares,
-            avgCost: selectedStock.price,
-            lastPurchaseDate: todayString,
-          },
-        ];
-      }
-      
-      const updatedStudent = { ...currentStudent, points: newPoints, portfolio: newPortfolio };
-      updateStudentInGlobalList(updatedStudent);
-      toast({
-        title: "買入成功！",
-        description: `您已成功買入 ${tradeShares} 股 ${selectedStock.name}。`,
-      });
-
-    } else { // Sell
-      const holding = currentStudent.portfolio.find(item => item.ticker === selectedStock.ticker);
-      if (!holding || holding.shares < tradeShares) {
-        toast({
-          title: "持股不足",
-          description: `您沒有足夠的 ${selectedStock.name} 股份可供出售。您目前持有 ${holding?.shares || 0} 股。`,
-          variant: "destructive",
-        });
-        return;
-      }
-      // Day trading prevention check again
-      if (holding.lastPurchaseDate && isSameDay(new Date(holding.lastPurchaseDate), startOfDay(new Date()))) {
-         toast({
-          title: "無法賣出",
-          description: "今日買入的股票，當日不可賣出。",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      const newPoints = currentStudent.points + totalCost;
-      const newPortfolio = currentStudent.portfolio.map(item => {
-          if (item.ticker === selectedStock.ticker) {
-            return { ...item, shares: item.shares - tradeShares };
-          }
-          return item;
-        }).filter(item => item.shares > 0);
-
-      const updatedStudent = { ...currentStudent, points: newPoints, portfolio: newPortfolio };
-      updateStudentInGlobalList(updatedStudent);
-      toast({
-        title: "賣出成功！",
-        description: `您已成功賣出 ${tradeShares} 股 ${selectedStock.name}。`,
-      });
+    } catch (error: any) {
+        console.error("Stock trade failed:", error);
+        toast({ title: "交易失敗", description: error.message, variant: "destructive" });
+    } finally {
+        setIsTradeDialogOpen(false);
     }
-
-    setIsTradeDialogOpen(false);
   };
   
   const portfolioWithValue = (currentStudent?.portfolio || []).map(item => {
@@ -422,5 +472,4 @@ export default function StocksPage() {
         </DialogContent>
       </Dialog>
     </>
-  );
-}
+    
