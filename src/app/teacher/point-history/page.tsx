@@ -75,10 +75,9 @@ export default function PointHistoryPage() {
         const studentsToCalculate = students.filter(s => s.classId === selectedClassId);
 
         const results = studentsToCalculate.map(student => {
-            const transactionsBeforeTarget = (student.pointHistory || [])
-                .filter(record => new Date(record.date) <= combinedDateTime);
-
-            const historicalPoints = transactionsBeforeTarget.reduce((acc, record) => acc + record.points, 0);
+            const historicalPoints = (student.pointHistory || [])
+                .filter(record => new Date(record.date) <= combinedDateTime)
+                .reduce((acc, record) => acc + record.points, 0);
 
             return {
                 id: student.id,
