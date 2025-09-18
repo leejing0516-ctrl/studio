@@ -55,6 +55,8 @@ import { CalendarIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { useRouter } from 'next/navigation';
+import { db } from "@/lib/firebase";
+import { doc, deleteDoc } from "firebase/firestore";
 
 
 interface StagedStudent {
@@ -413,18 +415,27 @@ export default function TeacherDashboardPage() {
   
   const handleConfirmDeleteStudent = async () => {
     if (!studentToDelete) return;
+    const studentToDeleteName = studentToDelete.name;
+    const studentDocId = `${studentToDelete.classId}-${studentToDelete.id}`;
+
     try {
-        await setStudents(current => current.filter(s => s.id !== studentToDelete!.id || s.classId !== studentToDelete!.classId));
+        const studentDocRef = doc(db, 'students', studentDocId);
+        await deleteDoc(studentDocRef);
+        
+        // After successful deletion from backend, update the local state
+        await setStudents(current => current.filter(s => s.id !== studentToDelete.id || s.classId !== studentToDelete.classId));
+        
         toast({
             title: "已刪除學生",
-            description: `已成功刪除學生 ${studentToDelete.name}。`,
+            description: `已成功刪除學生 ${studentToDeleteName}。`,
         });
     } catch(e) {
+        console.error("Error deleting student:", e);
         toast({
             title: "刪除失敗",
-            description: "刪除學生時發生錯誤，資料已還原。",
+            description: "刪除學生時發生錯誤，請稍後再試。",
             variant: "destructive"
-        })
+        });
     } finally {
         setStudentToDelete(null);
     }
@@ -1029,25 +1040,9 @@ export default function TeacherDashboardPage() {
                             <Button variant="ghost" size="icon" onClick={() => handleResetPasswordClick(student)}>
                                     <KeyRound className="h-4 w-4" />
                             </Button>
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStudentClick(student)}>
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            您確定要刪除學生「{student.name}」嗎？此操作將永久移除該學生的所有資料且無法復原。
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>取消</AlertDialogCancel>
-                                        <AlertDialogAction onClick={handleConfirmDeleteStudent} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
+                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStudentClick(student)}>
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
                             </TableCell>
                         </TableRow>
                         ))}
