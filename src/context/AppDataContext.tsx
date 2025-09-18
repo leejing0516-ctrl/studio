@@ -452,45 +452,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     initializePublicData();
-    
-    if (stockUpdateIntervalRef.current) clearInterval(stockUpdateIntervalRef.current);
-    stockUpdateIntervalRef.current = setInterval(() => {
-        const marketOpen = checkMarketOpen();
-        setIsMarketOpen(marketOpen);
-
-        if (marketOpen) {
-            setStocksState(prevStocks => {
-                if(prevStocks.length === 0) return [];
-                const updatedStocks = prevStocks.map(stock => {
-                    const changePercent = (Math.random() - 0.5) * 0.05; // -2.5% to +2.5% change
-                    const newPrice = stock.price * (1 + changePercent);
-                    const change = newPrice - stock.price;
-                    
-                    return {
-                        ...stock,
-                        price: Math.max(0.01, newPrice), // Price doesn't go below 0.01
-                        change: change,
-                        changePercent: (change / stock.price) * 100,
-                    };
-                });
-                const batch = writeBatch(db);
-                updatedStocks.forEach(stock => {
-                    const stockRef = doc(db, 'stocks', stock.ticker);
-                    batch.update(stockRef, { 
-                        price: stock.price, 
-                        change: stock.change, 
-                        changePercent: stock.changePercent 
-                    });
-                });
-                batch.commit().catch(e => console.error("Failed to batch update stock prices:", e));
-                return updatedStocks;
-            });
-        }
-    }, 5 * 60 * 1000); // Check every 5 minutes
-
-    return () => {
-        if (stockUpdateIntervalRef.current) clearInterval(stockUpdateIntervalRef.current);
-    };
   }, [initializePublicData]);
 
   return (
