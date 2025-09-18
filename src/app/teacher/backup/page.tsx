@@ -19,7 +19,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Loader2, PlusCircle, History } from "lucide-react";
+import { Loader2, PlusCircle, History, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,7 +38,7 @@ import { zhTW } from 'date-fns/locale';
 
 export default function TeacherBackupPage() {
   const { 
-    isLoading, fetchBackups, createBackup, restoreFromBackup
+    isLoading, fetchBackups, createBackup, restoreFromBackup, deleteBackup
   } = useContext(AppDataContext);
 
   const { toast } = useToast();
@@ -49,7 +49,9 @@ export default function TeacherBackupPage() {
   const [isFetchingBackups, setIsFetchingBackups] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [backupToRestore, setBackupToRestore] = useState<Backup | null>(null);
+  const [backupToDelete, setBackupToDelete] = useState<Backup | null>(null);
 
   useEffect(() => {
     const storedRole = localStorage.getItem('teacherRole');
@@ -102,6 +104,21 @@ export default function TeacherBackupPage() {
     }
   };
 
+  const handleConfirmDelete = async () => {
+    if (!backupToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteBackup(backupToDelete.id);
+      setBackups(prev => prev.filter(b => b.id !== backupToDelete.id));
+      toast({ title: "備份已刪除", description: `備份檔案 ${backupToDelete.id} 已被刪除。`, variant: "destructive" });
+    } catch (error) {
+      toast({ title: "刪除失敗", description: "刪除備份時發生錯誤。", variant: "destructive" });
+    } finally {
+      setIsDeleting(false);
+      setBackupToDelete(null);
+    }
+  };
+
   if (isLoading || role !== 'admin' || isFetchingBackups) {
       return (
         <div className="flex items-center justify-center h-full">
@@ -138,9 +155,13 @@ export default function TeacherBackupPage() {
                                 <TableCell className="font-medium">{format(new Date(backup.createdAt), "yyyy/MM/dd HH:mm:ss")}</TableCell>
                                 <TableCell>{backup.description || `包含 ${backup.students.length} 位學生的點數資料`}</TableCell>
                                 <TableCell className="text-right">
-                                    <Button variant="destructive" size="sm" onClick={() => setBackupToRestore(backup)} disabled={isRestoring}>
+                                    <Button variant="outline" size="sm" onClick={() => setBackupToRestore(backup)} disabled={isRestoring || isDeleting} className="mr-2">
                                       <History className="mr-2" />
                                       還原至此版本
+                                    </Button>
+                                    <Button variant="destructive" size="sm" onClick={() => setBackupToDelete(backup)} disabled={isRestoring || isDeleting}>
+                                      <Trash2 className="mr-2" />
+                                      刪除
                                     </Button>
                                 </TableCell>
                             </TableRow>
@@ -171,6 +192,25 @@ export default function TeacherBackupPage() {
                     <AlertDialogAction onClick={handleConfirmRestore} className={buttonVariants({ variant: "destructive" })} disabled={isRestoring}>
                         {isRestoring ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
                         我了解風險，確定還原
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+        <AlertDialog open={!!backupToDelete} onOpenChange={(open) => !open && setBackupToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>確定要刪除備份嗎？</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        您確定要永久刪除 **{backupToDelete ? format(new Date(backupToDelete.createdAt), 'yyyy/MM/dd HH:mm') : ''}** 這份備份檔案嗎？
+                        <br />
+                        <strong className="text-destructive mt-2 block">這個動作無法復原。</strong>
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>取消</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirmDelete} className={buttonVariants({ variant: "destructive" })} disabled={isDeleting}>
+                        {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                        確定刪除
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

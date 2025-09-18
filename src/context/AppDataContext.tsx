@@ -41,6 +41,7 @@ interface AppDataContextType {
   fetchBackups: () => Promise<Backup[]>;
   createBackup: (description?: string) => Promise<void>;
   restoreFromBackup: (backup: Backup) => Promise<void>;
+  deleteBackup: (backupId: string) => Promise<void>;
 }
 
 const defaultState: AppDataContextType = {
@@ -64,6 +65,7 @@ const defaultState: AppDataContextType = {
   fetchBackups: async () => [],
   createBackup: async () => {},
   restoreFromBackup: async () => {},
+  deleteBackup: async () => {},
 };
 
 export const AppDataContext = createContext<AppDataContextType>(defaultState);
@@ -585,6 +587,16 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       }
   }, [fetchData]);
 
+  const deleteBackup = useCallback(async (backupId: string): Promise<void> => {
+    try {
+      const backupRef = doc(db, 'backups', backupId);
+      await deleteDoc(backupRef);
+    } catch (error) {
+      console.error("Failed to delete backup:", error);
+      throw error;
+    }
+  }, []);
+
 
   useEffect(() => {
     initializePublicData();
@@ -651,6 +663,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         fetchBackups,
         createBackup,
         restoreFromBackup,
+        deleteBackup,
     }}>
       {children}
     </AppDataContext.Provider>
