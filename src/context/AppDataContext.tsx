@@ -263,106 +263,90 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
   const runDailyUpdates = useCallback(async () => {
     console.log("Running daily updates for loans and deposits...");
-    const configDocRef = doc(db, 'config', 'main');
-    const configSnap = await getDoc(configDocRef);
-    if (!configSnap.exists()) {
-        console.log("Config not found, skipping daily updates.");
-        return;
-    }
-    const currentConfig = configSnap.data() as PlatformConfig;
 
-    const currentStudents = await fetchData<Student>('students');
-    if (currentStudents.length === 0) {
-        console.log("No students found, skipping daily updates.");
-        return;
-    }
-
-    const today = startOfDay(new Date());
-    let studentsModified = false;
-    const studentBatch = writeBatch(db);
-
-    currentStudents.forEach(student => {
-        let needsUpdate = false;
-        let studentPoints = student.points;
-        let studentPointHistory = [...(student.pointHistory || [])];
-        
-        const updatedLoans = (student.loans || []).map(loan => {
-            if (loan.status !== 'active' && loan.status !== 'overdue') {
-                return loan;
-            }
-            
-            const lastUpdate = startOfDay(loan.lastInterestAccruedDate ? parseISO(loan.lastInterestAccruedDate) : parseISO(loan.approvalDate!));
-            const daysSinceLastUpdate = differenceInCalendarDays(today, lastUpdate);
-            
-            let updatedLoan = {...loan};
-
-            if (daysSinceLastUpdate > 0) {
-                updatedLoan.interest += daysSinceLastUpdate * loan.amount * loan.interestRate;
-                updatedLoan.lastInterestAccruedDate = today.toISOString();
-                needsUpdate = true;
-            }
-
-            const repaymentDate = startOfDay(parseISO(loan.repaymentDate));
-            if (isAfter(today, repaymentDate) && updatedLoan.status === 'active') {
-                updatedLoan.status = 'overdue';
-                needsUpdate = true;
-            }
-
-            return updatedLoan;
-        });
-        
-        const updatedDeposits = (student.fixedDeposits || []).map(deposit => {
-            if (deposit.status !== 'active') {
-                return deposit;
-            }
-
-            let updatedDeposit = {...deposit};
-            const maturityDate = startOfDay(parseISO(updatedDeposit.maturityDate));
-
-            if (isAfter(today, maturityDate) || isSameDay(today, maturityDate)) {
-                updatedDeposit.status = 'matured';
-                const interestGained = Math.floor(updatedDeposit.amount * updatedDeposit.interestRate * differenceInCalendarDays(parseISO(updatedDeposit.maturityDate), parseISO(updatedDeposit.startDate)));
-                const finalAmount = deposit.amount + interestGained;
-                studentPoints += finalAmount;
-
-                studentPointHistory.push({
-                    points: finalAmount,
-                    date: today.toISOString(),
-                    reason: `定存到期 #${deposit.id.slice(-4)}`
-                });
-                updatedDeposit.interestEarned = interestGained;
-                needsUpdate = true;
-            }
-            
-            return updatedDeposit;
-        });
-        
-        if (needsUpdate) {
-            studentsModified = true;
-            const studentDocId = `${student.classId}-${student.id}`;
-            const studentRef = doc(db, 'students', studentDocId);
-            studentBatch.update(studentRef, {
-                points: studentPoints,
-                pointHistory: studentPointHistory,
-                loans: updatedLoans,
-                fixedDeposits: updatedDeposits,
-            });
+    try {
+        const allStudents = await fetchData<Student>('students');
+        if (allStudents.length === 0) {
+            console.log("No students found, skipping daily updates.");
+            return;
         }
-    });
-    
-    if (studentsModified) {
-        console.log(`Found students needing daily updates. Committing to Firestore...`);
-        try {
+
+        const today = startOfDay(new Date());
+        let studentsModified = false;
+        const studentBatch = writeBatch(db);
+
+        allStudents.forEach(student => {
+            let needsUpdate = false;
+            let studentPoints = student.points;
+            let studentPointHistory = [...(student.pointHistory || [])];
+            
+            const updatedLoans = (student.loans || []).map(loan => {
+                if (loan.status !== 'active' && loan.status !== 'overdue') return loan;
+                
+                const lastUpdate = startOfDay(loan.lastInterestAccruedDate ? parseISO(loan.lastInterestAccruedDate) : parseISO(loan.approvalDate!));
+                const daysSinceLastUpdate = differenceInCalendarDays(today, lastUpdate);
+                
+                let updatedLoan = {...loan};
+                if (daysSinceLastUpdate > 0) {
+                    updatedLoan.interest += daysSinceLastUpdate * loan.amount * loan.interestRate;
+                    updatedLoan.lastInterestAccruedDate = today.toISOString();
+                    needsUpdate = true;
+                }
+                const repaymentDate = startOfDay(parseISO(loan.repaymentDate));
+                if (isAfter(today, repaymentDate) && updatedLoan.status === 'active') {
+                    updatedLoan.status = 'overdue';
+                    needsUpdate = true;
+                }
+                return updatedLoan;
+            });
+            
+            const updatedDeposits = (student.fixedDeposits || []).map(deposit => {
+                if (deposit.status !== 'active') return deposit;
+
+                const maturityDate = startOfDay(parseISO(deposit.maturityDate));
+                if (isAfter(today, maturityDate) || isSameDay(today, maturityDate)) {
+                    const interestGained = Math.floor(deposit.amount * deposit.interestRate * differenceInCalendarDays(maturityDate, parseISO(deposit.startDate)));
+                    studentPoints += deposit.amount + interestGained;
+                    studentPointHistory.push({
+                        points: deposit.amount + interestGained,
+                        date: today.toISOString(),
+                        reason: `定存 #${deposit.id.slice(-4)} 到期結算`
+                    });
+                    needsUpdate = true;
+                    return {
+                        ...deposit,
+                        status: 'settled' as const,
+                        interestEarned: interestGained,
+                    };
+                }
+                return deposit;
+            });
+            
+            if (needsUpdate) {
+                studentsModified = true;
+                const studentDocId = `${student.classId}-${student.id}`;
+                const studentRef = doc(db, 'students', studentDocId);
+                studentBatch.update(studentRef, {
+                    points: studentPoints,
+                    pointHistory: studentPointHistory,
+                    loans: updatedLoans,
+                    fixedDeposits: updatedDeposits,
+                });
+            }
+        });
+        
+        if (studentsModified) {
+            console.log(`Found students needing daily updates. Committing to Firestore...`);
             await studentBatch.commit();
             console.log("Successfully committed all daily updates to Firestore.");
             // After successful commit, refresh the local student state
             const updatedStudents = await fetchData<Student>('students');
             setStudentsState(updatedStudents);
-        } catch (error) {
-            console.error("One or more daily updates failed to commit:", error);
+        } else {
+            console.log("No daily updates needed for any student.");
         }
-    } else {
-        console.log("No daily updates needed for any student.");
+    } catch(error) {
+        console.error("Error during daily updates:", error);
     }
   }, [fetchData]);
 

@@ -52,7 +52,7 @@ export type FixedDeposit = {
   amount: number;
   startDate: string; // ISO date string
   maturityDate: string; // ISO date string
-  status: 'active' | 'matured';
+  status: 'active' | 'matured' | 'settled';
   interestRate: number; // The daily rate at the time of deposit
   interestEarned: number;
 };
@@ -183,5 +183,3 @@ export type PlatformConfig = {
     fixedDepositInterestRate?: number;
     loanInterestRate?: number;
 }
-
-    
