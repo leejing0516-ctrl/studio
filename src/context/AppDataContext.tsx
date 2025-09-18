@@ -81,7 +81,7 @@ const checkMarketOpen = () => {
 export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [students, setStudentsState] = useState<Student[]>([]);
   const [rewards, setRewardsState] = useState<Reward[]>([]);
-  const [stocks, setStocksState] = useState<Stock[]>([]);
+  const [stocks, setStocksState]_useState<Stock[]>([]);
   const [teachers, setTeachersState] = useState<Teacher[]>([]);
   const [classes, setClassesState] = useState<Class[]>([]);
   const [platformConfig, setPlatformConfigState] = useState<PlatformConfig | null>(null);
@@ -268,14 +268,12 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     const currentHour = now.getHours();
     console.log(`Checking if daily updates should be run at ${now.toLocaleTimeString()}`);
     
-    // 1. Time check: Only proceed if it's 12 PM (midday) or later.
     if (currentHour < 12) {
       console.log("It's before noon. Skipping daily updates.");
       return;
     }
 
     try {
-        // 2. Idempotency check: See if an auto-backup for today already exists.
         const latestBackupQuery = query(collection(db, 'backups'), orderBy('createdAt', 'desc'), limit(1));
         const latestBackupSnap = await getDocs(latestBackupQuery);
         const today = startOfDay(new Date());
@@ -365,7 +363,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             console.log(`Found students needing daily updates. Adding to batch...`);
         }
 
-        // --- Automated Backup Logic ---
         console.log("Performing automated daily backup...");
         const backupId = new Date().toISOString();
         const backupRef = doc(db, 'backups', backupId);
@@ -377,28 +374,25 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         studentBatch.set(backupRef, {
             id: backupId,
             createdAt: backupId,
-            description: "每日自動備份 (Daily Auto-Backup)",
+            description: "每日自動備份",
             students: studentsToBackup,
         });
         console.log("New daily backup added to batch.");
         
-        // --- Backup Pruning Logic (Keep last 7) ---
         const backupsQuery = query(collection(db, 'backups'), orderBy('createdAt', 'desc'));
         const backupSnaps = await getDocs(backupsQuery);
-        if (backupSnaps.docs.length >= 7) { // Using >= to be safe
+        if (backupSnaps.docs.length >= 7) { 
             console.log(`Pruning old backups. Found ${backupSnaps.docs.length}, keeping 7.`);
-            const backupsToDelete = backupSnaps.docs.slice(6); // Keep the 7 newest (0-6), delete the rest.
+            const backupsToDelete = backupSnaps.docs.slice(6); 
             backupsToDelete.forEach(docToDelete => {
                 console.log(`Scheduling deletion for backup: ${docToDelete.id}`);
                 studentBatch.delete(docToDelete.ref);
             });
         }
         
-        // Commit all batched writes (student updates, new backup, old backup deletions)
         await studentBatch.commit();
         console.log("Successfully committed all daily tasks to Firestore.");
         
-        // After successful commit, refresh the local student state
         const updatedStudents = await fetchData<Student>('students');
         setStudentsState(updatedStudents);
 
@@ -431,7 +425,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             data.forEach((item: any) => {
                 let docId = item.id;
                 if (name === 'stocks') docId = item.ticker;
-                // Use a composite key for students to ensure uniqueness
                 if (name === 'students') docId = `${item.classId}-${item.id}`;
 
                 if (docId) {
@@ -445,7 +438,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         }
     }
     
-    // Seed initial config if not set
     const configDocRef = doc(db, 'config', 'main');
     const configSnap = await getDoc(configDocRef);
     if (!configSnap.exists()) {
@@ -479,7 +471,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     return dataUpdated;
   }, []);
   
-  // App initialization function
   const initializePublicData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -493,15 +484,13 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         }
         setPlatformConfigState(configData);
 
-        // If data was just seeded, the state is already up-to-date.
-        // Otherwise, fetch from Firestore.
         if (!dataWasSeeded) {
             const [classesData, teachersData, stocksData, rewardsData, studentsData] = await Promise.all([
                 fetchData<Class>('classes'),
                 fetchData<Teacher>('teachers'),
-                fetchData<Stock>('stocks'), // Stocks are public
-                fetchData<Reward>('rewards'), // Rewards are public
-                fetchData<Student>('students'), // Also load students here initially
+                fetchData<Stock>('stocks'), 
+                fetchData<Reward>('rewards'), 
+                fetchData<Student>('students'), 
             ]);
             setClassesState(classesData);
             setTeachersState(teachersData);
@@ -529,11 +518,9 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     console.log("Loading sensitive data...");
     setIsLoading(true);
     try {
-        // Passwords are on student docs, so they are sensitive.
         const studentsData = await fetchData<Student>('students');
         setStudentsState(studentsData);
         
-        // Rewards and Stocks are already public, return them from state
         return { students: studentsData, rewards: rewards, stocks: stocks };
     } catch (error) {
         console.error("Error loading sensitive data:", error);
@@ -584,7 +571,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         });
         await batch.commit();
 
-        // Refresh local data after restore
         const updatedStudents = await fetchData<Student>('students');
         setStudentsState(updatedStudents);
 
