@@ -395,7 +395,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
                 if (docId) {
                     const itemDocRef = doc(db, name, String(docId));
-                    batch.set(itemDocRef, { ...item });
+                    batch.set(itemDocRef, { ...item }, { merge: true });
                 }
             });
             batch.set(docRef, { seeded: true, date: new Date() });
