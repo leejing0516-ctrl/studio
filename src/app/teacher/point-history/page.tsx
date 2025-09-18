@@ -57,10 +57,10 @@ export default function PointHistoryPage() {
             return;
         }
         setRole(storedRole);
-        if (classes.length > 0) {
+        if (classes.length > 0 && !selectedClassId) {
             setSelectedClassId(classes[0].id);
         }
-    }, [router, toast, classes]);
+    }, [router, toast, classes, selectedClassId]);
 
     const handleCalculate = () => {
         if (!targetDate || !selectedClassId) {
