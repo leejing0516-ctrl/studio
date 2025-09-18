@@ -35,7 +35,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -56,7 +55,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { useRouter } from 'next/navigation';
 import { db } from "@/lib/firebase";
-import { doc, deleteDoc } from "firebase/firestore";
+import { doc, deleteDoc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 
 
 interface StagedStudent {
@@ -75,7 +74,8 @@ export default function TeacherDashboardPage() {
     classes, setClasses, 
     teachers, setTeachers, 
     rewards, setRewards,
-    isLoading, platformConfig, setPlatformConfig 
+    isLoading, platformConfig, setPlatformConfig,
+    runTransaction: runDbTransaction,
   } = useContext(AppDataContext);
   const router = useRouter();
 
@@ -244,95 +244,148 @@ export default function TeacherDashboardPage() {
   };
 
   const handleAwardPoints = async (studentId: string, pointsToChange: number) => {
-    if (!pointsToChange) {
-      toast({ title: "無效的點數", description: "請輸入一個非零的數字。", variant: "destructive" });
-      return;
-    }
-    const isDeducting = pointsToChange < 0;
-  
-    if (role !== 'admin' && !isDeducting) {
-      if (!currentTeacher || (currentTeacher.pointBalance || 0) < pointsToChange) {
-        toast({ title: "點數餘額不足", description: "您的點數餘額不足以發放此次點數。", variant: "destructive" });
+    if (!pointsToChange || !teacherId) {
+        toast({ title: "無效的操作", description: "請輸入一個非零的數字或重新登入。", variant: "destructive" });
         return;
-      }
     }
-  
-    await setStudents(currentStudents => currentStudents.map(student => {
-        if (student.id === studentId && student.classId === selectedClassId) {
-            const today = new Date().toISOString();
-            const actionText = isDeducting ? "扣除" : "發放";
-            const reason = role === 'admin' ? `由校長 ${currentTeacher?.name} ${actionText}` : `由老師 ${currentTeacher?.name} ${actionText}`;
-            
-            const newHistory = [...(student.pointHistory || []), { points: pointsToChange, date: today, reason }];
-            return { ...student, points: student.points + pointsToChange, pointHistory: newHistory };
-        }
-        return student;
-    }));
-    
-    if (role !== 'admin' && currentTeacher) {
-        await setTeachers(currentTeachers => currentTeachers.map(t => {
-            if (t.id === teacherId) {
-                const newBalance = (t.pointBalance || 0) - pointsToChange;
-                return { ...t, pointBalance: newBalance };
+
+    try {
+        await runDbTransaction(async (transaction) => {
+            const studentRef = doc(db, 'students', `${selectedClassId}-${studentId}`);
+            const teacherRef = doc(db, 'teachers', teacherId);
+
+            const [studentDoc, teacherDoc] = await Promise.all([
+                transaction.get(studentRef),
+                role !== 'admin' ? transaction.get(teacherRef) : Promise.resolve(null)
+            ]);
+
+            if (!studentDoc.exists()) {
+                throw new Error("找不到學生資料。");
             }
-            return t;
+            const currentStudentData = studentDoc.data() as Student;
+
+            const isDeducting = pointsToChange < 0;
+
+            if (role !== 'admin' && !isDeducting) {
+                const currentTeacherData = teacherDoc?.data() as Teacher;
+                if (!currentTeacherData || (currentTeacherData.pointBalance || 0) < pointsToChange) {
+                    throw new Error("您的點數餘額不足以發放此次點數。");
+                }
+                transaction.update(teacherRef, { pointBalance: (currentTeacherData.pointBalance || 0) - pointsToChange });
+            }
+
+            const actionText = isDeducting ? "扣除" : "發放";
+            const reason = `由 ${role === 'admin' ? '校長' : '老師'} ${currentTeacher?.name} ${actionText}`;
+            
+            const newHistoryEntry = { points: pointsToChange, date: new Date().toISOString(), reason };
+
+            transaction.update(studentRef, {
+                points: currentStudentData.points + pointsToChange,
+                pointHistory: [...(currentStudentData.pointHistory || []), newHistoryEntry]
+            });
+        });
+
+        // Optimistically update local state after successful transaction
+        setStudents(currentStudents => currentStudents.map(s => {
+            if (s.id === studentId && s.classId === selectedClassId) {
+                const actionText = pointsToChange < 0 ? "扣除" : "發放";
+                const reason = `由 ${role === 'admin' ? '校長' : '老師'} ${currentTeacher?.name} ${actionText}`;
+                return {
+                    ...s,
+                    points: s.points + pointsToChange,
+                    pointHistory: [...(s.pointHistory || []), { points: pointsToChange, date: new Date().toISOString(), reason }]
+                };
+            }
+            return s;
         }));
+
+        if (role !== 'admin' && pointsToChange > 0) {
+            setTeachers(currentTeachers => currentTeachers.map(t =>
+                t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToChange } : t
+            ));
+        }
+
+        toast({
+            title: `點數已${pointsToChange < 0 ? '扣除' : '發放'}！`,
+            description: `操作成功。`
+        });
+
+    } catch (error: any) {
+        console.error("點數發放失敗:", error);
+        toast({ title: "操作失敗", description: error.message, variant: "destructive" });
     }
-  
-    const studentToUpdate = students.find(s => s.id === studentId && s.classId === selectedClassId);
-    toast({
-        title: `點數已${isDeducting ? '扣除' : '發放'}！`,
-        description: `您已成功對 ${studentToUpdate?.name} ${isDeducting ? '扣除' : '發放'} ${Math.abs(pointsToChange).toLocaleString()} 點。`
-    })
   }
 
   const handleBatchAwardPoints = async () => {
     const pointsToChange = Number(batchAwardAmount);
-    if (!pointsToChange) {
-      toast({ title: "無效的點數", description: "請輸入一個非零的數字。", variant: "destructive" });
+    if (!pointsToChange || studentsInView.length === 0 || !teacherId) {
+      toast({ title: "無效的操作", description: "請輸入點數、選擇班級或重新登入。", variant: "destructive" });
       return;
     }
     const isDeducting = pointsToChange < 0;
-    
-    if (role !== 'admin') {
-      const totalPointsToAward = studentsInView.length * pointsToChange;
-      if (!isDeducting && (!currentTeacher || (currentTeacher.pointBalance || 0) < totalPointsToAward)) {
-        toast({ title: "點數餘額不足", description: `您的點數餘額不足以進行此次批次發放。需要 ${totalPointsToAward.toLocaleString()} 點，但您只有 ${(currentTeacher?.pointBalance || 0).toLocaleString()} 點。`, variant: "destructive" });
-        return;
-      }
-    }
-  
-    const today = new Date().toISOString();
-    const actionText = isDeducting ? "批次扣除" : "批次發放";
-    const reason = role === 'admin' ? `由校長 ${currentTeacher?.name} ${actionText}` : `由老師 ${currentTeacher?.name} ${actionText}`;
-  
-    await setStudents(currentStudents => currentStudents.map(student => {
-        if (student.classId === selectedClassId) {
-            const newHistory = [...(student.pointHistory || []), { points: pointsToChange, date: today, reason }];
-            return { ...student, points: student.points + pointsToChange, pointHistory: newHistory };
+    const totalPointsToChange = studentsInView.length * pointsToChange;
+
+    try {
+        await runDbTransaction(async (transaction) => {
+            if (role !== 'admin' && !isDeducting) {
+                const teacherRef = doc(db, 'teachers', teacherId);
+                const teacherDoc = await transaction.get(teacherRef);
+                const currentTeacherData = teacherDoc.data() as Teacher;
+                if (!currentTeacherData || (currentTeacherData.pointBalance || 0) < totalPointsToChange) {
+                    throw new Error(`您的點數餘額不足。需要 ${totalPointsToChange.toLocaleString()} 點。`);
+                }
+                transaction.update(teacherRef, { pointBalance: (currentTeacherData.pointBalance || 0) - totalPointsToChange });
+            }
+
+            const studentPromises = studentsInView.map(s => transaction.get(doc(db, 'students', `${s.classId}-${s.id}`)));
+            const studentDocs = await Promise.all(studentPromises);
+
+            const actionText = isDeducting ? "批次扣除" : "批次發放";
+            const reason = `由 ${role === 'admin' ? '校長' : '老師'} ${currentTeacher?.name} ${actionText}`;
+            const newHistoryEntry = { points: pointsToChange, date: new Date().toISOString(), reason };
+
+            studentDocs.forEach((studentDoc) => {
+                if (studentDoc.exists()) {
+                    const studentData = studentDoc.data() as Student;
+                    transaction.update(studentDoc.ref, {
+                        points: studentData.points + pointsToChange,
+                        pointHistory: [...(studentData.pointHistory || []), newHistoryEntry]
+                    });
+                }
+            });
+        });
+
+        // Optimistically update local state after successful transaction
+        setStudents(currentStudents => currentStudents.map(s => {
+            if (s.classId === selectedClassId) {
+                 const actionText = pointsToChange < 0 ? "批次扣除" : "批次發放";
+                 const reason = `由 ${role === 'admin' ? '校長' : '老師'} ${currentTeacher?.name} ${actionText}`;
+                return {
+                    ...s,
+                    points: s.points + pointsToChange,
+                    pointHistory: [...(s.pointHistory || []), { points: pointsToChange, date: new Date().toISOString(), reason }]
+                };
+            }
+            return s;
+        }));
+
+        if (role !== 'admin' && !isDeducting) {
+            setTeachers(currentTeachers => currentTeachers.map(t =>
+                t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - totalPointsToChange } : t
+            ));
         }
-        return student;
-    }));
-    
-    if (role !== 'admin' && currentTeacher) {
-      const totalPointsToChange = studentsInView.length * pointsToChange;
-      await setTeachers(currentTeachers => currentTeachers.map(t => {
-        if (t.id === teacherId) {
-          const newBalance = (t.pointBalance || 0) - totalPointsToChange;
-          return { ...t, pointBalance: newBalance };
-        }
-        return t;
-      }));
+
+        toast({
+            title: `批次${isDeducting ? '扣除' : '發放'}成功！`,
+            description: `已成功對 ${studentsInView.length} 位學生操作。`
+        });
+        setIsBatchAwardDialogOpen(false);
+        setBatchAwardAmount('');
+
+    } catch (error: any) {
+        console.error("批次點數操作失敗:", error);
+        toast({ title: "操作失敗", description: error.message, variant: "destructive" });
     }
-  
-    const className = classes.find(c => c.id === selectedClassId)?.name || '此班級';
-    toast({
-        title: `批次${isDeducting ? '扣除' : '發放'}成功！`,
-        description: `您已成功對 ${className} 的所有學生${isDeducting ? '扣除' : '發送'} ${Math.abs(pointsToChange).toLocaleString()} 點。`
-    });
-  
-    setIsBatchAwardDialogOpen(false);
-    setBatchAwardAmount('');
   };
 
   const handleAddStudent = (event: React.FormEvent<HTMLFormElement>) => {
@@ -422,7 +475,6 @@ export default function TeacherDashboardPage() {
         const studentDocRef = doc(db, 'students', studentDocId);
         await deleteDoc(studentDocRef);
         
-        // After successful deletion from backend, update the local state
         await setStudents(current => current.filter(s => s.id !== studentToDelete.id || s.classId !== studentToDelete.classId));
         
         toast({
@@ -466,7 +518,7 @@ export default function TeacherDashboardPage() {
     });
   }
   
-  const handleAddTeacher = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleAddTeacher = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const id = formData.get("id") as string;
@@ -474,15 +526,6 @@ export default function TeacherDashboardPage() {
     const role = formData.get("role") as 'teacher' | 'subject_teacher';
     const classId = formData.get("classId") as string;
 
-    if (teachers.some(t => t.id === id)) {
-        toast({
-            title: "新增老師失敗",
-            description: `ID 為 ${id} 的老師已存在。`,
-            variant: "destructive",
-        });
-        return;
-    }
-    
     const newTeacher: Teacher = {
         id,
         name,
@@ -491,13 +534,27 @@ export default function TeacherDashboardPage() {
         password: platformConfig?.teacherPassword || TEACHER_PASSWORD,
         pointBalance: 0,
     };
-    setTeachers(current => [...current, newTeacher]);
-    setIsAddTeacherDialogOpen(false);
-    toast({
-        title: "已新增老師",
-        description: `已成功新增老師 ${name}。`
-    });
-  }
+
+    try {
+        await runDbTransaction(async (transaction) => {
+            const teacherRef = doc(db, 'teachers', id);
+            const docSnap = await transaction.get(teacherRef);
+            if (docSnap.exists()) {
+                throw new Error(`ID 為 ${id} 的老師已存在。`);
+            }
+            transaction.set(teacherRef, newTeacher);
+        });
+
+        // Optimistically update local state
+        setTeachers(current => [...current, newTeacher]);
+        setIsAddTeacherDialogOpen(false);
+        toast({ title: "已新增老師", description: `已成功新增老師 ${name}。` });
+
+    } catch (error: any) {
+        console.error("新增老師失敗:", error);
+        toast({ title: "新增失敗", description: error.message, variant: "destructive" });
+    }
+  };
 
   const handleEditTeacherClick = (teacher: Teacher) => {
     setEditingTeacher(teacher);
@@ -2107,3 +2164,4 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
         </Dialog>
     )
 }
+
