@@ -265,15 +265,19 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     console.log("Checking if daily updates should be run...");
 
     try {
-        const configRef = doc(db, 'config', 'main');
-        const configSnap = await getDoc(configRef);
-        const currentConfig = configSnap.data() as PlatformConfig;
-        const lastBackupDate = currentConfig?.lastAutoBackupDate ? startOfDay(new Date(currentConfig.lastAutoBackupDate)) : null;
-        const today = startOfDay(new Date());
+        // More robust check: See if the latest backup is from today.
+        const latestBackupQuery = query(collection(db, 'backups'), orderBy('createdAt', 'desc'), limit(1));
+        const latestBackupSnap = await getDocs(latestBackupQuery);
+        
+        if (!latestBackupSnap.empty) {
+            const latestBackup = latestBackupSnap.docs[0].data() as Backup;
+            const lastBackupDate = startOfDay(new Date(latestBackup.createdAt));
+            const today = startOfDay(new Date());
 
-        if (lastBackupDate && isSameDay(lastBackupDate, today)) {
-            console.log("Daily updates have already been run today. Skipping.");
-            return;
+            if (isSameDay(lastBackupDate, today) && latestBackup.description?.includes("每日自動備份")) {
+                console.log("Daily auto-backup has already been run today. Skipping.");
+                return;
+            }
         }
         
         console.log("Running daily updates for loans, deposits, and auto-backup...");
@@ -283,7 +287,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             console.log("No students found, skipping daily updates.");
             return;
         }
-
+        
+        const today = startOfDay(new Date());
         let studentsModified = false;
         const studentBatch = writeBatch(db);
 
@@ -371,7 +376,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         // --- Backup Pruning Logic (Keep last 7) ---
         const backupsQuery = query(collection(db, 'backups'), orderBy('createdAt', 'desc'));
         const backupSnaps = await getDocs(backupsQuery);
-        if (backupSnaps.docs.length > 7) {
+        if (backupSnaps.docs.length > 6) { // 6 because we just added one
             console.log(`Pruning old backups. Found ${backupSnaps.docs.length}, keeping 7.`);
             const backupsToDelete = backupSnaps.docs.slice(7);
             backupsToDelete.forEach(docToDelete => {
@@ -380,11 +385,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             });
         }
         
-        // Update the last backup date in config
-        studentBatch.update(configRef, { lastAutoBackupDate: today.toISOString() });
-        console.log("Updating last auto-backup date.");
-
-        // Commit all batched writes (student updates, new backup, old backup deletions, config update)
+        // Commit all batched writes (student updates, new backup, old backup deletions)
         await studentBatch.commit();
         console.log("Successfully committed all daily updates to Firestore.");
         
@@ -449,7 +450,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             fundraisingProjects: [],
             fixedDepositInterestRate: 0.01, // 1% daily
             loanInterestRate: 0.005, // 0.5% daily
-            lastAutoBackupDate: '',
         };
         batch.set(configDocRef, initialConfig, { merge: true });
         setPlatformConfigState(prev => ({ ...(prev || { id: 'main' }), ...initialConfig }));

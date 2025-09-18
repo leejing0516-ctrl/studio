@@ -185,5 +185,4 @@ export type PlatformConfig = {
     fundraisingProjects?: FundraisingProject[];
     fixedDepositInterestRate?: number;
     loanInterestRate?: number;
-    lastAutoBackupDate?: string; // ISO date string
 }
