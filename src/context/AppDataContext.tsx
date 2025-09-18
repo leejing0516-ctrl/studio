@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { createContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
@@ -81,7 +80,7 @@ const checkMarketOpen = () => {
 export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [students, setStudentsState] = useState<Student[]>([]);
   const [rewards, setRewardsState] = useState<Reward[]>([]);
-  const [stocks, setStocksState]_useState<Stock[]>([]);
+  const [stocks, setStocksState] = useState<Stock[]>([]);
   const [teachers, setTeachersState] = useState<Teacher[]>([]);
   const [classes, setClassesState] = useState<Class[]>([]);
   const [platformConfig, setPlatformConfigState] = useState<PlatformConfig | null>(null);
@@ -268,12 +267,14 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     const currentHour = now.getHours();
     console.log(`Checking if daily updates should be run at ${now.toLocaleTimeString()}`);
     
+    // Condition 1: Only run at or after noon.
     if (currentHour < 12) {
       console.log("It's before noon. Skipping daily updates.");
       return;
     }
 
     try {
+        // Condition 2: Check if a daily backup for today already exists.
         const latestBackupQuery = query(collection(db, 'backups'), orderBy('createdAt', 'desc'), limit(1));
         const latestBackupSnap = await getDocs(latestBackupQuery);
         const today = startOfDay(new Date());
@@ -662,3 +663,5 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     </AppDataContext.Provider>
   );
 };
+
+    
