@@ -20,6 +20,7 @@ interface RedeemRewardInput {
     studentId: string;
     classId: string;
     rewardId: number;
+    isGuest: boolean;
 }
 
 interface RedeemRewardOutput {
@@ -29,6 +30,15 @@ interface RedeemRewardOutput {
 }
 
 export async function redeemRewardTransaction(input: RedeemRewardInput): Promise<RedeemRewardOutput> {
+    if (input.isGuest) {
+        return { success: true, newRedeemedItem: {
+            redemptionId: `guest-redemption-${Date.now()}`,
+            reward: { id: input.rewardId, name: 'Sample Reward', description: 'A reward for guests', cost: 0, image: '', stock: 1, scope: 'school', providerId: 'school_admin' },
+            status: 'collected',
+            redemptionDate: new Date().toISOString(),
+        } };
+    }
+
     try {
         const newRedeemedItem = await runTransaction(db, async (transaction) => {
             const studentDocId = `${input.classId}-${input.studentId}`;
@@ -103,5 +113,3 @@ export async function redeemRewardTransaction(input: RedeemRewardInput): Promise
         return { success: false, error: error.message || "交易失敗，請稍後再試。" };
     }
 }
-
-    
