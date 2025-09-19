@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useContext, useMemo } from "react";
@@ -76,7 +77,9 @@ export default function HabitsPage() {
 
   const [viewingHabitHistory, setViewingHabitHistory] = useState<StudentHabit | null>(null);
 
-  const currentStudent = students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId);
+  const currentStudent = useMemo(() => 
+    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId) || studentData.student
+  , [students, studentData.student]);
 
   const studentHabits = useMemo(() => {
     return (currentStudent?.habits || []).sort((a,b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
@@ -471,3 +474,5 @@ export default function HabitsPage() {
     </div>
   );
 }
+
+    

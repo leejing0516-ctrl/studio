@@ -84,7 +84,9 @@ export default function FundraisingPage() {
   const [selectedProject, setSelectedProject] = useState<FundraisingProject | null>(null);
   const [donationAmount, setDonationAmount] = useState<number | "">(10);
   
-  const currentStudent = students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId);
+  const currentStudent = useMemo(() => 
+    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId) || studentData.student
+  , [students, studentData.student]);
 
   const activeProjects = useMemo(() => {
     return (platformConfig?.fundraisingProjects || []).filter(p => p.status === 'active' && new Date(p.deadline) > new Date());
@@ -319,3 +321,5 @@ export default function FundraisingPage() {
     </div>
   );
 }
+
+    

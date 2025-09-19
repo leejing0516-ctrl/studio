@@ -27,10 +27,10 @@ export default function StudentDashboardPage() {
   const { studentData } = useContext(StudentDataContext);
   const { students, stocks: marketStocks } = useContext(AppDataContext);
   
-  // Find the most up-to-date student info from the source of truth
+  // Find the most up-to-date student info from the source of truth, but fallback to studentData for guest.
   const currentStudent = useMemo(() => 
-    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student?.classId)
-  , [students, studentData.student?.id, studentData.student?.classId]);
+    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student?.classId) || studentData.student
+  , [students, studentData.student]);
 
   const totalPoints = currentStudent?.points || 0;
 
@@ -50,10 +50,11 @@ export default function StudentDashboardPage() {
 
     // Sum up points for each of the last 7 days from history
     (currentStudent.pointHistory || []).forEach(record => {
+        if (!record.date) return;
         const recordDate = startOfDay(parseISO(record.date));
         if (isWithinInterval(recordDate, { start: sevenDaysAgo, end: today })) {
             const dateKey = format(recordDate, "yyyy-MM-dd");
-            if (dailyPoints[dateKey] !== undefined) {
+            if (dailyPoints[dateKey] !== undefined && record.points > 0) { // Only count earnings
                 dailyPoints[dateKey] += record.points;
             }
         }
@@ -215,3 +216,5 @@ export default function StudentDashboardPage() {
     </div>
   );
 }
+
+    

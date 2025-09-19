@@ -19,7 +19,9 @@ export default function ChallengesPage() {
     const { students, setStudents, platformConfig, teachers } = useContext(AppDataContext);
     const { toast } = useToast();
 
-    const currentStudent = students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId);
+    const currentStudent = useMemo(() => 
+        students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId) || studentData.student
+    , [students, studentData.student]);
 
     const { availableClassChallenges, availableSchoolChallenges, myChallenges } = useMemo(() => {
         if (!currentStudent) return { availableClassChallenges: [], availableSchoolChallenges: [], myChallenges: [] };
@@ -222,3 +224,5 @@ export default function ChallengesPage() {
         </div>
     )
 }
+
+    

@@ -41,7 +41,10 @@ export default function LoansPage() {
   const [isConfirmRepayOpen, setIsConfirmRepayOpen] = useState(false);
   const [loanToRepay, setLoanToRepay] = useState<Loan | null>(null);
 
-  const currentStudent = students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId);
+  const currentStudent = useMemo(() => 
+    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId) || studentData.student
+  , [students, studentData.student]);
+  
   const activeLoan = useMemo(() => currentStudent?.loans?.find(l => l.status === 'active' || l.status === 'overdue'), [currentStudent]);
   const pendingLoan = useMemo(() => currentStudent?.loans?.find(l => l.status === 'pending'), [currentStudent]);
   const loanInterestRate = platformConfig?.loanInterestRate || 0.005; // Default 0.5% daily interest
@@ -289,3 +292,5 @@ export default function LoansPage() {
     </div>
   );
 }
+
+    

@@ -60,7 +60,9 @@ export default function StocksPage() {
   const { studentData } = useContext(StudentDataContext);
   const { students, setStudents, stocks: marketStocks, isMarketOpen, runTransaction, setPlatformConfig, platformConfig } = useContext(AppDataContext);
   
-  const currentStudent = students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId) || studentData.student;
+  const currentStudent = useMemo(() => 
+    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId) || studentData.student
+  , [students, studentData.student]);
   
   const studentHolding = selectedStock ? currentStudent?.portfolio.find(item => item.ticker === selectedStock.ticker) : null;
 
@@ -472,3 +474,5 @@ export default function StocksPage() {
     </>
   );
 }
+
+    

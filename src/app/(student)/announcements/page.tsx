@@ -36,7 +36,7 @@ export default function AnnouncementsPage() {
     const classAnnouncements = useMemo(() => {
         if (!studentData.student) return [];
         // Get the most up-to-date student info from the source of truth (AppDataContext)
-        const currentStudent = students.find(s => s.id === studentData.student!.id && s.classId === studentData.student!.classId);
+        const currentStudent = students.find(s => s.id === studentData.student!.id && s.classId === studentData.student!.classId) || studentData.student;
         if (!currentStudent) return [];
         
         const studentClass = classes.find(c => c.id === currentStudent.classId);
@@ -84,3 +84,5 @@ export default function AnnouncementsPage() {
         </div>
     );
 }
+
+    

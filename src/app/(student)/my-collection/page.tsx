@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useContext } from "react";
+import { useContext, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import Image from "next/image";
 import { StudentDataContext } from "@/context/StudentDataContext";
@@ -16,7 +16,9 @@ export default function MyCollectionPage() {
   const { students, setStudents } = useContext(AppDataContext);
   const { toast } = useToast();
   
-  const currentStudent = students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId);
+  const currentStudent = useMemo(() => 
+    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId) || studentData.student
+  , [students, studentData.student]);
 
   const handleUseReward = (redemption: RedeemedRewardItem) => {
     if (!currentStudent) return;
@@ -88,3 +90,5 @@ export default function MyCollectionPage() {
     </div>
   );
 }
+
+    
