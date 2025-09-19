@@ -78,7 +78,7 @@ export default function HabitsPage() {
   const [viewingHabitHistory, setViewingHabitHistory] = useState<StudentHabit | null>(null);
 
   const currentStudent = useMemo(() => 
-    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId) || studentData.student
+    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student?.classId) || studentData.student
   , [students, studentData.student]);
 
   const studentHabits = useMemo(() => {
@@ -96,6 +96,11 @@ export default function HabitsPage() {
       toast({ title: "請填寫完整資訊", variant: "destructive" });
       return;
     }
+    
+    if (hasActiveOrPendingHabit) {
+        toast({ title: "無法申請", description: "您已有一個進行中的習慣計畫，請先完成它。", variant: "destructive" });
+        return;
+    }
 
     const newHabit: StudentHabit = {
       id: `habit-${Date.now()}`,
@@ -108,7 +113,7 @@ export default function HabitsPage() {
     };
 
     await setStudents(currentStudents => currentStudents.map(s => {
-      if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
+      if (s.id === currentStudent?.id && s.classId === currentStudent.classId) {
         return { ...s, habits: [...(s.habits || []), newHabit] };
       }
       return s;
@@ -460,7 +465,7 @@ export default function HabitsPage() {
                                     !checkIn.imageUrl && <p className="text-sm text-muted-foreground">這天只留下了打卡紀錄。</p>
                                 )}
                             </div>
-                            {index < viewingHabitHistory.checkIns.length - 1 && <Separator className="mt-6"/>}
+                            {index < (viewingHabitHistory?.checkIns.length || 0) - 1 && <Separator className="mt-6"/>}
                         </div>
                     ))}
                     </div>
@@ -474,6 +479,5 @@ export default function HabitsPage() {
     </div>
   );
 }
-
 
     
