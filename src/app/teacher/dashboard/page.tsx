@@ -237,8 +237,8 @@ export default function TeacherDashboardPage() {
              return role === 'admin';
           }
           if (challenge.scope === 'class') {
-            // Class challenges can be approved by the providing teacher
-            return challenge.providerId === activeTeacherId;
+            // Class challenges can be approved by the providing teacher, regardless of impersonation.
+            return challenge.providerId === teacherId;
           }
           return false;
       });
@@ -292,9 +292,8 @@ export default function TeacherDashboardPage() {
     }
     const isDeducting = pointsToChange < 0;
     
-    // Determine the active actor ID (original admin if impersonating)
-    const activeTeacherId = isImpersonating ? 'principal' : teacherId;
     const isActingAsAdmin = isImpersonating || role === 'admin';
+    const activeTeacherId = isActingAsAdmin ? 'principal' : teacherId;
 
     try {
         await runDbTransaction(async (transaction: any) => {
@@ -395,9 +394,8 @@ export default function TeacherDashboardPage() {
     const isDeducting = pointsToChange < 0;
     const totalPointsToChange = studentsInView.length * pointsToChange;
     
-    // Determine the active actor ID (original admin if impersonating)
-    const activeTeacherId = isImpersonating ? 'principal' : teacherId;
     const isActingAsAdmin = isImpersonating || role === 'admin';
+    const activeTeacherId = isActingAsAdmin ? 'principal' : teacherId;
     
     try {
         await runDbTransaction(async (transaction: any) => {
@@ -797,13 +795,20 @@ export default function TeacherDashboardPage() {
           return;
       }
 
-      const activeTeacherId = isImpersonating ? 'principal' : teacherId;
-      if (!activeTeacherId) return;
+      // If an admin is impersonating, the true operator is the admin ('principal').
+      const isActingAsAdmin = isImpersonating || role === 'admin';
+      const approverId = isActingAsAdmin ? 'principal' : teacherId;
+      if (!approverId) return;
       
       if (decision === 'approve') {
-          const isActingAsAdmin = isImpersonating || role === 'admin';
-          if (!isActingAsAdmin) {
-              const approver = teachers.find(t => t.id === activeTeacherId);
+          if (isActingAsAdmin) {
+               if ((platformConfig?.schoolFunds || 0) < targetLoan.amount) {
+                  toast({ title: "貸款批准失敗", description: "學校總資金不足以批准此筆貸款。", variant: "destructive" });
+                  return;
+              }
+              setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - targetLoan.amount });
+          } else {
+              const approver = teachers.find(t => t.id === approverId);
               if (!approver) {
                   toast({ title: "錯誤", description: "找不到您的教師帳號資訊。", variant: "destructive" });
                   return;
@@ -814,14 +819,8 @@ export default function TeacherDashboardPage() {
               }
               // Deduct points from teacher's balance
               setTeachers(currentTeachers => currentTeachers.map(t => 
-                  t.id === activeTeacherId ? { ...t, pointBalance: (t.pointBalance || 0) - targetLoan.amount } : t
+                  t.id === approverId ? { ...t, pointBalance: (t.pointBalance || 0) - targetLoan.amount } : t
               ));
-          } else { // Admin or impersonating admin
-              if ((platformConfig?.schoolFunds || 0) < targetLoan.amount) {
-                  toast({ title: "貸款批准失敗", description: "學校總資金不足以批准此筆貸款。", variant: "destructive" });
-                  return;
-              }
-              setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - targetLoan.amount });
           }
       }
       
@@ -832,13 +831,13 @@ export default function TeacherDashboardPage() {
                 updatedStudent = {
                     ...updatedStudent,
                     points: updatedStudent.points + targetLoan.amount,
-                    loans: (updatedStudent.loans || []).map(l => l.id === loanId ? { ...l, status: 'active' as const, approvalDate: new Date().toISOString(), lastInterestAccruedDate: new Date().toISOString(), approverId: activeTeacherId } : l)
+                    loans: (updatedStudent.loans || []).map(l => l.id === loanId ? { ...l, status: 'active' as const, approvalDate: new Date().toISOString(), lastInterestAccruedDate: new Date().toISOString(), approverId: approverId } : l)
                 };
                 toast({ title: "貸款已批准", description: `已將 ${targetLoan.amount.toLocaleString()} 點數撥款給 ${updatedStudent.name}。` });
             } else {
                  updatedStudent = {
                     ...updatedStudent,
-                    loans: (updatedStudent.loans || []).map(l => l.id === loanId ? { ...l, status: 'rejected' as const, approverId: activeTeacherId } : l)
+                    loans: (updatedStudent.loans || []).map(l => l.id === loanId ? { ...l, status: 'rejected' as const, approverId: approverId } : l)
                 };
                 toast({ title: "貸款已拒絕", description: `已拒絕 ${updatedStudent.name} 的貸款申請。`, variant: "destructive" });
             }
@@ -1024,8 +1023,7 @@ export default function TeacherDashboardPage() {
     if (!challenge) return;
 
     const pointsToAward = challenge.points;
-    const activeTeacherId = isImpersonating ? 'principal' : teacherId;
-    if (!activeTeacherId) return;
+    const isActingAsAdmin = isImpersonating || role === 'admin';
 
     try {
         await runDbTransaction(async (transaction) => {
@@ -1035,14 +1033,15 @@ export default function TeacherDashboardPage() {
             let fundSourceRef;
             let fundSourceData;
 
-            if (challenge.scope === 'school') {
+            // If the operator is an admin (real or impersonating), the funds ALWAYS come from schoolFunds.
+            if (isActingAsAdmin) {
                 fundSourceRef = doc(db, 'config', 'main');
                 const configDoc = await transaction.get(fundSourceRef);
                 fundSourceData = configDoc.data() as PlatformConfig;
                 if ((fundSourceData.schoolFunds || 0) < pointsToAward) {
                     throw new Error("學校總資金不足以發放此挑戰獎勵。");
                 }
-            } else {
+            } else { // Otherwise, it's a regular teacher, funds come from their own balance.
                 fundSourceRef = doc(db, 'teachers', challenge.providerId);
                 const teacherDoc = await transaction.get(fundSourceRef);
                 fundSourceData = teacherDoc.data() as Teacher;
@@ -1059,7 +1058,7 @@ export default function TeacherDashboardPage() {
 
             // --- All Writes ---
             // Update fund source
-            if (challenge.scope === 'school') {
+            if (isActingAsAdmin) {
                 transaction.update(fundSourceRef, { schoolFunds: (fundSourceData.schoolFunds || 0) - pointsToAward });
             } else {
                  transaction.update(fundSourceRef, { pointBalance: (fundSourceData.pointBalance || 0) - pointsToAward });
@@ -1095,7 +1094,7 @@ export default function TeacherDashboardPage() {
             return student;
         }));
 
-        if (challenge.scope === 'school') {
+        if (isActingAsAdmin) {
             setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - pointsToAward });
         } else {
             setTeachers(currentTeachers => currentTeachers.map(t =>
@@ -2420,3 +2419,6 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
     )
 }
 
+
+
+    
