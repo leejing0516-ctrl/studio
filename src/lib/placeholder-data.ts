@@ -41,29 +41,6 @@ export const students: Student[] = [
   { id: "S005", name: "伊森·韓特", classId: "5A", points: 950, avatar: "https://picsum.photos/seed/ethan/100", password: "001", portfolio: [], pointHistory: [] },
 ];
 
-export const guestStudent: Student = {
-  id: "guest",
-  name: "訪客",
-  classId: "6A", // Assign to a demo class
-  points: 5000,
-  avatar: "https://picsum.photos/seed/guest/100",
-  password: "guest_password",
-  portfolio: [
-    { ticker: "TECH", name: "創新有限責任公司", shares: 5, avgCost: 550.00 },
-    { ticker: "ART", name: "創意公司", shares: 20, avgCost: 42.00 },
-  ],
-  redeemedRewards: [], // Initially empty, can add samples if needed
-  loans: [],
-  pointHistory: [
-    { points: 50, date: new Date(Date.now() - 86400000).toISOString(), reason: "準時繳交作業" },
-    { points: 100, date: new Date(Date.now() - 172800000).toISOString(), reason: "回答問題正確" },
-  ],
-  challenges: [],
-  fixedDeposits: [],
-  habits: [],
-};
-
-
 export const rewards: Reward[] = [];
 
 export const stocks: Stock[] = [

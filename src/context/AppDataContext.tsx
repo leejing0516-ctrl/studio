@@ -11,7 +11,6 @@ import {
     stocks as initialStocks,
     challenges as initialChallenges,
     TEACHER_PASSWORD,
-    guestStudent,
 } from '@/lib/placeholder-data';
 import { db } from '@/lib/firebase';
 import { collection, doc, getDocs, writeBatch, setDoc, getDoc, updateDoc, deleteDoc, runTransaction, Transaction, query, orderBy, limit } from 'firebase/firestore';
@@ -92,13 +91,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   }, []);
   
     const setStudents = async (updater: Student[] | ((prev: Student[]) => Student[])) => {
-        // Prevent guest actions from being saved
-        if (localStorage.getItem('userRole') === 'guest') {
-            const tempState = typeof updater === 'function' ? updater(students) : updater;
-            setStudentsState(tempState);
-            return;
-        }
-
         const originalState = students;
         let intendedState: Student[];
 
@@ -144,13 +136,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const setRewards = async (updater: (prev: Reward[]) => Reward[]) => {
-        // Prevent guest actions from being saved
-        if (localStorage.getItem('userRole') === 'guest') {
-            const tempState = updater(rewards);
-            setRewardsState(tempState);
-            return;
-        }
-
         const currentState = await fetchData<Reward>('rewards');
         const finalState = updater(currentState);
         
@@ -177,13 +162,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     };
     
     const setStocks = async (updater: (prev: Stock[]) => Stock[]) => {
-        // Prevent guest actions from being saved
-        if (localStorage.getItem('userRole') === 'guest') {
-            const tempState = updater(stocks);
-            setStocksState(tempState);
-            return;
-        }
-
         const currentState = await fetchData<Stock>('stocks');
         const finalState = updater(currentState);
         
@@ -259,12 +237,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     };
 
   const setPlatformConfig = async (newConfig: Partial<PlatformConfig>) => {
-    // Prevent guest actions from being saved
-    if (localStorage.getItem('userRole') === 'guest') {
-        setPlatformConfigState(prev => ({ ...prev!, ...newConfig }));
-        return;
-    }
-
     const configDocRef = doc(db, 'config', 'main');
     try {
         await setDoc(configDocRef, newConfig, { merge: true });
@@ -407,11 +379,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   }, [fetchData, rewards, stocks]);
   
   const handleRunTransaction = useCallback(async (updateFunction: (transaction: Transaction) => Promise<any>) => {
-    if (localStorage.getItem('userRole') === 'guest') {
-        console.warn("Guest mode: transaction is simulated and not persisted.");
-        // In a real scenario, you might want to show a toast message.
-        return; 
-    }
     return await runTransaction(db, updateFunction);
   }, []);
 

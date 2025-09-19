@@ -79,9 +79,6 @@ export default function StudentLayout({
   useEffect(() => {
     // If there's no student data on page load (e.g., after a refresh), redirect to login
     if (!studentData.student) {
-      const userRole = localStorage.getItem('userRole');
-      if (userRole === 'guest') return; // Allow guest to stay without full login
-
       const storedId = localStorage.getItem('studentId');
       const storedClassId = localStorage.getItem('studentClassId');
       if (storedId && storedClassId) {
@@ -108,11 +105,6 @@ export default function StudentLayout({
   }, [students, studentData.student, setStudentData, router]);
 
   useEffect(() => {
-    const userRole = localStorage.getItem('userRole');
-    if (userRole === 'guest' || !studentData.student) {
-        return;
-    }
-
     if (studentData.student) {
         const latestStudentData = students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId);
         if (latestStudentData) {
@@ -122,7 +114,7 @@ export default function StudentLayout({
                 setStudentData({ 
                     student: latestStudentData,
                     points: latestStudentData.points,
-                    portfolio: latestStudentData.portfolio,
+                    portfolio: latestStudentData.portfolio || [],
                     redeemedRewards: latestStudentData.redeemedRewards || [],
                     loans: latestStudentData.loans || [],
                     challenges: latestStudentData.challenges || [],
@@ -138,7 +130,6 @@ export default function StudentLayout({
 
 
   const student = studentData.student;
-  const isGuest = localStorage.getItem('userRole') === 'guest';
   
   const handleLogout = () => {
     setStudentData({ student: null, points: 0, portfolio: [], redeemedRewards: [], loans: [], challenges: [], fixedDeposits: [], habits: [] });
@@ -149,7 +140,7 @@ export default function StudentLayout({
   }
 
   const handleChangePassword = async () => {
-    if (!student || isGuest) return;
+    if (!student) return;
     setIsSaving(true);
 
     if (newPassword !== confirmPassword) {
@@ -275,7 +266,7 @@ export default function StudentLayout({
                 </Avatar>
                 <div className="text-left group-data-[collapsible=icon]:hidden">
                   <p className="font-semibold">{student?.name || '學生'}</p>
-                  <p className="text-xs text-muted-foreground">{isGuest ? '訪客' : '學生'}</p>
+                  <p className="text-xs text-muted-foreground">學生</p>
                 </div>
                 <ChevronDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
               </Button>
@@ -283,13 +274,13 @@ export default function StudentLayout({
             <DropdownMenuContent className="w-56 mb-2" side="top" align="start">
               <DropdownMenuLabel>我的帳號</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => setIsSettingsOpen(true)} disabled={isGuest}>
+              <DropdownMenuItem onSelect={() => setIsSettingsOpen(true)}>
                 <Settings className="mr-2 size-4" />
                 <span>設定</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 size-4" />
-                <span>{isGuest ? '結束參觀' : '登出'}</span>
+                <span>登出</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -306,7 +297,7 @@ export default function StudentLayout({
                 </div>
                  <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="ghost" size="icon" className="relative" disabled={isGuest}>
+                      <Button variant="ghost" size="icon" className="relative">
                         <Bell />
                         {pointHistory.length > 0 && <span className="absolute top-1.5 right-1.5 flex h-2 w-2 rounded-full bg-red-500" />}
                       </Button>

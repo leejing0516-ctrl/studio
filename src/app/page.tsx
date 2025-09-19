@@ -8,14 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, School, ArrowRight, Loader2, Eye } from "lucide-react";
+import { User, School, ArrowRight, Loader2 } from "lucide-react";
 import Logo from "@/components/logo";
 import { useToast } from "@/hooks/use-toast";
 import { StudentDataContext } from '@/context/StudentDataContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AppDataContext } from '@/context/AppDataContext';
-import { TEACHER_PASSWORD, guestStudent } from '@/lib/placeholder-data';
-import { Separator } from '@/components/ui/separator';
+import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
 
 
 export default function HomePage() {
@@ -122,26 +121,6 @@ export default function HomePage() {
     setIsLoggingIn(false);
   };
 
-  const handleGuestLogin = () => {
-    setIsLoggingIn(true);
-    toast({
-        title: "訪客登入成功！",
-        description: `歡迎參觀！提醒您，訪客身份的所有操作都不會被儲存。`,
-    });
-    setStudentData({
-        student: guestStudent,
-        points: guestStudent.points,
-        portfolio: guestStudent.portfolio || [],
-        redeemedRewards: guestStudent.redeemedRewards || [],
-        loans: guestStudent.loans || [],
-        challenges: guestStudent.challenges || [],
-        fixedDeposits: guestStudent.fixedDeposits || [],
-        habits: guestStudent.habits || [],
-    });
-    localStorage.setItem('userRole', 'guest');
-    router.push('/dashboard');
-  };
-
   if (isLoading && classes.length === 0 && teachers.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
@@ -244,7 +223,7 @@ export default function HomePage() {
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
                     <Label htmlFor="teacher-id">教師帳號</Label>
-                    <Select onValueChange={(value) => setTeacherId(value)} value={teacherId} disabled={isLoggingIn}>
+                    <Select onValuechange={(value) => setTeacherId(value)} value={teacherId} disabled={isLoggingIn}>
                         <SelectTrigger id="teacher-id-select">
                             <SelectValue placeholder="請選擇您的帳號" />
                         </SelectTrigger>
@@ -277,23 +256,6 @@ export default function HomePage() {
             </form>
             </Card>
         </div>
-
-        <div className="relative">
-            <Separator />
-            <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                <div className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center">
-                <span className="bg-background px-2 text-sm text-muted-foreground">或</span>
-            </div>
-        </div>
-
-        <div className="text-center">
-            <Button variant="secondary" onClick={handleGuestLogin} disabled={isLoggingIn}>
-                <Eye className="mr-2 h-4 w-4" />
-                訪客參觀
-            </Button>
-        </div>
       </div>
       <footer className="text-center mt-8 text-muted-foreground text-sm">
         {platformConfig?.sponsorLogoUrls && platformConfig.sponsorLogoUrls.some(url => url) ? (
@@ -319,5 +281,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    

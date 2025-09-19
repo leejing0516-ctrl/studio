@@ -33,7 +33,6 @@ export default function RewardsPage() {
   const { students, setStudents, rewards, setRewards, platformConfig, setPlatformConfig, teachers, setTeachers } = useContext(AppDataContext);
 
   const student = studentData.student;
-  const isGuest = localStorage.getItem('userRole') === 'guest';
   
   const { classRewards, schoolRewards } = useMemo(() => {
     if (!student) return { classRewards: [], schoolRewards: [] };
@@ -65,14 +64,6 @@ export default function RewardsPage() {
   }, [rewards, student, teachers]);
 
   const handleRedeemClick = (reward: Reward) => {
-    if (isGuest) {
-      toast({
-        title: "訪客無法兌換",
-        description: "感謝您的參觀！此功能僅限正式學生使用。",
-        variant: "destructive",
-      });
-      return;
-    }
     if (studentData.points < reward.cost) {
         toast({
             title: "點數不足",
@@ -106,7 +97,6 @@ export default function RewardsPage() {
             studentId: student.id,
             classId: student.classId,
             rewardId: selectedReward.id,
-            isGuest: isGuest,
         });
         
         if (result.success && result.newRedeemedItem) {
