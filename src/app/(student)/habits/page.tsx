@@ -205,17 +205,17 @@ export default function HabitsPage() {
 
     return (
         <Card className="flex flex-col relative">
-            {habit.status !== 'completed' && (
-                <Badge className="absolute top-2 right-2 z-10" variant={habit.status === 'active' ? 'default' : habit.status === 'pending_approval' ? 'secondary' : 'destructive'}>
+            <Badge className="absolute top-2 right-2 z-10" variant={habit.status === 'active' ? 'default' : habit.status === 'pending_approval' ? 'secondary' : habit.status === 'completed' ? 'default' : 'destructive'}>
+                {
                     {
-                        {
-                            'pending_approval': '待審核',
-                            'active': '進行中',
-                            'rejected': '已拒絕',
-                        }[habit.status]
-                    }
-                </Badge>
-            )}
+                        'pending_approval': '待審核',
+                        'active': '進行中',
+                        'rejected': '已拒絕',
+                        'completed': '已完成',
+                    }[habit.status]
+                }
+            </Badge>
+
             <CardHeader>
                 <CardTitle className="flex items-start justify-between">
                     <span className="flex items-center gap-2 pr-8"><Goal /> {habit.title}</span>
@@ -229,7 +229,7 @@ export default function HabitsPage() {
                         <p>等待老師評估並設定點數獎勵...</p>
                         <AlertDialogTrigger asChild>
                             <Button variant="link" size="sm" className="text-destructive h-auto p-0 mt-2" onClick={() => setHabitToDelete(habit)}>
-                                刪除申請
+                                取消申請
                             </Button>
                         </AlertDialogTrigger>
                     </div>
@@ -250,7 +250,7 @@ export default function HabitsPage() {
                     <div className="space-y-3">
                         <div className="flex justify-between items-center mb-1">
                              <p className="text-sm text-muted-foreground">進度: {habit.checkIns.length} / {HABIT_DURATION} 天</p>
-                              <AlertDialogTrigger asChild>
+                             <AlertDialogTrigger asChild>
                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setHabitToDelete(habit)}>
                                      <Trash2 className="h-4 w-4" />
                                  </Button>
@@ -474,5 +474,6 @@ export default function HabitsPage() {
     </div>
   );
 }
+
 
     
