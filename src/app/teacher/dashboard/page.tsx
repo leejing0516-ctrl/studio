@@ -35,6 +35,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -297,7 +298,7 @@ export default function TeacherDashboardPage() {
     try {
       await runDbTransaction(async (transaction: any) => {
         const studentRef = doc(db, 'students', `${selectedClassId}-${studentId}`);
-        const providerRef = doc(db, isActingAsAdmin ? 'config' : 'teachers', activeTeacherId);
+        const providerRef = doc(db, isActingAsAdmin ? 'config' : 'teachers', isActingAsAdmin ? 'main' : activeTeacherId);
 
         const [studentDoc, providerDoc] = await Promise.all([
           transaction.get(studentRef),
@@ -2426,3 +2427,4 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
 
 
     
+
