@@ -32,6 +32,7 @@ export type PointRecord = {
     points: number;
     date: string; // ISO date string of when the points were awarded
     reason: string;
+    teacherId?: string; // ID of the teacher who performed the action
 }
 
 export type FixedDeposit = {

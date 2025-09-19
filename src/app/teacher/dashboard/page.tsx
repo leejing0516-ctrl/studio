@@ -35,7 +35,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -286,9 +285,9 @@ export default function TeacherDashboardPage() {
   };
 
   const handleAwardPoints = async (studentId: string, pointsToChange: number) => {
-    if (!pointsToChange || !teacherId) {
-        toast({ title: "無效的操作", description: "請輸入一個非零的數字或重新登入。", variant: "destructive" });
-        return;
+    if (!pointsToChange || !teacherId || !currentTeacher) {
+      toast({ title: "無效的操作", description: "請輸入一個非零的數字或重新登入。", variant: "destructive" });
+      return;
     }
     const isDeducting = pointsToChange < 0;
     
@@ -296,90 +295,98 @@ export default function TeacherDashboardPage() {
     const activeTeacherId = isActingAsAdmin ? 'principal' : teacherId;
 
     try {
-        await runDbTransaction(async (transaction: any) => {
-            const studentRef = doc(db, 'students', `${selectedClassId}-${studentId}`);
-            
-            const providerRef = doc(db, isActingAsAdmin ? 'config' : 'teachers', isActingAsAdmin ? 'main' : activeTeacherId);
+      await runDbTransaction(async (transaction: any) => {
+        const studentRef = doc(db, 'students', `${selectedClassId}-${studentId}`);
+        const providerRef = doc(db, isActingAsAdmin ? 'config' : 'teachers', activeTeacherId);
 
-            // --- 1. All Reads First ---
-            const [studentDoc, providerDoc] = await Promise.all([
-                transaction.get(studentRef),
-                transaction.get(providerRef)
-            ]);
+        const [studentDoc, providerDoc] = await Promise.all([
+          transaction.get(studentRef),
+          transaction.get(providerRef)
+        ]);
 
-            if (!studentDoc.exists()) throw new Error("找不到學生資料。");
-            if (!providerDoc.exists()) throw new Error("找不到您的帳戶或學校資金資料。");
+        if (!studentDoc.exists()) throw new Error("找不到學生資料。");
+        if (!providerDoc.exists()) throw new Error("找不到您的帳戶或學校資金資料。");
 
-            // --- 2. Verification ---
-            const studentData = studentDoc.data() as Student;
-            if (isDeducting && studentData.points < Math.abs(pointsToChange)) {
-                throw new Error(`${studentData.name} 的點數不足以扣除。`);
-            }
-            
+        const studentData = studentDoc.data() as Student;
+        const pointsToDeduct = Math.abs(pointsToChange);
+
+        if (isDeducting) {
+          if (studentData.points < pointsToDeduct) {
+            throw new Error(`${studentData.name} 的點數不足以扣除。`);
+          }
+          
+          // New check: Can this teacher deduct this amount?
+          const netPointsGivenByTeacher = (studentData.pointHistory || [])
+            .filter(record => record.teacherId === activeTeacherId)
+            .reduce((acc, record) => acc + record.points, 0);
+
+          if (pointsToDeduct > netPointsGivenByTeacher) {
+            throw new Error(`扣除失敗，您最多只能扣除您曾發放的點數餘額：${netPointsGivenByTeacher.toLocaleString()} 點。`);
+          }
+
+        } else { // Awarding points
             if (isActingAsAdmin) {
-                // When admin is acting, points come from/go to school funds
                 const configData = providerDoc.data() as PlatformConfig;
-                if (!isDeducting && (configData.schoolFunds || 0) < pointsToChange) {
+                if ((configData.schoolFunds || 0) < pointsToChange) {
                     throw new Error("學校總資金不足以發放此次點數。");
                 }
-            } else { // Is a teacher (homeroom or subject)
+            } else {
                 const currentTeacherData = providerDoc.data() as Teacher;
-                if (!isDeducting && (currentTeacherData.pointBalance || 0) < pointsToChange) {
+                if ((currentTeacherData.pointBalance || 0) < pointsToChange) {
                     throw new Error("您的點數餘額不足以發放此次點數。");
                 }
             }
-
-            // --- 3. All Writes Last ---
-            // Update provider's balance
-            if (isActingAsAdmin) {
-                 const configData = providerDoc.data() as PlatformConfig;
-                 transaction.update(providerRef, { schoolFunds: (configData.schoolFunds || 0) - pointsToChange });
-            } else { // Is a teacher
-                const currentTeacherData = providerDoc.data() as Teacher;
-                transaction.update(providerRef, { pointBalance: (currentTeacherData.pointBalance || 0) - pointsToChange });
-            }
-
-            // Update student's points and history
-            const actionText = isDeducting ? "扣除" : "發放";
-            const reason = `由老師 ${currentTeacher?.name} ${actionText}`;
-            const newHistoryEntry = { points: pointsToChange, date: new Date().toISOString(), reason };
-
-            transaction.update(studentRef, {
-                points: studentData.points + pointsToChange,
-                pointHistory: [...(studentData.pointHistory || []), newHistoryEntry]
-            });
-        });
-
-        // --- 4. Optimistically update local state after successful transaction ---
-        setStudents(currentStudents => currentStudents.map(s => {
-            if (s.id === studentId && s.classId === selectedClassId) {
-                const actionText = pointsToChange < 0 ? '扣除' : '發放';
-                const reason = `由老師 ${currentTeacher?.name} ${actionText}`;
-                return {
-                    ...s,
-                    points: s.points + pointsToChange,
-                    pointHistory: [...(s.pointHistory || []), { points: pointsToChange, date: new Date().toISOString(), reason }]
-                };
-            }
-            return s;
-        }));
-
+        }
+        
+        // --- All Writes Last ---
         if (isActingAsAdmin) {
-           setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - pointsToChange });
+          const configData = providerDoc.data() as PlatformConfig;
+          transaction.update(providerRef, { schoolFunds: (configData.schoolFunds || 0) - pointsToChange });
         } else {
-            setTeachers(currentTeachers => currentTeachers.map(t =>
-                t.id === activeTeacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToChange } : t
-            ));
+          const currentTeacherData = providerDoc.data() as Teacher;
+          transaction.update(providerRef, { pointBalance: (currentTeacherData.pointBalance || 0) - pointsToChange });
         }
 
-        toast({
-            title: `點數已${isDeducting ? '扣除' : '發放'}！`,
-            description: `操作成功。`
+        const actionText = isDeducting ? "扣除" : "發放";
+        const reason = `由老師 ${currentTeacher.name} ${actionText}`;
+        const newHistoryEntry = { points: pointsToChange, date: new Date().toISOString(), reason, teacherId: activeTeacherId };
+
+        transaction.update(studentRef, {
+          points: studentData.points + pointsToChange,
+          pointHistory: [...(studentData.pointHistory || []), newHistoryEntry]
         });
+      });
+
+      // --- Optimistic UI update ---
+      setStudents(currentStudents => currentStudents.map(s => {
+        if (s.id === studentId && s.classId === selectedClassId) {
+          const actionText = pointsToChange < 0 ? '扣除' : '發放';
+          const reason = `由老師 ${currentTeacher.name} ${actionText}`;
+          return {
+            ...s,
+            points: s.points + pointsToChange,
+            pointHistory: [...(s.pointHistory || []), { points: pointsToChange, date: new Date().toISOString(), reason, teacherId: activeTeacherId }]
+          };
+        }
+        return s;
+      }));
+
+      if (isActingAsAdmin) {
+        setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - pointsToChange });
+      } else {
+        setTeachers(currentTeachers => currentTeachers.map(t =>
+          t.id === activeTeacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToChange } : t
+        ));
+      }
+
+      toast({
+        title: `點數已${isDeducting ? '扣除' : '發放'}！`,
+        description: `操作成功。`
+      });
 
     } catch (error: any) {
-        console.error("點數發放失敗:", error);
-        toast({ title: "操作失敗", description: error.message, variant: "destructive" });
+      console.error("點數操作失敗:", error);
+      toast({ title: "操作失敗", description: error.message, variant: "destructive" });
     }
   }
 
