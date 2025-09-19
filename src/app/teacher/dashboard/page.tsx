@@ -298,12 +298,17 @@ export default function TeacherDashboardPage() {
     try {
         await runDbTransaction(async (transaction: any) => {
             const studentRef = doc(db, 'students', `${selectedClassId}-${studentId}`);
-            const teacherRef = doc(db, 'teachers', activeTeacherId);
-            const configRef = doc(db, 'config', 'main');
+            
+            const providerRef = doc(db, isActingAsAdmin ? 'config' : 'teachers', isActingAsAdmin ? 'main' : activeTeacherId);
 
             // --- 1. All Reads First ---
-            const studentDoc = await transaction.get(studentRef);
+            const [studentDoc, providerDoc] = await Promise.all([
+                transaction.get(studentRef),
+                transaction.get(providerRef)
+            ]);
+
             if (!studentDoc.exists()) throw new Error("找不到學生資料。");
+            if (!providerDoc.exists()) throw new Error("找不到您的帳戶或學校資金資料。");
 
             // --- 2. Verification ---
             const studentData = studentDoc.data() as Student;
@@ -313,17 +318,13 @@ export default function TeacherDashboardPage() {
             
             if (isActingAsAdmin) {
                 // When admin is acting, points come from/go to school funds
-                if (!isDeducting) {
-                    const configDoc = await transaction.get(configRef);
-                    const configData = configDoc.data() as PlatformConfig;
-                    if (!configData || (configData.schoolFunds || 0) < pointsToChange) {
-                        throw new Error("學校總資金不足以發放此次點數。");
-                    }
+                const configData = providerDoc.data() as PlatformConfig;
+                if (!isDeducting && (configData.schoolFunds || 0) < pointsToChange) {
+                    throw new Error("學校總資金不足以發放此次點數。");
                 }
             } else { // Is a teacher (homeroom or subject)
-                const teacherDoc = await transaction.get(teacherRef);
-                const currentTeacherData = teacherDoc?.data() as Teacher;
-                if (!isDeducting && (!currentTeacherData || (currentTeacherData.pointBalance || 0) < pointsToChange)) {
+                const currentTeacherData = providerDoc.data() as Teacher;
+                if (!isDeducting && (currentTeacherData.pointBalance || 0) < pointsToChange) {
                     throw new Error("您的點數餘額不足以發放此次點數。");
                 }
             }
@@ -331,13 +332,11 @@ export default function TeacherDashboardPage() {
             // --- 3. All Writes Last ---
             // Update provider's balance
             if (isActingAsAdmin) {
-                 const configDoc = await transaction.get(configRef);
-                 const configData = configDoc?.data() as PlatformConfig;
-                 transaction.update(configRef, { schoolFunds: (configData.schoolFunds || 0) - pointsToChange });
+                 const configData = providerDoc.data() as PlatformConfig;
+                 transaction.update(providerRef, { schoolFunds: (configData.schoolFunds || 0) - pointsToChange });
             } else { // Is a teacher
-                const teacherDoc = await transaction.get(teacherRef);
-                const currentTeacherData = teacherDoc?.data() as Teacher;
-                transaction.update(teacherRef, { pointBalance: (currentTeacherData.pointBalance || 0) - pointsToChange });
+                const currentTeacherData = providerDoc.data() as Teacher;
+                transaction.update(providerRef, { pointBalance: (currentTeacherData.pointBalance || 0) - pointsToChange });
             }
 
             // Update student's points and history
@@ -399,23 +398,20 @@ export default function TeacherDashboardPage() {
     
     try {
         await runDbTransaction(async (transaction: any) => {
-            const teacherRef = doc(db, 'teachers', activeTeacherId);
-            const configRef = doc(db, 'config', 'main');
+            const providerRef = doc(db, isActingAsAdmin ? 'config' : 'teachers', isActingAsAdmin ? 'main' : activeTeacherId);
             
             // --- 1. All Reads First ---
             // Read provider balance first for verification
              if (isActingAsAdmin) {
-                if (!isDeducting) {
-                    const configDoc = await transaction.get(configRef);
-                    const configData = configDoc.data() as PlatformConfig;
-                    if (!configData || (configData.schoolFunds || 0) < totalPointsToChange) {
-                        throw new Error(`學校總資金不足。需要 ${totalPointsToChange.toLocaleString()} 點。`);
-                    }
+                const configDoc = await transaction.get(providerRef);
+                const configData = configDoc.data() as PlatformConfig;
+                if (!isDeducting && (configData.schoolFunds || 0) < totalPointsToChange) {
+                    throw new Error(`學校總資金不足。需要 ${totalPointsToChange.toLocaleString()} 點。`);
                 }
             } else { // Is a teacher
-                const teacherDoc = await transaction.get(teacherRef);
-                const teacherData = teacherDoc?.data() as Teacher;
-                if (!isDeducting && (!teacherData || (teacherData.pointBalance || 0) < totalPointsToChange)) {
+                const teacherDoc = await transaction.get(providerRef);
+                const teacherData = teacherDoc.data() as Teacher;
+                if (!isDeducting && (teacherData.pointBalance || 0) < totalPointsToChange) {
                     throw new Error(`您的點數餘額不足。需要 ${totalPointsToChange.toLocaleString()} 點。`);
                 }
             }
@@ -426,11 +422,11 @@ export default function TeacherDashboardPage() {
             // --- 2. All Writes Last ---
             // Update provider balance
              if (isActingAsAdmin) {
-                const configData = (await transaction.get(configRef)).data() as PlatformConfig;
-                transaction.update(configRef, { schoolFunds: (configData.schoolFunds || 0) - totalPointsToChange });
+                const configData = (await transaction.get(providerRef)).data() as PlatformConfig;
+                transaction.update(providerRef, { schoolFunds: (configData.schoolFunds || 0) - totalPointsToChange });
             } else { // Is a teacher
-                const currentTeacherData = (await transaction.get(teacherRef)).data() as Teacher;
-                transaction.update(teacherRef, { pointBalance: (currentTeacherData.pointBalance || 0) - totalPointsToChange });
+                const currentTeacherData = (await transaction.get(providerRef)).data() as Teacher;
+                transaction.update(providerRef, { pointBalance: (currentTeacherData.pointBalance || 0) - totalPointsToChange });
             }
 
             // Update students
@@ -1024,6 +1020,7 @@ export default function TeacherDashboardPage() {
 
     const pointsToAward = challenge.points;
     const isActingAsAdmin = isImpersonating || role === 'admin';
+    const approverId = isActingAsAdmin ? 'principal' : teacherId;
 
     try {
         await runDbTransaction(async (transaction) => {
