@@ -326,7 +326,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             challenges: initialChallenges,
             fundraisingProjects: [],
             fixedDepositInterestRate: 0.01, // 1% daily
-            loanInterestRate: 0.005, // 0.5% daily,
+            loanInterestRate: 0.005, // 0.5% daily
         };
         batch.set(configDocRef, initialConfig, { merge: true });
         setPlatformConfigState(prev => ({ ...(prev || { id: 'main' }), ...initialConfig }));
@@ -415,6 +415,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     return await runTransaction(db, updateFunction);
   }, []);
 
+  // Simplified useEffect to only handle market open/close and initial data load.
   useEffect(() => {
     initializePublicData();
 
