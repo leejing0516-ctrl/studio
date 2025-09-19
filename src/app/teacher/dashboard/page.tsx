@@ -23,7 +23,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Reward, Student, Teacher, Class, Loan, StudentChallenge, FundraisingProject, PlatformConfig, FixedDeposit } from "@/lib/types";
+import type { Reward, Student, Teacher, Class, Loan, StudentChallenge, FundraisingProject, PlatformConfig, FixedDeposit, Challenge } from "@/lib/types";
 import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Banknote, ShieldPlus, Coins, Flag, Hourglass, ShieldCheck, Gift, Briefcase, HeartHandshake, LineChart, UserCheck, AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
@@ -42,7 +42,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { AppDataContext } from "@/context/AppDataContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format, formatDistanceToNow, isValid, addDays, isAfter } from "date-fns";
+import { format, formatDistanceToNow, isValid, addDays, isAfter, differenceInDays } from "date-fns";
 import Papa from "papaparse";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
@@ -145,7 +145,12 @@ export default function TeacherDashboardPage() {
   }, [role, classes, selectedClassId]);
 
   const currentTeacher = useMemo(() => {
-    return teachers.find(t => t.id === teacherId);
+    // If impersonating, the currentTeacher is the one being impersonated.
+    // Otherwise, it's the logged-in teacher.
+    const activeTeacherId = localStorage.getItem('impersonator') ? localStorage.getItem('teacherId') : teacherId;
+    // For display and context, we might want the original admin info if impersonating
+    const displayTeacherId = teacherId;
+    return teachers.find(t => t.id === displayTeacherId);
   }, [teachers, teacherId]);
 
   const studentsInView = useMemo(() => {
@@ -180,20 +185,24 @@ export default function TeacherDashboardPage() {
   const { toast } = useToast();
   
   const pendingRequests = useMemo(() => {
+    const activeTeacherId = isImpersonating ? 'principal' : teacherId;
     return students.flatMap(student =>
         (student.redeemedRewards || [])
             .filter(r => r.status === 'pending_use')
             .map(redemption => ({ student, redemption }))
     ).filter(({ redemption, student }) => {
-        if (role === 'admin' && redemption.reward.scope === 'school') {
-            return true;
+        if (redemption.reward.scope === 'school') {
+             // School rewards can be approved by the principal, even when impersonating
+            return role === 'admin';
         }
-        if (role === 'teacher' && (teacherClassIds || []).includes(student.classId) && redemption.reward.providerId === teacherId) {
-            return true;
+        if (redemption.reward.scope === 'class') {
+            // Class rewards can be approved by the providing teacher
+            return redemption.reward.providerId === activeTeacherId;
         }
         return false;
     });
-  }, [students, role, teacherId, teacherClassIds]);
+  }, [students, role, teacherId, isImpersonating]);
+
 
   const recentRedemptions = useMemo(() => {
      return students.flatMap(student => (student.redeemedRewards || []).map(r => ({student, redemption: r})))
@@ -211,6 +220,8 @@ export default function TeacherDashboardPage() {
   
   const challengeApprovals = useMemo(() => {
       const allChallenges = platformConfig?.challenges || [];
+      const activeTeacherId = isImpersonating ? 'principal' : teacherId;
+
       return students.flatMap(student =>
           (student.challenges || [])
             .filter(c => c.status === 'pending_approval')
@@ -221,15 +232,17 @@ export default function TeacherDashboardPage() {
             }))
       ).filter(({ student, challenge }) => {
           if (!challenge) return false;
-          if (role === 'admin' && challenge.scope === 'school') {
-             return true;
+          if (challenge.scope === 'school') {
+             // School challenges can be approved by the principal
+             return role === 'admin';
           }
-          if (role === 'teacher' && challenge.providerId === teacherId && (teacherClassIds || []).includes(student.classId)) {
-            return true;
+          if (challenge.scope === 'class') {
+            // Class challenges can be approved by the providing teacher
+            return challenge.providerId === activeTeacherId;
           }
           return false;
       });
-  }, [students, platformConfig?.challenges, role, teacherId, teacherClassIds]);
+  }, [students, platformConfig?.challenges, role, teacherId, isImpersonating]);
 
   const maturedDepositsForSettlement = useMemo(() => {
     const now = new Date();
@@ -300,10 +313,13 @@ export default function TeacherDashboardPage() {
             }
             
             if (isActingAsAdmin) {
-                const configDoc = await transaction.get(configRef);
-                const configData = configDoc.data() as PlatformConfig;
-                if (!configData || (configData.schoolFunds || 0) < pointsToChange) {
-                    throw new Error("學校總資金不足以發放此次點數。");
+                // When admin is acting, points come from/go to school funds
+                if (!isDeducting) {
+                    const configDoc = await transaction.get(configRef);
+                    const configData = configDoc.data() as PlatformConfig;
+                    if (!configData || (configData.schoolFunds || 0) < pointsToChange) {
+                        throw new Error("學校總資金不足以發放此次點數。");
+                    }
                 }
             } else { // Is a teacher (homeroom or subject)
                 const teacherDoc = await transaction.get(teacherRef);
@@ -785,7 +801,8 @@ export default function TeacherDashboardPage() {
       if (!activeTeacherId) return;
       
       if (decision === 'approve') {
-          if (role !== 'admin' && !isImpersonating) {
+          const isActingAsAdmin = isImpersonating || role === 'admin';
+          if (!isActingAsAdmin) {
               const approver = teachers.find(t => t.id === activeTeacherId);
               if (!approver) {
                   toast({ title: "錯誤", description: "找不到您的教師帳號資訊。", variant: "destructive" });
@@ -1002,30 +1019,96 @@ export default function TeacherDashboardPage() {
     return classes.filter(c => !assignedClassIds.includes(c.id));
   }, [classes, teachers]);
 
-  const handleChallengeApproval = (studentId: string, classId: string, challengeId: string) => {
+  const handleChallengeApproval = async (studentId: string, classId: string, challengeId: string) => {
     const challenge = (platformConfig?.challenges || []).find(c => c.id === challengeId);
     if (!challenge) return;
-    
-    setStudents(currentStudents => currentStudents.map(student => {
-        if(student.id === studentId && student.classId === classId) {
-            const today = new Date().toISOString();
-            const pointsToAdd = challenge.points;
+
+    const pointsToAward = challenge.points;
+    const activeTeacherId = isImpersonating ? 'principal' : teacherId;
+    if (!activeTeacherId) return;
+
+    try {
+        await runDbTransaction(async (transaction) => {
+            const studentRef = doc(db, 'students', `${classId}-${studentId}`);
             
-            const newHistory = [...(student.pointHistory || []), { points: pointsToAdd, date: today, reason: `完成挑戰: ${challenge.name}` }];
-            const updatedStudent = {
-                ...student,
-                points: student.points + pointsToAdd,
+            // Determine the source of funds
+            let fundSourceRef;
+            let fundSourceData;
+
+            if (challenge.scope === 'school') {
+                fundSourceRef = doc(db, 'config', 'main');
+                const configDoc = await transaction.get(fundSourceRef);
+                fundSourceData = configDoc.data() as PlatformConfig;
+                if ((fundSourceData.schoolFunds || 0) < pointsToAward) {
+                    throw new Error("學校總資金不足以發放此挑戰獎勵。");
+                }
+            } else {
+                fundSourceRef = doc(db, 'teachers', challenge.providerId);
+                const teacherDoc = await transaction.get(fundSourceRef);
+                fundSourceData = teacherDoc.data() as Teacher;
+                 if ((fundSourceData.pointBalance || 0) < pointsToAward) {
+                    throw new Error(`老師 ${fundSourceData.name} 的點數餘額不足。`);
+                }
+            }
+            
+            const studentDoc = await transaction.get(studentRef);
+            if (!studentDoc.exists()) {
+                throw new Error("找不到學生資料。");
+            }
+            const studentData = studentDoc.data() as Student;
+
+            // --- All Writes ---
+            // Update fund source
+            if (challenge.scope === 'school') {
+                transaction.update(fundSourceRef, { schoolFunds: (fundSourceData.schoolFunds || 0) - pointsToAward });
+            } else {
+                 transaction.update(fundSourceRef, { pointBalance: (fundSourceData.pointBalance || 0) - pointsToAward });
+            }
+
+            // Update student
+            const today = new Date().toISOString();
+            const newHistory = [...(studentData.pointHistory || []), { points: pointsToAward, date: today, reason: `完成挑戰: ${challenge.name}` }];
+            const updatedChallenges = (studentData.challenges || []).map(c => 
+                c.challengeId === challengeId ? { ...c, status: 'completed' as const, completedDate: today } : c
+            );
+            transaction.update(studentRef, {
+                points: studentData.points + pointsToAward,
                 pointHistory: newHistory,
-                challenges: (student.challenges || []).map(c => 
-                    c.challengeId === challengeId ? { ...c, status: 'completed' as const, completedDate: today } : c
-                )
-            };
-            return updatedStudent;
+                challenges: updatedChallenges,
+            });
+        });
+        
+        // --- Optimistic UI Update ---
+        setStudents(currentStudents => currentStudents.map(student => {
+            if(student.id === studentId && student.classId === classId) {
+                const today = new Date().toISOString();
+                const newHistory = [...(student.pointHistory || []), { points: pointsToAward, date: today, reason: `完成挑戰: ${challenge.name}` }];
+                return {
+                    ...student,
+                    points: student.points + pointsToAward,
+                    pointHistory: newHistory,
+                    challenges: (student.challenges || []).map(c => 
+                        c.challengeId === challengeId ? { ...c, status: 'completed' as const, completedDate: today } : c
+                    )
+                };
+            }
+            return student;
+        }));
+
+        if (challenge.scope === 'school') {
+            setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - pointsToAward });
+        } else {
+            setTeachers(currentTeachers => currentTeachers.map(t =>
+                t.id === challenge.providerId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToAward } : t
+            ));
         }
-        return student;
-    }));
-    
-    toast({ title: "挑戰已批准", description: `已發送 ${challenge.points.toLocaleString()} 點給該學生。` });
+
+        toast({ title: "挑戰已批准", description: `已發送 ${pointsToAward.toLocaleString()} 點給該學生。` });
+
+    } catch (error: any) {
+        console.error("批准挑戰失敗:", error);
+        toast({ title: "操作失敗", description: error.message, variant: "destructive" });
+    }
   };
   
   const handleOpenManageClasses = () => {
@@ -1083,7 +1166,7 @@ export default function TeacherDashboardPage() {
         return {
           ...s,
           points: s.points + totalReturn,
-          pointHistory: [...s.pointHistory, { points: totalReturn, date: new Date().toISOString(), reason: `定存到期結算 #${deposit.id}` }],
+          pointHistory: [...(s.pointHistory || []), { points: totalReturn, date: new Date().toISOString(), reason: `定存到期結算 #${deposit.id}` }],
           fixedDeposits: s.fixedDeposits?.map(d => d.id === deposit.id ? { ...d, status: 'matured' } : d)
         };
       }
@@ -2336,3 +2419,4 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
         </Dialog>
     )
 }
+
