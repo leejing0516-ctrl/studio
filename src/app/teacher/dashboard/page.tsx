@@ -23,7 +23,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Reward, Student, Teacher, Class, Loan, StudentChallenge, FundraisingProject, PlatformConfig } from "@/lib/types";
+import type { Reward, Student, Teacher, Class, Loan, StudentChallenge, FundraisingProject, PlatformConfig, FixedDeposit } from "@/lib/types";
 import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Banknote, ShieldPlus, Coins, Flag, Hourglass, ShieldCheck, Gift, Briefcase, HeartHandshake, LineChart, UserCheck, AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
@@ -42,7 +42,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { AppDataContext } from "@/context/AppDataContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format, formatDistanceToNow, isValid, addDays } from "date-fns";
+import { format, formatDistanceToNow, isValid, addDays, isAfter } from "date-fns";
 import Papa from "papaparse";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
@@ -145,9 +145,7 @@ export default function TeacherDashboardPage() {
   }, [role, classes, selectedClassId]);
 
   const currentTeacher = useMemo(() => {
-    const impersonatorId = localStorage.getItem('impersonator');
-    const activeId = impersonatorId || teacherId;
-    return teachers.find(t => t.id === activeId);
+    return teachers.find(t => t.id === teacherId);
   }, [teachers, teacherId]);
 
   const studentsInView = useMemo(() => {
@@ -233,6 +231,29 @@ export default function TeacherDashboardPage() {
       });
   }, [students, platformConfig?.challenges, role, teacherId, teacherClassIds]);
 
+  const maturedDepositsForSettlement = useMemo(() => {
+    const now = new Date();
+    return students
+      .flatMap(student =>
+        (student.fixedDeposits || [])
+          .filter(
+            deposit =>
+              deposit.status === 'active' &&
+              isAfter(now, new Date(deposit.maturityDate))
+          )
+          .map(deposit => ({ student, deposit }))
+      )
+      .filter(({ student }) => {
+        // Only admins or the student's class teacher can settle
+        if (role === 'admin') return true;
+        if (role === 'teacher') {
+          const teacher = teachers.find(t => t.id === teacherId);
+          return teacher?.classIds.includes(student.classId);
+        }
+        return false;
+      });
+  }, [students, role, teacherId, teachers]);
+
   const handleApproveUsage = (studentId: string, classId: string, redemptionId: string) => {
     
     setStudents(currentStudents => currentStudents.map(s => {
@@ -257,10 +278,9 @@ export default function TeacherDashboardPage() {
         return;
     }
     const isDeducting = pointsToChange < 0;
-    const isTeacherRole = (role === 'teacher' || role === 'subject_teacher');
     
     // Determine the active actor ID (original admin if impersonating)
-    const activeTeacherId = localStorage.getItem('impersonator') || teacherId;
+    const activeTeacherId = isImpersonating ? 'principal' : teacherId;
     const isActingAsAdmin = isImpersonating || role === 'admin';
 
     try {
@@ -280,20 +300,16 @@ export default function TeacherDashboardPage() {
             }
             
             if (isActingAsAdmin) {
-                if (!isDeducting) {
-                    const configDoc = await transaction.get(configRef);
-                    const configData = configDoc.data() as PlatformConfig;
-                    if (!configData || (configData.schoolFunds || 0) < pointsToChange) {
-                        throw new Error("學校總資金不足以發放此次點數。");
-                    }
+                const configDoc = await transaction.get(configRef);
+                const configData = configDoc.data() as PlatformConfig;
+                if (!configData || (configData.schoolFunds || 0) < pointsToChange) {
+                    throw new Error("學校總資金不足以發放此次點數。");
                 }
-            } else { // Is a teacher, not admin, not impersonating
-                if (!isDeducting) {
-                    const teacherDoc = await transaction.get(teacherRef);
-                    const currentTeacherData = teacherDoc?.data() as Teacher;
-                    if (!currentTeacherData || (currentTeacherData.pointBalance || 0) < pointsToChange) {
-                        throw new Error("您的點數餘額不足以發放此次點數。");
-                    }
+            } else { // Is a teacher (homeroom or subject)
+                const teacherDoc = await transaction.get(teacherRef);
+                const currentTeacherData = teacherDoc?.data() as Teacher;
+                if (!isDeducting && (!currentTeacherData || (currentTeacherData.pointBalance || 0) < pointsToChange)) {
+                    throw new Error("您的點數餘額不足以發放此次點數。");
                 }
             }
 
@@ -311,7 +327,7 @@ export default function TeacherDashboardPage() {
 
             // Update student's points and history
             const actionText = isDeducting ? "扣除" : "發放";
-            const reason = `由 ${currentTeacher?.name} ${actionText}`;
+            const reason = `由老師 ${currentTeacher?.name} ${actionText}`;
             const newHistoryEntry = { points: pointsToChange, date: new Date().toISOString(), reason };
 
             transaction.update(studentRef, {
@@ -324,7 +340,7 @@ export default function TeacherDashboardPage() {
         setStudents(currentStudents => currentStudents.map(s => {
             if (s.id === studentId && s.classId === selectedClassId) {
                 const actionText = pointsToChange < 0 ? '扣除' : '發放';
-                const reason = `由 ${currentTeacher?.name} ${actionText}`;
+                const reason = `由老師 ${currentTeacher?.name} ${actionText}`;
                 return {
                     ...s,
                     points: s.points + pointsToChange,
@@ -362,10 +378,9 @@ export default function TeacherDashboardPage() {
 
     const isDeducting = pointsToChange < 0;
     const totalPointsToChange = studentsInView.length * pointsToChange;
-    const isTeacherRole = (role === 'teacher' || role === 'subject_teacher');
     
     // Determine the active actor ID (original admin if impersonating)
-    const activeTeacherId = localStorage.getItem('impersonator') || teacherId;
+    const activeTeacherId = isImpersonating ? 'principal' : teacherId;
     const isActingAsAdmin = isImpersonating || role === 'admin';
     
     try {
@@ -384,12 +399,10 @@ export default function TeacherDashboardPage() {
                     }
                 }
             } else { // Is a teacher
-                if (!isDeducting) {
-                    const teacherDoc = await transaction.get(teacherRef);
-                    const teacherData = teacherDoc?.data() as Teacher;
-                    if (!teacherData || (teacherData.pointBalance || 0) < totalPointsToChange) {
-                        throw new Error(`您的點數餘額不足。需要 ${totalPointsToChange.toLocaleString()} 點。`);
-                    }
+                const teacherDoc = await transaction.get(teacherRef);
+                const teacherData = teacherDoc?.data() as Teacher;
+                if (!isDeducting && (!teacherData || (teacherData.pointBalance || 0) < totalPointsToChange)) {
+                    throw new Error(`您的點數餘額不足。需要 ${totalPointsToChange.toLocaleString()} 點。`);
                 }
             }
 
@@ -408,7 +421,7 @@ export default function TeacherDashboardPage() {
 
             // Update students
             const actionText = isDeducting ? "批次扣除" : "批次發放";
-            const reason = `由 ${currentTeacher?.name} ${actionText}`;
+            const reason = `由老師 ${currentTeacher?.name} ${actionText}`;
             const newHistoryEntry = { points: pointsToChange, date: new Date().toISOString(), reason };
 
             studentDocs.forEach((studentDoc) => {
@@ -433,7 +446,7 @@ export default function TeacherDashboardPage() {
                     return s;
                  }
                  const actionText = pointsToChange < 0 ? "批次扣除" : "批次發放";
-                 const reason = `由 ${currentTeacher?.name} ${actionText}`;
+                 const reason = `由老師 ${currentTeacher?.name} ${actionText}`;
                 return {
                     ...s,
                     points: s.points + pointsToChange,
@@ -1054,6 +1067,32 @@ export default function TeacherDashboardPage() {
     window.location.reload();
   }
 
+  const handleSettleDeposit = (student: Student, deposit: FixedDeposit) => {
+    const interest = Math.floor(deposit.amount * deposit.interestRate * differenceInDays(new Date(deposit.maturityDate), new Date(deposit.startDate)));
+    const totalReturn = deposit.amount + interest;
+
+    if ((platformConfig?.schoolFunds || 0) < totalReturn) {
+      toast({ title: "結算失敗", description: "學校總資金不足以支付本金與利息。", variant: "destructive" });
+      return;
+    }
+
+    setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - totalReturn });
+
+    setStudents(prevStudents => prevStudents.map(s => {
+      if (s.id === student.id && s.classId === student.classId) {
+        return {
+          ...s,
+          points: s.points + totalReturn,
+          pointHistory: [...s.pointHistory, { points: totalReturn, date: new Date().toISOString(), reason: `定存到期結算 #${deposit.id}` }],
+          fixedDeposits: s.fixedDeposits?.map(d => d.id === deposit.id ? { ...d, status: 'matured' } : d)
+        };
+      }
+      return s;
+    }));
+
+    toast({ title: "結算成功", description: `已將 ${totalReturn.toLocaleString()} 點歸還給 ${student.name}。` });
+  };
+
 
   if (isLoading) {
       return (
@@ -1635,6 +1674,48 @@ export default function TeacherDashboardPage() {
                                     </TableRow>
                                 )}
                             </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+                <Card className="lg:col-span-2">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><Banknote /> 定存到期結算</CardTitle>
+                        <CardDescription>手動結算已到期的學生定存，將本金與利息歸還給學生。</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                        <TableHeader>
+                            <TableRow>
+                            <TableHead>學生</TableHead>
+                            <TableHead>存款金額</TableHead>
+                            <TableHead>到期日</TableHead>
+                            <TableHead>應付總額</TableHead>
+                            <TableHead className="text-right">操作</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {maturedDepositsForSettlement.length > 0 ? (
+                            maturedDepositsForSettlement.map(({ student, deposit }) => {
+                                const interest = Math.floor(deposit.amount * deposit.interestRate * differenceInDays(new Date(deposit.maturityDate), new Date(deposit.startDate)));
+                                const totalReturn = deposit.amount + interest;
+                                return (
+                                <TableRow key={deposit.id}>
+                                    <TableCell>{student.name} ({classes.find(c => c.id === student.classId)?.name})</TableCell>
+                                    <TableCell>{deposit.amount.toLocaleString()} 點</TableCell>
+                                    <TableCell>{format(new Date(deposit.maturityDate), 'yyyy-MM-dd')}</TableCell>
+                                    <TableCell className="font-semibold">{totalReturn.toLocaleString()} 點</TableCell>
+                                    <TableCell className="text-right">
+                                    <Button size="sm" onClick={() => handleSettleDeposit(student, deposit)}>結算</Button>
+                                    </TableCell>
+                                </TableRow>
+                                );
+                            })
+                            ) : (
+                            <TableRow>
+                                <TableCell colSpan={5} className="h-24 text-center">目前沒有已到期的定存需要結算。</TableCell>
+                            </TableRow>
+                            )}
+                        </TableBody>
                         </Table>
                     </CardContent>
                 </Card>
