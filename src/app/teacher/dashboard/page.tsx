@@ -253,7 +253,7 @@ export default function TeacherDashboardPage() {
         return;
     }
     const isDeducting = pointsToChange < 0;
-    const isTeacherActing = role === 'teacher' && !isImpersonating;
+    const isTeacherRole = (role === 'teacher' || role === 'subject_teacher') && !isImpersonating;
     const isAdminActing = role === 'admin' && !isImpersonating;
 
     try {
@@ -264,12 +264,12 @@ export default function TeacherDashboardPage() {
 
             // --- 1. All Reads First ---
             const reads: Promise<any>[] = [transaction.get(studentRef)];
-            if (isTeacherActing) reads.push(transaction.get(teacherRef));
+            if (isTeacherRole) reads.push(transaction.get(teacherRef));
             if (isAdminActing) reads.push(transaction.get(configRef));
             const allDocs = await Promise.all(reads);
 
             const studentDoc = allDocs[0];
-            const teacherDoc = isTeacherActing ? allDocs[1] : null;
+            const teacherDoc = isTeacherRole ? allDocs[1] : null;
             const configDoc = isAdminActing ? allDocs[1] : null;
             
             // --- 2. Verification ---
@@ -280,7 +280,7 @@ export default function TeacherDashboardPage() {
                 throw new Error(`${studentData.name} 的點數不足以扣除。`);
             }
             
-            if (isTeacherActing && !isDeducting) {
+            if (isTeacherRole && !isDeducting) {
                 const currentTeacherData = teacherDoc?.data() as Teacher;
                 if (!currentTeacherData || (currentTeacherData.pointBalance || 0) < pointsToChange) {
                     throw new Error("您的點數餘額不足以發放此次點數。");
@@ -289,16 +289,13 @@ export default function TeacherDashboardPage() {
 
             // --- 3. All Writes Last ---
             // Update provider's balance
-            if (isTeacherActing) {
+            if (isTeacherRole) {
                 const currentTeacherData = teacherDoc?.data() as Teacher;
                 transaction.update(teacherRef, { pointBalance: (currentTeacherData.pointBalance || 0) - pointsToChange });
             }
             if (isAdminActing) {
                  const configData = configDoc?.data() as PlatformConfig;
-                 // Admin action modifies school funds, except for deductions which just return to them
-                 if (!isDeducting) {
-                    transaction.update(configRef, { schoolFunds: (configData.schoolFunds || 0) - pointsToChange });
-                 }
+                 transaction.update(configRef, { schoolFunds: (configData.schoolFunds || 0) - pointsToChange });
             }
 
             // Update student's points and history
@@ -326,12 +323,12 @@ export default function TeacherDashboardPage() {
             return s;
         }));
 
-        if (isTeacherActing) {
+        if (isTeacherRole) {
             setTeachers(currentTeachers => currentTeachers.map(t =>
                 t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToChange } : t
             ));
         }
-        if (isAdminActing && !isDeducting) {
+        if (isAdminActing) {
            setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - pointsToChange });
         }
 
@@ -355,7 +352,7 @@ export default function TeacherDashboardPage() {
 
     const isDeducting = pointsToChange < 0;
     const totalPointsToChange = studentsInView.length * pointsToChange;
-    const isTeacherActing = role === 'teacher' && !isImpersonating;
+    const isTeacherRole = (role === 'teacher' || role === 'subject_teacher') && !isImpersonating;
     const isAdminActing = role === 'admin' && !isImpersonating;
     
     try {
@@ -365,19 +362,19 @@ export default function TeacherDashboardPage() {
             
             // --- 1. All Reads First ---
             const reads: Promise<any>[] = [];
-             if (isTeacherActing && !isDeducting) reads.push(transaction.get(teacherRef));
+             if (isTeacherRole && !isDeducting) reads.push(transaction.get(teacherRef));
              if (isAdminActing && !isDeducting) reads.push(transaction.get(configRef));
 
             const studentPromises = studentsInView.map(s => transaction.get(doc(db, 'students', `${s.classId}-${s.id}`)));
             const allDocs = await Promise.all([...reads, ...studentPromises]);
 
             let docIndex = 0;
-            const teacherDoc = isTeacherActing && !isDeducting ? allDocs[docIndex++] : null;
+            const teacherDoc = isTeacherRole && !isDeducting ? allDocs[docIndex++] : null;
             const configDoc = isAdminActing && !isDeducting ? allDocs[docIndex++] : null;
             const studentDocs = allDocs.slice(docIndex);
 
             // --- 2. Verification ---
-            if (isTeacherActing && !isDeducting) {
+            if (isTeacherRole && !isDeducting) {
                 const teacherData = teacherDoc?.data() as Teacher;
                 if (!teacherData || (teacherData.pointBalance || 0) < totalPointsToChange) {
                     throw new Error(`您的點數餘額不足。需要 ${totalPointsToChange.toLocaleString()} 點。`);
@@ -392,13 +389,11 @@ export default function TeacherDashboardPage() {
             }
             
             // --- 3. All Writes Last ---
-             if (isTeacherActing) {
-                // For teachers, deductions are returned to them, so we always update their balance.
+             if (isTeacherRole) {
                 const currentTeacherData = (await transaction.get(teacherRef)).data() as Teacher;
                 transaction.update(teacherRef, { pointBalance: (currentTeacherData.pointBalance || 0) - totalPointsToChange });
             }
-            if (isAdminActing && !isDeducting) {
-                 // For admins, only deduct from school funds when awarding. Deductions don't go anywhere.
+            if (isAdminActing) {
                  const configData = (await transaction.get(configRef)).data() as PlatformConfig;
                  transaction.update(configRef, { schoolFunds: (configData.schoolFunds || 0) - totalPointsToChange });
             }
@@ -439,12 +434,12 @@ export default function TeacherDashboardPage() {
             return s;
         }));
 
-        if (isTeacherActing) {
+        if (isTeacherRole) {
             setTeachers(currentTeachers => currentTeachers.map(t =>
                 t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - totalPointsToChange } : t
             ));
         }
-        if (isAdminActing && !isDeducting) {
+        if (isAdminActing) {
             setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - totalPointsToChange });
         }
 
