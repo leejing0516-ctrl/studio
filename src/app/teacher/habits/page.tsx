@@ -48,7 +48,7 @@ import { Separator } from "@/components/ui/separator";
 const HABIT_DURATION = 21;
 
 export default function TeacherHabitsPage() {
-    const { students, setStudents, classes, isLoading } = useContext(AppDataContext);
+    const { students, setStudents, classes, isLoading, platformConfig, setPlatformConfig } = useContext(AppDataContext);
     const { toast } = useToast();
     const router = useRouter();
 
@@ -156,27 +156,41 @@ export default function TeacherHabitsPage() {
         setRejectionReason("");
     };
     
-    const handleAwardHabitPoints = (studentId: string, classId: string, habit: StudentHabit) => {
-        if (habit.points <= 0) return;
-        
+    const handleAwardHabitPoints = (student: Student, habit: StudentHabit) => {
+        if (!habit || habit.points <= 0) {
+            toast({ title: "無效的操作", description: "該習慣沒有設定有效的獎勵點數。", variant: "destructive" });
+            return;
+        }
+    
+        const pointsToAward = habit.points;
+        const currentSchoolFunds = platformConfig?.schoolFunds || 0;
+    
+        if (currentSchoolFunds < pointsToAward) {
+            toast({ title: "發放失敗", description: "學校總資金不足以支付此習慣獎勵。", variant: "destructive" });
+            return;
+        }
+    
+        // Update local state optimistically
         setStudents(currentStudents => currentStudents.map(s => {
-            if (s.id === studentId && s.classId === classId) {
+            if (s.id === student.id && s.classId === student.classId) {
                 const today = new Date().toISOString();
-                const newHistory = [...(s.pointHistory || []), { points: habit.points, date: today, reason: `完成習慣: ${habit.title}` }];
+                const newHistory = [...(s.pointHistory || []), { points: pointsToAward, date: today, reason: `完成習慣: ${habit.title}` }];
                 
                 return {
                     ...s,
-                    points: s.points + habit.points,
+                    points: s.points + pointsToAward,
                     pointHistory: newHistory,
                     habits: (s.habits || []).map(h => 
                         h.id === habit.id ? { ...h, status: 'completed' as const } : h
                     )
-                }
+                };
             }
             return s;
         }));
         
-        toast({ title: "點數已發放", description: `已發送 ${habit.points} 點給該學生。`});
+        setPlatformConfig({ schoolFunds: currentSchoolFunds - pointsToAward });
+        
+        toast({ title: "點數已發放", description: `已成功為 ${student.name} 的習慣「${habit.title}」發放 ${pointsToAward.toLocaleString()} 點。` });
     }
 
     if (isLoading) {
@@ -282,7 +296,7 @@ export default function TeacherHabitsPage() {
                                                         <Eye className="mr-1 h-4 w-4"/> 查看紀錄
                                                     </Button>
                                                     {isDueForCompletion ? (
-                                                        <Button size="sm" onClick={() => handleAwardHabitPoints(student.id, student.classId, habit)}>
+                                                        <Button size="sm" onClick={() => handleAwardHabitPoints(student, habit)}>
                                                             <Coins className="mr-2" />發放 {habit.points} 點
                                                         </Button>
                                                     ) : habit.status === 'completed' ? (
@@ -356,7 +370,7 @@ export default function TeacherHabitsPage() {
                                             !checkIn.imageUrl && <p className="text-sm text-muted-foreground">這天只留下了打卡紀錄。</p>
                                         )}
                                     </div>
-                                    {index < viewingHabitHistory!.checkIns.length - 1 && <Separator className="mt-6"/>}
+                                    {index < (viewingHabitHistory?.checkIns || []).length - 1 && <Separator className="mt-6"/>}
                                 </div>
                             ))}
                              {viewingHabitHistory?.checkIns.length === 0 && (
