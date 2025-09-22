@@ -672,12 +672,34 @@ export default function TeacherDashboardPage() {
     setIsEditTeacherDialogOpen(true);
   }
   
-  const handleUpdateTeacher = (updatedTeacherData: Partial<Teacher>) => {
+  const handleUpdateTeacher = (updatedTeacherData: Partial<Teacher>, originalId: string) => {
     if (!editingTeacher) return;
-    
+
+    const newId = updatedTeacherData.id || originalId;
+
+    // Update teacher list
     setTeachers(currentTeachers => currentTeachers.map(t => 
-        t.id === editingTeacher.id ? { ...t, ...updatedTeacherData } : t
+        t.id === originalId ? { ...t, ...updatedTeacherData } : t
     ));
+
+    // If ID changed, update related data
+    if (originalId !== newId) {
+        // Update rewards
+        if (rewards) {
+          setRewards(currentRewards => currentRewards.map(r => 
+              r.providerId === originalId ? { ...r, providerId: newId } : r
+          ));
+        }
+
+        // Update challenges
+        if (platformConfig?.challenges) {
+          setPlatformConfig({
+            challenges: platformConfig.challenges.map(c => 
+              c.providerId === originalId ? { ...c, providerId: newId } : c
+            )
+          });
+        }
+    }
 
     setIsEditTeacherDialogOpen(false);
     setEditingTeacher(null);
@@ -685,7 +707,7 @@ export default function TeacherDashboardPage() {
         title: "已更新教師資訊",
         description: "教師資訊已成功更新。"
     });
-  }
+  };
   
   const handleDeleteTeacherClick = (teacher: Teacher) => {
     setTeacherToDelete(teacher);
@@ -2357,13 +2379,15 @@ interface EditTeacherDialogProps {
     teacher: Teacher;
     classes: Class[];
     allTeachers: Teacher[];
-    onSave: (updatedTeacher: Partial<Teacher>) => void;
+    onSave: (updatedTeacher: Partial<Teacher>, originalId: string) => void;
 }
 
 function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers, onSave }: EditTeacherDialogProps) {
+    const [id, setId] = useState(teacher.id);
     const [name, setName] = useState(teacher.name);
     const [currentRole, setCurrentRole] = useState(teacher.role);
     const [currentClassIds, setCurrentClassIds] = useState<string[]>(teacher.classIds || []);
+    const { toast } = useToast();
 
     // Recalculate available classes for homeroom teacher assignment
     const unassignedClasses = useMemo(() => {
@@ -2376,6 +2400,7 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
     // Reset local state when the dialog is opened with a new teacher
     useEffect(() => {
         if (isOpen) {
+            setId(teacher.id);
             setName(teacher.name);
             setCurrentRole(teacher.role);
             setCurrentClassIds(teacher.classIds || []);
@@ -2397,7 +2422,15 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
     };
 
     const handleSaveChanges = () => {
-        onSave({ name, role: currentRole, classIds: currentClassIds });
+        if (id !== teacher.id && allTeachers.some(t => t.id === id)) {
+            toast({
+                title: "ID 已存在",
+                description: `ID "${id}" 已經被其他老師使用。`,
+                variant: "destructive",
+            });
+            return;
+        }
+        onSave({ id, name, role: currentRole, classIds: currentClassIds }, teacher.id);
         onOpenChange(false);
     };
 
@@ -2410,12 +2443,17 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                     <div className="space-y-2">
+                        <Label htmlFor="edit-teacher-id">老師 ID</Label>
+                        <Input id="edit-teacher-id" value={id} onChange={e => setId(e.target.value)} required disabled={teacher.role === 'admin'} />
+                         {teacher.role === 'admin' && <p className="text-xs text-muted-foreground">校長 ID 無法修改。</p>}
+                    </div>
+                    <div className="space-y-2">
                         <Label htmlFor="edit-teacher-name">姓名</Label>
                         <Input id="edit-teacher-name" value={name} onChange={e => setName(e.target.value)} required />
                     </div>
                     <div className="space-y-2">
                         <Label>角色</Label>
-                        <RadioGroup value={currentRole} onValueChange={(newRole) => handleRoleChange(newRole as any)}>
+                        <RadioGroup value={currentRole} onValueChange={(newRole) => handleRoleChange(newRole as any)} disabled={teacher.role === 'admin'}>
                             <div className="flex items-center space-x-2">
                                 <RadioGroupItem value="teacher" id="edit-role-teacher" />
                                 <Label htmlFor="edit-role-teacher">班級導師</Label>
@@ -2481,5 +2519,6 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
 
 
     
+
 
 
