@@ -444,7 +444,7 @@ export default function TeacherDashboardPage() {
             // Update students
             const actionText = isDeducting ? "批次扣除" : "批次發放";
             const reason = `由老師 ${currentTeacher?.name} ${actionText}`;
-            const newHistoryEntry = { points: pointsToChange, date: new Date().toISOString(), reason };
+            const newHistoryEntry = { points: pointsToChange, date: new Date().toISOString(), reason, teacherId: activeTeacherId };
 
             studentDocs.forEach((studentDoc) => {
                 if (studentDoc.exists()) {
@@ -472,7 +472,7 @@ export default function TeacherDashboardPage() {
                 return {
                     ...s,
                     points: s.points + pointsToChange,
-                    pointHistory: [...(s.pointHistory || []), { points: pointsToChange, date: new Date().toISOString(), reason }]
+                    pointHistory: [...(s.pointHistory || []), { points: pointsToChange, date: new Date().toISOString(), reason, teacherId: activeTeacherId }]
                 };
             }
             return s;
@@ -2519,6 +2519,7 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
 
 
     
+
 
 
 
