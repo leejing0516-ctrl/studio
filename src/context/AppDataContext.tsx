@@ -83,7 +83,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       try {
         let q;
         if (collectionName === 'teachers') {
-            q = query(collection(db, collectionName), orderBy('id'));
+            q = query(collection(db, collectionName), orderBy('sortOrder'), orderBy('id'));
         } else {
             q = query(collection(db, collectionName));
         }

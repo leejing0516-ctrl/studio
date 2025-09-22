@@ -152,6 +152,7 @@ export type Teacher = {
     classIds: string[]; // Homeroom teacher will have one, subject teacher can have multiple. Empty for admin/unassigned.
     password?: string; 
     pointBalance?: number;
+    sortOrder?: number;
 }
 
 export type Announcement = {
