@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext, useEffect } from 'react';
+import { useState, useContext, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -28,6 +28,17 @@ export default function HomePage() {
   const { toast } = useToast();
   const { students, classes, teachers, isLoading, loadSensitiveData, seedInitialData, platformConfig } = useContext(AppDataContext);
   const { setStudentData } = useContext(StudentDataContext);
+
+  const sortedTeachers = useMemo(() => {
+    return [...teachers].sort((a, b) => {
+        const orderA = a.sortOrder || 99;
+        const orderB = b.sortOrder || 99;
+        if (orderA !== orderB) {
+            return orderA - orderB;
+        }
+        return a.id.localeCompare(b.id);
+    });
+  }, [teachers]);
 
   const handleStudentLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -228,7 +239,7 @@ export default function HomePage() {
                             <SelectValue placeholder="請選擇您的帳號" />
                         </SelectTrigger>
                         <SelectContent>
-                            {teachers.map(t => (
+                            {sortedTeachers.map(t => (
                                 <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                             ))}
                         </SelectContent>
@@ -281,5 +292,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    

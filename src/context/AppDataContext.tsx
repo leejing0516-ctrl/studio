@@ -81,12 +81,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   // Generic fetch function
   const fetchData = useCallback(async <T,>(collectionName: string): Promise<T[]> => {
       try {
-        let q;
-        if (collectionName === 'teachers') {
-            q = query(collection(db, collectionName), orderBy('sortOrder'), orderBy('id'));
-        } else {
-            q = query(collection(db, collectionName));
-        }
+        const q = query(collection(db, collectionName));
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({ ...doc.data() } as T));
       } catch (error) {
