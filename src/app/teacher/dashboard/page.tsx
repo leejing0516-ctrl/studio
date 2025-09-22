@@ -35,6 +35,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -2518,6 +2519,7 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
 
 
     
+
 
 
 
