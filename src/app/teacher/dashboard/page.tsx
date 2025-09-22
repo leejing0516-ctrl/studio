@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Reward, Student, Teacher, Class, Loan, StudentChallenge, FundraisingProject, PlatformConfig, FixedDeposit, Challenge } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Banknote, ShieldPlus, Coins, Flag, Hourglass, ShieldCheck, Gift, Briefcase, HeartHandshake, LineChart, UserCheck, AlertTriangle } from "lucide-react";
+import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Banknote, ShieldPlus, Coins, Flag, Hourglass, ShieldCheck, Gift, Briefcase, HeartHandshake, LineChart, UserCheck, AlertTriangle, ArrowUpDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -56,7 +56,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { useRouter } from 'next/navigation';
 import { db } from "@/lib/firebase";
-import { doc, deleteDoc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { doc, deleteDoc, getDoc, setDoc, updateDoc, runTransaction } from "firebase/firestore";
 
 
 interface StagedStudent {
@@ -109,6 +109,10 @@ export default function TeacherDashboardPage() {
   // State for Subject Teacher Class Management
   const [isManageClassesDialogOpen, setIsManageClassesDialogOpen] = useState(false);
   const [selectedClassesForSubjectTeacher, setSelectedClassesForSubjectTeacher] = useState<string[]>([]);
+
+  // State for Teacher Table Sorting
+  const [sortKey, setSortKey] = useState<keyof Teacher | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   
 
   const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
@@ -1179,6 +1183,36 @@ export default function TeacherDashboardPage() {
 
     toast({ title: "結算成功", description: `已將 ${totalReturn.toLocaleString()} 點歸還給 ${student.name}。` });
   };
+  
+  const sortedTeachers = useMemo(() => {
+    if (!sortKey) return teachers;
+    return [...teachers].sort((a, b) => {
+        const aValue = a[sortKey];
+        const bValue = b[sortKey];
+
+        if (aValue === undefined || aValue === null) return 1;
+        if (bValue === undefined || bValue === null) return -1;
+
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+            return sortDirection === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+        }
+
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+            return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+        }
+
+        return 0;
+    });
+  }, [teachers, sortKey, sortDirection]);
+  
+  const handleSort = (key: keyof Teacher) => {
+    if (sortKey === key) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDirection('asc');
+    }
+  };
 
 
   if (isLoading) {
@@ -1345,16 +1379,36 @@ export default function TeacherDashboardPage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>ID</TableHead>
-                                <TableHead>姓名</TableHead>
-                                <TableHead>角色</TableHead>
+                                <TableHead>
+                                    <Button variant="ghost" onClick={() => handleSort('id')}>
+                                        ID
+                                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                                    </Button>
+                                </TableHead>
+                                <TableHead>
+                                    <Button variant="ghost" onClick={() => handleSort('name')}>
+                                        姓名
+                                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                                    </Button>
+                                </TableHead>
+                                <TableHead>
+                                     <Button variant="ghost" onClick={() => handleSort('role')}>
+                                        角色
+                                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                                    </Button>
+                                </TableHead>
                                 <TableHead>班級</TableHead>
-                                <TableHead>點數餘額</TableHead>
+                                <TableHead>
+                                    <Button variant="ghost" onClick={() => handleSort('pointBalance')}>
+                                        點數餘額
+                                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                                    </Button>
+                                </TableHead>
                                 <TableHead className="text-right">操作</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {teachers.map(teacher => (
+                            {sortedTeachers.map(teacher => (
                                 <TableRow key={teacher.id}>
                                     <TableCell>{teacher.id}</TableCell>
                                     <TableCell>{teacher.name}</TableCell>
@@ -2427,4 +2481,5 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
 
 
     
+
 
