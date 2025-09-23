@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Reward, Student, Teacher, Class, Loan, StudentChallenge, FundraisingProject, PlatformConfig, FixedDeposit, Challenge, StudentHabit } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Banknote, ShieldPlus, Coins, Flag, Hourglass, ShieldCheck, Gift, Briefcase, HeartHandshake, LineChart, UserCheck, AlertTriangle, ArrowUpDown } from "lucide-react";
+import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Banknote, ShieldPlus, Coins, Flag, Hourglass, ShieldCheck, Gift, Briefcase, HeartHandshake, LineChart, UserCheck, AlertTriangle, ArrowUpDown, History } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -151,11 +151,9 @@ export default function TeacherDashboardPage() {
   const currentTeacher = useMemo(() => {
     // If impersonating, the currentTeacher is the one being impersonated.
     // Otherwise, it's the logged-in teacher.
-    const activeTeacherId = localStorage.getItem('impersonator') ? localStorage.getItem('teacherId') : teacherId;
-    // For display and context, we might want the original admin info if impersonating
-    const displayTeacherId = teacherId;
-    return teachers.find(t => t.id === displayTeacherId);
-  }, [teachers, teacherId]);
+    const activeTeacherId = isImpersonating ? localStorage.getItem('impersonator') : teacherId;
+    return teachers.find(t => t.id === activeTeacherId);
+  }, [teachers, teacherId, isImpersonating]);
 
   const studentsInView = useMemo(() => {
     if (!selectedClassId) return [];
@@ -224,7 +222,7 @@ export default function TeacherDashboardPage() {
   
   const challengeApprovals = useMemo(() => {
       const allChallenges = platformConfig?.challenges || [];
-      const activeTeacherId = isImpersonating ? 'principal' : teacherId;
+      const activeTeacherId = isImpersonating ? localStorage.getItem('impersonator') : teacherId;
 
       return students.flatMap(student =>
           (student.challenges || [])
@@ -242,7 +240,7 @@ export default function TeacherDashboardPage() {
           }
           if (challenge.scope === 'class') {
             // Class challenges can be approved by the providing teacher, regardless of impersonation.
-            return challenge.providerId === teacherId;
+            return challenge.providerId === activeTeacherId;
           }
           return false;
       });
@@ -420,6 +418,18 @@ export default function TeacherDashboardPage() {
 
             const studentPromises = studentsInView.map(s => transaction.get(doc(db, 'students', `${s.classId}-${s.id}`)));
             const studentDocs = await Promise.all(studentPromises);
+            
+            // Verify all students can be deducted from before making any changes
+            if (isDeducting) {
+                for (const studentDoc of studentDocs) {
+                    if (studentDoc.exists()) {
+                        const studentData = studentDoc.data() as Student;
+                        if (studentData.points < Math.abs(pointsToChange)) {
+                            throw new Error(`至少有一位學生的點數不足以進行批次扣除。操作已取消。`);
+                        }
+                    }
+                }
+            }
 
             // --- 2. All Writes Last ---
             // Update provider balance
@@ -439,10 +449,6 @@ export default function TeacherDashboardPage() {
             studentDocs.forEach((studentDoc) => {
                 if (studentDoc.exists()) {
                     const studentData = studentDoc.data() as Student;
-                     if (isDeducting && studentData.points < Math.abs(pointsToChange)) {
-                        console.warn(`Skipping ${studentData.name} due to insufficient points.`);
-                        return;
-                    }
                     transaction.update(studentDoc.ref, {
                         points: studentData.points + pointsToChange,
                         pointHistory: [...(studentData.pointHistory || []), newHistoryEntry]
@@ -454,9 +460,6 @@ export default function TeacherDashboardPage() {
         // --- 3. Optimistically update local state after successful transaction ---
         setStudents(currentStudents => currentStudents.map(s => {
             if (s.classId === selectedClassId) {
-                 if (isDeducting && s.points < Math.abs(pointsToChange)) {
-                    return s;
-                 }
                  const actionText = pointsToChange < 0 ? "批次扣除" : "批次發放";
                  const reason = `由老師 ${currentTeacher?.name} ${actionText}`;
                 return {
@@ -1295,12 +1298,13 @@ export default function TeacherDashboardPage() {
         )}
     </div>
     <Tabs defaultValue={role === 'subject_teacher' ? 'classes' : 'students'} className="animate-in fade-in-0 duration-500">
-        <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-3' : (role === 'teacher' ? 'grid-cols-3' : 'grid-cols-2')}`}>
+        <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-4' : (role === 'teacher' ? 'grid-cols-3' : 'grid-cols-3')}`}>
             {role !== 'subject_teacher' && <TabsTrigger value="students">學生管理</TabsTrigger>}
             {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
             {role === 'subject_teacher' && <TabsTrigger value="classes">班級管理</TabsTrigger>}
             <TabsTrigger value="points">發送點數</TabsTrigger>
             {(role === 'admin' || role === 'teacher') && <TabsTrigger value="approvals">審核中心</TabsTrigger>}
+             {(role === 'admin' || role === 'subject_teacher') && <TabsTrigger value="history">點數歷史</TabsTrigger>}
         </TabsList>
 
       
@@ -1873,6 +1877,58 @@ export default function TeacherDashboardPage() {
                     </CardContent>
                 </Card>
             </div>
+        </TabsContent>
+      )}
+
+      {(role === 'admin' || role === 'subject_teacher') && (
+        <TabsContent value="history" className="mt-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>點數發放歷史查詢</CardTitle>
+                    <CardDescription>查詢您在各個班級發放給學生的點數總額。</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex flex-wrap gap-4 mb-4">
+                        {role === 'admin' && (
+                            <div className="flex-1 min-w-[200px] space-y-2">
+                                <Label htmlFor="teacher-select">選擇老師</Label>
+                                <Select onValueChange={(teacherId) => {
+                                    setSelectedTeacherId(teacherId);
+                                    const teacher = teachers.find(t => t.id === teacherId);
+                                    if (teacher && teacher.classIds.length > 0) {
+                                        setSelectedClassId(teacher.classIds[0]);
+                                    } else {
+                                        setSelectedClassId(classes[0]?.id || '');
+                                    }
+                                }}>
+                                    <SelectTrigger id="teacher-select">
+                                        <SelectValue placeholder="請選擇一位老師" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {teachers.filter(t => t.role !== 'teacher').map(t => (
+                                            <SelectItem key={t.id} value={t.id}>{t.name} ({roleNameMapping[t.role]})</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+                        <div className="flex-1 min-w-[200px] space-y-2">
+                            <Label htmlFor="class-select-history">選擇班級</Label>
+                            <Select onValueChange={setSelectedClassId} value={selectedClassId} disabled={!selectedTeacherId}>
+                                <SelectTrigger id="class-select-history">
+                                    <SelectValue placeholder="請選擇班級" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {classes.map(c => (
+                                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    {/* The history table will go here */}
+                </CardContent>
+            </Card>
         </TabsContent>
       )}
 
@@ -2505,14 +2561,4 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
         </Dialog>
     )
 }
-
-
-
-    
-
-
-
-
-
-
 
