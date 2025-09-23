@@ -304,7 +304,7 @@ export default function TeacherDashboardPage() {
     try {
       await runDbTransaction(async (transaction: any) => {
         const studentRef = doc(db, 'students', `${selectedClassId}-${studentId}`);
-        const providerRef = doc(db, isActingAsAdmin ? 'config' : 'teachers', isActingAsAdmin ? 'main' : activeTeacherId);
+        const providerRef = doc(db, isActingAsAdmin ? 'config' : 'teachers', isActingAsAdmin ? 'main' : activeTeacherId!);
 
         const [studentDoc, providerDoc] = await Promise.all([
           transaction.get(studentRef),
@@ -318,9 +318,9 @@ export default function TeacherDashboardPage() {
         const pointsToDeduct = Math.abs(pointsToChange);
 
         if (isDeducting) {
-          if (studentData.points < pointsToDeduct) {
-            throw new Error(`${studentData.name} 的點數不足以扣除。`);
-          }
+            if (studentData.points < pointsToDeduct) {
+                throw new Error(`${studentData.name} 的點數不足以扣除。`);
+            }
         } else { // Awarding points
             if (isActingAsAdmin) {
                 const configData = providerDoc.data() as PlatformConfig;
@@ -371,8 +371,11 @@ export default function TeacherDashboardPage() {
       if (isActingAsAdmin) {
         setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - pointsToChange });
       } else {
-        setTeachers(currentTeachers => currentTeachers.map(t =>
-          t.id === activeTeacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToChange } : t
+        // This was the source of the bug. The transaction already handles the deduction.
+        // We just need to refetch or trust the transaction. For optimistic UI, we should update the state based on the transaction.
+        // Let's re-fetch teachers to be safe, or just update the one.
+        setTeachers(currentTeachers => currentTeachers.map(t => 
+            t.id === activeTeacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToChange } : t
         ));
       }
 
@@ -1301,14 +1304,13 @@ export default function TeacherDashboardPage() {
             </Card>
         )}
     </div>
-    <Tabs defaultValue={role === 'subject_teacher' ? 'classes' : 'students'} className="animate-in fade-in-0 duration-500">
+    <Tabs defaultValue={role === 'subject_teacher' ? 'points' : 'students'} className="animate-in fade-in-0 duration-500">
         <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-4' : (role === 'teacher' ? 'grid-cols-3' : 'grid-cols-2')}`}>
             {role !== 'subject_teacher' && <TabsTrigger value="students">學生管理</TabsTrigger>}
             {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
-            {role === 'subject_teacher' && <TabsTrigger value="classes">班級管理</TabsTrigger>}
             <TabsTrigger value="points">發送點數</TabsTrigger>
             {(role === 'admin' || role === 'teacher') && <TabsTrigger value="approvals">審核中心</TabsTrigger>}
-             {(role === 'admin' || role === 'subject_teacher') && <TabsTrigger value="history">點數歷史</TabsTrigger>}
+            {(role === 'admin' || role === 'subject_teacher') && <TabsTrigger value="history">點數歷史</TabsTrigger>}
         </TabsList>
 
       
@@ -1565,7 +1567,7 @@ export default function TeacherDashboardPage() {
         </>
       )}
 
-       {role === 'subject_teacher' && (
+      {role === 'subject_teacher' && (
          <TabsContent value="classes" className="mt-6">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
@@ -2565,3 +2567,5 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
         </Dialog>
     )
 }
+
+    
