@@ -58,6 +58,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Separator } from "@/components/ui/separator";
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 export default function StudentLayout({
   children,
@@ -199,21 +200,27 @@ export default function StudentLayout({
     { href: "/loans", label: "信用貸款", icon: Landmark },
   ];
   
-  const pointHistory = student?.pointHistory?.filter(r => r.points > 0).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
+  const pointHistory = student?.pointHistory?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
 
   if (!student) {
       return null; // Or a loading spinner, as the useEffect will redirect
   }
   
   const NotificationItem = ({ record }: { record: PointRecord }) => {
-    const teacherName = record.reason?.match(/由老師 (.*?) (發放|批次發放)/)?.[1] || record.reason;
+    const isPositive = record.points > 0;
+    const actionText = isPositive ? '發送了' : '扣除了';
+    const amountText = isPositive ? `+${record.points.toLocaleString()}` : record.points.toLocaleString();
+    const textColor = isPositive ? 'text-green-600' : 'text-red-500';
+
+    const teacherName = record.reason?.match(/由老師 (.*?) (發放|批次發放|扣除|批次扣除)/)?.[1] || record.reason;
+    
     return (
         <div className="flex items-start gap-3">
             <Mail className="mt-1 h-4 w-4 text-muted-foreground shrink-0" />
             <div className="text-sm">
                 <p>
                     <span className="font-semibold">{teacherName}</span> 
-                    {' '}發送了 <span className="font-bold text-primary">{record.points.toLocaleString()}</span> 點給你
+                    {' '}{actionText} <span className={cn("font-bold", textColor)}>{amountText}</span> 點
                 </p>
                 <p className="text-xs text-muted-foreground">
                     {formatDistanceToNow(new Date(record.date), { addSuffix: true, locale: zhTW })}
@@ -307,13 +314,13 @@ export default function StudentLayout({
                         <div className="space-y-2">
                           <h4 className="font-medium leading-none">簡訊通知</h4>
                           <p className="text-sm text-muted-foreground">
-                            您最近的點數入帳紀錄。
+                            您最近的點數變動紀錄。
                           </p>
                         </div>
                         <Separator />
                         <div className="grid gap-4 max-h-96 overflow-y-auto pr-2">
                             {pointHistory.length > 0 ? (
-                                pointHistory.map(record => <NotificationItem key={`${record.date}-${record.points}`} record={record} />)
+                                pointHistory.slice(0, 10).map(record => <NotificationItem key={`${record.date}-${record.reason}-${record.points}`} record={record} />)
                             ) : (
                                 <p className="text-sm text-center text-muted-foreground py-4">沒有新的通知。</p>
                             )}
