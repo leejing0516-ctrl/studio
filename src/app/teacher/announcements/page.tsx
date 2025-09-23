@@ -72,7 +72,7 @@ export default function TeacherAnnouncementsPage() {
             setTeacherClassIds(ids);
             if (ids.length > 0) {
                 setSelectedClassId(ids[0]);
-                if (storedRole === 'teacher') {
+                if (storedRole === 'teacher' || storedRole === 'subject_teacher') {
                     setAnnouncementType('class');
                 }
             }
@@ -299,7 +299,7 @@ export default function TeacherAnnouncementsPage() {
                         </Card>
                     </TabsContent>
                 </Tabs>
-            ) : (
+            ) : role === 'teacher' || role === 'subject_teacher' ? (
                 <div className="space-y-8">
                     <Card>
                         <CardHeader>
@@ -350,7 +350,7 @@ export default function TeacherAnnouncementsPage() {
                         </CardContent>
                     </Card>
                 </div>
-            )}
+            ) : null}
 
             {/* Dialogs for Announcements */}
             <Dialog open={isAddAnnouncementDialogOpen} onOpenChange={setIsAddAnnouncementDialogOpen}>
