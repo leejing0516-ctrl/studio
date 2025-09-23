@@ -23,7 +23,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Reward, Student, Teacher, Class, Loan, StudentChallenge, FundraisingProject, PlatformConfig, FixedDeposit, Challenge } from "@/lib/types";
+import type { Reward, Student, Teacher, Class, Loan, StudentChallenge, FundraisingProject, PlatformConfig, FixedDeposit, Challenge, StudentHabit } from "@/lib/types";
 import { PlusCircle, Edit, Trash2, KeyRound, Check, X, Upload, Download, Loader2, Users, Banknote, ShieldPlus, Coins, Flag, Hourglass, ShieldCheck, Gift, Briefcase, HeartHandshake, LineChart, UserCheck, AlertTriangle, ArrowUpDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
@@ -319,16 +319,6 @@ export default function TeacherDashboardPage() {
           if (studentData.points < pointsToDeduct) {
             throw new Error(`${studentData.name} 的點數不足以扣除。`);
           }
-          
-          // New check: Can this teacher deduct this amount?
-          const netPointsGivenByTeacher = (studentData.pointHistory || [])
-            .filter(record => record.teacherId === activeTeacherId)
-            .reduce((acc, record) => acc + record.points, 0);
-
-          if (pointsToDeduct > netPointsGivenByTeacher) {
-            throw new Error(`扣除失敗，您最多只能扣除您曾發放的點數餘額：${netPointsGivenByTeacher.toLocaleString()} 點。`);
-          }
-
         } else { // Awarding points
             if (isActingAsAdmin) {
                 const configData = providerDoc.data() as PlatformConfig;
@@ -2519,6 +2509,7 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
 
 
     
+
 
 
 
