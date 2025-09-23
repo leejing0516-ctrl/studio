@@ -371,10 +371,7 @@ export default function TeacherDashboardPage() {
       if (isActingAsAdmin) {
         setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - pointsToChange });
       } else {
-        // This was the source of the bug. The transaction already handles the deduction.
-        // We just need to refetch or trust the transaction. For optimistic UI, we should update the state based on the transaction.
-        // Let's re-fetch teachers to be safe, or just update the one.
-        setTeachers(currentTeachers => currentTeachers.map(t => 
+         setTeachers(currentTeachers => currentTeachers.map(t => 
             t.id === activeTeacherId ? { ...t, pointBalance: (t.pointBalance || 0) - pointsToChange } : t
         ));
       }
@@ -1305,12 +1302,11 @@ export default function TeacherDashboardPage() {
         )}
     </div>
     <Tabs defaultValue={role === 'subject_teacher' ? 'points' : 'students'} className="animate-in fade-in-0 duration-500">
-        <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-4' : (role === 'teacher' ? 'grid-cols-3' : 'grid-cols-2')}`}>
+        <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-3' : (role === 'teacher' ? 'grid-cols-3' : 'grid-cols-2')}`}>
             {role !== 'subject_teacher' && <TabsTrigger value="students">學生管理</TabsTrigger>}
             {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
             <TabsTrigger value="points">發送點數</TabsTrigger>
             {(role === 'admin' || role === 'teacher') && <TabsTrigger value="approvals">審核中心</TabsTrigger>}
-            {(role === 'admin' || role === 'subject_teacher') && <TabsTrigger value="history">點數歷史</TabsTrigger>}
         </TabsList>
 
       
@@ -1566,50 +1562,6 @@ export default function TeacherDashboardPage() {
         </TabsContent>
         </>
       )}
-
-      {role === 'subject_teacher' && (
-         <TabsContent value="classes" className="mt-6">
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                        <CardTitle>我的任教班級</CardTitle>
-                        <CardDescription>新增或移除您任教的班級。</CardDescription>
-                    </div>
-                    <Button onClick={handleOpenManageClasses}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        新增/管理班級
-                    </Button>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>班級 ID</TableHead>
-                                <TableHead>班級名稱</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                           {teacherClassIds.length > 0 ? teacherClassIds.map(classId => {
-                                const classInfo = classes.find(c => c.id === classId);
-                                return (
-                                    <TableRow key={classId}>
-                                        <TableCell>{classInfo?.id}</TableCell>
-                                        <TableCell>{classInfo?.name}</TableCell>
-                                    </TableRow>
-                                );
-                           }) : (
-                                <TableRow>
-                                    <TableCell colSpan={2} className="h-24 text-center">
-                                        您目前沒有設定任何任教班級。
-                                    </TableCell>
-                                </TableRow>
-                           )}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
-         </TabsContent>
-       )}
       
       <TabsContent value="points" className="mt-6">
         <Card>
@@ -1883,58 +1835,6 @@ export default function TeacherDashboardPage() {
                     </CardContent>
                 </Card>
             </div>
-        </TabsContent>
-      )}
-
-      {(role === 'admin' || role === 'subject_teacher') && (
-        <TabsContent value="history" className="mt-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>點數發放歷史查詢</CardTitle>
-                    <CardDescription>查詢您在各個班級發放給學生的點數總額。</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex flex-wrap gap-4 mb-4">
-                        {role === 'admin' && (
-                            <div className="flex-1 min-w-[200px] space-y-2">
-                                <Label htmlFor="teacher-select">選擇老師</Label>
-                                <Select onValueChange={(teacherId) => {
-                                    setSelectedTeacherId(teacherId);
-                                    const teacher = teachers.find(t => t.id === teacherId);
-                                    if (teacher && teacher.classIds.length > 0) {
-                                        setSelectedClassId(teacher.classIds[0]);
-                                    } else {
-                                        setSelectedClassId(classes[0]?.id || '');
-                                    }
-                                }}>
-                                    <SelectTrigger id="teacher-select">
-                                        <SelectValue placeholder="請選擇一位老師" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {teachers.filter(t => t.role !== 'teacher').map(t => (
-                                            <SelectItem key={t.id} value={t.id}>{t.name} ({roleNameMapping[t.role]})</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
-                        <div className="flex-1 min-w-[200px] space-y-2">
-                            <Label htmlFor="class-select-history">選擇班級</Label>
-                            <Select onValueChange={setSelectedClassId} value={selectedClassId} disabled={!selectedTeacherId}>
-                                <SelectTrigger id="class-select-history">
-                                    <SelectValue placeholder="請選擇班級" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {classes.map(c => (
-                                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                    {/* The history table will go here */}
-                </CardContent>
-            </Card>
         </TabsContent>
       )}
 
