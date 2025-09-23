@@ -52,6 +52,8 @@ export default function TeacherAnnouncementsPage() {
     const { toast } = useToast();
 
     const [role, setRole] = useState<string | null>(null);
+    const [teacherId, setTeacherId] = useState<string>('');
+    const [teacherName, setTeacherName] = useState<string>('');
     const [teacherClassIds, setTeacherClassIds] = useState<string[]>([]);
     const [selectedClassId, setSelectedClassId] = useState<string>('');
     
@@ -65,8 +67,12 @@ export default function TeacherAnnouncementsPage() {
 
     useEffect(() => {
         const storedRole = localStorage.getItem('teacherRole');
+        const storedTeacherId = localStorage.getItem('teacherId');
+        const storedTeacherName = localStorage.getItem('teacherName');
         const storedClassIdsStr = localStorage.getItem('teacherClassIds');
         setRole(storedRole);
+        setTeacherId(storedTeacherId || '');
+        setTeacherName(storedTeacherName || '');
         if (storedClassIdsStr && storedClassIdsStr !== 'undefined') {
             const ids = JSON.parse(storedClassIdsStr);
             setTeacherClassIds(ids);
@@ -98,11 +104,18 @@ export default function TeacherAnnouncementsPage() {
         const title = formData.get("title") as string;
         const content = formData.get("content") as string;
 
+        if (!teacherId || !teacherName) {
+            toast({ title: "無法發布", description: "無法獲取您的教師資訊，請重新登入。", variant: "destructive" });
+            return;
+        }
+
         const newAnnouncement: Announcement = {
             id: `announcement-${Date.now()}`,
             title,
             content,
             date: new Date().toISOString(),
+            teacherId: teacherId,
+            teacherName: teacherName,
         };
         
         if (announcementType === 'school') {
@@ -197,15 +210,17 @@ export default function TeacherAnnouncementsPage() {
          <Table>
             <TableHeader>
                 <TableRow>
-                    <TableHead className="w-[200px]">發布日期</TableHead>
+                    <TableHead className="w-[150px]">發布日期</TableHead>
+                    <TableHead className="w-[120px]">發布人</TableHead>
                     <TableHead>標題</TableHead>
-                    {!isReadOnly && <TableHead className="text-right">操作</TableHead>}
+                    {!isReadOnly && <TableHead className="text-right w-[120px]">操作</TableHead>}
                 </TableRow>
             </TableHeader>
             <TableBody>
                 {announcements.length > 0 ? announcements.map((ann) => (
                 <TableRow key={ann.id}>
                     <TableCell>{format(new Date(ann.date), "yyyy-MM-dd HH:mm")}</TableCell>
+                    <TableCell>{ann.teacherName}</TableCell>
                     <TableCell>{ann.title}</TableCell>
                     {!isReadOnly && (
                         <TableCell className="text-right">
@@ -236,22 +251,25 @@ export default function TeacherAnnouncementsPage() {
                 </TableRow>
                 )) : (
                     <TableRow>
-                        <TableCell colSpan={isReadOnly ? 2 : 3} className="h-24 text-center">目前沒有公告。</TableCell>
+                        <TableCell colSpan={isReadOnly ? 3 : 4} className="h-24 text-center">目前沒有公告。</TableCell>
                     </TableRow>
                 )}
             </TableBody>
         </Table>
     );
 
-    const AnnouncementList = ({ announcements }: { announcements: any[] }) => (
+    const AnnouncementList = ({ announcements }: { announcements: Announcement[] }) => (
         <div className="space-y-6">
-            {announcements.map((ann, index) => (
+            {announcements.map((ann) => (
                 <div key={ann.id} className="border-b pb-4 last:border-b-0 last:pb-0">
                     <div className="flex justify-between items-baseline mb-1">
                         <h3 className="font-semibold text-base">{ann.title}</h3>
-                        <span className="text-xs text-muted-foreground ml-4 whitespace-nowrap">{format(new Date(ann.date), "yyyy-MM-dd")}</span>
+                        <div className="text-xs text-muted-foreground ml-4 whitespace-nowrap text-right">
+                            <p>{ann.teacherName}</p>
+                            <p>{format(new Date(ann.date), "yyyy-MM-dd")}</p>
+                        </div>
                     </div>
-                    <p className="text-sm text-muted-foreground">{ann.content}</p>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{ann.content}</p>
                 </div>
             ))}
         </div>

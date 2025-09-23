@@ -8,16 +8,20 @@ import { format } from "date-fns";
 import { AppDataContext } from "@/context/AppDataContext";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { Separator } from "@/components/ui/separator";
+import type { Announcement } from "@/lib/types";
 
-const AnnouncementList = ({ announcements }: { announcements: any[] }) => (
+const AnnouncementList = ({ announcements }: { announcements: Announcement[] }) => (
     <div className="space-y-6">
-        {announcements.map((ann, index) => (
+        {announcements.map((ann) => (
             <div key={ann.id} className="border-b pb-4 last:border-b-0 last:pb-0">
                 <div className="flex justify-between items-baseline mb-1">
                     <h3 className="font-semibold text-base">{ann.title}</h3>
-                    <span className="text-xs text-muted-foreground ml-4 whitespace-nowrap">{format(new Date(ann.date), "yyyy-MM-dd")}</span>
+                    <div className="text-xs text-muted-foreground ml-4 whitespace-nowrap text-right">
+                        <p>{ann.teacherName}</p>
+                        <p>{format(new Date(ann.date), "yyyy-MM-dd")}</p>
+                    </div>
                 </div>
-                <p className="text-sm text-muted-foreground">{ann.content}</p>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{ann.content}</p>
             </div>
         ))}
     </div>

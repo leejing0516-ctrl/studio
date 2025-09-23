@@ -160,6 +160,8 @@ export type Announcement = {
     title: string;
     content: string;
     date: string; // ISO date string
+    teacherId: string;
+    teacherName: string;
 };
 
 export type PlatformConfig = {
