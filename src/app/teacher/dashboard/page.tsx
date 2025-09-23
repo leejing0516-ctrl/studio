@@ -85,6 +85,10 @@ export default function TeacherDashboardPage() {
   const [teacherClassIds, setTeacherClassIds] = useState<string[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [isImpersonating, setIsImpersonating] = useState(false);
+  
+  // For admin to select a teacher in history view
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
+
 
   // States for CSV import
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -1298,7 +1302,7 @@ export default function TeacherDashboardPage() {
         )}
     </div>
     <Tabs defaultValue={role === 'subject_teacher' ? 'classes' : 'students'} className="animate-in fade-in-0 duration-500">
-        <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-4' : (role === 'teacher' ? 'grid-cols-3' : 'grid-cols-3')}`}>
+        <TabsList className={`grid w-full ${role === 'admin' ? 'grid-cols-4' : (role === 'teacher' ? 'grid-cols-3' : 'grid-cols-2')}`}>
             {role !== 'subject_teacher' && <TabsTrigger value="students">學生管理</TabsTrigger>}
             {role === 'admin' && <TabsTrigger value="teachers">教師管理</TabsTrigger>}
             {role === 'subject_teacher' && <TabsTrigger value="classes">班級管理</TabsTrigger>}
@@ -2561,4 +2565,3 @@ function EditTeacherDialog({ isOpen, onOpenChange, teacher, classes, allTeachers
         </Dialog>
     )
 }
-
