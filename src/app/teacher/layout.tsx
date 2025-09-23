@@ -185,8 +185,7 @@ export default function TeacherLayout({
 
   const navItems = [
     { href: "/teacher/dashboard", label: "班級與點數管理", icon: LayoutDashboard, roles: ['admin', 'teacher', 'subject_teacher'] },
-    { href: "/teacher/point-history", label: "點數歷史", icon: History, roles: ['admin', 'subject_teacher'] },
-    { href: "/teacher/announcements", label: "公告管理", icon: Megaphone, roles: ['admin', 'teacher'] },
+    { href: "/teacher/announcements", label: "公告管理", icon: Megaphone, roles: ['admin', 'teacher', 'subject_teacher'] },
     { href: "/teacher/rewards", label: "獎勵管理", icon: Gift, roles: ['admin', 'teacher'] },
     { href: "/teacher/challenges", label: "挑戰管理", icon: Flag, roles: ['admin', 'teacher'] },
     { href: "/teacher/habits", label: "習慣審核", icon: Repeat, roles: ['admin', 'teacher'] },
