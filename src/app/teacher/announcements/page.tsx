@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Teacher, Class, Announcement } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, Loader2, School, GraduationCap } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Loader2, School, GraduationCap, Megaphone } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -40,6 +40,8 @@ import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
+import { Separator } from "@/components/ui/separator";
+
 
 export default function TeacherAnnouncementsPage() {
     const { 
@@ -191,13 +193,13 @@ export default function TeacherAnnouncementsPage() {
         )
     }
 
-    const AnnouncementTable = ({ announcements, type }: { announcements: Announcement[], type: 'school' | 'class' }) => (
+    const AnnouncementTable = ({ announcements, type, isReadOnly = false }: { announcements: Announcement[], type: 'school' | 'class', isReadOnly?: boolean }) => (
          <Table>
             <TableHeader>
                 <TableRow>
                     <TableHead className="w-[200px]">發布日期</TableHead>
                     <TableHead>標題</TableHead>
-                    <TableHead className="text-right">操作</TableHead>
+                    {!isReadOnly && <TableHead className="text-right">操作</TableHead>}
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -205,38 +207,54 @@ export default function TeacherAnnouncementsPage() {
                 <TableRow key={ann.id}>
                     <TableCell>{format(new Date(ann.date), "yyyy-MM-dd HH:mm")}</TableCell>
                     <TableCell>{ann.title}</TableCell>
-                    <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleEditAnnouncementClick(ann, type)}>
-                            <Edit className="h-4 w-4" />
-                        </Button>
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteAnnouncementClick(ann, type)}>
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        您確定要刪除公告「{ann.title}」嗎？此操作無法復原。
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>取消</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleConfirmDeleteAnnouncement()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    </TableCell>
+                    {!isReadOnly && (
+                        <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleEditAnnouncementClick(ann, type)}>
+                                <Edit className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteAnnouncementClick(ann, type)}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            您確定要刪除公告「{ann.title}」嗎？此操作無法復原。
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>取消</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleConfirmDeleteAnnouncement()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </TableCell>
+                    )}
                 </TableRow>
                 )) : (
                     <TableRow>
-                        <TableCell colSpan={3} className="h-24 text-center">目前沒有公告。</TableCell>
+                        <TableCell colSpan={isReadOnly ? 2 : 3} className="h-24 text-center">目前沒有公告。</TableCell>
                     </TableRow>
                 )}
             </TableBody>
         </Table>
+    );
+
+    const AnnouncementList = ({ announcements }: { announcements: any[] }) => (
+        <div className="space-y-6">
+            {announcements.map((ann, index) => (
+                <div key={ann.id} className="border-b pb-4 last:border-b-0 last:pb-0">
+                    <div className="flex justify-between items-baseline mb-1">
+                        <h3 className="font-semibold text-base">{ann.title}</h3>
+                        <span className="text-xs text-muted-foreground ml-4 whitespace-nowrap">{format(new Date(ann.date), "yyyy-MM-dd")}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{ann.content}</p>
+                </div>
+            ))}
+        </div>
     );
 
     return (
@@ -274,7 +292,7 @@ export default function TeacherAnnouncementsPage() {
                                 {classes.map(c => (
                                     <div key={c.id} className="mb-6">
                                         <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><GraduationCap /> {c.name}</h3>
-                                        <AnnouncementTable announcements={c.announcements || []} type="class" />
+                                        <AnnouncementTable announcements={c.announcements || []} type="class" isReadOnly />
                                     </div>
                                 ))}
                             </CardContent>
@@ -282,35 +300,56 @@ export default function TeacherAnnouncementsPage() {
                     </TabsContent>
                 </Tabs>
             ) : (
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <div>
-                            <CardTitle>班級公告管理</CardTitle>
-                            <CardDescription>為您選擇的班級新增、編輯或刪除公告。</CardDescription>
-                        </div>
-                        <Button onClick={() => { setAnnouncementType('class'); setIsAddAnnouncementDialogOpen(true); }} disabled={!selectedClassId}>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            新增班級公告
-                        </Button>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="mb-4">
-                            <Label htmlFor="class-select">選擇班級</Label>
-                             <Select onValueChange={setSelectedClassId} value={selectedClassId}>
-                                <SelectTrigger id="class-select" className="w-full md:w-[280px]">
-                                    <SelectValue placeholder="請選擇班級" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {teacherClassIds.map(id => {
-                                        const classInfo = classes.find(c => c.id === id);
-                                        return classInfo ? <SelectItem key={id} value={id}>{classInfo.name}</SelectItem> : null
-                                    })}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <AnnouncementTable announcements={classAnnouncements} type="class" />
-                    </CardContent>
-                </Card>
+                <div className="space-y-8">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Megaphone />
+                                學校公告
+                            </CardTitle>
+                            <CardDescription>來自學校的最新消息與活動。</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {schoolAnnouncements.length > 0 ? (
+                                <AnnouncementList announcements={schoolAnnouncements} />
+                            ) : (
+                                <p className="text-muted-foreground text-center py-8">目前沒有學校公告。</p>
+                            )}
+                        </CardContent>
+                    </Card>
+        
+                    <Separator />
+        
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle className="flex items-center gap-2"><GraduationCap/>班級公告管理</CardTitle>
+                                <CardDescription>為您選擇的班級新增、編輯或刪除公告。</CardDescription>
+                            </div>
+                            <Button onClick={() => { setAnnouncementType('class'); setIsAddAnnouncementDialogOpen(true); }} disabled={!selectedClassId}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                新增班級公告
+                            </Button>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="mb-4">
+                                <Label htmlFor="class-select">選擇班級</Label>
+                                 <Select onValueChange={setSelectedClassId} value={selectedClassId}>
+                                    <SelectTrigger id="class-select" className="w-full md:w-[280px]">
+                                        <SelectValue placeholder="請選擇班級" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {teacherClassIds.map(id => {
+                                            const classInfo = classes.find(c => c.id === id);
+                                            return classInfo ? <SelectItem key={id} value={id}>{classInfo.name}</SelectItem> : null
+                                        })}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <AnnouncementTable announcements={classAnnouncements} type="class" />
+                        </CardContent>
+                    </Card>
+                </div>
             )}
 
             {/* Dialogs for Announcements */}
@@ -379,7 +418,3 @@ export default function TeacherAnnouncementsPage() {
         </div>
     )
 }
-
-    
-
-    
