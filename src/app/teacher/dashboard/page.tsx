@@ -620,7 +620,7 @@ export default function TeacherDashboardPage() {
 
         toast({
             title: `批次${operationText}完成`,
-            description: `已為全班學生${operationText} ${Math.abs(batchPoints)} 點。`
+            description: `已為全班學生${operationText} ${Math.abs(Number(batchPoints))} 點。`
         });
         
         setIsBatchProcessing(false);
@@ -1587,3 +1587,5 @@ export default function TeacherDashboardPage() {
         </div>
     )
 }
+
+    
