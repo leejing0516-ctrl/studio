@@ -93,7 +93,6 @@ export default function TeacherDashboardPage() {
     const [classToDelete, setClassToDelete] = useState<Class | null>(null);
 
     // Batch operation states
-    const [batchOperation, setBatchOperation] = useState<'award' | 'deduct'>('award');
     const [batchPoints, setBatchPoints] = useState<number | ''>('');
     const [isBatchProcessing, setIsBatchProcessing] = useState(false);
     
@@ -244,7 +243,7 @@ export default function TeacherDashboardPage() {
         setIsAddStudentDialogOpen(false);
         toast({
             title: "學生已新增",
-            description: `${newStudent.name} 已被加入 ${selectedClassId} 班。`
+            description: `${newStudent.name} 已被加入 ${classes.find(c=>c.id === selectedClassId)?.name} 班。`
         });
     };
 
@@ -531,22 +530,22 @@ export default function TeacherDashboardPage() {
     
                 if (role === 'admin') {
                     pointSourceRef = doc(db, 'config', 'main');
-                    const configDoc = await transaction.get(pointSourceRef);
-                    sourceData = configDoc.data() as PlatformConfig;
-                    currentSourcePoints = sourceData?.schoolFunds;
+                    // For admin, points come from school funds when deducting, but don't cost when awarding
                 } else {
                     pointSourceRef = doc(db, 'teachers', currentTeacherId);
                     const teacherDoc = await transaction.get(pointSourceRef);
                     sourceData = teacherDoc.data() as Teacher;
                     currentSourcePoints = sourceData?.pointBalance;
                 }
-    
-                if (currentSourcePoints === undefined) {
-                    throw new Error("無法讀取您的點數餘額。");
-                }
-
-                if (points > 0 && currentSourcePoints < points) {
-                    throw new Error("您的點數餘額不足。");
+                
+                // Only check balance for non-admins
+                if (role !== 'admin') {
+                    if (currentSourcePoints === undefined) {
+                        throw new Error("無法讀取您的點數餘額。");
+                    }
+                    if (points > 0 && currentSourcePoints < points) {
+                        throw new Error("您的點數餘額不足。");
+                    }
                 }
     
                 const newPointHistory: PointRecord = {
@@ -560,19 +559,14 @@ export default function TeacherDashboardPage() {
                     pointHistory: [...(studentData.pointHistory || []), newPointHistory]
                 });
     
-                if (role === 'admin') {
-                    if (points > 0) {
-                        transaction.update(pointSourceRef, { schoolFunds: currentSourcePoints - points });
-                    }
-                } else {
+                if (role !== 'admin' && pointSourceRef && currentSourcePoints !== undefined) {
+                     // Teachers' balance decreases when awarding, increases when deducting
                     transaction.update(pointSourceRef, { pointBalance: currentSourcePoints - points });
                 }
             });
 
             // Optimistic UI updates
-            if (role === 'admin') {
-                if (points > 0) setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - points });
-            } else {
+            if (role !== 'admin') {
                  setTeachers(current => current.map(t => 
                     t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - points } : t
                 ));
@@ -610,24 +604,23 @@ export default function TeacherDashboardPage() {
     };
     
     const handleBatchOperation = async () => {
-        if (batchPoints === '' || batchPoints <= 0) {
+        if (batchPoints === '' || batchPoints === 0) {
             toast({ title: "請輸入有效的點數", variant: "destructive" });
             return;
         }
 
         setIsBatchProcessing(true);
-        const pointsToProcess = batchOperation === 'award' ? batchPoints : -batchPoints;
-        const operationText = batchOperation === 'award' ? '發放' : '扣除';
+        const operationText = batchPoints > 0 ? '發放' : '扣除';
 
         for (const student of studentsInClass) {
             // Temporarily set the points for the handleAwardPoints function
-            setPointInputs(prev => ({...prev, [student.id]: String(pointsToProcess)}));
+            setPointInputs(prev => ({...prev, [student.id]: String(batchPoints)}));
             await handleAwardPoints(student.id, student.name);
         }
 
         toast({
             title: `批次${operationText}完成`,
-            description: `已為全班學生${operationText} ${batchPoints} 點。`
+            description: `已為全班學生${operationText} ${Math.abs(batchPoints)} 點。`
         });
         
         setIsBatchProcessing(false);
@@ -1021,20 +1014,21 @@ export default function TeacherDashboardPage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 items-end">
                                     <div className="space-y-1">
                                         <Label htmlFor="batch-points">全班批次操作</Label>
                                         <Input
                                             id="batch-points"
                                             type="number"
-                                            placeholder="點數"
+                                            placeholder="點數 (正/負)"
                                             value={batchPoints}
                                             onChange={e => setBatchPoints(e.target.value === '' ? '' : Number(e.target.value))}
                                             disabled={isBatchProcessing}
                                         />
                                     </div>
-                                    <Button onClick={() => { setBatchOperation('award'); handleBatchOperation(); }} disabled={!selectedClassId || isBatchProcessing}>發送</Button>
-                                    <Button variant="destructive" onClick={() => { setBatchOperation('deduct'); handleBatchOperation(); }} disabled={!selectedClassId || isBatchProcessing}>扣除</Button>
+                                    <Button onClick={handleBatchOperation} disabled={!selectedClassId || isBatchProcessing}>
+                                        {isBatchProcessing ? <Loader2 className="animate-spin" /> : '執行'}
+                                    </Button>
                                 </div>
                             </div>
                             <Table>
