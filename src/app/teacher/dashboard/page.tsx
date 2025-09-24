@@ -522,13 +522,28 @@ export default function TeacherDashboardPage() {
         try {
             await runDbTransaction(async (transaction) => {
                 const studentRef = doc(db, 'students', `${selectedClassId}-${studentId}`);
-                const studentDoc = await transaction.get(studentRef);
+                const teacherRef = doc(db, 'teachers', currentTeacherId);
+
+                const [studentDoc, teacherDoc] = await Promise.all([
+                    transaction.get(studentRef),
+                    transaction.get(teacherRef)
+                ]);
 
                 if (!studentDoc.exists()) throw new Error("找不到學生資料。");
+                if (!teacherDoc.exists()) throw new Error("找不到您的教師資料。");
+                
                 const studentData = studentDoc.data() as Student;
+                const teacherData = teacherDoc.data() as Teacher;
 
-                if (points < 0 && studentData.points < Math.abs(points)) {
-                     throw new Error(`學生的點數不足以扣除。`);
+                // For awards, check teacher's balance. For deductions, check student's balance.
+                if (points > 0) {
+                    if ((teacherData.pointBalance || 0) < points) {
+                        throw new Error(`您的點數餘額不足。`);
+                    }
+                } else { // points < 0
+                    if (studentData.points < Math.abs(points)) {
+                        throw new Error(`學生的點數不足以扣除。`);
+                    }
                 }
                 
                 const newPointHistory: PointRecord = {
@@ -538,20 +553,15 @@ export default function TeacherDashboardPage() {
                     teacherId: currentTeacherId,
                 };
                 
-                const newStudentPoints = studentData.points + points;
+                // Update student points and history
                 transaction.update(studentRef, {
-                    points: newStudentPoints,
+                    points: studentData.points + points,
                     pointHistory: [...(studentData.pointHistory || []), newPointHistory]
                 });
                 
-                // Update teacher's balance
-                const teacherRef = doc(db, 'teachers', currentTeacherId);
-                const teacherDoc = await transaction.get(teacherRef);
-                if (teacherDoc.exists()) {
-                    const teacherData = teacherDoc.data() as Teacher;
-                    const newTeacherBalance = (teacherData.pointBalance || 0) - points; // Subtracting a negative adds points back
-                    transaction.update(teacherRef, { pointBalance: newTeacherBalance });
-                }
+                // Update teacher's balance: decrease for awards, increase for deductions (refund)
+                const newTeacherBalance = (teacherData.pointBalance || 0) - points;
+                transaction.update(teacherRef, { pointBalance: newTeacherBalance });
             });
 
         } catch (error: any) {
@@ -567,7 +577,7 @@ export default function TeacherDashboardPage() {
         }
     };
     
-     const handleBatchOperation = async () => {
+    const handleBatchOperation = async () => {
         if (batchPoints === '' || batchPoints === 0) return;
         
         const points = Number(batchPoints);
@@ -585,12 +595,11 @@ export default function TeacherDashboardPage() {
                 const teacherData = teacherDoc.data() as Teacher;
                 
                 const totalCost = points * studentsInClass.length;
-                const newTeacherBalance = (teacherData.pointBalance || 0) - totalCost;
-
                 if (points > 0 && (teacherData.pointBalance || 0) < totalCost) {
                     throw new Error(`您的點數餘額不足以批次發放 ${totalCost} 點`);
                 }
                 
+                const newTeacherBalance = (teacherData.pointBalance || 0) - totalCost;
                 transaction.update(teacherRef, { pointBalance: newTeacherBalance });
 
                 for (const student of studentsInClass) {
@@ -792,7 +801,7 @@ export default function TeacherDashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                             {(role === 'admin' ? platformConfig?.schoolFunds : teacher?.pointBalance)?.toLocaleString() || 0}
+                             {(role === 'admin' ? platformConfig?.schoolFunds : (teacher?.pointBalance || 0))?.toLocaleString() || 0}
                         </div>
                         <p className="text-xs text-muted-foreground">
                            {role === 'admin' ? '可用於撥款給老師或作為活動獎勵' : '可用於發放給學生'}
