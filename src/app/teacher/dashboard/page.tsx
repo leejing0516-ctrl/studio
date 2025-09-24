@@ -119,24 +119,33 @@ export default function TeacherDashboardPage() {
         setTeacherId(storedTeacherId);
         setTeacherName(storedTeacherName);
 
+        let ids: string[] = [];
         if (storedClassIdsStr && storedClassIdsStr !== 'undefined') {
             try {
-                const ids = JSON.parse(storedClassIdsStr);
+                ids = JSON.parse(storedClassIdsStr);
                 setTeacherClassIds(Array.isArray(ids) ? ids : []);
-                if (Array.isArray(ids) && ids.length > 0 && !selectedClassId) {
-                    setSelectedClassId(ids[0]);
-                }
             } catch (e) {
                 console.error("Failed to parse teacherClassIds from localStorage", e);
                 setTeacherClassIds([]);
             }
         }
 
-        if (storedRole === 'admin' && classes.length > 0 && !selectedClassId) {
-            setSelectedClassId(classes[0].id);
+        const classIdsToUse = storedRole === 'admin' ? classes.map(c => c.id) : ids;
+
+        if (classIdsToUse.length > 0) {
+            if (!selectedClassId || !classIdsToUse.includes(selectedClassId)) {
+                setSelectedClassId(classIdsToUse[0]);
+            }
+             if (!historySelectedClassId || !classIdsToUse.includes(historySelectedClassId)) {
+                setHistorySelectedClassId(classIdsToUse[0]);
+            }
+        }
+        
+        if (storedRole !== 'admin' && storedTeacherId && !historySelectedTeacherId) {
+            setHistorySelectedTeacherId(storedTeacherId);
         }
 
-    }, [classes, selectedClassId]);
+    }, [classes, role, teacherId, selectedClassId, historySelectedClassId, historySelectedTeacherId]);
     
     const teacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
 
@@ -465,14 +474,14 @@ export default function TeacherDashboardPage() {
     };
 
     const handleImpersonate = () => {
-        if (!teacherToImpersonate) return;
+        if (!teacherToImpersonate || !teacherId) return;
         
         localStorage.setItem('userRole', 'teacher');
         localStorage.setItem('teacherId', teacherToImpersonate.id);
         localStorage.setItem('teacherRole', teacherToImpersonate.role);
         localStorage.setItem('teacherClassIds', JSON.stringify(teacherToImpersonate.classIds || []));
         localStorage.setItem('teacherName', teacherToImpersonate.name);
-        localStorage.setItem('impersonator', teacherId || '');
+        localStorage.setItem('impersonator', teacherId);
 
         toast({ title: `開始模擬 ${teacherToImpersonate.name}`});
         window.location.reload();
@@ -534,7 +543,7 @@ export default function TeacherDashboardPage() {
         const operationText = points > 0 ? '發放' : '扣除';
         const batchText = isBatch ? '批次' : '';
         const impersonatorId = localStorage.getItem('impersonator');
-        const isOperatingAsAdmin = (role === 'admin' && !impersonatorId);
+        const isOperatingAsAdmin = (role === 'admin' && !impersonatorId) || (!!impersonatorId && teachers.find(t => t.id === impersonatorId)?.role === 'admin');
         
         setIsProcessing(studentId);
 
@@ -597,10 +606,8 @@ export default function TeacherDashboardPage() {
                 return s;
             }));
             
-            const finalBalance = (isOperatingAsAdmin ? platformConfig?.schoolFunds : teacher?.pointBalance) || 0;
-
             if (isOperatingAsAdmin) {
-                setPlatformConfig({ schoolFunds: finalBalance - points });
+                setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - points });
             } else {
                 setTeachers(prev => prev.map(t => {
                     if (t.id === teacherId) {
@@ -650,17 +657,21 @@ export default function TeacherDashboardPage() {
             setIsBatchProcessing(false);
             return;
         }
-
+        
+        let successfulOperations = 0;
         for (const student of studentsToUpdate) {
             try {
                 await performPointOperation(student.id, points, true);
+                successfulOperations++;
             } catch (error: any) {
                 toast({ title: `為 ${student.name} 操作失敗`, description: error.message, variant: "destructive" });
                 // Continue to next student
             }
         }
 
-        toast({ title: "批次操作完成", description: `已為 ${studentsToUpdate.length} 位學生執行操作。` });
+        if (successfulOperations > 0) {
+            toast({ title: "批次操作完成", description: `已為 ${successfulOperations} 位學生執行操作。` });
+        }
         setIsBatchProcessing(false);
         setBatchPoints('');
     };
@@ -1583,3 +1594,4 @@ export default function TeacherDashboardPage() {
         </div>
     )
 }
+
