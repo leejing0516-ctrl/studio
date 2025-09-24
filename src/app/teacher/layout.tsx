@@ -30,6 +30,7 @@ import {
   Gift,
   Repeat,
   AlertTriangle,
+  BookUser,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -190,6 +191,7 @@ export default function TeacherLayout({
     { href: "/teacher/stocks", label: "股票管理", icon: LineChart, roles: ['admin'] },
     { href: "/teacher/fundraising", label: "募資管理", icon: HeartHandshake, roles: ['admin'] },
     { href: "/teacher/settings", label: "平台設定", icon: Settings, roles: ['admin'] },
+    { href: "/teacher/manual", label: "操作手冊", icon: BookUser, roles: ['admin', 'teacher', 'subject_teacher'] },
   ];
   
   const availableNavItems = navItems.filter(item => item.roles.includes(teacherRole || ''));
