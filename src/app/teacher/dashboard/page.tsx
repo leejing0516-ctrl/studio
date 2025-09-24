@@ -543,25 +543,25 @@ export default function TeacherDashboardPage() {
         if (!pointsStr) return;
         const points = parseInt(pointsStr, 10);
         if (isNaN(points) || points === 0) return;
-
+    
         const currentTeacherId = teacherId;
         if (!currentTeacherId) {
             toast({ title: "錯誤", description: "無法識別您的教師身份", variant: "destructive" });
             return;
         }
-
+    
         setIsProcessing(studentId);
-        const impersonatorId = localStorage.getItem('impersonator');
-        const isImpersonatingAdmin = impersonatorId === 'principal';
         
         try {
             await runDbTransaction(async (transaction) => {
                 const studentRef = doc(db, 'students', `${selectedClassId}-${studentId}`);
                 let pointSourceRef: any;
                 let sourceField: 'schoolFunds' | 'pointBalance';
-                let sourceData: any;
-
-                if (isImpersonatingAdmin) {
+    
+                const impersonatorId = localStorage.getItem('impersonator');
+                const isOperatingAsAdmin = (role === 'admin' && !impersonatorId) || (impersonatorId && role === 'admin');
+    
+                if (isOperatingAsAdmin) {
                     pointSourceRef = doc(db, 'config', 'main');
                     sourceField = 'schoolFunds';
                 } else {
@@ -573,38 +573,41 @@ export default function TeacherDashboardPage() {
                     transaction.get(studentRef),
                     transaction.get(pointSourceRef)
                 ]);
-
+    
                 if (!studentDoc.exists()) throw new Error("找不到學生資料。");
                 if (!pointSourceDoc.exists()) throw new Error("找不到您的資金來源資料。");
                 
                 const studentData = studentDoc.data() as Student;
-                sourceData = pointSourceDoc.data();
-                const currentSourcePoints = sourceData[sourceField] || 0;
-
+                const sourceData = pointSourceDoc.data() as any;
+                let currentSourcePoints = sourceData[sourceField] || 0;
+    
                 if (studentData.points + points < 0) {
                     throw new Error(`學生的點數不足以扣除。`);
                 }
-                 if (points > 0 && currentSourcePoints < points) {
-                    throw new Error(`點數餘額不足。`);
+                if (points > 0 && currentSourcePoints < points) {
+                    throw new Error(`您的點數餘額不足。`);
                 }
-
+    
                 const newPointHistory: PointRecord = {
                     points: points,
                     date: new Date().toISOString(),
                     reason: `由老師 ${teacher?.name} ${points > 0 ? '發放' : '扣除'}`,
                     teacherId: currentTeacherId,
                 };
-
+    
                 transaction.update(studentRef, {
                     points: studentData.points + points,
                     pointHistory: [...(studentData.pointHistory || []), newPointHistory]
                 });
                 
+                // When deducting points (points is negative), add them back to the source.
+                const newSourcePoints = currentSourcePoints - points;
+                
                 transaction.update(pointSourceRef, {
-                    [sourceField]: currentSourcePoints - points
+                    [sourceField]: newSourcePoints
                 });
             });
-
+    
             // Frontend state update
             setStudents(prevStudents => prevStudents.map(s => {
                 if (s.id === studentId && s.classId === selectedClassId) {
@@ -617,9 +620,12 @@ export default function TeacherDashboardPage() {
                 }
                 return s;
             }));
+    
+            const impersonatorId = localStorage.getItem('impersonator');
+            const isOperatingAsAdmin = (role === 'admin' && !impersonatorId) || (impersonatorId && role === 'admin');
 
-            if (isImpersonatingAdmin) {
-                setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - points });
+            if (isOperatingAsAdmin) {
+                 setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - points });
             } else {
                  setTeachers(prevTeachers => prevTeachers.map(t => {
                     if (t.id === currentTeacherId) {
@@ -628,7 +634,7 @@ export default function TeacherDashboardPage() {
                     return t;
                 }));
             }
-
+    
         } catch (error: any) {
             console.error("Point award/deduct transaction failed:", error);
             toast({
@@ -641,7 +647,6 @@ export default function TeacherDashboardPage() {
             setIsProcessing(null);
         }
     };
-    
     
     const handleBatchOperation = async () => {
         if (batchPoints === '' || batchPoints === 0) return;
@@ -658,18 +663,17 @@ export default function TeacherDashboardPage() {
             return;
         }
     
-        const impersonatorId = localStorage.getItem('impersonator');
-        const isImpersonatingAdmin = impersonatorId === 'principal';
-        
-        let totalPointsAffected = 0;
         let affectedStudentIds = new Set<string>();
 
         try {
             await runDbTransaction(async (transaction) => {
                 let pointSourceRef: any;
                 let sourceField: 'schoolFunds' | 'pointBalance';
+    
+                const impersonatorId = localStorage.getItem('impersonator');
+                const isOperatingAsAdmin = (role === 'admin' && !impersonatorId) || (impersonatorId && role === 'admin');
 
-                 if (isImpersonatingAdmin) {
+                if (isOperatingAsAdmin) {
                     pointSourceRef = doc(db, 'config', 'main');
                     sourceField = 'schoolFunds';
                 } else {
@@ -714,13 +718,15 @@ export default function TeacherDashboardPage() {
                         pointHistory: [...(studentData.pointHistory || []), newPointHistory]
                     });
                 }
-
-                totalPointsAffected = totalCost;
-
+                
+                const totalPointsChange = points * studentsToUpdate.length;
                 transaction.update(pointSourceRef, {
-                    [sourceField]: currentSourcePoints - totalPointsAffected
+                    [sourceField]: currentSourcePoints - totalPointsChange
                 });
             });
+
+            // Frontend state update
+            const totalPointsChange = points * affectedStudentIds.size;
 
             setStudents(prevStudents => prevStudents.map(s => {
                 if (s.classId === selectedClassId && affectedStudentIds.has(s.id)) {
@@ -730,12 +736,15 @@ export default function TeacherDashboardPage() {
                 return s;
             }));
 
-            if (isImpersonatingAdmin) {
-                setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - totalPointsAffected });
+            const impersonatorId = localStorage.getItem('impersonator');
+            const isOperatingAsAdmin = (role === 'admin' && !impersonatorId) || (impersonatorId && role === 'admin');
+
+            if (isOperatingAsAdmin) {
+                setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - totalPointsChange });
             } else {
                 setTeachers(prevTeachers => prevTeachers.map(t => {
                     if (t.id === currentTeacherId) {
-                        return { ...t, pointBalance: (t.pointBalance || 0) - totalPointsAffected };
+                        return { ...t, pointBalance: (t.pointBalance || 0) - totalPointsChange };
                     }
                     return t;
                 }));
@@ -1068,8 +1077,8 @@ export default function TeacherDashboardPage() {
                                                                     <AlertDialogDescription>
                                                                         此操作將永久刪除此班級，且無法復原。請輸入「<span className="font-bold text-destructive">{CONFIRM_DELETE_TEXT}</span>」以確認。
                                                                     </AlertDialogDescription>
+                                                                    <Input value={confirmDeleteInput} onChange={(e) => setConfirmDeleteInput(e.target.value)} />
                                                                 </AlertDialogHeader>
-                                                                <Input value={confirmDeleteInput} onChange={(e) => setConfirmDeleteInput(e.target.value)} />
                                                                 <AlertDialogFooter>
                                                                     <AlertDialogCancel onClick={() => setConfirmDeleteInput('')}>取消</AlertDialogCancel>
                                                                     <AlertDialogAction onClick={handleDeleteClass} disabled={confirmDeleteInput !== CONFIRM_DELETE_TEXT} className={buttonVariants({variant: 'destructive'})}>確定刪除</AlertDialogAction>
