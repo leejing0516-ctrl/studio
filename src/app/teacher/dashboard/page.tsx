@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useContext, useEffect, useMemo } from "react";
@@ -459,6 +460,14 @@ export default function TeacherDashboardPage() {
                 transaction.update(teacherRef, { pointBalance: teacherBalance + amount });
             });
             
+             // Optimistic UI update
+            setTeachers(current => current.map(t => 
+                t.id === teacherToAllocate.id 
+                ? { ...t, pointBalance: (t.pointBalance || 0) + amount } 
+                : t
+            ));
+            setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - amount });
+
             toast({ title: "點數已撥款" });
             setIsAllocatePointsDialogOpen(false);
 
@@ -534,47 +543,45 @@ export default function TeacherDashboardPage() {
         if (!pointsStr) return;
         const points = parseInt(pointsStr, 10);
         if (isNaN(points) || points === 0) return;
-    
+
         const currentTeacherId = teacherId;
         if (!currentTeacherId) {
             toast({ title: "錯誤", description: "無法識別您的教師身份", variant: "destructive" });
             return;
         }
-        
+
         setIsProcessing(studentId);
-        
+
         const impersonatorId = localStorage.getItem('impersonator');
         const isImpersonatingAdmin = impersonatorId === 'principal';
-    
+
         try {
             await runDbTransaction(async (transaction) => {
                 const studentRef = doc(db, 'students', `${selectedClassId}-${studentId}`);
-    
-                let pointSourceRef;
+                let pointSourceRef: any;
+                let sourceField: 'schoolFunds' | 'pointBalance';
+
                 if (isImpersonatingAdmin) {
                     pointSourceRef = doc(db, 'config', 'main');
+                    sourceField = 'schoolFunds';
                 } else {
                     pointSourceRef = doc(db, 'teachers', currentTeacherId);
+                    sourceField = 'pointBalance';
                 }
-    
+
                 const [studentDoc, pointSourceDoc] = await Promise.all([
                     transaction.get(studentRef),
                     transaction.get(pointSourceRef)
                 ]);
-    
+
                 if (!studentDoc.exists()) throw new Error("找不到學生資料。");
                 if (!pointSourceDoc.exists()) throw new Error("找不到您的資金來源資料。");
-                
+
                 const studentData = studentDoc.data() as Student;
-                const sourceData = pointSourceDoc.data();
-                
-                let currentSourcePoints: number;
-                if (isImpersonatingAdmin) {
-                    currentSourcePoints = (sourceData as PlatformConfig).schoolFunds || 0;
-                } else {
-                    currentSourcePoints = (sourceData as Teacher).pointBalance || 0;
-                }
-    
+                const sourceData = pointSourceDoc.data() as any;
+
+                const currentSourcePoints = sourceData[sourceField] || 0;
+
                 if (points > 0 && currentSourcePoints < points) {
                     throw new Error(`點數餘額不足。`);
                 }
@@ -582,28 +589,54 @@ export default function TeacherDashboardPage() {
                 if (points < 0 && studentData.points < Math.abs(points)) {
                     throw new Error(`學生的點數不足以扣除。`);
                 }
-                
+
                 const newPointHistory: PointRecord = {
                     points: points,
                     date: new Date().toISOString(),
                     reason: `由老師 ${teacher?.name} ${points > 0 ? '發放' : '扣除'}`,
                     teacherId: currentTeacherId,
                 };
-                
+
                 transaction.update(studentRef, {
                     points: studentData.points + points,
                     pointHistory: [...(studentData.pointHistory || []), newPointHistory]
                 });
-                
-                const newSourceBalance = currentSourcePoints - points;
 
-                if (isImpersonatingAdmin) {
-                     transaction.update(pointSourceRef, { schoolFunds: newSourceBalance });
-                } else {
-                     transaction.update(pointSourceRef, { pointBalance: newSourceBalance });
-                }
+                transaction.update(pointSourceRef, {
+                    [sourceField]: currentSourcePoints - points
+                });
             });
-    
+
+            // --- Manual Frontend State Update ---
+            setStudents(prevStudents => prevStudents.map(s => {
+                if (s.id === studentId && s.classId === selectedClassId) {
+                    const newPointHistory: PointRecord = {
+                        points: points,
+                        date: new Date().toISOString(),
+                        reason: `由老師 ${teacher?.name} ${points > 0 ? '發放' : '扣除'}`,
+                        teacherId: currentTeacherId,
+                    };
+                    return {
+                        ...s,
+                        points: s.points + points,
+                        pointHistory: [...(s.pointHistory || []), newPointHistory]
+                    };
+                }
+                return s;
+            }));
+
+            if (isImpersonatingAdmin) {
+                setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - points });
+            } else {
+                setTeachers(prevTeachers => prevTeachers.map(t => {
+                    if (t.id === currentTeacherId) {
+                        return { ...t, pointBalance: (t.pointBalance || 0) - points };
+                    }
+                    return t;
+                }));
+            }
+            // --- End of Manual Update ---
+
         } catch (error: any) {
             console.error("Point award/deduct transaction failed:", error);
             toast({
@@ -636,43 +669,45 @@ export default function TeacherDashboardPage() {
         const impersonatorId = localStorage.getItem('impersonator');
         const isImpersonatingAdmin = impersonatorId === 'principal';
         
+        let totalPointsAffected = 0;
+        const affectedStudentIds = new Set<string>();
+
         try {
             await runDbTransaction(async (transaction) => {
-                let pointSourceRef;
+                let pointSourceRef: any;
+                let sourceField: 'schoolFunds' | 'pointBalance';
+
                 if (isImpersonatingAdmin) {
                     pointSourceRef = doc(db, 'config', 'main');
+                    sourceField = 'schoolFunds';
                 } else {
                     pointSourceRef = doc(db, 'teachers', currentTeacherId);
+                    sourceField = 'pointBalance';
                 }
     
                 const pointSourceDoc = await transaction.get(pointSourceRef);
                 if (!pointSourceDoc.exists()) throw new Error("找不到資金來源。");
-                const sourceData = pointSourceDoc.data();
+                const sourceData = pointSourceDoc.data() as any;
                 
-                let currentSourcePoints: number;
-                if (isImpersonatingAdmin) {
-                    currentSourcePoints = (sourceData as PlatformConfig).schoolFunds || 0;
-                } else {
-                    currentSourcePoints = (sourceData as Teacher).pointBalance || 0;
-                }
-    
-                const totalCost = points * studentsInClass.length;
+                let currentSourcePoints = sourceData[sourceField] || 0;
+                
+                const studentsToUpdate = studentsInClass.filter(student => {
+                    if (points < 0 && student.points < Math.abs(points)) {
+                        console.warn(`Skipping ${student.name}, not enough points.`);
+                        return false;
+                    }
+                    return true;
+                });
+                
+                const totalCost = points * studentsToUpdate.length;
                 if (points > 0 && currentSourcePoints < totalCost) {
                     throw new Error(`您的點數餘額不足以批次發放 ${totalCost} 點`);
                 }
-                
-                let actualTotalCost = 0;
-                
-                for (const student of studentsInClass) {
+
+                for (const student of studentsToUpdate) {
                     const studentRef = doc(db, 'students', `${selectedClassId}-${student.id}`);
                     const studentDoc = await transaction.get(studentRef);
-                    if (!studentDoc.exists()) continue;
-    
                     const studentData = studentDoc.data() as Student;
-                    if (points < 0 && studentData.points < Math.abs(points)) {
-                       console.warn(`Skipping ${student.name}, not enough points.`);
-                       continue;
-                    }
 
                     const newPointHistory: PointRecord = {
                         points: points,
@@ -685,21 +720,45 @@ export default function TeacherDashboardPage() {
                         points: studentData.points + points,
                         pointHistory: [...(studentData.pointHistory || []), newPointHistory]
                     });
-                    
-                    actualTotalCost += points;
+                    affectedStudentIds.add(student.id);
                 }
 
-                if (points > 0 && currentSourcePoints < actualTotalCost) {
-                    throw new Error(`您的點數餘額不足以批次發放 ${actualTotalCost} 點`);
-                }
+                totalPointsAffected = totalCost;
 
-                const newSourceBalance = currentSourcePoints - actualTotalCost;
-                if (isImpersonatingAdmin) {
-                    transaction.update(pointSourceRef, { schoolFunds: newSourceBalance });
-                } else {
-                    transaction.update(pointSourceRef, { pointBalance: newSourceBalance });
-                }
+                transaction.update(pointSourceRef, {
+                    [sourceField]: currentSourcePoints - totalPointsAffected
+                });
             });
+
+            // --- Manual Frontend State Update for Batch ---
+            setStudents(prevStudents => prevStudents.map(s => {
+                if (s.classId === selectedClassId && affectedStudentIds.has(s.id)) {
+                    const newPointHistory: PointRecord = {
+                        points: points,
+                        date: new Date().toISOString(),
+                        reason: `由老師 ${teacher?.name} 批次${operationText}`,
+                        teacherId: currentTeacherId,
+                    };
+                    return {
+                        ...s,
+                        points: s.points + points,
+                        pointHistory: [...(s.pointHistory || []), newPointHistory]
+                    };
+                }
+                return s;
+            }));
+
+            if (isImpersonatingAdmin) {
+                setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - totalPointsAffected });
+            } else {
+                setTeachers(prevTeachers => prevTeachers.map(t => {
+                    if (t.id === currentTeacherId) {
+                        return { ...t, pointBalance: (t.pointBalance || 0) - totalPointsAffected };
+                    }
+                    return t;
+                }));
+            }
+            // --- End of Manual Update ---
     
         } catch (error: any) {
             console.error("Batch point operation failed:", error);
