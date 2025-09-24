@@ -547,17 +547,23 @@ export default function TeacherDashboardPage() {
                     pointHistory: [...(studentData.pointHistory || []), newPointHistory]
                 });
     
-                const newSourceBalance = currentSourcePoints - points;
-                if (role === 'admin') {
-                    transaction.update(pointSourceRef, { schoolFunds: newSourceBalance });
-                } else {
-                    transaction.update(pointSourceRef, { pointBalance: newSourceBalance });
+                if (points > 0) { // Only deduct from provider if awarding points
+                     const newSourceBalance = currentSourcePoints - points;
+                     if (role === 'admin') {
+                        transaction.update(pointSourceRef, { schoolFunds: newSourceBalance });
+                    } else {
+                        transaction.update(pointSourceRef, { pointBalance: newSourceBalance });
+                    }
                 }
             });
 
             // Optimistic UI updates
-            if (role === 'admin') {
+            if (role === 'admin' && points > 0) {
                 setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - points });
+            } else if (role !== 'admin' && points > 0){
+                setTeachers(current => current.map(t => 
+                    t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - points } : t
+                ));
             }
     
             setStudents(currentStudents => currentStudents.map(s => {
@@ -790,16 +796,14 @@ export default function TeacherDashboardPage() {
             tabs.push(<TabsTrigger key="teachers" value="teachers">教師管理</TabsTrigger>);
         }
         
-        // For subject_teacher, only show Points, History, and Approvals
-        if (role === 'subject_teacher') {
-             return [
-                <TabsTrigger key="points" value="points">發送點數</TabsTrigger>,
-                <TabsTrigger key="history" value="history">點數歷史</TabsTrigger>,
-                <TabsTrigger key="approvals" value="approvals">審核中心</TabsTrigger>,
-             ];
-        }
+        const pointHistoryTab = <TabsTrigger key="history" value="history">點數歷史</TabsTrigger>;
 
         tabs.push(<TabsTrigger key="points" value="points">發送點數</TabsTrigger>);
+
+        if (role === 'subject_teacher') {
+            tabs.push(pointHistoryTab);
+        }
+        
         tabs.push(<TabsTrigger key="approvals" value="approvals">審核中心</TabsTrigger>);
         
         return tabs;
@@ -1063,36 +1067,23 @@ export default function TeacherDashboardPage() {
                 </TabsContent>
 
                 {/* Point History Tab */}
-                {(role === 'admin' || role === 'subject_teacher') && (
+                {(role === 'subject_teacher') && (
                 <TabsContent value="history" className="mt-6">
                     <Card>
                         <CardHeader>
                             <CardTitle>點數歷史查詢</CardTitle>
-                            <CardDescription>查詢指定老師在特定班級的點數發放與扣除總計。</CardDescription>
+                            <CardDescription>查詢在此班級的點數發放與扣除總計。</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="flex-1 min-w-[200px] space-y-2">
-                                    <Label htmlFor="teacher-select-history">選擇老師</Label>
-                                    <Select onValueChange={setHistorySelectedTeacherId} value={historySelectedTeacherId}>
-                                        <SelectTrigger id="teacher-select-history">
-                                            <SelectValue placeholder="請選擇老師" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {teachers.filter(t => t.role !== 'admin').map(t => (
-                                                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="flex-1 min-w-[200px] space-y-2">
                                     <Label htmlFor="class-select-history">選擇班級</Label>
-                                    <Select onValueChange={setHistorySelectedClassId} value={historySelectedClassId} disabled={!historySelectedTeacherId}>
+                                    <Select onValueChange={(classId) => { setHistorySelectedClassId(classId); setHistorySelectedTeacherId(teacherId || ''); }} value={historySelectedClassId}>
                                         <SelectTrigger id="class-select-history">
                                             <SelectValue placeholder="請選擇班級" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {teachers.find(t => t.id === historySelectedTeacherId)?.classIds.map(id => {
+                                            {teacherClassIds.map(id => {
                                                  const classInfo = classes.find(c => c.id === id);
                                                  return classInfo ? <SelectItem key={id} value={id}>{classInfo.name}</SelectItem> : null
                                             })}
