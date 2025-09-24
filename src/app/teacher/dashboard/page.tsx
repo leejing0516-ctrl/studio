@@ -42,7 +42,7 @@ import { AppDataContext } from "@/context/AppDataContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Papa from "papaparse";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
-import { doc, writeBatch, runTransaction as firebaseRunTransaction } from "firebase/firestore";
+import { doc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -63,6 +63,7 @@ export default function TeacherDashboardPage() {
     // Teacher/Role state
     const [role, setRole] = useState<string | null>(null);
     const [teacherId, setTeacherId] = useState<string | null>(null);
+    const [teacherName, setTeacherName] = useState<string | null>(null);
     const [teacherClassIds, setTeacherClassIds] = useState<string[]>([]);
     
     // UI State
@@ -112,45 +113,30 @@ export default function TeacherDashboardPage() {
     useEffect(() => {
         const storedRole = localStorage.getItem('teacherRole');
         const storedTeacherId = localStorage.getItem('teacherId');
+        const storedTeacherName = localStorage.getItem('teacherName');
         const storedClassIdsStr = localStorage.getItem('teacherClassIds');
         setRole(storedRole);
         setTeacherId(storedTeacherId);
+        setTeacherName(storedTeacherName);
 
-        if (storedRole === 'admin') {
-            const allClassIds = classes.map(c => c.id);
-            setTeacherClassIds(allClassIds);
-            if (allClassIds.length > 0 && !selectedClassId) {
-                setSelectedClassId(allClassIds[0]);
-            }
-             if (storedTeacherId && !historySelectedTeacherId) {
-                setHistorySelectedTeacherId(storedTeacherId);
-            }
-             if (allClassIds.length > 0 && !historySelectedClassId) {
-                setHistorySelectedClassId(allClassIds[0]);
-            }
-        } else if (storedClassIdsStr && storedClassIdsStr !== 'undefined') {
-            const ids = JSON.parse(storedClassIdsStr);
-            setTeacherClassIds(ids);
-            if (ids.length > 0 && !selectedClassId) {
-                setSelectedClassId(ids[0]);
-            }
-            if(storedRole === 'subject_teacher') {
-                if (storedTeacherId && !historySelectedTeacherId) {
-                    setHistorySelectedTeacherId(storedTeacherId);
+        if (storedClassIdsStr && storedClassIdsStr !== 'undefined') {
+            try {
+                const ids = JSON.parse(storedClassIdsStr);
+                setTeacherClassIds(Array.isArray(ids) ? ids : []);
+                if (Array.isArray(ids) && ids.length > 0 && !selectedClassId) {
+                    setSelectedClassId(ids[0]);
                 }
-                if (ids.length > 0 && !historySelectedClassId) {
-                    setHistorySelectedClassId(ids[0]);
-                }
-            } else if (storedRole === 'teacher') {
-                if (storedTeacherId && !historySelectedTeacherId) {
-                    setHistorySelectedTeacherId(storedTeacherId);
-                }
-                if (ids.length > 0 && !historySelectedClassId) {
-                    setHistorySelectedClassId(ids[0]);
-                }
+            } catch (e) {
+                console.error("Failed to parse teacherClassIds from localStorage", e);
+                setTeacherClassIds([]);
             }
         }
-    }, [classes, selectedClassId, historySelectedClassId, historySelectedTeacherId]);
+
+        if (storedRole === 'admin' && classes.length > 0 && !selectedClassId) {
+            setSelectedClassId(classes[0].id);
+        }
+
+    }, [classes, selectedClassId]);
     
     const teacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
 
@@ -321,6 +307,7 @@ export default function TeacherDashboardPage() {
             description: `${studentToDelete.name} 已被從班級中移除。`,
             variant: "destructive"
         });
+        setStudentToDelete(null);
     };
 
     const handleResetPassword = (event: React.FormEvent<HTMLFormElement>) => {
@@ -411,14 +398,14 @@ export default function TeacherDashboardPage() {
 
         const formData = new FormData(event.currentTarget);
         const name = formData.get('name') as string;
-        const role = editedTeacherRole as 'teacher' | 'admin' | 'subject_teacher';
+        const newRole = editedTeacherRole as 'teacher' | 'admin' | 'subject_teacher';
         const classId = formData.get('classId') as string;
 
         const updatedTeacher: Teacher = {
             ...teacherToEdit,
             name,
-            role,
-            classIds: role === 'teacher' && classId ? [classId] : (role === 'subject_teacher' ? (teacherToEdit.classIds || []) : []),
+            role: newRole,
+            classIds: newRole === 'teacher' && classId ? [classId] : (newRole === 'subject_teacher' ? (teacherToEdit.classIds || []) : []),
         };
 
         await setTeachers(current => current.map(t => t.id === teacherToEdit.id ? updatedTeacher : t));
@@ -537,226 +524,140 @@ export default function TeacherDashboardPage() {
             setClassToDelete(null);
         }
     };
-
-    const handleAwardPoints = async (studentId: string) => {
-        const pointsStr = pointInputs[studentId];
-        if (!pointsStr) return;
-        const points = parseInt(pointsStr, 10);
-        if (isNaN(points) || points === 0) return;
     
-        const currentTeacherId = teacherId;
-        if (!currentTeacherId) {
-            toast({ title: "錯誤", description: "無法識別您的教師身份", variant: "destructive" });
+    const performPointOperation = async (studentId: string, points: number, isBatch: boolean = false) => {
+        if (points === 0 || !teacherId || !teacherName) {
+            toast({ title: "操作無效", description: "點數不能為零或教師資訊不完整。", variant: "destructive" });
             return;
         }
-    
+
+        const operationText = points > 0 ? '發放' : '扣除';
+        const batchText = isBatch ? '批次' : '';
+        const impersonatorId = localStorage.getItem('impersonator');
+        const isOperatingAsAdmin = (role === 'admin' && !impersonatorId) || (!!impersonatorId && impersonatorId === 'principal');
+
         setIsProcessing(studentId);
-        
+
         try {
             await runDbTransaction(async (transaction) => {
                 const studentRef = doc(db, 'students', `${selectedClassId}-${studentId}`);
-                let pointSourceRef: any;
-                let sourceField: 'schoolFunds' | 'pointBalance';
-    
-                const impersonatorId = localStorage.getItem('impersonator');
-                const isOperatingAsAdmin = (role === 'admin' && !impersonatorId) || (impersonatorId && role === 'admin');
-    
+                const studentDoc = await transaction.get(studentRef);
+                if (!studentDoc.exists()) throw new Error("找不到學生資料。");
+                const studentData = studentDoc.data() as Student;
+
+                if (points < 0 && studentData.points < Math.abs(points)) {
+                    throw new Error(`學生 ${studentData.name} 的點數不足以扣除。`);
+                }
+
+                let sourceRef, sourceData, sourceField, currentBalance;
                 if (isOperatingAsAdmin) {
-                    pointSourceRef = doc(db, 'config', 'main');
+                    sourceRef = doc(db, 'config', 'main');
                     sourceField = 'schoolFunds';
                 } else {
-                    pointSourceRef = doc(db, 'teachers', currentTeacherId);
+                    sourceRef = doc(db, 'teachers', teacherId);
                     sourceField = 'pointBalance';
                 }
-                
-                const [studentDoc, pointSourceDoc] = await Promise.all([
-                    transaction.get(studentRef),
-                    transaction.get(pointSourceRef)
-                ]);
-    
-                if (!studentDoc.exists()) throw new Error("找不到學生資料。");
-                if (!pointSourceDoc.exists()) throw new Error("找不到您的資金來源資料。");
-                
-                const studentData = studentDoc.data() as Student;
-                const sourceData = pointSourceDoc.data() as any;
-                let currentSourcePoints = sourceData[sourceField] || 0;
-    
-                if (studentData.points + points < 0) {
-                    throw new Error(`學生的點數不足以扣除。`);
-                }
-                if (points > 0 && currentSourcePoints < points) {
+
+                sourceData = await transaction.get(sourceRef);
+                if (!sourceData.exists()) throw new Error("找不到您的資金來源資料。");
+                currentBalance = (sourceData.data() as any)[sourceField] || 0;
+
+                if (points > 0 && currentBalance < points) {
                     throw new Error(`您的點數餘額不足。`);
                 }
-    
-                const newPointHistory: PointRecord = {
-                    points: points,
+
+                const newHistoryRecord: PointRecord = {
+                    points,
                     date: new Date().toISOString(),
-                    reason: `由老師 ${teacher?.name} ${points > 0 ? '發放' : '扣除'}`,
-                    teacherId: currentTeacherId,
+                    reason: `由老師 ${teacherName} ${batchText}${operationText}`,
+                    teacherId: teacherId,
                 };
-    
+
                 transaction.update(studentRef, {
                     points: studentData.points + points,
-                    pointHistory: [...(studentData.pointHistory || []), newPointHistory]
+                    pointHistory: [...(studentData.pointHistory || []), newHistoryRecord]
                 });
-                
-                // When deducting points (points is negative), add them back to the source.
-                const newSourcePoints = currentSourcePoints - points;
-                
-                transaction.update(pointSourceRef, {
-                    [sourceField]: newSourcePoints
+
+                transaction.update(sourceRef, {
+                    [sourceField]: currentBalance - points
                 });
             });
-    
-            // Frontend state update
-            setStudents(prevStudents => prevStudents.map(s => {
+
+            // --- UI state update after successful transaction ---
+            setStudents(prev => prev.map(s => {
                 if (s.id === studentId && s.classId === selectedClassId) {
-                    const newPointHistory: PointRecord = {
-                        points: points, date: new Date().toISOString(),
-                        reason: `由老師 ${teacher?.name} ${points > 0 ? '發放' : '扣除'}`,
-                        teacherId: currentTeacherId,
+                    const newHistory: PointRecord = {
+                        points, date: new Date().toISOString(),
+                        reason: `由老師 ${teacherName} ${batchText}${operationText}`, teacherId: teacherId,
                     };
-                    return { ...s, points: s.points + points, pointHistory: [...(s.pointHistory || []), newPointHistory] };
+                    return { ...s, points: s.points + points, pointHistory: [...(s.pointHistory || []), newHistory] };
                 }
                 return s;
             }));
-    
-            const impersonatorId = localStorage.getItem('impersonator');
-            const isOperatingAsAdmin = (role === 'admin' && !impersonatorId) || (impersonatorId && role === 'admin');
 
             if (isOperatingAsAdmin) {
-                 setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - points });
+                setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - points });
             } else {
-                 setTeachers(prevTeachers => prevTeachers.map(t => {
-                    if (t.id === currentTeacherId) {
+                setTeachers(prev => prev.map(t => {
+                    if (t.id === teacherId) {
                         return { ...t, pointBalance: (t.pointBalance || 0) - points };
                     }
                     return t;
                 }));
             }
-    
+
         } catch (error: any) {
-            console.error("Point award/deduct transaction failed:", error);
-            toast({
-                title: "操作失敗",
-                description: error.message || "發生未知錯誤。",
-                variant: "destructive"
-            });
+            console.error(`Point operation failed for student ${studentId}:`, error);
+            throw error; // Re-throw to be caught by the calling function
         } finally {
-            setPointInputs(prev => ({ ...prev, [studentId]: '' }));
-            setIsProcessing(null);
+            if (!isBatch) {
+                setIsProcessing(null);
+                setPointInputs(prev => ({ ...prev, [studentId]: '' }));
+            }
         }
     };
     
+    const handleAwardPoints = async (studentId: string) => {
+        const pointsStr = pointInputs[studentId];
+        if (!pointsStr) return;
+        const points = parseInt(pointsStr, 10);
+        
+        try {
+            await performPointOperation(studentId, points, false);
+        } catch(error: any) {
+             toast({ title: "操作失敗", description: error.message, variant: "destructive" });
+        }
+    };
+
     const handleBatchOperation = async () => {
         if (batchPoints === '' || batchPoints === 0) return;
         
         const points = Number(batchPoints);
-        const operationText = points > 0 ? '發送' : '扣除';
-    
         setIsBatchProcessing(true);
-    
-        const currentTeacherId = teacherId;
-        if (!currentTeacherId) {
-            toast({ title: "錯誤", description: "無法識別您的教師身份", variant: "destructive" });
+
+        const studentsToUpdate = studentsInClass.filter(student => {
+            if (points < 0 && student.points < Math.abs(points)) return false;
+            return true;
+        });
+
+        if (studentsToUpdate.length === 0 && points < 0) {
+            toast({ title: "批次操作失敗", description: "沒有學生的點數足以進行扣除。", variant: "destructive" });
             setIsBatchProcessing(false);
             return;
         }
-    
-        let affectedStudentIds = new Set<string>();
 
-        try {
-            await runDbTransaction(async (transaction) => {
-                let pointSourceRef: any;
-                let sourceField: 'schoolFunds' | 'pointBalance';
-    
-                const impersonatorId = localStorage.getItem('impersonator');
-                const isOperatingAsAdmin = (role === 'admin' && !impersonatorId) || (impersonatorId && role === 'admin');
-
-                if (isOperatingAsAdmin) {
-                    pointSourceRef = doc(db, 'config', 'main');
-                    sourceField = 'schoolFunds';
-                } else {
-                    pointSourceRef = doc(db, 'teachers', currentTeacherId);
-                    sourceField = 'pointBalance';
-                }
-    
-                const pointSourceDoc = await transaction.get(pointSourceRef);
-                if (!pointSourceDoc.exists()) throw new Error("找不到資金來源。");
-                const sourceData = pointSourceDoc.data() as any;
-                
-                let currentSourcePoints = sourceData[sourceField] || 0;
-                
-                const studentsToUpdate = studentsInClass.filter(student => {
-                    if (points < 0 && student.points < Math.abs(points)) {
-                        console.warn(`Skipping ${student.name}, not enough points.`);
-                        return false;
-                    }
-                    return true;
-                });
-                
-                affectedStudentIds = new Set(studentsToUpdate.map(s => s.id));
-                const totalCost = points * studentsToUpdate.length;
-                if (points > 0 && currentSourcePoints < totalCost) {
-                    throw new Error(`您的點數餘額不足以批次發放 ${totalCost} 點`);
-                }
-
-                for (const student of studentsToUpdate) {
-                    const studentRef = doc(db, 'students', `${selectedClassId}-${student.id}`);
-                    const studentDoc = await transaction.get(studentRef);
-                    const studentData = studentDoc.data() as Student;
-
-                    const newPointHistory: PointRecord = {
-                        points: points,
-                        date: new Date().toISOString(),
-                        reason: `由老師 ${teacher?.name} 批次${operationText}`,
-                        teacherId: currentTeacherId,
-                    };
-
-                    transaction.update(studentRef, {
-                        points: studentData.points + points,
-                        pointHistory: [...(studentData.pointHistory || []), newPointHistory]
-                    });
-                }
-                
-                const totalPointsChange = points * studentsToUpdate.length;
-                transaction.update(pointSourceRef, {
-                    [sourceField]: currentSourcePoints - totalPointsChange
-                });
-            });
-
-            // Frontend state update
-            const totalPointsChange = points * affectedStudentIds.size;
-
-            setStudents(prevStudents => prevStudents.map(s => {
-                if (s.classId === selectedClassId && affectedStudentIds.has(s.id)) {
-                    const newPointHistory: PointRecord = { points, date: new Date().toISOString(), reason: `由老師 ${teacher?.name} 批次${operationText}`, teacherId: currentTeacherId };
-                    return { ...s, points: s.points + points, pointHistory: [...(s.pointHistory || []), newPointHistory] };
-                }
-                return s;
-            }));
-
-            const impersonatorId = localStorage.getItem('impersonator');
-            const isOperatingAsAdmin = (role === 'admin' && !impersonatorId) || (impersonatorId && role === 'admin');
-
-            if (isOperatingAsAdmin) {
-                setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - totalPointsChange });
-            } else {
-                setTeachers(prevTeachers => prevTeachers.map(t => {
-                    if (t.id === currentTeacherId) {
-                        return { ...t, pointBalance: (t.pointBalance || 0) - totalPointsChange };
-                    }
-                    return t;
-                }));
+        for (const student of studentsToUpdate) {
+            try {
+                await performPointOperation(student.id, points, true);
+            } catch (error: any) {
+                toast({ title: `為 ${student.name} 操作失敗`, description: error.message, variant: "destructive" });
+                // Continue to next student
             }
-    
-        } catch (error: any) {
-            console.error("Batch point operation failed:", error);
-            toast({ title: "批次操作失敗", description: error.message, variant: "destructive" });
-        } finally {
-            setBatchPoints('');
-            setIsBatchProcessing(false);
         }
+
+        toast({ title: "批次操作完成", description: `已為 ${studentsToUpdate.length} 位學生執行操作。` });
+        setIsBatchProcessing(false);
+        setBatchPoints('');
     };
 
     const handleApproveRewardUse = async (student: Student, rewardItem: RedeemedRewardItem) => {
@@ -892,24 +793,53 @@ export default function TeacherDashboardPage() {
              tabs.push(<TabsTrigger key="history" value="history">點數歷史</TabsTrigger>);
         }
         
-        tabs.push(<TabsTrigger key="approvals" value="approvals">審核中心</TabsTrigger>);
+        if (role === 'admin' || role === 'teacher') {
+            tabs.push(<TabsTrigger key="approvals" value="approvals">審核中心</TabsTrigger>);
+        }
         
         return tabs;
     };
-
-    const mainDashboardContent = () => {
-        if (isLoading) {
-            return (
-                <div className="flex items-center justify-center h-full">
-                    <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                </div>
-            );
-        }
-
-        const defaultTab = role === 'subject_teacher' ? 'points' : 'students';
-
+    
+    if (isLoading) {
         return (
-            <Tabs defaultValue={defaultTab} className="w-full">
+            <div className="flex items-center justify-center h-full">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            </div>
+        );
+    }
+    
+    const defaultTabValue = role === 'subject_teacher' ? 'points' : 'students';
+    
+    return (
+        <div className="space-y-6 animate-in fade-in-0 duration-500">
+            <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h2 className="text-2xl font-bold">
+                        {role === 'admin' ? '全校總覽' : teacherName}
+                    </h2>
+                    <p className="text-muted-foreground">
+                        {role === 'admin' ? '管理所有班級、教師和學校資金。' : '管理您的班級與點數。'}
+                    </p>
+                </div>
+                <Card className="mt-4 sm:mt-0">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">
+                            {role === 'admin' ? '學校總資金' : '我的點數餘額'}
+                        </CardTitle>
+                        <Coins className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">
+                             {(role === 'admin' ? (platformConfig?.schoolFunds || 0) : (teacher?.pointBalance || 0))?.toLocaleString()}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                           {role === 'admin' ? '可用於撥款給老師或作為活動獎勵' : '可用於發放給學生'}
+                        </p>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <Tabs defaultValue={defaultTabValue} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
                     {getDashboardTabs()}
                 </TabsList>
@@ -1067,7 +997,7 @@ export default function TeacherDashboardPage() {
                                                 {classes.map(c => (
                                                     <div key={c.id} className="flex justify-between items-center p-2 bg-muted/50 rounded-md">
                                                         <span>{c.name} ({c.id})</span>
-                                                        <AlertDialog open={!!classToDelete && classToDelete.id === c.id} onOpenChange={(open) => !open && setClassToDelete(null)}>
+                                                        <AlertDialog open={!!classToDelete && classToDelete.id === c.id} onOpenChange={(open) => {if(!open) setClassToDelete(null)}}>
                                                             <AlertDialogTrigger asChild>
                                                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setClassToDelete(c)}><Trash2 className="h-4 w-4"/></Button>
                                                             </AlertDialogTrigger>
@@ -1112,7 +1042,7 @@ export default function TeacherDashboardPage() {
                                             <SelectValue placeholder="請選擇班級" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {(role === 'admin' ? classes : teacherClassIds.map(id => classes.find(c => c.id === id)).filter(Boolean as (value: Class | undefined) => value is Class)).map(classInfo => (
+                                            {(role === 'admin' ? classes : classes.filter(c => teacherClassIds.includes(c.id))).map(classInfo => (
                                                  <SelectItem key={classInfo.id} value={classInfo.id}>{classInfo.name}</SelectItem>
                                             ))}
                                         </SelectContent>
@@ -1321,6 +1251,7 @@ export default function TeacherDashboardPage() {
                 </TabsContent>
                 )}
                 
+                {(role === 'admin' || role === 'teacher') && (
                 <TabsContent value="approvals" className="mt-6">
                      <div className="grid gap-6">
                         <Card>
@@ -1438,40 +1369,8 @@ export default function TeacherDashboardPage() {
                         </Card>
                     </div>
                 </TabsContent>
+                )}
             </Tabs>
-        );
-    }
-    
-    return (
-        <div className="space-y-6 animate-in fade-in-0 duration-500">
-            <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h2 className="text-2xl font-bold">
-                        {role === 'admin' ? '全校總覽' : teacher?.name}
-                    </h2>
-                    <p className="text-muted-foreground">
-                        {role === 'admin' ? '管理所有班級、教師和學校資金。' : '管理您的班級與點數。'}
-                    </p>
-                </div>
-                <Card className="mt-4 sm:mt-0">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            {role === 'admin' ? '學校總資金' : '我的點數餘額'}
-                        </CardTitle>
-                        <Coins className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">
-                             {(role === 'admin' ? (platformConfig?.schoolFunds || 0) : (teacher?.pointBalance || 0))?.toLocaleString()}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                           {role === 'admin' ? '可用於撥款給老師或作為活動獎勵' : '可用於發放給學生'}
-                        </p>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {mainDashboardContent()}
 
             <Dialog open={isAddStudentDialogOpen} onOpenChange={setIsAddStudentDialogOpen}>
                  <DialogContent>
@@ -1621,7 +1520,7 @@ export default function TeacherDashboardPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="edit-teacher-role">角色</Label>
-                                <Select name="role" defaultValue={teacherToEdit?.role} onValueChange={setEditedTeacherRole} required>
+                                <Select name="role" defaultValue={teacherToEdit?.role} onValueChange={(value) => setEditedTeacherRole(value)} required>
                                     <SelectTrigger id="edit-teacher-role"><SelectValue/></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="teacher">班級導師</SelectItem>
@@ -1679,5 +1578,3 @@ export default function TeacherDashboardPage() {
         </div>
     )
 }
-
-    
