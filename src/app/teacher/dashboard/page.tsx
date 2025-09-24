@@ -416,7 +416,7 @@ export default function TeacherDashboardPage() {
         localStorage.setItem('userRole', 'teacher');
         localStorage.setItem('teacherId', teacherToImpersonate.id);
         localStorage.setItem('teacherRole', teacherToImpersonate.role);
-        localStorage.setItem('teacherClassIds', JSON.stringify(teacherToImpersonate.classIds));
+        localStorage.setItem('teacherClassIds', JSON.stringify(teacherToImpersonate.classIds || []));
         localStorage.setItem('teacherName', teacherToImpersonate.name);
         localStorage.setItem('impersonator', teacherId || '');
 
@@ -453,7 +453,7 @@ export default function TeacherDashboardPage() {
             const batch = writeBatch(db);
             // Remove class from any subject teachers
             teachers.forEach(t => {
-                if (t.role === 'subject_teacher' && t.classIds.includes(classToDelete.id)) {
+                if (t.role === 'subject_teacher' && (t.classIds || []).includes(classToDelete.id)) {
                     const teacherRef = doc(db, 'teachers', t.id);
                     batch.update(teacherRef, { classIds: t.classIds.filter(id => id !== classToDelete.id) });
                 }
@@ -466,7 +466,7 @@ export default function TeacherDashboardPage() {
             // Optimistic UI
             setTeachers(current => current.map(t => ({
                 ...t,
-                classIds: t.classIds.filter(id => id !== classToDelete.id)
+                classIds: (t.classIds || []).filter(id => id !== classToDelete.id)
             })));
             setClasses(current => current.filter(c => c.id !== classToDelete.id));
 
@@ -487,7 +487,8 @@ export default function TeacherDashboardPage() {
         const points = parseInt(pointsStr, 10);
         if (points === 0) return;
     
-        if (!teacherId) {
+        const currentTeacherId = teacherId;
+        if (!currentTeacherId) {
             toast({ title: "錯誤", description: "無法識別您的教師身份", variant: "destructive" });
             return;
         }
@@ -512,18 +513,25 @@ export default function TeacherDashboardPage() {
                 }
     
                 let pointSourceRef;
-                let currentSourcePoints: number;
+                let currentSourcePoints: number | undefined;
+                let sourceData: Teacher | PlatformConfig | null = null;
     
                 if (role === 'admin') {
                     pointSourceRef = doc(db, 'config', 'main');
                     const configDoc = await transaction.get(pointSourceRef);
-                    currentSourcePoints = (configDoc.data() as any).schoolFunds || 0;
+                    sourceData = configDoc.data() as PlatformConfig;
+                    currentSourcePoints = sourceData?.schoolFunds;
                 } else {
-                    pointSourceRef = doc(db, 'teachers', teacherId);
+                    pointSourceRef = doc(db, 'teachers', currentTeacherId);
                     const teacherDoc = await transaction.get(pointSourceRef);
-                    currentSourcePoints = (teacherDoc.data() as any).pointBalance || 0;
+                    sourceData = teacherDoc.data() as Teacher;
+                    currentSourcePoints = sourceData?.pointBalance;
                 }
     
+                if (currentSourcePoints === undefined) {
+                    throw new Error("無法讀取您的點數餘額。");
+                }
+
                 if (points > 0 && currentSourcePoints < points) {
                     throw new Error("您的點數餘額不足。");
                 }
@@ -532,7 +540,7 @@ export default function TeacherDashboardPage() {
                     points: points,
                     date: new Date().toISOString(),
                     reason: `由老師 ${teacher?.name} ${points > 0 ? '發放' : '扣除'}`,
-                    teacherId: teacherId,
+                    teacherId: currentTeacherId,
                 };
                 transaction.update(studentRef, {
                     points: currentStudentPoints + points,
@@ -546,6 +554,11 @@ export default function TeacherDashboardPage() {
                     transaction.update(pointSourceRef, { pointBalance: newSourceBalance });
                 }
             });
+
+            // Optimistic UI updates
+            if (role === 'admin') {
+                setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - points });
+            }
     
             setStudents(currentStudents => currentStudents.map(s => {
                 if (s.id === studentId && s.classId === selectedClassId) {
@@ -553,7 +566,7 @@ export default function TeacherDashboardPage() {
                         points: points,
                         date: new Date().toISOString(),
                         reason: `由老師 ${teacher?.name} ${points > 0 ? '發放' : '扣除'}`,
-                        teacherId: teacherId,
+                        teacherId: currentTeacherId,
                     };
                     return {
                         ...s,
@@ -563,10 +576,6 @@ export default function TeacherDashboardPage() {
                 }
                 return s;
             }));
-
-            if (role === 'admin') {
-                 setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - points });
-            }
     
             setPointInputs(prev => ({ ...prev, [studentId]: '' }));
     
@@ -593,6 +602,8 @@ export default function TeacherDashboardPage() {
         const operationText = batchOperation === 'award' ? '發放' : '扣除';
 
         for (const student of studentsInClass) {
+            // Temporarily set the points for the handleAwardPoints function
+            setPointInputs(prev => ({...prev, [student.id]: String(pointsToProcess)}));
             await handleAwardPoints(student.id, student.name);
         }
 
@@ -778,11 +789,19 @@ export default function TeacherDashboardPage() {
         if (role === 'admin') {
             tabs.push(<TabsTrigger key="teachers" value="teachers">教師管理</TabsTrigger>);
         }
-        tabs.push(<TabsTrigger key="points" value="points">發送點數</TabsTrigger>);
-        if (role === 'admin' || role === 'subject_teacher') {
-            tabs.push(<TabsTrigger key="history" value="history">點數歷史</TabsTrigger>);
+        
+        // For subject_teacher, only show Points, History, and Approvals
+        if (role === 'subject_teacher') {
+             return [
+                <TabsTrigger key="points" value="points">發送點數</TabsTrigger>,
+                <TabsTrigger key="history" value="history">點數歷史</TabsTrigger>,
+                <TabsTrigger key="approvals" value="approvals">審核中心</TabsTrigger>,
+             ];
         }
+
+        tabs.push(<TabsTrigger key="points" value="points">發送點數</TabsTrigger>);
         tabs.push(<TabsTrigger key="approvals" value="approvals">審核中心</TabsTrigger>);
+        
         return tabs;
     };
     
