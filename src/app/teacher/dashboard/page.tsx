@@ -923,7 +923,7 @@ export default function TeacherDashboardPage() {
                                             <TableRow key={t.id}>
                                                 <TableCell>{t.name}</TableCell>
                                                 <TableCell>{t.role === 'admin' ? '校長' : t.role === 'teacher' ? '班級導師' : '科任教師'}</TableCell>
-                                                <TableCell>{t.classIds.join(', ')}</TableCell>
+                                                <TableCell>{(t.classIds || []).join(', ')}</TableCell>
                                                 <TableCell>{t.pointBalance?.toLocaleString() || 'N/A'}</TableCell>
                                                 <TableCell className="text-right">
                                                     <Button variant="ghost" size="icon" onClick={() => {setTeacherToAllocate(t); setIsAllocatePointsDialogOpen(true);}} disabled={t.role === 'admin'}><Coins className="h-4 w-4"/></Button>
