@@ -136,38 +136,51 @@ export default function TeacherDashboardPage() {
 
     const pointHistoryForTeacherAndClass = useMemo(() => {
         if (!historySelectedTeacherId || !historySelectedClassId) {
-            return { records: [], studentTotals: new Map() };
+            return { records: [], studentTotals: new Map(), classSummary: [] };
         }
     
         const targetTeacher = teachers.find(t => t.id === historySelectedTeacherId);
         if (!targetTeacher) {
-            return { records: [], studentTotals: new Map() };
+            return { records: [], studentTotals: new Map(), classSummary: [] };
         }
     
         const records: (PointRecord & { studentName: string })[] = [];
         const studentTotals = new Map<string, { name: string, total: number }>();
     
-        students
-            .filter(s => s.classId === historySelectedClassId)
-            .forEach(student => {
-                let totalPointsFromTeacher = 0;
-                (student.pointHistory || []).forEach(record => {
-                    // Check if the record was made by the selected teacher
-                    if (record.teacherId === historySelectedTeacherId) {
-                        records.push({ ...record, studentName: student.name });
-                        totalPointsFromTeacher += record.points;
+        const classStudents = students.filter(s => s.classId === historySelectedClassId);
+        
+        const classSummary = classStudents.map(student => {
+            let totalAwarded = 0;
+            let totalDeducted = 0;
+
+            (student.pointHistory || []).forEach(record => {
+                if (record.teacherId === historySelectedTeacherId) {
+                    records.push({ ...record, studentName: student.name });
+                    if (record.points > 0) {
+                        totalAwarded += record.points;
+                    } else {
+                        totalDeducted += record.points;
                     }
-                });
-    
-                if (totalPointsFromTeacher !== 0) { // Only add if there's a net change
-                    studentTotals.set(student.id, { name: student.name, total: totalPointsFromTeacher });
                 }
             });
+            
+            const netTotal = totalAwarded + totalDeducted;
+            if (netTotal !== 0) {
+                studentTotals.set(student.id, { name: student.name, total: netTotal });
+            }
+
+            return {
+                studentId: student.id,
+                studentName: student.name,
+                awarded: totalAwarded,
+                deducted: totalDeducted,
+                net: netTotal,
+            };
+        });
     
-        // Sort records by most recent date
         records.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
     
-        return { records, studentTotals };
+        return { records, studentTotals, classSummary };
     }, [students, historySelectedTeacherId, historySelectedClassId, teachers]);
 
     const { rewardApprovalRequests, loanApprovalRequests, challengeApprovalRequests } = useMemo(() => {
@@ -547,21 +560,20 @@ export default function TeacherDashboardPage() {
                     pointHistory: [...(studentData.pointHistory || []), newPointHistory]
                 });
     
-                if (points > 0) { // Only deduct from provider if awarding points
-                     const newSourceBalance = currentSourcePoints - points;
-                     if (role === 'admin') {
-                        transaction.update(pointSourceRef, { schoolFunds: newSourceBalance });
-                    } else {
-                        transaction.update(pointSourceRef, { pointBalance: newSourceBalance });
+                if (role === 'admin') {
+                    if (points > 0) {
+                        transaction.update(pointSourceRef, { schoolFunds: currentSourcePoints - points });
                     }
+                } else {
+                    transaction.update(pointSourceRef, { pointBalance: currentSourcePoints - points });
                 }
             });
 
             // Optimistic UI updates
-            if (role === 'admin' && points > 0) {
-                setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - points });
-            } else if (role !== 'admin' && points > 0){
-                setTeachers(current => current.map(t => 
+            if (role === 'admin') {
+                if (points > 0) setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - points });
+            } else {
+                 setTeachers(current => current.map(t => 
                     t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - points } : t
                 ));
             }
@@ -796,12 +808,10 @@ export default function TeacherDashboardPage() {
             tabs.push(<TabsTrigger key="teachers" value="teachers">教師管理</TabsTrigger>);
         }
         
-        const pointHistoryTab = <TabsTrigger key="history" value="history">點數歷史</TabsTrigger>;
-
         tabs.push(<TabsTrigger key="points" value="points">發送點數</TabsTrigger>);
-
-        if (role === 'subject_teacher') {
-            tabs.push(pointHistoryTab);
+        
+        if (role === 'admin' || role === 'subject_teacher') {
+             tabs.push(<TabsTrigger key="history" value="history">點數歷史</TabsTrigger>);
         }
         
         tabs.push(<TabsTrigger key="approvals" value="approvals">審核中心</TabsTrigger>);
@@ -1067,88 +1077,149 @@ export default function TeacherDashboardPage() {
                 </TabsContent>
 
                 {/* Point History Tab */}
-                {(role === 'subject_teacher') && (
+                {(role === 'admin' || role === 'subject_teacher') && (
                 <TabsContent value="history" className="mt-6">
                     <Card>
                         <CardHeader>
                             <CardTitle>點數歷史查詢</CardTitle>
-                            <CardDescription>查詢在此班級的點數發放與扣除總計。</CardDescription>
+                            <CardDescription>查詢指定老師在特定班級的點數發放與扣除總計。</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                             <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {role === 'admin' && (
+                                     <div className="flex-1 min-w-[200px] space-y-2">
+                                        <Label htmlFor="teacher-select-history">選擇老師</Label>
+                                        <Select onValueChange={setHistorySelectedTeacherId} value={historySelectedTeacherId}>
+                                            <SelectTrigger id="teacher-select-history">
+                                                <SelectValue placeholder="請選擇老師" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {teachers.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
                                 <div className="flex-1 min-w-[200px] space-y-2">
                                     <Label htmlFor="class-select-history">選擇班級</Label>
-                                    <Select onValueChange={(classId) => { setHistorySelectedClassId(classId); setHistorySelectedTeacherId(teacherId || ''); }} value={historySelectedClassId}>
+                                    <Select 
+                                        onValueChange={(classId) => { 
+                                            setHistorySelectedClassId(classId); 
+                                            if(role === 'subject_teacher') {
+                                                setHistorySelectedTeacherId(teacherId || '');
+                                            }
+                                        }} 
+                                        value={historySelectedClassId}
+                                    >
                                         <SelectTrigger id="class-select-history">
                                             <SelectValue placeholder="請選擇班級" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {teacherClassIds.map(id => {
-                                                 const classInfo = classes.find(c => c.id === id);
-                                                 return classInfo ? <SelectItem key={id} value={id}>{classInfo.name}</SelectItem> : null
-                                            })}
+                                            {(role === 'admin' ? classes : classes.filter(c => teacherClassIds.includes(c.id))).map(c => 
+                                                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                            )}
                                         </SelectContent>
                                     </Select>
                                 </div>
                             </div>
                             
                             {historySelectedTeacherId && historySelectedClassId && (
-                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                    <div className="lg:col-span-1">
-                                        <h4 className="font-semibold mb-2">學生點數淨變動</h4>
-                                        <ScrollArea className="h-72 border rounded-md p-2">
-                                            <Table>
-                                                 <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>學生</TableHead>
-                                                        <TableHead className="text-right">總計</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                     {Array.from(pointHistoryForTeacherAndClass.studentTotals.entries()).length > 0 ? Array.from(pointHistoryForTeacherAndClass.studentTotals.entries()).map(([studentId, data]) => (
-                                                        <TableRow key={studentId}>
-                                                            <TableCell>{data.name}</TableCell>
-                                                            <TableCell className={`text-right font-medium ${data.total > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                                {data.total > 0 ? '+' : ''}{data.total.toLocaleString()}
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    )) : (
+                                <div className="space-y-6">
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle>班級發放總表</CardTitle>
+                                            <CardDescription>
+                                                {teachers.find(t=>t.id === historySelectedTeacherId)?.name} 老師在 {classes.find(c=>c.id === historySelectedClassId)?.name} 的點數紀錄。
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <ScrollArea className="h-72">
+                                                <Table>
+                                                    <TableHeader>
                                                         <TableRow>
-                                                            <TableCell colSpan={2} className="h-24 text-center">無相關紀錄</TableCell>
+                                                            <TableHead>學生</TableHead>
+                                                            <TableHead className="text-right">發放總計</TableHead>
+                                                            <TableHead className="text-right">扣除總計</TableHead>
+                                                            <TableHead className="text-right">淨變動</TableHead>
                                                         </TableRow>
-                                                    )}
-                                                </TableBody>
-                                            </Table>
-                                        </ScrollArea>
-                                    </div>
-                                    <div className="lg:col-span-2">
-                                         <h4 className="font-semibold mb-2">詳細交易紀錄</h4>
-                                         <ScrollArea className="h-72 border rounded-md p-2">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>日期</TableHead>
-                                                        <TableHead>學生</TableHead>
-                                                        <TableHead className="text-right">點數</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {pointHistoryForTeacherAndClass.records.length > 0 ? pointHistoryForTeacherAndClass.records.map((record, index) => (
-                                                        <TableRow key={index}>
-                                                            <TableCell>{format(parseISO(record.date), 'yyyy-MM-dd HH:mm')}</TableCell>
-                                                            <TableCell>{record.studentName}</TableCell>
-                                                            <TableCell className={`text-right font-medium ${record.points > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                                {record.points > 0 ? '+' : ''}{record.points.toLocaleString()}
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    )) : (
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {pointHistoryForTeacherAndClass.classSummary.length > 0 ? pointHistoryForTeacherAndClass.classSummary.map((summary) => (
+                                                            <TableRow key={summary.studentId}>
+                                                                <TableCell>{summary.studentName}</TableCell>
+                                                                <TableCell className="text-right text-green-600 font-medium">+{summary.awarded.toLocaleString()}</TableCell>
+                                                                <TableCell className="text-right text-red-600 font-medium">{summary.deducted.toLocaleString()}</TableCell>
+                                                                <TableCell className={`text-right font-bold ${summary.net > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                                    {summary.net > 0 ? '+' : ''}{summary.net.toLocaleString()}
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        )) : (
+                                                            <TableRow>
+                                                                <TableCell colSpan={4} className="h-24 text-center">此班級尚無相關點數紀錄。</TableCell>
+                                                            </TableRow>
+                                                        )}
+                                                    </TableBody>
+                                                </Table>
+                                            </ScrollArea>
+                                        </CardContent>
+                                    </Card>
+
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                        <div className="lg:col-span-1">
+                                            <h4 className="font-semibold mb-2">學生點數淨變動</h4>
+                                            <ScrollArea className="h-72 border rounded-md p-2">
+                                                <Table>
+                                                    <TableHeader>
                                                         <TableRow>
-                                                            <TableCell colSpan={3} className="h-24 text-center">無相關紀錄</TableCell>
+                                                            <TableHead>學生</TableHead>
+                                                            <TableHead className="text-right">總計</TableHead>
                                                         </TableRow>
-                                                    )}
-                                                </TableBody>
-                                            </Table>
-                                         </ScrollArea>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {Array.from(pointHistoryForTeacherAndClass.studentTotals.entries()).length > 0 ? Array.from(pointHistoryForTeacherAndClass.studentTotals.entries()).map(([studentId, data]) => (
+                                                            <TableRow key={studentId}>
+                                                                <TableCell>{data.name}</TableCell>
+                                                                <TableCell className={`text-right font-medium ${data.total > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                                    {data.total > 0 ? '+' : ''}{data.total.toLocaleString()}
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        )) : (
+                                                            <TableRow>
+                                                                <TableCell colSpan={2} className="h-24 text-center">無相關紀錄</TableCell>
+                                                            </TableRow>
+                                                        )}
+                                                    </TableBody>
+                                                </Table>
+                                            </ScrollArea>
+                                        </div>
+                                        <div className="lg:col-span-2">
+                                            <h4 className="font-semibold mb-2">詳細交易紀錄</h4>
+                                            <ScrollArea className="h-72 border rounded-md p-2">
+                                                <Table>
+                                                    <TableHeader>
+                                                        <TableRow>
+                                                            <TableHead>日期</TableHead>
+                                                            <TableHead>學生</TableHead>
+                                                            <TableHead className="text-right">點數</TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {pointHistoryForTeacherAndClass.records.length > 0 ? pointHistoryForTeacherAndClass.records.map((record, index) => (
+                                                            <TableRow key={index}>
+                                                                <TableCell>{format(parseISO(record.date), 'yyyy-MM-dd HH:mm')}</TableCell>
+                                                                <TableCell>{record.studentName}</TableCell>
+                                                                <TableCell className={`text-right font-medium ${record.points > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                                    {record.points > 0 ? '+' : ''}{record.points.toLocaleString()}
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        )) : (
+                                                            <TableRow>
+                                                                <TableCell colSpan={3} className="h-24 text-center">無相關紀錄</TableCell>
+                                                            </TableRow>
+                                                        )}
+                                                    </TableBody>
+                                                </Table>
+                                            </ScrollArea>
+                                        </div>
                                     </div>
                                 </div>
                             )}
