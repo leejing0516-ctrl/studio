@@ -507,12 +507,10 @@ export default function TeacherDashboardPage() {
                 const studentData = studentDoc.data() as Student;
                 const currentStudentPoints = studentData.points;
     
-                // --- Start critical section for point validation ---
                 if (points < 0 && currentStudentPoints < Math.abs(points)) {
                     throw new Error(`${studentName} 的點數不足，無法扣除 ${Math.abs(points)} 點。`);
                 }
     
-                // Determine point source (teacher or principal/school)
                 let pointSourceRef;
                 let currentSourcePoints: number;
     
@@ -529,9 +527,7 @@ export default function TeacherDashboardPage() {
                 if (points > 0 && currentSourcePoints < points) {
                     throw new Error("您的點數餘額不足。");
                 }
-                // --- End critical section for point validation ---
     
-                // Update student's points and history
                 const newPointHistory: PointRecord = {
                     points: points,
                     date: new Date().toISOString(),
@@ -543,7 +539,6 @@ export default function TeacherDashboardPage() {
                     pointHistory: [...(studentData.pointHistory || []), newPointHistory]
                 });
     
-                // Update point source's balance
                 const newSourceBalance = currentSourcePoints - points;
                 if (role === 'admin') {
                     transaction.update(pointSourceRef, { schoolFunds: newSourceBalance });
@@ -552,8 +547,7 @@ export default function TeacherDashboardPage() {
                 }
             });
     
-            // If transaction is successful, update local state optimistically
-             setStudents(currentStudents => currentStudents.map(s => {
+            setStudents(currentStudents => currentStudents.map(s => {
                 if (s.id === studentId && s.classId === selectedClassId) {
                     const newPointHistory: PointRecord = {
                         points: points,
@@ -572,13 +566,8 @@ export default function TeacherDashboardPage() {
 
             if (role === 'admin') {
                  setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - points });
-            } else {
-                 setTeachers(currentTeachers => currentTeachers.map(t => {
-                    if (t.id === teacherId) {
-                        return { ...t, pointBalance: (t.pointBalance || 0) - points };
-                    }
-                    return t;
-                }));
+            } else if (role === 'teacher' || role === 'subject_teacher') {
+                // No double counting
             }
     
             setPointInputs(prev => ({ ...prev, [studentId]: '' }));
@@ -829,7 +818,7 @@ export default function TeacherDashboardPage() {
                 </Card>
             </div>
 
-            <Tabs defaultValue={role === 'teacher' ? 'students' : 'points'} className="w-full">
+            <Tabs defaultValue={role === 'subject_teacher' ? 'points' : 'students'} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
                     {getDashboardTabs()}
                 </TabsList>
