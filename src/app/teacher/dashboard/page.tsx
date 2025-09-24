@@ -566,8 +566,6 @@ export default function TeacherDashboardPage() {
 
             if (role === 'admin') {
                  setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - points });
-            } else if (role === 'teacher' || role === 'subject_teacher') {
-                // No double counting
             }
     
             setPointInputs(prev => ({ ...prev, [studentId]: '' }));
