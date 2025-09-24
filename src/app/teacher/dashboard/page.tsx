@@ -21,7 +21,7 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Teacher, Class, Student, RedeemedRewardItem, Loan, StudentChallenge, PointRecord } from "@/lib/types";
+import type { Teacher, Class, Student, RedeemedRewardItem, Loan, StudentChallenge, PointRecord, PlatformConfig } from "@/lib/types";
 import { PlusCircle, Edit, Trash2, KeyRound, Upload, Download, Coins, Check, X, BadgeCent, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
@@ -408,12 +408,6 @@ export default function TeacherDashboardPage() {
                 transaction.update(teacherRef, { pointBalance: (teacherToAllocate.pointBalance || 0) + amount });
             });
 
-            // Optimistic UI updates
-            setPlatformConfig({ schoolFunds: schoolFunds - amount });
-            setTeachers(current => current.map(t => 
-                t.id === teacherToAllocate.id ? { ...t, pointBalance: (t.pointBalance || 0) + amount } : t
-            ));
-            
             toast({ title: "點數已撥款" });
             setIsAllocatePointsDialogOpen(false);
         } catch (error) {
@@ -474,14 +468,7 @@ export default function TeacherDashboardPage() {
             const classRef = doc(db, 'classes', classToDelete.id);
             batch.delete(classRef);
             await batch.commit();
-
-            // Optimistic UI
-            setTeachers(current => current.map(t => ({
-                ...t,
-                classIds: (t.classIds || []).filter(id => id !== classToDelete.id)
-            })));
-            setClasses(current => current.filter(c => c.id !== classToDelete.id));
-
+            
             toast({ title: "班級已刪除", variant: "destructive" });
         } catch (e) {
             toast({ title: "刪除失敗", variant: "destructive" });
@@ -526,26 +513,27 @@ export default function TeacherDashboardPage() {
     
                 let pointSourceRef;
                 let currentSourcePoints: number | undefined;
-                let sourceData: Teacher | PlatformConfig | null = null;
     
                 if (role === 'admin') {
-                    pointSourceRef = doc(db, 'config', 'main');
-                    // For admin, points come from school funds when deducting, but don't cost when awarding
+                    // Admin can give points freely, but deducting returns to school funds
+                    if (points < 0) {
+                         const configRef = doc(db, 'config', 'main');
+                         const configDoc = await transaction.get(configRef);
+                         const schoolFunds = (configDoc.data() as PlatformConfig).schoolFunds || 0;
+                         transaction.update(configRef, { schoolFunds: schoolFunds - points }); // -points because points is negative
+                    }
                 } else {
                     pointSourceRef = doc(db, 'teachers', currentTeacherId);
                     const teacherDoc = await transaction.get(pointSourceRef);
-                    sourceData = teacherDoc.data() as Teacher;
-                    currentSourcePoints = sourceData?.pointBalance;
-                }
-                
-                // Only check balance for non-admins
-                if (role !== 'admin') {
+                    currentSourcePoints = (teacherDoc.data() as Teacher)?.pointBalance;
+
                     if (currentSourcePoints === undefined) {
                         throw new Error("無法讀取您的點數餘額。");
                     }
                     if (points > 0 && currentSourcePoints < points) {
                         throw new Error("您的點數餘額不足。");
                     }
+                    transaction.update(pointSourceRef, { pointBalance: currentSourcePoints - points });
                 }
     
                 const newPointHistory: PointRecord = {
@@ -558,36 +546,7 @@ export default function TeacherDashboardPage() {
                     points: currentStudentPoints + points,
                     pointHistory: [...(studentData.pointHistory || []), newPointHistory]
                 });
-    
-                if (role !== 'admin' && pointSourceRef && currentSourcePoints !== undefined) {
-                     // Teachers' balance decreases when awarding, increases when deducting
-                    transaction.update(pointSourceRef, { pointBalance: currentSourcePoints - points });
-                }
             });
-
-            // Optimistic UI updates
-            if (role !== 'admin') {
-                 setTeachers(current => current.map(t => 
-                    t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - points } : t
-                ));
-            }
-    
-            setStudents(currentStudents => currentStudents.map(s => {
-                if (s.id === studentId && s.classId === selectedClassId) {
-                    const newPointHistory: PointRecord = {
-                        points: points,
-                        date: new Date().toISOString(),
-                        reason: `由老師 ${teacher?.name} ${points > 0 ? '發放' : '扣除'}`,
-                        teacherId: currentTeacherId,
-                    };
-                    return {
-                        ...s,
-                        points: s.points + points,
-                        pointHistory: [...(s.pointHistory || []), newPointHistory]
-                    };
-                }
-                return s;
-            }));
     
             setPointInputs(prev => ({ ...prev, [studentId]: '' }));
     
@@ -610,21 +569,76 @@ export default function TeacherDashboardPage() {
         }
 
         setIsBatchProcessing(true);
-        const operationText = batchPoints > 0 ? '發放' : '扣除';
-
-        for (const student of studentsInClass) {
-            // Temporarily set the points for the handleAwardPoints function
-            setPointInputs(prev => ({...prev, [student.id]: String(batchPoints)}));
-            await handleAwardPoints(student.id, student.name);
-        }
-
-        toast({
-            title: `批次${operationText}完成`,
-            description: `已為全班學生${operationText} ${Math.abs(Number(batchPoints))} 點。`
-        });
+        const operationText = batchPoints > 0 ? '發送' : '扣除';
+        const pointValue = Number(batchPoints);
         
-        setIsBatchProcessing(false);
-        setBatchPoints('');
+        try {
+            await runDbTransaction(async (transaction) => {
+                const currentTeacherId = teacherId;
+                if (!currentTeacherId) throw new Error("無法識別您的教師身份");
+
+                let totalCost = 0;
+                if (role !== 'admin') {
+                    totalCost = pointValue * studentsInClass.length;
+                    const teacherRef = doc(db, 'teachers', currentTeacherId);
+                    const teacherDoc = await transaction.get(teacherRef);
+                    const teacherBalance = (teacherDoc.data() as Teacher)?.pointBalance || 0;
+                    if (pointValue > 0 && teacherBalance < totalCost) {
+                        throw new Error(`您的點數餘額不足以批次發放 ${totalCost} 點`);
+                    }
+                }
+
+                // Update students
+                for (const student of studentsInClass) {
+                    const studentDocId = `${selectedClassId}-${student.id}`;
+                    const studentRef = doc(db, 'students', studentDocId);
+                    const studentDoc = await transaction.get(studentRef);
+                    if (!studentDoc.exists()) continue; // Skip if student not found
+
+                    const studentData = studentDoc.data() as Student;
+                    
+                    if (pointValue < 0 && studentData.points < Math.abs(pointValue)) {
+                       // Skip扣點 if student has not enough points
+                       continue;
+                    }
+                    
+                    const newPointHistory: PointRecord = {
+                        points: pointValue,
+                        date: new Date().toISOString(),
+                        reason: `由老師 ${teacher?.name} 批次${operationText}`,
+                        teacherId: currentTeacherId,
+                    };
+                    transaction.update(studentRef, {
+                        points: studentData.points + pointValue,
+                        pointHistory: [...(studentData.pointHistory || []), newPointHistory]
+                    });
+                }
+                
+                // Update teacher/school balance
+                if (role !== 'admin') {
+                    const teacherRef = doc(db, 'teachers', currentTeacherId);
+                    transaction.update(teacherRef, { pointBalance: doc(db, 'teachers', currentTeacherId).pointBalance - totalCost });
+                } else if (pointValue < 0) { // Admin deducting points returns funds to school
+                    const configRef = doc(db, 'config', 'main');
+                    const configDoc = await transaction.get(configRef);
+                    const schoolFunds = (configDoc.data() as PlatformConfig).schoolFunds || 0;
+                    // totalCost is negative for deductions
+                    transaction.update(configRef, { schoolFunds: schoolFunds - totalCost });
+                }
+            });
+
+            toast({
+                title: `批次${operationText}完成`,
+                description: `已為全班學生${operationText} ${Math.abs(pointValue)} 點。`
+            });
+
+        } catch (error: any) {
+            console.error("Batch point operation failed:", error);
+            toast({ title: "批次操作失敗", description: error.message, variant: "destructive" });
+        } finally {
+            setIsBatchProcessing(false);
+            setBatchPoints('');
+        }
     };
 
     const handleApproveRewardUse = async (student: Student, rewardItem: RedeemedRewardItem) => {
@@ -685,26 +699,6 @@ export default function TeacherDashboardPage() {
                 transaction.update(studentRef, { loans: updatedLoans, points: updatedPoints });
             });
             
-            // Optimistic UI updates
-             if (status === 'active') {
-                if (role === 'admin') {
-                    setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - loan.amount });
-                } else {
-                    setTeachers(current => current.map(t => t.id === teacherId ? { ...t, pointBalance: (t.pointBalance || 0) - loan.amount } : t));
-                }
-            }
-
-            setStudents(current => current.map(s => {
-                if (s.id === student.id && s.classId === student.classId) {
-                    return {
-                        ...s,
-                        points: status === 'active' ? s.points + loan.amount : s.points,
-                        loans: (s.loans || []).map(l => l.id === loan.id ? { ...l, status, approvalDate: new Date().toISOString(), approverId: teacherId } : l)
-                    }
-                }
-                return s;
-            }));
-            
             toast({ title: `貸款已${status === 'active' ? '批准' : '拒絕'}` });
             setLoanToProcess(null);
 
@@ -756,26 +750,6 @@ export default function TeacherDashboardPage() {
                     challenges: (studentData.challenges || []).map(c => c.challengeId === challenge.challengeId ? { ...c, status: 'completed' as const, completedDate: new Date().toISOString() } : c)
                 });
             });
-
-            // Optimistic UI updates
-            if (challengeDetails.scope === 'school') {
-                setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - points });
-            } else {
-                setTeachers(current => current.map(t => t.id === challengeDetails.providerId ? { ...t, pointBalance: (t.pointBalance || 0) - points } : t));
-            }
-            
-            setStudents(current => current.map(s => {
-                if (s.id === student.id && s.classId === student.classId) {
-                    const newHistory: PointRecord = { points, date: new Date().toISOString(), reason: `完成挑戰: ${challengeDetails.name}` };
-                    return {
-                        ...s,
-                        points: s.points + points,
-                        pointHistory: [...(s.pointHistory || []), newHistory],
-                        challenges: (s.challenges || []).map(c => c.challengeId === challenge.challengeId ? { ...c, status: 'completed' as const, completedDate: new Date().toISOString() } : c)
-                    };
-                }
-                return s;
-            }));
 
             toast({ title: "挑戰已批准", description: `已為 ${student.name} 發放 ${points} 點。`});
             setChallengeToApprove(null);
@@ -1587,5 +1561,6 @@ export default function TeacherDashboardPage() {
         </div>
     )
 }
+
 
     
