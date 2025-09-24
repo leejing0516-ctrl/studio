@@ -392,27 +392,31 @@ export default function TeacherDashboardPage() {
 
         const formData = new FormData(event.currentTarget);
         const amount = Number(formData.get('amount'));
-        const schoolFunds = platformConfig?.schoolFunds || 0;
-
-        if (amount > schoolFunds) {
-            toast({ title: "學校資金不足", variant: "destructive" });
-            return;
-        }
-
+        
         try {
             await runDbTransaction(async (transaction) => {
                 const configRef = doc(db, 'config', 'main');
                 const teacherRef = doc(db, 'teachers', teacherToAllocate.id);
+                
+                const configDoc = await transaction.get(configRef);
+                const schoolFunds = (configDoc.data() as PlatformConfig)?.schoolFunds || 0;
+
+                if (amount > schoolFunds) {
+                    throw new Error("學校資金不足");
+                }
+                
+                const teacherDoc = await transaction.get(teacherRef);
+                const teacherBalance = (teacherDoc.data() as Teacher)?.pointBalance || 0;
 
                 transaction.update(configRef, { schoolFunds: schoolFunds - amount });
-                transaction.update(teacherRef, { pointBalance: (teacherToAllocate.pointBalance || 0) + amount });
+                transaction.update(teacherRef, { pointBalance: teacherBalance + amount });
             });
 
             toast({ title: "點數已撥款" });
             setIsAllocatePointsDialogOpen(false);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Allocation transaction failed:", error);
-            toast({ title: "撥款失敗", description: "交易時發生錯誤。", variant: "destructive" });
+            toast({ title: "撥款失敗", description: error.message || "交易時發生錯誤。", variant: "destructive" });
         }
     };
 
@@ -511,31 +515,23 @@ export default function TeacherDashboardPage() {
                     throw new Error(`${studentName} 的點數不足，無法扣除 ${Math.abs(points)} 點。`);
                 }
     
-                let pointSourceRef;
-                let currentSourcePoints: number | undefined;
-    
-                if (role === 'admin') {
-                    // Admin can give points freely, but deducting returns to school funds
-                    if (points < 0) {
-                         const configRef = doc(db, 'config', 'main');
-                         const configDoc = await transaction.get(configRef);
-                         const schoolFunds = (configDoc.data() as PlatformConfig).schoolFunds || 0;
-                         transaction.update(configRef, { schoolFunds: schoolFunds - points }); // -points because points is negative
-                    }
-                } else {
-                    pointSourceRef = doc(db, 'teachers', currentTeacherId);
-                    const teacherDoc = await transaction.get(pointSourceRef);
-                    currentSourcePoints = (teacherDoc.data() as Teacher)?.pointBalance;
+                if (role !== 'admin') {
+                    const teacherRef = doc(db, 'teachers', currentTeacherId);
+                    const teacherDoc = await transaction.get(teacherRef);
+                    const currentTeacherPoints = (teacherDoc.data() as Teacher)?.pointBalance;
 
-                    if (currentSourcePoints === undefined) {
+                    if (currentTeacherPoints === undefined) {
                         throw new Error("無法讀取您的點數餘額。");
                     }
-                    if (points > 0 && currentSourcePoints < points) {
+                    if (points > 0 && currentTeacherPoints < points) {
                         throw new Error("您的點數餘額不足。");
                     }
-                    transaction.update(pointSourceRef, { pointBalance: currentSourcePoints - points });
+                    // For both award and deduct, the teacher's balance changes.
+                    // Award: balance - points
+                    // Deduct: balance + abs(points), which is balance - points (since points is negative)
+                    transaction.update(teacherRef, { pointBalance: currentTeacherPoints - points });
                 }
-    
+                
                 const newPointHistory: PointRecord = {
                     points: points,
                     date: new Date().toISOString(),
@@ -586,6 +582,8 @@ export default function TeacherDashboardPage() {
                     if (pointValue > 0 && teacherBalance < totalCost) {
                         throw new Error(`您的點數餘額不足以批次發放 ${totalCost} 點`);
                     }
+                    // Update teacher balance
+                    transaction.update(teacherRef, { pointBalance: teacherBalance - totalCost });
                 }
 
                 // Update students
@@ -612,18 +610,6 @@ export default function TeacherDashboardPage() {
                         points: studentData.points + pointValue,
                         pointHistory: [...(studentData.pointHistory || []), newPointHistory]
                     });
-                }
-                
-                // Update teacher/school balance
-                if (role !== 'admin') {
-                    const teacherRef = doc(db, 'teachers', currentTeacherId);
-                    transaction.update(teacherRef, { pointBalance: doc(db, 'teachers', currentTeacherId).pointBalance - totalCost });
-                } else if (pointValue < 0) { // Admin deducting points returns funds to school
-                    const configRef = doc(db, 'config', 'main');
-                    const configDoc = await transaction.get(configRef);
-                    const schoolFunds = (configDoc.data() as PlatformConfig).schoolFunds || 0;
-                    // totalCost is negative for deductions
-                    transaction.update(configRef, { schoolFunds: schoolFunds - totalCost });
                 }
             });
 
@@ -1561,6 +1547,5 @@ export default function TeacherDashboardPage() {
         </div>
     )
 }
-
 
     
