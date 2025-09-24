@@ -42,7 +42,7 @@ import { AppDataContext } from "@/context/AppDataContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Papa from "papaparse";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
-import { doc, writeBatch } from "firebase/firestore";
+import { doc, writeBatch, Transaction } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -56,7 +56,7 @@ export default function TeacherDashboardPage() {
         students, setStudents, 
         classes, setClasses,
         teachers, setTeachers,
-        isLoading, platformConfig, setPlatformConfig, runTransaction: runDbTransaction
+        isLoading, platformConfig, setPlatformConfig, runTransaction
     } = useContext(AppDataContext);
     const { toast } = useToast();
 
@@ -422,13 +422,13 @@ export default function TeacherDashboardPage() {
 
     const handleAllocatePoints = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!teacherToAllocate || !runDbTransaction) return;
+        if (!teacherToAllocate || !runTransaction) return;
 
         const formData = new FormData(event.currentTarget);
         const amount = Number(formData.get('amount'));
         
         try {
-            await runDbTransaction(async (transaction) => {
+            await runTransaction(async (transaction: Transaction) => {
                 const configRef = doc(db, 'config', 'main');
                 const teacherRef = doc(db, 'teachers', teacherToAllocate.id);
                 
@@ -534,12 +534,12 @@ export default function TeacherDashboardPage() {
         const operationText = points > 0 ? '發放' : '扣除';
         const batchText = isBatch ? '批次' : '';
         const impersonatorId = localStorage.getItem('impersonator');
-        const isOperatingAsAdmin = (role === 'admin' && !impersonatorId) || (!!impersonatorId && impersonatorId === 'principal');
-
+        const isOperatingAsAdmin = (role === 'admin' && !impersonatorId);
+        
         setIsProcessing(studentId);
 
         try {
-            await runDbTransaction(async (transaction) => {
+            await runTransaction(async (transaction: Transaction) => {
                 const studentRef = doc(db, 'students', `${selectedClassId}-${studentId}`);
                 const studentDoc = await transaction.get(studentRef);
                 if (!studentDoc.exists()) throw new Error("找不到學生資料。");
@@ -572,6 +572,8 @@ export default function TeacherDashboardPage() {
                     reason: `由老師 ${teacherName} ${batchText}${operationText}`,
                     teacherId: teacherId,
                 };
+                
+                const finalBalance = currentBalance - points;
 
                 transaction.update(studentRef, {
                     points: studentData.points + points,
@@ -579,7 +581,7 @@ export default function TeacherDashboardPage() {
                 });
 
                 transaction.update(sourceRef, {
-                    [sourceField]: currentBalance - points
+                    [sourceField]: finalBalance
                 });
             });
 
@@ -594,9 +596,11 @@ export default function TeacherDashboardPage() {
                 }
                 return s;
             }));
+            
+            const finalBalance = (isOperatingAsAdmin ? platformConfig?.schoolFunds : teacher?.pointBalance) || 0;
 
             if (isOperatingAsAdmin) {
-                setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) - points });
+                setPlatformConfig({ schoolFunds: finalBalance - points });
             } else {
                 setTeachers(prev => prev.map(t => {
                     if (t.id === teacherId) {
@@ -626,6 +630,7 @@ export default function TeacherDashboardPage() {
             await performPointOperation(studentId, points, false);
         } catch(error: any) {
              toast({ title: "操作失敗", description: error.message, variant: "destructive" });
+             setIsProcessing(null);
         }
     };
 
@@ -678,7 +683,7 @@ export default function TeacherDashboardPage() {
         const { student, loan } = loanToProcess;
 
         try {
-            await runDbTransaction(async (transaction) => {
+            await runTransaction(async (transaction: Transaction) => {
                 const studentRef = doc(db, 'students', `${student.classId}-${student.id}`);
                 
                 if (status === 'active') {
@@ -738,7 +743,7 @@ export default function TeacherDashboardPage() {
         const points = challengeDetails.points;
         
         try {
-            await runDbTransaction(async (transaction) => {
+            await runTransaction(async (transaction: Transaction) => {
                 const studentRef = doc(db, 'students', `${student.classId}-${student.id}`);
                 const studentDoc = await transaction.get(studentRef);
                 if (!studentDoc.exists()) throw new Error("Student not found");
@@ -947,7 +952,7 @@ export default function TeacherDashboardPage() {
                                             <TableRow key={t.id}>
                                                 <TableCell>{t.name}</TableCell>
                                                 <TableCell>{t.role === 'admin' ? '校長' : t.role === 'teacher' ? '班級導師' : '科任教師'}</TableCell>
-                                                <TableCell>{(t.classIds || []).join(', ')}</TableCell>
+                                                <TableCell>{(t.classIds || []).map(id => classes.find(c => c.id === id)?.name).join(', ') || '-'}</TableCell>
                                                 <TableCell>{(t.pointBalance || 0).toLocaleString()}</TableCell>
                                                 <TableCell className="text-right">
                                                     <Button variant="ghost" size="icon" onClick={() => {setTeacherToAllocate(t); setIsAllocatePointsDialogOpen(true);}} disabled={t.role === 'admin'}><Coins className="h-4 w-4"/></Button>
