@@ -113,7 +113,7 @@ export default function StudentLayout({
         toast({ title: "帳號已登出", description: "您的帳號資訊可能已被管理者變更，請重新登入。", variant: "destructive" });
         handleLogout();
     }
-  }, [students, studentData.student, setStudentData, toast, router]);
+  }, [students, studentData.student, setStudentData, toast]);
 
 
   const student = useMemo(() => studentData.student, [studentData.student]);

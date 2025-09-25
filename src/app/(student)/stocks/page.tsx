@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useContext, useMemo } from "react";
@@ -474,5 +475,3 @@ export default function StocksPage() {
     </>
   );
 }
-
-    
