@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState, useMemo } from "react";
 import Image from "next/image";
 import {
   SidebarProvider,
@@ -77,63 +77,49 @@ export default function StudentLayout({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
+  // Effect to handle initial load and re-authentication from localStorage
   useEffect(() => {
-    // If there's no student data on page load (e.g., after a refresh), redirect to login
-    if (!studentData.student) {
-      const storedId = localStorage.getItem('studentId');
-      const storedClassId = localStorage.getItem('studentClassId');
-      if (storedId && storedClassId) {
+    if (studentData.student) return;
+
+    const storedId = localStorage.getItem('studentId');
+    const storedClassId = localStorage.getItem('studentClassId');
+    
+    if (storedId && storedClassId) {
         const foundStudent = students.find(s => s.id === storedId && s.classId === storedClassId);
         if (foundStudent) {
-            setStudentData({ 
-                student: foundStudent,
-                points: foundStudent.points,
-                portfolio: foundStudent.portfolio,
-                redeemedRewards: foundStudent.redeemedRewards,
-                loans: foundStudent.loans,
-                challenges: foundStudent.challenges,
-                fixedDeposits: foundStudent.fixedDeposits,
-                habits: foundStudent.habits,
-            });
+            setStudentData({ student: foundStudent });
         } else {
-             router.push('/');
-        }
-      } else {
-          router.push('/');
-          return;
-      }
-    }
-  }, [students, studentData.student, setStudentData, router]);
-
-  useEffect(() => {
-    if (studentData.student) {
-        const latestStudentData = students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId);
-        if (latestStudentData) {
-            const studentJson = JSON.stringify(studentData.student);
-            const latestStudentJson = JSON.stringify(latestStudentData);
-            if (studentJson !== latestStudentJson) {
-                setStudentData({ 
-                    student: latestStudentData,
-                    points: latestStudentData.points,
-                    portfolio: latestStudentData.portfolio || [],
-                    redeemedRewards: latestStudentData.redeemedRewards || [],
-                    loans: latestStudentData.loans || [],
-                    challenges: latestStudentData.challenges || [],
-                    fixedDeposits: latestStudentData.fixedDeposits || [],
-                    habits: latestStudentData.habits || [],
-                });
-            }
-        } else if (studentData.student) {
+            // Can't find student, likely data has changed, force re-login
             handleLogout();
         }
+    } else {
+      router.push('/');
     }
   }, [students, studentData.student, setStudentData, router]);
 
+  // Effect to sync local studentData with global students list from AppDataContext
+  useEffect(() => {
+    if (!studentData.student) return;
 
-  const student = studentData.student;
+    const latestStudentData = students.find(s => s.id === studentData.student!.id && s.classId === studentData.student!.classId);
+    
+    if (latestStudentData) {
+      // Check if data is actually different to avoid unnecessary re-renders
+      if (JSON.stringify(latestStudentData) !== JSON.stringify(studentData.student)) {
+        setStudentData({ student: latestStudentData });
+      }
+    } else {
+        // The student no longer exists in the global context, log them out.
+        toast({ title: "帳號已登出", description: "您的帳號資訊可能已被管理者變更，請重新登入。", variant: "destructive" });
+        handleLogout();
+    }
+  }, [students, studentData.student, setStudentData, toast, router]);
+
+
+  const student = useMemo(() => studentData.student, [studentData.student]);
   
   const handleLogout = () => {
-    setStudentData({ student: null, points: 0, portfolio: [], redeemedRewards: [], loans: [], challenges: [], fixedDeposits: [], habits: [] });
+    setStudentData({ student: null });
     localStorage.removeItem('studentId');
     localStorage.removeItem('studentClassId');
     localStorage.removeItem('userRole');
@@ -156,8 +142,6 @@ export default function StudentLayout({
         return;
     }
     
-    // In a real app, this should be a secure API call.
-    // For this prototype, we'll find the student and check the password.
     const studentToUpdate = students.find(s => s.id === student.id && s.classId === student.classId);
 
     if (studentToUpdate?.password !== currentPassword) {
@@ -200,7 +184,10 @@ export default function StudentLayout({
     { href: "/loans", label: "信用貸款", icon: Landmark },
   ];
   
-  const pointHistory = student?.pointHistory?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
+  const pointHistory = useMemo(() => {
+    return student?.pointHistory?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
+  }, [student]);
+
 
   if (!student) {
       return null; // Or a loading spinner, as the useEffect will redirect
@@ -320,7 +307,7 @@ export default function StudentLayout({
                         <Separator />
                         <div className="grid gap-4 max-h-96 overflow-y-auto pr-2">
                             {pointHistory.length > 0 ? (
-                                pointHistory.slice(0, 10).map(record => <NotificationItem key={`${record.date}-${record.reason}-${record.points}`} record={record} />)
+                                pointHistory.slice(0, 10).map((record, index) => <NotificationItem key={`${record.date}-${index}`} record={record} />)
                             ) : (
                                 <p className="text-sm text-center text-muted-foreground py-4">沒有新的通知。</p>
                             )}

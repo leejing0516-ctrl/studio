@@ -1,34 +1,20 @@
 
 "use client";
 
-import { createContext, useState, ReactNode } from 'react';
-import type { PortfolioItem, RedeemedRewardItem, Student, Loan, StudentChallenge, FixedDeposit, StudentHabit } from '@/lib/types';
+import { createContext, useState, ReactNode, Dispatch, SetStateAction } from 'react';
+import type { Student } from '@/lib/types';
 
 interface StudentData {
   student: Student | null;
-  points: number;
-  portfolio: PortfolioItem[];
-  redeemedRewards: RedeemedRewardItem[];
-  loans: Loan[];
-  challenges: StudentChallenge[];
-  fixedDeposits: FixedDeposit[];
-  habits: StudentHabit[];
 }
 
 interface StudentDataContextType {
   studentData: StudentData;
-  setStudentData: React.Dispatch<React.SetStateAction<StudentData>>;
+  setStudentData: Dispatch<SetStateAction<StudentData>>;
 }
 
 const defaultStudentData: StudentData = {
     student: null,
-    points: 0,
-    portfolio: [],
-    redeemedRewards: [],
-    loans: [],
-    challenges: [],
-    fixedDeposits: [],
-    habits: [],
 };
 
 export const StudentDataContext = createContext<StudentDataContextType>({
