@@ -88,14 +88,13 @@ export default function StudentLayout({
         const foundStudent = students.find(s => s.id === storedId && s.classId === storedClassId);
         if (foundStudent) {
             setStudentData({ student: foundStudent });
-        } else {
-            // Can't find student, likely data has changed, force re-login
+        } else if (students.length > 0) { // Only force re-login if students have loaded
             handleLogout();
         }
     } else {
       router.push('/');
     }
-  }, [students, studentData.student, setStudentData, router]);
+  }, [students, studentData.student]);
 
   // Effect to sync local studentData with global students list from AppDataContext
   useEffect(() => {
@@ -104,16 +103,14 @@ export default function StudentLayout({
     const latestStudentData = students.find(s => s.id === studentData.student!.id && s.classId === studentData.student!.classId);
     
     if (latestStudentData) {
-      // Check if data is actually different to avoid unnecessary re-renders
       if (JSON.stringify(latestStudentData) !== JSON.stringify(studentData.student)) {
         setStudentData({ student: latestStudentData });
       }
-    } else {
-        // The student no longer exists in the global context, log them out.
+    } else if (students.length > 0) { // Only logout if students list is loaded and student is not found
         toast({ title: "帳號已登出", description: "您的帳號資訊可能已被管理者變更，請重新登入。", variant: "destructive" });
         handleLogout();
     }
-  }, [students, studentData.student, setStudentData, toast]);
+  }, [students, studentData.student]);
 
 
   const student = useMemo(() => studentData.student, [studentData.student]);

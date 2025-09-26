@@ -30,7 +30,7 @@ export default function RewardsPage() {
   const [isRedeeming, setIsRedeeming] = useState(false);
   const { toast } = useToast();
   const { studentData } = useContext(StudentDataContext);
-  const { students, setStudents, rewards, setRewards, platformConfig, setPlatformConfig, teachers, setTeachers } = useContext(AppDataContext);
+  const { rewards, teachers } = useContext(AppDataContext);
 
   const student = studentData.student;
   
@@ -64,7 +64,7 @@ export default function RewardsPage() {
   }, [rewards, student, teachers]);
 
   const handleRedeemClick = (reward: Reward) => {
-    if (studentData.points < reward.cost) {
+    if (!student || student.points < reward.cost) {
         toast({
             title: "點數不足",
             description: `您需要 ${reward.cost.toLocaleString()} 點來兌換此獎勵。`,
@@ -100,35 +100,7 @@ export default function RewardsPage() {
         });
         
         if (result.success && result.newRedeemedItem) {
-            // Update frontend state based on the successful transaction
-            // This is a more robust way than updating each state slice separately.
-            setStudents(currentStudents => 
-                currentStudents.map(s => {
-                    if (s.id === student.id && s.classId === student.classId) {
-                        return {
-                            ...s,
-                            points: s.points - selectedReward.cost,
-                            redeemedRewards: [...(s.redeemedRewards || []), result.newRedeemedItem!],
-                        };
-                    }
-                    return s;
-                })
-            );
-            
-            setRewards(currentRewards => currentRewards.map(r =>
-                r.id === selectedReward.id ? { ...r, stock: r.stock - 1 } : r
-            ));
-            
-            if (selectedReward.scope === 'school') {
-                if (platformConfig?.schoolFunds !== undefined) {
-                    setPlatformConfig({ schoolFunds: platformConfig.schoolFunds + selectedReward.cost });
-                }
-            } else {
-                setTeachers(currentTeachers => currentTeachers.map(t =>
-                    t.id === selectedReward.providerId ? { ...t, pointBalance: (t.pointBalance || 0) + selectedReward.cost } : t
-                ));
-            }
-
+            // UI update will be handled by the real-time listener in AppDataContext
             toast({
                 title: "兌換成功！",
                 description: `您已成功兌換「${selectedReward.name}」。前往「我的收藏」查看！`,
@@ -187,7 +159,7 @@ export default function RewardsPage() {
             <Coins className="h-5 w-5" />
             <span>{reward.cost.toLocaleString()}</span>
         </div>
-        <Button onClick={() => handleRedeemClick(reward)} disabled={reward.stock === 0 || studentData.points < reward.cost}>
+        <Button onClick={() => handleRedeemClick(reward)} disabled={reward.stock === 0 || (student?.points || 0) < reward.cost}>
             <ShoppingCart className="mr-2"/>
             兌換
         </Button>

@@ -62,7 +62,7 @@ const fileToDataUrl = (file: File): Promise<string> => {
 
 export default function HabitsPage() {
   const { studentData } = useContext(StudentDataContext);
-  const { students, setStudents } = useContext(AppDataContext);
+  const { setStudents } = useContext(AppDataContext);
   const { toast } = useToast();
 
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
@@ -77,9 +77,7 @@ export default function HabitsPage() {
 
   const [viewingHabitHistory, setViewingHabitHistory] = useState<StudentHabit | null>(null);
 
-  const currentStudent = useMemo(() => 
-    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student?.classId) || studentData.student
-  , [students, studentData.student]);
+  const currentStudent = studentData.student;
 
   const studentHabits = useMemo(() => {
     return (currentStudent?.habits || []).sort((a,b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
@@ -465,7 +463,7 @@ export default function HabitsPage() {
                                     !checkIn.imageUrl && <p className="text-sm text-muted-foreground">這天只留下了打卡紀錄。</p>
                                 )}
                             </div>
-                            {index < (viewingHabitHistory?.checkIns.length || 0) - 1 && <Separator className="mt-6"/>}
+                            {index < (viewingHabitHistory?.checkIns || []).length - 1 && <Separator className="mt-6"/>}
                         </div>
                     ))}
                     </div>
@@ -479,5 +477,3 @@ export default function HabitsPage() {
     </div>
   );
 }
-
-    

@@ -75,7 +75,7 @@ const Countdown = ({ to }: { to: string }) => {
 
 
 export default function FundraisingPage() {
-  const { platformConfig, setPlatformConfig, students, setStudents, classes } = useContext(AppDataContext);
+  const { platformConfig, setPlatformConfig, setStudents, classes } = useContext(AppDataContext);
   const { studentData } = useContext(StudentDataContext);
   const { toast } = useToast();
 
@@ -84,9 +84,7 @@ export default function FundraisingPage() {
   const [selectedProject, setSelectedProject] = useState<FundraisingProject | null>(null);
   const [donationAmount, setDonationAmount] = useState<number | "">(10);
   
-  const currentStudent = useMemo(() => 
-    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId) || studentData.student
-  , [students, studentData.student]);
+  const currentStudent = studentData.student;
 
   const activeProjects = useMemo(() => {
     return (platformConfig?.fundraisingProjects || []).filter(p => p.status === 'active' && new Date(p.deadline) > new Date());
@@ -321,5 +319,3 @@ export default function FundraisingPage() {
     </div>
   );
 }
-
-    

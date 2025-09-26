@@ -15,13 +15,11 @@ import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
 
 export default function ChallengesPage() {
-    const { studentData, setStudentData } = useContext(StudentDataContext);
-    const { students, setStudents, platformConfig, teachers } = useContext(AppDataContext);
+    const { studentData } = useContext(StudentDataContext);
+    const { setStudents, platformConfig, teachers } = useContext(AppDataContext);
     const { toast } = useToast();
 
-    const currentStudent = useMemo(() => 
-        students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId) || studentData.student
-    , [students, studentData.student]);
+    const currentStudent = studentData.student;
 
     const { availableClassChallenges, availableSchoolChallenges, myChallenges } = useMemo(() => {
         if (!currentStudent) return { availableClassChallenges: [], availableSchoolChallenges: [], myChallenges: [] };
@@ -224,5 +222,3 @@ export default function ChallengesPage() {
         </div>
     )
 }
-
-    

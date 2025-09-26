@@ -29,7 +29,7 @@ const AnnouncementList = ({ announcements }: { announcements: Announcement[] }) 
 
 
 export default function AnnouncementsPage() {
-    const { platformConfig, classes, students } = useContext(AppDataContext);
+    const { platformConfig, classes } = useContext(AppDataContext);
     const { studentData } = useContext(StudentDataContext);
 
     const schoolAnnouncements = useMemo(() => {
@@ -39,14 +39,10 @@ export default function AnnouncementsPage() {
 
     const classAnnouncements = useMemo(() => {
         if (!studentData.student) return [];
-        // Get the most up-to-date student info from the source of truth (AppDataContext)
-        const currentStudent = students.find(s => s.id === studentData.student!.id && s.classId === studentData.student!.classId) || studentData.student;
-        if (!currentStudent) return [];
-        
-        const studentClass = classes.find(c => c.id === currentStudent.classId);
+        const studentClass = classes.find(c => c.id === studentData.student!.classId);
         return (studentClass?.announcements || [])
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [classes, students, studentData.student]);
+    }, [classes, studentData.student]);
 
     return (
         <div className="animate-in fade-in-0 duration-500 space-y-8">
@@ -88,5 +84,3 @@ export default function AnnouncementsPage() {
         </div>
     );
 }
-
-    

@@ -59,11 +59,9 @@ export default function StocksPage() {
   const [tradeShares, setTradeShares] = useState(0);
   const { toast } = useToast();
   const { studentData } = useContext(StudentDataContext);
-  const { students, setStudents, stocks: marketStocks, isMarketOpen, runTransaction, setPlatformConfig, platformConfig } = useContext(AppDataContext);
+  const { stocks: marketStocks, isMarketOpen, runTransaction } = useContext(AppDataContext);
   
-  const currentStudent = useMemo(() => 
-    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId) || studentData.student
-  , [students, studentData.student]);
+  const currentStudent = studentData.student;
   
   const studentHolding = selectedStock ? currentStudent?.portfolio.find(item => item.ticker === selectedStock.ticker) : null;
 
@@ -143,7 +141,6 @@ export default function StocksPage() {
             const studentRef = doc(db, 'students', studentDocId);
             const configRef = doc(db, 'config', 'main');
 
-            // --- 1. All Reads First ---
             const [studentDoc, configDoc] = await Promise.all([
                 transaction.get(studentRef),
                 transaction.get(configRef)
@@ -225,45 +222,6 @@ export default function StocksPage() {
             }
         });
         
-        // Optimistic UI update after successful transaction
-        const updatedSchoolFunds = platformConfig?.schoolFunds ? (tradeType === 'buy' ? platformConfig.schoolFunds + totalCost : platformConfig.schoolFunds - totalCost) : 0;
-        
-        setStudents(currentStudents => currentStudents.map(s => {
-            if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
-                if (tradeType === 'buy') {
-                    const newPoints = s.points - totalCost;
-                    const existingHolding = s.portfolio.find(item => item.ticker === selectedStock.ticker);
-                    let newPortfolio: PortfolioItem[];
-                    if (existingHolding) {
-                        newPortfolio = s.portfolio.map(item => {
-                           if (item.ticker === selectedStock.ticker) {
-                                const newShares = item.shares + tradeShares;
-                                const newTotalCost = item.avgCost * item.shares + totalCost;
-                                const newAvgCost = newTotalCost / newShares;
-                                return { ...item, shares: newShares, avgCost: newAvgCost, lastPurchaseDate: new Date().toISOString() };
-                            }
-                            return item;
-                        });
-                    } else {
-                         newPortfolio = [...s.portfolio, { ticker: selectedStock.ticker, name: selectedStock.name, shares: tradeShares, avgCost: selectedStock.price, lastPurchaseDate: new Date().toISOString() }];
-                    }
-                    return { ...s, points: newPoints, portfolio: newPortfolio };
-                } else { // sell
-                     const newPoints = s.points + totalCost;
-                     const newPortfolio = s.portfolio.map(item => {
-                        if (item.ticker === selectedStock.ticker) {
-                            return { ...item, shares: item.shares - tradeShares };
-                        }
-                        return item;
-                    }).filter(item => item.shares > 0);
-                    return { ...s, points: newPoints, portfolio: newPortfolio };
-                }
-            }
-            return s;
-        }));
-        
-        setPlatformConfig({ schoolFunds: updatedSchoolFunds });
-
         toast({
             title: `${tradeType === 'buy' ? '買入' : '賣出'}成功！`,
             description: `您已成功${tradeType === 'buy' ? '買入' : '賣出'} ${tradeShares} 股 ${selectedStock.name}。`,

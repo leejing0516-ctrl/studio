@@ -27,10 +27,7 @@ export default function StudentDashboardPage() {
   const { studentData } = useContext(StudentDataContext);
   const { students, stocks: marketStocks } = useContext(AppDataContext);
   
-  // Find the most up-to-date student info from the source of truth, but fallback to studentData for guest.
-  const currentStudent = useMemo(() => 
-    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student?.classId) || studentData.student
-  , [students, studentData.student]);
+  const currentStudent = studentData.student;
 
   const totalPoints = currentStudent?.points || 0;
 
@@ -216,5 +213,3 @@ export default function StudentDashboardPage() {
     </div>
   );
 }
-
-    

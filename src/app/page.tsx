@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useContext, useEffect, useMemo } from 'react';
@@ -15,6 +16,9 @@ import { StudentDataContext } from '@/context/StudentDataContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AppDataContext } from '@/context/AppDataContext';
 import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { Student } from '@/lib/types';
 
 
 export default function HomePage() {
@@ -26,7 +30,7 @@ export default function HomePage() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const { students, classes, teachers, isLoading, loadSensitiveData, seedInitialData, platformConfig } = useContext(AppDataContext);
+  const { classes, teachers, isLoading, platformConfig } = useContext(AppDataContext);
   const { setStudentData } = useContext(StudentDataContext);
 
   const sortedTeachers = useMemo(() => {
@@ -53,86 +57,79 @@ export default function HomePage() {
         return;
     }
     
-    // Load sensitive data on demand for login verification
-    const { students: allStudents } = await loadSensitiveData();
-    const student = allStudents.find(s => s.classId === classId && s.id === studentId && s.password === studentPassword);
-    
-    if (student) {
-      toast({
-        title: "登入成功！",
-        description: `歡迎回來，${student.name}！`,
-      });
-      setStudentData({
-          student: student,
-          points: student.points,
-          portfolio: student.portfolio || [],
-          redeemedRewards: student.redeemedRewards || [],
-          loans: student.loans || [],
-          challenges: student.challenges || [],
-          fixedDeposits: student.fixedDeposits || [],
-          habits: student.habits || [],
-      });
-      // Simulate auth persistence
-      localStorage.setItem('studentId', student.id);
-      localStorage.setItem('studentClassId', student.classId);
-      localStorage.setItem('userRole', 'student');
-      router.push('/dashboard');
-    } else {
-      toast({
-        title: "登入失敗",
-        description: "您輸入的班級、編號或密碼不正確。",
-        variant: "destructive",
-      });
+    try {
+        const studentDocRef = doc(db, 'students', `${classId}-${studentId}`);
+        const studentSnap = await getDoc(studentDocRef);
+
+        if (studentSnap.exists()) {
+            const student = studentSnap.data() as Student;
+            if (student.password === studentPassword) {
+                toast({
+                    title: "登入成功！",
+                    description: `歡迎回來，${student.name}！`,
+                });
+                setStudentData({ student: student });
+                localStorage.setItem('studentId', student.id);
+                localStorage.setItem('studentClassId', student.classId);
+                localStorage.setItem('userRole', 'student');
+                router.push('/dashboard');
+            } else {
+                throw new Error("密碼不正確。");
+            }
+        } else {
+             throw new Error("找不到您的學生帳號。");
+        }
+
+    } catch (error: any) {
+         toast({
+            title: "登入失敗",
+            description: "您輸入的班級、編號或密碼不正確。",
+            variant: "destructive",
+        });
+    } finally {
+        setIsLoggingIn(false);
     }
-    setIsLoggingIn(false);
   };
   
   const handleTeacherLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoggingIn(true);
 
-    // Load sensitive data to get the latest teacher passwords
-    await loadSensitiveData();
+    try {
+        const teacher = teachers.find(t => t.id === teacherId);
 
-    const teacher = teachers.find(t => t.id === teacherId);
+        if (!teacher) {
+            throw new Error("找不到該教師帳號。");
+        }
 
-    if (!teacher) {
-        toast({ title: "登入失敗", description: "找不到該教師帳號。", variant: "destructive" });
-        setIsLoggingIn(false);
-        return;
-    }
+        const correctPassword = teacher.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
 
-    // Use individual password if it exists, otherwise fall back to the default platform password.
-    const correctPassword = teacher.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
-
-    if (teacherPassword === correctPassword) {
-        // Seed initial data if necessary, after a teacher logs in.
-        await seedInitialData();
-        // Load all necessary data for the teacher dashboard
-        await loadSensitiveData();
-        
-        toast({
-            title: "教師登入成功",
-            description: `歡迎，${teacher.name}！`,
-        });
-        // Store teacher role for access control
-        localStorage.setItem('userRole', 'teacher');
-        localStorage.setItem('teacherId', teacher.id);
-        localStorage.setItem('teacherRole', teacher.role);
-        localStorage.setItem('teacherClassIds', JSON.stringify(teacher.classIds)); // Store as JSON string
-        localStorage.setItem('teacherName', teacher.name);
-        router.push('/teacher/dashboard');
-    } else {
+        if (teacherPassword === correctPassword) {
+            toast({
+                title: "教師登入成功",
+                description: `歡迎，${teacher.name}！`,
+            });
+            localStorage.setItem('userRole', 'teacher');
+            localStorage.setItem('teacherId', teacher.id);
+            localStorage.setItem('teacherRole', teacher.role);
+            localStorage.setItem('teacherClassIds', JSON.stringify(teacher.classIds || []));
+            localStorage.setItem('teacherName', teacher.name);
+            router.push('/teacher/dashboard');
+        } else {
+            throw new Error("密碼不正確。");
+        }
+    } catch (error: any) {
         toast({
             title: "登入失敗",
-            description: "您輸入的帳號或密碼不正確。",
+            description: error.message || "您輸入的帳號或密碼不正確。",
             variant: "destructive",
         });
+    } finally {
+        setIsLoggingIn(false);
     }
-    setIsLoggingIn(false);
   };
 
-  if (isLoading && classes.length === 0 && teachers.length === 0) {
+  if (isLoading) {
       return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
             <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />

@@ -37,15 +37,13 @@ const depositDurations = [
 
 export default function DepositsPage() {
   const { studentData } = useContext(StudentDataContext);
-  const { students, setStudents, platformConfig } = useContext(AppDataContext);
+  const { setStudents, platformConfig } = useContext(AppDataContext);
   const { toast } = useToast();
 
   const [amount, setAmount] = useState<number | "">("");
   const [duration, setDuration] = useState<number>(7);
   
-  const currentStudent = useMemo(() => 
-    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId) || studentData.student
-  , [students, studentData.student]);
+  const currentStudent = studentData.student;
   const interestRate = platformConfig?.fixedDepositInterestRate || 0.01;
 
   const activeDeposits = useMemo(() => {
@@ -202,5 +200,3 @@ export default function DepositsPage() {
     </div>
   );
 }
-
-    

@@ -13,12 +13,10 @@ import type { RedeemedRewardItem, Student } from "@/lib/types";
 
 export default function MyCollectionPage() {
   const { studentData } = useContext(StudentDataContext);
-  const { students, setStudents } = useContext(AppDataContext);
+  const { setStudents } = useContext(AppDataContext);
   const { toast } = useToast();
   
-  const currentStudent = useMemo(() => 
-    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId) || studentData.student
-  , [students, studentData.student]);
+  const currentStudent = studentData.student;
 
   const handleUseReward = (redemption: RedeemedRewardItem) => {
     if (!currentStudent) return;
@@ -90,5 +88,3 @@ export default function MyCollectionPage() {
     </div>
   );
 }
-
-    

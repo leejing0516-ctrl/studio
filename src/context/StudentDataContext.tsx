@@ -1,7 +1,7 @@
 
 "use client";
 
-import { createContext, useState, ReactNode, Dispatch, SetStateAction } from 'react';
+import { createContext, useState, ReactNode, Dispatch, SetStateAction, useEffect } from 'react';
 import type { Student } from '@/lib/types';
 
 interface StudentData {
