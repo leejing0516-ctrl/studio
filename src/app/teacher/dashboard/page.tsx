@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useContext, useEffect, useMemo } from "react";
@@ -111,15 +110,19 @@ export default function TeacherDashboardPage() {
     const [historySelectedTeacherId, setHistorySelectedTeacherId] = useState<string>('');
     const [historySelectedClassId, setHistorySelectedClassId] = useState<string>('');
 
+    // Separate effect for auth and role setting
     useEffect(() => {
         const storedRole = localStorage.getItem('teacherRole');
         const storedTeacherId = localStorage.getItem('teacherId');
         const storedTeacherName = localStorage.getItem('teacherName');
-        const storedClassIdsStr = localStorage.getItem('teacherClassIds');
         setRole(storedRole);
         setTeacherId(storedTeacherId);
         setTeacherName(storedTeacherName);
+    }, []);
 
+    // Separate effect for classIds, which causes re-renders
+    useEffect(() => {
+        const storedClassIdsStr = localStorage.getItem('teacherClassIds');
         let ids: string[] = [];
         if (storedClassIdsStr && storedClassIdsStr !== 'undefined') {
             try {
@@ -130,23 +133,25 @@ export default function TeacherDashboardPage() {
                 setTeacherClassIds([]);
             }
         }
+    }, [teacherId]); // Only depends on teacherId change
 
-        const classIdsToUse = storedRole === 'admin' ? classes.map(c => c.id) : ids;
+    // Effect for setting default class selections
+    useEffect(() => {
+        const classIdsToUse = role === 'admin' ? classes.map(c => c.id) : teacherClassIds;
 
         if (classIdsToUse.length > 0) {
             if (!selectedClassId || !classIdsToUse.includes(selectedClassId)) {
                 setSelectedClassId(classIdsToUse[0]);
             }
-             if (!historySelectedClassId || !classIdsToUse.includes(historySelectedClassId)) {
+            if (!historySelectedClassId || !classIdsToUse.includes(historySelectedClassId)) {
                 setHistorySelectedClassId(classIdsToUse[0]);
             }
         }
         
-        if (storedRole !== 'admin' && storedTeacherId && !historySelectedTeacherId) {
-            setHistorySelectedTeacherId(storedTeacherId);
+        if (role && role !== 'admin' && teacherId && !historySelectedTeacherId) {
+            setHistorySelectedTeacherId(teacherId);
         }
-
-    }, [classes, role, teacherId, selectedClassId, historySelectedClassId, teacherClassIds]);
+    }, [classes, role, teacherClassIds, teacherId, selectedClassId, historySelectedClassId]);
     
     const teacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
 
@@ -537,14 +542,14 @@ export default function TeacherDashboardPage() {
     };
     
     const performPointOperation = async (studentId: string, points: number, isBatch: boolean = false) => {
+        const impersonatorId = localStorage.getItem('impersonator');
+        const isOperatingAsAdmin = (role === 'admin' && !impersonatorId) || (impersonatorId && role === 'admin');
+
         if (!teacherId || !teacherName) {
             toast({ title: "操作無效", description: "教師資訊不完整，請重新登入。", variant: "destructive" });
             return;
         }
         if (points === 0) return;
-
-        const impersonatorId = localStorage.getItem('impersonator');
-        const isOperatingAsAdmin = role === 'admin' && !impersonatorId;
 
         setIsProcessing(studentId);
 
@@ -663,31 +668,48 @@ export default function TeacherDashboardPage() {
             return;
         }
         
-        const totalPointChange = points * studentsToUpdate.length;
         const impersonatorId = localStorage.getItem('impersonator');
-        const isOperatingAsAdmin = (role === 'admin' && !impersonatorId);
+        const isOperatingAsAdmin = (role === 'admin' && !impersonatorId) || (impersonatorId && role === 'admin');
 
+        const totalPointChange = isOperatingAsAdmin ? points * studentsToUpdate.length : points * studentsToUpdate.length;
         const sourceBalance = isOperatingAsAdmin ? (platformConfig?.schoolFunds || 0) : (teacher?.pointBalance || 0);
 
-        if (totalPointChange > 0 && sourceBalance < totalPointChange) {
+        if (points > 0 && sourceBalance < totalPointChange) {
             toast({ title: "批次操作失敗", description: "您的點數餘額不足以完成對所有學生的操作。", variant: "destructive" });
             setIsBatchProcessing(false);
             return;
         }
 
         let successfulOperations = 0;
+        let finalSourceBalance = sourceBalance;
+
         for (const student of studentsToUpdate) {
+            const tempPoints = Number(batchPoints);
             try {
-                await performPointOperation(student.id, points, true);
+                // We perform individual transactions but manage the source balance manually for UI update.
+                 await performPointOperation(student.id, tempPoints, true);
+                finalSourceBalance -= tempPoints;
                 successfulOperations++;
             } catch (error: any) {
                 toast({ title: `為 ${student.name} 操作失敗`, description: error.message, variant: "destructive" });
             }
         }
+        
+        if (isOperatingAsAdmin) {
+            setPlatformConfig({ schoolFunds: finalSourceBalance });
+        } else {
+            setTeachers(prev => prev.map(t => {
+                if (t.id === teacherId) {
+                    return { ...t, pointBalance: finalSourceBalance };
+                }
+                return t;
+            }));
+        }
 
         if (successfulOperations > 0) {
             toast({ title: "批次操作完成", description: `已成功為 ${successfulOperations} 位學生執行操作。` });
         }
+        
         setIsBatchProcessing(false);
         setBatchPoints('');
     };
