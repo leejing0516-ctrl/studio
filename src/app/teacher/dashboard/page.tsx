@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useContext, useEffect, useMemo } from "react";
@@ -109,6 +110,12 @@ export default function TeacherDashboardPage() {
     // Point History State
     const [historySelectedTeacherId, setHistorySelectedTeacherId] = useState<string>('');
     const [historySelectedClassId, setHistorySelectedClassId] = useState<string>('');
+    
+    // Derived state for available classes
+    const classOptions = useMemo(() => {
+        if (role === 'admin') return classes;
+        return classes.filter(c => teacherClassIds.includes(c.id));
+    }, [role, classes, teacherClassIds]);
 
     // Set auth/role info once on mount
     useEffect(() => {
@@ -119,7 +126,7 @@ export default function TeacherDashboardPage() {
         setRole(storedRole);
         setTeacherId(storedTeacherId);
         setTeacherName(storedTeacherName);
-         if (storedClassIdsStr && storedClassIdsStr !== 'undefined') {
+        if (storedClassIdsStr && storedClassIdsStr !== 'undefined') {
             try {
                 const ids = JSON.parse(storedClassIdsStr);
                 setTeacherClassIds(Array.isArray(ids) ? ids : []);
@@ -132,21 +139,23 @@ export default function TeacherDashboardPage() {
 
     // Set default class selections based on role and available classes
     useEffect(() => {
-        const classIdsToUse = role === 'admin' ? classes.map(c => c.id) : teacherClassIds;
-
-        if (classIdsToUse.length > 0) {
-            if (!selectedClassId || !classIdsToUse.includes(selectedClassId)) {
-                setSelectedClassId(classIdsToUse[0]);
+        if (classOptions.length > 0) {
+            const currentClassIds = classOptions.map(c => c.id);
+            if (!selectedClassId || !currentClassIds.includes(selectedClassId)) {
+                setSelectedClassId(currentClassIds[0]);
             }
-            if (!historySelectedClassId || !classIdsToUse.includes(historySelectedClassId)) {
-                setHistorySelectedClassId(classIdsToUse[0]);
+             if (!historySelectedClassId || !currentClassIds.includes(historySelectedClassId)) {
+                setHistorySelectedClassId(currentClassIds[0]);
             }
         }
-        
-        if (role && role !== 'admin' && teacherId && !historySelectedTeacherId) {
+    }, [classOptions, selectedClassId, historySelectedClassId]);
+
+    // Auto-select current teacher for history view
+    useEffect(() => {
+        if (role && (role === 'teacher' || role === 'subject_teacher') && teacherId) {
             setHistorySelectedTeacherId(teacherId);
         }
-    }, [classes, role, teacherClassIds, teacherId]);
+    }, [role, teacherId]);
 
     
     const teacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
@@ -537,6 +546,18 @@ export default function TeacherDashboardPage() {
         }
         if (points === 0) return;
 
+        const currentOperator = teachers.find(t => t.id === teacherId);
+        if (!currentOperator) {
+            toast({ title: "操作無效", description: "找不到您的教師資料。", variant: "destructive" });
+            return;
+        }
+        
+        // Admins can operate on any class, other teachers must be assigned to the class.
+        if (role !== 'admin' && !currentOperator.classIds.includes(selectedClassId)) {
+            toast({ title: "權限不足", description: "您沒有在此班級發放點數的權限。", variant: "destructive" });
+            return;
+        }
+
         setIsProcessing(studentId);
 
         try {
@@ -604,7 +625,7 @@ export default function TeacherDashboardPage() {
         
         try {
             await performPointOperation(studentId, points, false);
-            // No manual UI update needed, onSnapshot will handle it.
+            // UI update is now handled by onSnapshot listener in AppDataContext
         } catch(error: any) {
              toast({ title: "操作失敗", description: error.message, variant: "destructive" });
              setIsProcessing(null);
@@ -614,8 +635,8 @@ export default function TeacherDashboardPage() {
     const handleBatchOperation = async () => {
         if (batchPoints === '' || batchPoints === 0) return;
         
-        const points = Number(batchPoints);
         setIsBatchProcessing(true);
+        const points = Number(batchPoints);
 
         const studentsToUpdate = studentsInClass.filter(student => {
             if (points < 0 && student.points < Math.abs(points)) return false;
@@ -629,8 +650,8 @@ export default function TeacherDashboardPage() {
                 variant: "default",
             });
         }
-        if (studentsToUpdate.length === 0 && points < 0) {
-            toast({ title: "批次操作失敗", description: "所有學生的點數都不足以進行扣除。", variant: "destructive" });
+        if (studentsToUpdate.length === 0) {
+            toast({ title: "批次操作失敗", description: (points < 0 ? "所有學生的點數都不足以進行扣除。" : "此班級沒有學生可供操作。"), variant: "destructive" });
             setIsBatchProcessing(false);
             return;
         }
@@ -651,6 +672,8 @@ export default function TeacherDashboardPage() {
         
         for (const student of studentsToUpdate) {
             try {
+                // Here we perform the operation but don't need to await each one if we don't need sequential execution
+                // For simplicity and to show progress, we await. For performance, could use Promise.all
                 await performPointOperation(student.id, points, true);
                 successfulOperations++;
             } catch (error: any) {
@@ -1048,7 +1071,7 @@ export default function TeacherDashboardPage() {
                                             <SelectValue placeholder="請選擇班級" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {(role === 'admin' ? classes : classes.filter(c => teacherClassIds.includes(c.id))).map(classInfo => (
+                                            {classOptions.map(classInfo => (
                                                  <SelectItem key={classInfo.id} value={classInfo.id}>{classInfo.name}</SelectItem>
                                             ))}
                                         </SelectContent>
@@ -1142,7 +1165,7 @@ export default function TeacherDashboardPage() {
                                             <SelectValue placeholder="請選擇班級" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {(role === 'admin' ? classes : classes.filter(c => teacherClassIds.includes(c.id))).map(c => 
+                                            {classOptions.map(c => 
                                                 <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                                             )}
                                         </SelectContent>
@@ -1584,3 +1607,5 @@ export default function TeacherDashboardPage() {
         </div>
     )
 }
+
+    
