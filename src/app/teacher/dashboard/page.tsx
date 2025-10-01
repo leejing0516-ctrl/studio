@@ -269,11 +269,15 @@ export default function TeacherDashboardPage() {
                 }
             });
         });
+        
+        const uniqueRewardReqs = rewardReqs.filter((v, i, a) => 
+            a.findIndex(t => (`${t.student.id}-${t.rewardItem.redemptionId}` === `${v.student.id}-${v.rewardItem.redemptionId}`)) === i
+        );
 
         return {
-            rewardApprovalRequests: rewardReqs,
-            loanApprovalRequests: loanReqs,
-            challengeApprovalRequests: challengeReqs
+            rewardApprovalRequests: uniqueRewardReqs,
+            loanApprovalRequests,
+            challengeApprovalRequests
         };
     }, [students, role, teacherId, teacherClassIds]);
     
@@ -1604,3 +1608,5 @@ export default function TeacherDashboardPage() {
         </div>
     )
 }
+
+    
