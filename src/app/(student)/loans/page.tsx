@@ -62,7 +62,7 @@ export default function LoansPage() {
     }
 
     const newLoan: Loan = {
-      id: `loan-${Date.now()}`,
+      id: `loan-${Date.now()}-${Math.random()}`,
       amount: loanAmount,
       reason: loanReason,
       requestDate: new Date().toISOString(),

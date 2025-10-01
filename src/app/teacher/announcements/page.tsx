@@ -120,7 +120,7 @@ export default function TeacherAnnouncementsPage() {
         }
 
         const newAnnouncement: Announcement = {
-            id: `announcement-${Date.now()}`,
+            id: `announcement-${Date.now()}-${Math.random()}`,
             title,
             content,
             date: new Date().toISOString(),

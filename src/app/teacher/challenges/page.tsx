@@ -93,7 +93,7 @@ export default function TeacherChallengesPage() {
         if (!teacherId && role !== 'admin') return;
 
         const newChallenge: Challenge = {
-            id: `challenge-${Date.now()}`,
+            id: `challenge-${Date.now()}-${Math.random()}`,
             name,
             description,
             points,

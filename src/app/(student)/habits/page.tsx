@@ -101,7 +101,7 @@ export default function HabitsPage() {
     }
 
     const newHabit: StudentHabit = {
-      id: `habit-${Date.now()}`,
+      id: `habit-${Date.now()}-${Math.random()}`,
       title: habitTitle,
       description: habitDescription,
       status: 'pending_approval',

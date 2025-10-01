@@ -102,10 +102,8 @@ export default function TeacherDashboardPage() {
     const [isBatchProcessing, setIsBatchProcessing] = useState(false);
     
     // Approval states
-    const [rewardToApprove, setRewardToApprove] = useState<any | null>(null);
     const [loanToProcess, setLoanToProcess] = useState<{ student: Student, loan: Loan } | null>(null);
     const [challengeToApprove, setChallengeToApprove] = useState<{ student: Student, challenge: StudentChallenge } | null>(null);
-    const [habitToApprove, setHabitToApprove] = useState<{ student: Student, habit: StudentHabit } | null>(null);
 
     // Point History State
     const [historySelectedTeacherId, setHistorySelectedTeacherId] = useState<string>('');
@@ -400,7 +398,7 @@ export default function TeacherDashboardPage() {
         const classId = formData.get('classId') as string;
 
         const newTeacher: Teacher = {
-            id: `teacher-${Date.now()}`,
+            id: `teacher-${Date.now()}-${Math.random()}`,
             name,
             role,
             classIds: role === 'teacher' && classId ? [classId] : (role === 'subject_teacher' ? [] : []),
@@ -552,7 +550,6 @@ export default function TeacherDashboardPage() {
             return;
         }
         
-        // Admins can operate on any class, other teachers must be assigned to the class.
         if (role !== 'admin' && !currentOperator.classIds.includes(selectedClassId)) {
             toast({ title: "權限不足", description: "您沒有在此班級發放點數的權限。", variant: "destructive" });
             return;

@@ -131,7 +131,7 @@ export default function TeacherFundraisingPage() {
       }
 
       const newProject: FundraisingProject = {
-          id: `fund-${Date.now()}`,
+          id: `fund-${Date.now()}-${Math.random()}`,
           title,
           description,
           image: imageUrl,
