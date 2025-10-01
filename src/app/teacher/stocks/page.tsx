@@ -237,7 +237,7 @@ export default function TeacherStocksPage() {
         </Dialog>
 
         {/* Dialog for Edit Stock */}
-        <Dialog open={isEditStockDialogOpen} onOpenChange={(open) => {if(!open) setStockToEdit(null)}}>
+        <Dialog open={isEditStockDialogOpen} onOpenChange={(open) => {if (!open) {setStockToEdit(null);} setIsEditStockDialogOpen(open);}}>
             <DialogContent className="sm:max-w-[425px]">
                 <form onSubmit={handleUpdateStock}>
                     <DialogHeader>
@@ -272,4 +272,3 @@ export default function TeacherStocksPage() {
     </div>
   );
 }
-
