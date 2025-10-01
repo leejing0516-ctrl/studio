@@ -133,7 +133,7 @@ export default function StocksPage() {
       return;
     }
 
-    const totalCost = tradeShares * selectedStock.price;
+    const totalCost = Math.round(tradeShares * selectedStock.price);
 
     try {
         await runTransaction(async (transaction) => {
@@ -313,7 +313,7 @@ export default function StocksPage() {
                   <Card>
                       <CardHeader>
                           <CardTitle className="flex items-center gap-2"><Briefcase />我的投資組合</CardTitle>
-                          <CardDescription>您目前的持股。您有 {(currentStudent?.points || 0).toLocaleString()} 點數可用。</CardDescription>
+                          <CardDescription>您目前的持股。您有 {Math.round(currentStudent?.points || 0).toLocaleString()} 點數可用。</CardDescription>
                       </CardHeader>
                       <CardContent>
                           <Table>
@@ -392,7 +392,7 @@ export default function StocksPage() {
             <DialogTitle>{tradeType === 'buy' ? '買入' : '賣出'}股票</DialogTitle>
             <DialogDescription>
                {tradeType === 'buy'
-                ? `您目前有 ${(currentStudent?.points || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })} 點數。`
+                ? `您目前有 ${Math.round(currentStudent?.points || 0).toLocaleString()} 點數。`
                 : `您目前持有 ${studentHolding?.shares || 0} 股。`
                }
               {tradeType === 'buy' ? '買入' : '賣出'} {selectedStock?.name} ({selectedStock?.ticker})。
@@ -419,7 +419,7 @@ export default function StocksPage() {
             </div>
              <div className="grid grid-cols-4 items-center gap-4">
                 <p className="text-right font-bold col-span-1">總計</p>
-                <p className="col-span-3 font-bold">{(tradeShares * (selectedStock?.price || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 點數</p>
+                <p className="col-span-3 font-bold">{Math.round(tradeShares * (selectedStock?.price || 0)).toLocaleString()} 點數</p>
             </div>
           </div>
           <DialogFooter>

@@ -29,7 +29,7 @@ export default function StudentDashboardPage() {
   
   const currentStudent = studentData.student;
 
-  const totalPoints = currentStudent?.points || 0;
+  const totalPoints = Math.round(currentStudent?.points || 0);
 
   const pointsData = useMemo(() => {
     if (!currentStudent) return [];
@@ -111,7 +111,7 @@ export default function StudentDashboardPage() {
   }, [students, currentStudent, marketStocks]);
 
 
-  const totalAssets = Math.round(portfolioValue) + Math.round(totalPoints);
+  const totalAssets = portfolioValue + totalPoints;
   const stockPerformance = "上週透過投資科技股獲利 5%。";
 
   if (!currentStudent) {
