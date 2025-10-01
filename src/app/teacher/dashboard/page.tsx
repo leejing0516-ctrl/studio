@@ -248,7 +248,10 @@ export default function TeacherDashboardPage() {
             (student.redeemedRewards || []).forEach(r => {
                 if (r.status === 'pending_use') {
                     const providerId = r.reward.providerId;
-                    if (role === 'admin' || (role === 'teacher' && providerId === teacherId)) {
+                     if (role === 'admin') {
+                        rewardReqs.push({ student, rewardItem: r });
+                    } else if (role === 'teacher' && providerId === teacherId) {
+                        // Teacher can only approve rewards they created
                         rewardReqs.push({ student, rewardItem: r });
                     }
                 }
@@ -1251,7 +1254,7 @@ export default function TeacherDashboardPage() {
                                                     </TableHeader>
                                                     <TableBody>
                                                         {pointHistoryForTeacherAndClass.records.length > 0 ? pointHistoryForTeacherAndClass.records.map((record, index) => (
-                                                            <TableRow key={index}>
+                                                            <TableRow key={`${record.date}-${index}`}>
                                                                 <TableCell>{format(parseISO(record.date), 'yyyy-MM-dd HH:mm')}</TableCell>
                                                                 <TableCell>{record.studentName}</TableCell>
                                                                 <TableCell className={`text-right font-medium ${record.points > 0 ? 'text-green-600' : 'text-red-600'}`}>

@@ -248,7 +248,7 @@ export default function TeacherRewardsPage() {
                              <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleEditRewardClick(reward)} disabled={isReadOnly}>
                                 <Edit className="h-4 w-4" />
                             </Button>
-                            <AlertDialog>
+                            <AlertDialog open={!!rewardToDelete && rewardToDelete.id === reward.id} onOpenChange={(open) => !open && setRewardToDelete(null)}>
                                 <AlertDialogTrigger asChild>
                                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteRewardClick(reward)} disabled={isReadOnly}>
                                         <Trash2 className="h-4 w-4" />

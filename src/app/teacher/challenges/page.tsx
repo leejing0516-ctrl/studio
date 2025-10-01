@@ -193,7 +193,7 @@ export default function TeacherChallengesPage() {
                              <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleEditChallengeClick(challenge)} disabled={isReadOnly}>
                                 <Edit className="h-4 w-4" />
                             </Button>
-                            <AlertDialog>
+                            <AlertDialog open={!!challengeToDelete && challengeToDelete.id === challenge.id} onOpenChange={(open) => !open && setChallengeToDelete(null)}>
                                 <AlertDialogTrigger asChild>
                                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteChallengeClick(challenge)} disabled={isReadOnly}>
                                         <Trash2 className="h-4 w-4" />
