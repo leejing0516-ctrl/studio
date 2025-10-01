@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useContext, useEffect, useMemo } from "react";
@@ -1604,5 +1603,3 @@ export default function TeacherDashboardPage() {
         </div>
     )
 }
-
-    

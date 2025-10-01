@@ -73,7 +73,7 @@ export default function DepositsPage() {
 
     const startDate = new Date();
     const newDeposit: FixedDeposit = {
-        id: `dep-${Date.now()}`,
+        id: `dep-${Date.now()}-${Math.random()}`,
         amount: amount,
         startDate: startDate.toISOString(),
         maturityDate: addDays(startDate, duration).toISOString(),
