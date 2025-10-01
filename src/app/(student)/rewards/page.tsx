@@ -37,19 +37,30 @@ export default function RewardsPage() {
   const { classRewards, schoolRewards } = useMemo(() => {
     if (!student) return { classRewards: [], schoolRewards: [] };
     
-    const teacherForClass = teachers.find(t => Array.isArray(t.classIds) && t.classIds.includes(student.classId));
+    // Find all teachers associated with the student's class
+    const teachersForClass = teachers.filter(t => Array.isArray(t.classIds) && t.classIds.includes(student.classId));
+    const teacherIdsForClass = teachersForClass.map(t => t.id);
 
     const availableRewards = rewards.filter(reward => {
+        // A reward is available if its provider still exists in the system
         const providerExists = reward.scope === 'school' || teachers.some(t => t.id === reward.providerId);
         if (!providerExists) {
             return false;
         }
 
+        // School-wide rewards are always available
         if (reward.scope === 'school') {
             return true;
         }
-
-        if (reward.scope === 'class' && teacherForClass && reward.providerId === teacherForClass.id) {
+        
+        // Class-specific rewards are available if their provider teaches the student's class
+        if (reward.scope === 'class' && teacherIdsForClass.includes(reward.providerId)) {
+            return true;
+        }
+        
+        // For subject teachers who might create rewards for multiple classes they teach
+        const provider = teachers.find(t => t.id === reward.providerId);
+        if (provider?.role === 'subject_teacher' && provider.classIds.includes(student.classId)) {
             return true;
         }
 
@@ -99,7 +110,7 @@ export default function RewardsPage() {
             rewardId: selectedReward.id,
         });
         
-        if (result.success && result.newRedeemedItem) {
+        if (result.success) {
             // UI update will be handled by the real-time listener in AppDataContext
             toast({
                 title: "兌換成功！",

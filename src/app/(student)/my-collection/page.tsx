@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useToast } from "@/hooks/use-toast";
 import type { RedeemedRewardItem, Student } from "@/lib/types";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function MyCollectionPage() {
   const { studentData } = useContext(StudentDataContext);
@@ -18,26 +20,33 @@ export default function MyCollectionPage() {
   
   const currentStudent = studentData.student;
 
-  const handleUseReward = (redemption: RedeemedRewardItem) => {
+  const handleUseReward = async (redemption: RedeemedRewardItem) => {
     if (!currentStudent) return;
+    
+    const studentDocId = `${currentStudent.classId}-${currentStudent.id}`;
+    const studentRef = doc(db, "students", studentDocId);
 
-    // Update the student in the global list
-    setStudents(currentStudents => currentStudents.map(s => {
-        if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
-            return {
-                ...s,
-                redeemedRewards: s.redeemedRewards.map(r => 
-                    r.redemptionId === redemption.redemptionId ? { ...r, status: 'pending_use' as const } : r
-                ),
-            };
-        }
-        return s;
-    }));
+    const updatedRewards = (currentStudent.redeemedRewards || []).map(r => 
+        r.redemptionId === redemption.redemptionId ? { ...r, status: 'pending_use' as const } : r
+    );
 
-    toast({
-        title: "已提出使用請求",
-        description: `您已請求使用「${redemption.reward.name}」。請等待老師同意。`
-    });
+    try {
+        await updateDoc(studentRef, {
+            redeemedRewards: updatedRewards
+        });
+
+        toast({
+            title: "已提出使用請求",
+            description: `您已請求使用「${redemption.reward.name}」。請等待老師同意。`
+        });
+    } catch (error) {
+        console.error("Failed to request reward usage:", error);
+        toast({
+            title: "請求失敗",
+            description: "更新您的收藏品狀態時發生錯誤，請稍後再試。",
+            variant: "destructive"
+        });
+    }
   };
 
   const redeemedRewards = currentStudent?.redeemedRewards || [];
