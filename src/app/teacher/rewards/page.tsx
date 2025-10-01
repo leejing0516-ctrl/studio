@@ -77,7 +77,7 @@ export default function TeacherRewardsPage() {
         const storedTeacherId = localStorage.getItem('teacherId');
         setRole(storedRole);
         setTeacherId(storedTeacherId);
-        if (storedRole === 'teacher') {
+        if (storedRole === 'teacher' || storedRole === 'subject_teacher') {
             setRewardScope('class');
         }
     }, []);
@@ -91,7 +91,8 @@ export default function TeacherRewardsPage() {
     }, [rewards]);
     
     const teacherRewards = useMemo(() => {
-        if (role !== 'teacher' || !teacherId) return [];
+        if (!role || !teacherId) return [];
+        if (role === 'admin') return [];
         return rewards.filter(r => r.providerId === teacherId);
     }, [rewards, role, teacherId]);
 
@@ -458,3 +459,5 @@ export default function TeacherRewardsPage() {
         </div>
     );
 }
+
+    

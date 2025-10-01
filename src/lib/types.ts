@@ -1,5 +1,4 @@
 
-
 export type Donation = {
   studentId: string;
   studentName: string;
@@ -177,3 +176,5 @@ export type PlatformConfig = {
     loanInterestRate?: number;
     lastAutoBackupDate?: string;
 }
+
+    
