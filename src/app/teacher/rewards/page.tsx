@@ -459,5 +459,3 @@ export default function TeacherRewardsPage() {
         </div>
     );
 }
-
-    

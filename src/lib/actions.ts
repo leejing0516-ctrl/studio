@@ -25,12 +25,11 @@ interface RedeemRewardInput {
 interface RedeemRewardOutput {
     success: boolean;
     error?: string;
-    newRedeemedItem?: RedeemedRewardItem;
 }
 
 export async function redeemRewardTransaction(input: RedeemRewardInput): Promise<RedeemRewardOutput> {
     try {
-        const newRedeemedItem = await runTransaction(db, async (transaction) => {
+        await runTransaction(db, async (transaction) => {
             const studentDocId = `${input.classId}-${input.studentId}`;
             const studentRef = doc(db, 'students', studentDocId);
             const rewardRef = doc(db, 'rewards', input.rewardId);
@@ -92,11 +91,9 @@ export async function redeemRewardTransaction(input: RedeemRewardInput): Promise
                     });
                 }
             }
-            
-            return newRedeemedItem;
         });
 
-        return { success: true, newRedeemedItem };
+        return { success: true };
 
     } catch (error: any) {
         console.error("Redeem Reward Transaction failed: ", error);
@@ -130,10 +127,6 @@ export async function useRewardTransaction(input: UseRewardInput): Promise<UseRe
             
             const student = studentDoc.data() as Student;
             
-            const updatedRewards = (student.redeemedRewards || []).map(r => 
-                r.redemptionId === input.redemptionId ? { ...r, status: 'pending_use' as const } : r
-            );
-
             const targetReward = (student.redeemedRewards || []).find(r => r.redemptionId === input.redemptionId);
             if (!targetReward) {
                 throw new Error("在您的收藏中找不到此獎勵。");
@@ -141,6 +134,10 @@ export async function useRewardTransaction(input: UseRewardInput): Promise<UseRe
             if (targetReward.status !== 'collected') {
                 throw new Error("此獎勵目前無法使用。");
             }
+
+            const updatedRewards = (student.redeemedRewards || []).map(r => 
+                r.redemptionId === input.redemptionId ? { ...r, status: 'pending_use' as const } : r
+            );
 
             transaction.update(studentRef, {
                 redeemedRewards: updatedRewards
@@ -152,5 +149,3 @@ export async function useRewardTransaction(input: UseRewardInput): Promise<UseRe
         return { success: false, error: error.message || "請求失敗，請稍後再試。" };
     }
 }
-
-    

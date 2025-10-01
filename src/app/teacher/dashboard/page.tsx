@@ -689,15 +689,16 @@ export default function TeacherDashboardPage() {
     };
 
     const handleApproveRewardUse = async (student: Student, rewardItem: RedeemedRewardItem) => {
-        await setStudents(current => current.map(s => {
-            if (s.id === student.id && s.classId === student.classId) {
-                return {
-                    ...s,
-                    redeemedRewards: (s.redeemedRewards || []).filter(r => r.redemptionId !== rewardItem.redemptionId)
-                };
+        await runTransaction(db, async (transaction) => {
+            const studentRef = doc(db, 'students', `${student.classId}-${student.id}`);
+            const studentDoc = await transaction.get(studentRef);
+            if (!studentDoc.exists()) {
+                throw new Error("Student not found");
             }
-            return s;
-        }));
+            const currentStudentData = studentDoc.data() as Student;
+            const updatedRewards = (currentStudentData.redeemedRewards || []).filter(r => r.redemptionId !== rewardItem.redemptionId);
+            transaction.update(studentRef, { redeemedRewards: updatedRewards });
+        });
         toast({ title: "已同意使用", description: `已同意 ${student.name} 使用「${rewardItem.reward.name}」。`});
     };
     
@@ -1380,7 +1381,7 @@ export default function TeacherDashboardPage() {
                                                 <TableHeader><TableRow><TableHead>學生</TableHead><TableHead>獎勵名稱</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
                                                 <TableBody>
                                                     {rewardApprovalRequests.map(({student, rewardItem}) => (
-                                                        <TableRow key={rewardItem.redemptionId}>
+                                                        <TableRow key={`${student.id}-${rewardItem.redemptionId}`}>
                                                             <TableCell>{student.name}</TableCell>
                                                             <TableCell>{rewardItem.reward.name}</TableCell>
                                                             <TableCell className="text-right">
