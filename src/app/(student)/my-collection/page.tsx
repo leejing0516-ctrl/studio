@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useContext, useMemo } from "react";
+import { useContext, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import Image from "next/image";
 import { StudentDataContext } from "@/context/StudentDataContext";
@@ -10,34 +10,38 @@ import { Button } from "@/components/ui/button";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useToast } from "@/hooks/use-toast";
 import type { RedeemedRewardItem, Student } from "@/lib/types";
-import { doc, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { useRewardTransaction } from "@/lib/actions";
 
 export default function MyCollectionPage() {
   const { studentData } = useContext(StudentDataContext);
-  const { setStudents } = useContext(AppDataContext);
   const { toast } = useToast();
+  const [isUsing, setIsUsing] = useState<string | null>(null);
   
   const currentStudent = studentData.student;
 
   const handleUseReward = async (redemption: RedeemedRewardItem) => {
     if (!currentStudent) return;
     
-    // Optimistic UI update is removed to rely on snapshot listener
+    setIsUsing(redemption.redemptionId);
     try {
-        const studentRef = doc(db, "students", `${currentStudent.classId}-${currentStudent.id}`);
-        const updatedRewards = (currentStudent.redeemedRewards || []).map(r => 
-            r.redemptionId === redemption.redemptionId ? { ...r, status: 'pending_use' as const } : r
-        );
-
-        await updateDoc(studentRef, {
-            redeemedRewards: updatedRewards
+        const result = await useRewardTransaction({
+            studentId: currentStudent.id,
+            classId: currentStudent.classId,
+            redemptionId: redemption.redemptionId,
         });
 
-        toast({
-            title: "已提出使用請求",
-            description: `您已請求使用「${redemption.reward.name}」。請等待老師同意。`
-        });
+        if (result.success) {
+            toast({
+                title: "已提出使用請求",
+                description: `您已請求使用「${redemption.reward.name}」。請等待老師同意。`
+            });
+        } else {
+             toast({
+                title: "請求失敗",
+                description: result.error,
+                variant: "destructive"
+            });
+        }
     } catch (error) {
         console.error("Failed to request reward usage:", error);
         toast({
@@ -45,6 +49,8 @@ export default function MyCollectionPage() {
             description: "更新您的收藏品狀態時發生錯誤，請稍後再試。",
             variant: "destructive"
         });
+    } finally {
+        setIsUsing(null);
     }
   };
 
@@ -83,7 +89,9 @@ export default function MyCollectionPage() {
               </CardHeader>
               <CardFooter className="flex justify-between items-center bg-muted/50 p-4 mt-auto">
                  {redemption.status === 'collected' && (
-                    <Button onClick={() => handleUseReward(redemption)}>使用</Button>
+                    <Button onClick={() => handleUseReward(redemption)} disabled={isUsing === redemption.redemptionId}>
+                        {isUsing === redemption.redemptionId ? "處理中..." : "使用"}
+                    </Button>
                 )}
                 {redemption.status === 'pending_use' && (
                     <Button variant="outline" disabled>

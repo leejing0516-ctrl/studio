@@ -3,7 +3,7 @@
 
 import { suggestRewards, type RewardSuggestionInput } from "@/ai/flows/reward-suggestion";
 import { db } from './firebase';
-import { doc, runTransaction } from 'firebase/firestore';
+import { doc, runTransaction, getDoc } from 'firebase/firestore';
 import type { Student, Reward, Teacher, PlatformConfig, RedeemedRewardItem } from './types';
 
 export async function getRewardSuggestions(input: RewardSuggestionInput) {
@@ -59,7 +59,7 @@ export async function redeemRewardTransaction(input: RedeemRewardInput): Promise
             
             // 1. Update Student
             const newRedeemedItem: RedeemedRewardItem = {
-                redemptionId: `${reward.id}-${Date.now()}-${Math.random()}`,
+                redemptionId: `redeem-${Date.now()}-${Math.random()}`,
                 reward: reward,
                 status: 'collected',
                 redemptionDate: new Date().toISOString(),
@@ -101,5 +101,54 @@ export async function redeemRewardTransaction(input: RedeemRewardInput): Promise
     } catch (error: any) {
         console.error("Redeem Reward Transaction failed: ", error);
         return { success: false, error: error.message || "交易失敗，請稍後再試。" };
+    }
+}
+
+
+interface UseRewardInput {
+    studentId: string;
+    classId: string;
+    redemptionId: string;
+}
+
+interface UseRewardOutput {
+    success: boolean;
+    error?: string;
+}
+
+export async function useRewardTransaction(input: UseRewardInput): Promise<UseRewardOutput> {
+     try {
+        await runTransaction(db, async (transaction) => {
+            const studentDocId = `${input.classId}-${input.studentId}`;
+            const studentRef = doc(db, 'students', studentDocId);
+
+            const studentDoc = await transaction.get(studentRef);
+
+            if (!studentDoc.exists()) {
+                throw new Error("找不到該學生。");
+            }
+            
+            const student = studentDoc.data() as Student;
+            
+            const updatedRewards = (student.redeemedRewards || []).map(r => 
+                r.redemptionId === input.redemptionId ? { ...r, status: 'pending_use' as const } : r
+            );
+
+            const targetReward = (student.redeemedRewards || []).find(r => r.redemptionId === input.redemptionId);
+            if (!targetReward) {
+                throw new Error("在您的收藏中找不到此獎勵。");
+            }
+            if (targetReward.status !== 'collected') {
+                throw new Error("此獎勵目前無法使用。");
+            }
+
+            transaction.update(studentRef, {
+                redeemedRewards: updatedRewards
+            });
+        });
+        return { success: true };
+    } catch (error: any) {
+        console.error("Use Reward Transaction failed: ", error);
+        return { success: false, error: error.message || "請求失敗，請稍後再試。" };
     }
 }
