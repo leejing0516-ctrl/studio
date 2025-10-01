@@ -33,6 +33,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -279,7 +280,7 @@ export default function TeacherChallengesPage() {
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>{provider?.name || '未知老師'}</TableCell>
-                                                     <TableCell>{(provider?.classIds || []).map(id => teachers.find(t => t.classIds.includes(id))?.name || id ).join(', ')}</TableCell>
+                                                     <TableCell>{(provider?.classIds || []).map(id => teachers.find(t => t.classIds?.includes(id))?.name || id ).join(', ')}</TableCell>
                                                 </TableRow>
                                             )
                                         }) : (
