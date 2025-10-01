@@ -103,7 +103,7 @@ export type Student = {
 };
 
 export type Reward = {
-  id: number;
+  id: string;
   name: string;
   description: string;
   cost: number;

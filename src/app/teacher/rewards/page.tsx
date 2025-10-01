@@ -129,7 +129,7 @@ export default function TeacherRewardsPage() {
         }
         
         const newReward: Reward = {
-            id: Date.now(),
+            id: `reward-${Date.now()}-${Math.random()}`,
             name,
             description,
             cost,
@@ -196,7 +196,7 @@ export default function TeacherRewardsPage() {
 
     const handleConfirmDeleteReward = async () => {
         if (!rewardToDelete) return;
-        await setRewards(current => current.filter(r => r.id !== rewardToDelete.id));
+        await setRewards(current => current.filter(r => r.id !== rewardToDelete!.id));
         toast({
             title: "已刪除獎勵",
             description: `已成功刪除獎勵「${rewardToDelete.name}」。`,

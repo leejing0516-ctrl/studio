@@ -19,7 +19,7 @@ export async function getRewardSuggestions(input: RewardSuggestionInput) {
 interface RedeemRewardInput {
     studentId: string;
     classId: string;
-    rewardId: number;
+    rewardId: string;
 }
 
 interface RedeemRewardOutput {
@@ -33,7 +33,7 @@ export async function redeemRewardTransaction(input: RedeemRewardInput): Promise
         const newRedeemedItem = await runTransaction(db, async (transaction) => {
             const studentDocId = `${input.classId}-${input.studentId}`;
             const studentRef = doc(db, 'students', studentDocId);
-            const rewardRef = doc(db, 'rewards', String(input.rewardId));
+            const rewardRef = doc(db, 'rewards', input.rewardId);
 
             const [studentDoc, rewardDoc] = await Promise.all([
                 transaction.get(studentRef),
