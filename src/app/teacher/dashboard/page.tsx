@@ -22,7 +22,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Teacher, Class, Student, RedeemedRewardItem, Loan, StudentChallenge, PointRecord, PlatformConfig, StudentHabit } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, KeyRound, Upload, Download, Coins, Check, X, BadgeCent, Loader2 } from "lucide-react";
+import { PlusCircle, Edit, Trash2, KeyRound, Upload, Download, Coins, Check, X, BadgeCent, Loader2, ShieldAlert } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -107,6 +107,10 @@ export default function TeacherDashboardPage() {
     // Point History State
     const [historySelectedTeacherId, setHistorySelectedTeacherId] = useState<string>('');
     const [historySelectedClassId, setHistorySelectedClassId] = useState<string>('');
+
+    // Data Maintenance state
+    const [isMaintenanceProcessing, setIsMaintenanceProcessing] = useState(false);
+    const [confirmMaintenanceDelete, setConfirmMaintenanceDelete] = useState('');
     
     // Derived state for available classes
     const classOptions = useMemo(() => {
@@ -236,33 +240,33 @@ export default function TeacherDashboardPage() {
     
         return { records, studentTotals, classSummary };
     }, [students, historySelectedTeacherId, historySelectedClassId, teachers]);
-
+    
     const { rewardApprovalRequests, loanApprovalRequests, challengeApprovalRequests } = useMemo(() => {
         const rewardReqs: { student: Student; rewardItem: RedeemedRewardItem }[] = [];
         const loanReqs: { student: Student; loan: Loan }[] = [];
         const challengeReqs: { student: Student; challenge: StudentChallenge }[] = [];
-
+    
         let studentsToList: Student[] = [];
-
+    
         if (role === 'admin') {
             studentsToList = students;
-        } else if ((role === 'teacher' || role === 'subject_teacher') && teacherId) {
+        } else if ((role === 'teacher' || role === 'subject_teacher') && teacherId && teacherClassIds.length > 0) {
             studentsToList = students.filter(s => teacherClassIds.includes(s.classId));
         }
-
+    
         studentsToList.forEach(student => {
             (student.redeemedRewards || []).forEach(r => {
                 if (r.status === 'pending_use') {
                     rewardReqs.push({ student, rewardItem: r });
                 }
             });
-
+    
             (student.loans || []).forEach(l => {
                 if (l.status === 'pending') {
                     loanReqs.push({ student, loan: l });
                 }
             });
-
+    
             (student.challenges || []).forEach(c => {
                 if (c.status === 'pending_approval') {
                     challengeReqs.push({ student, challenge: c });
@@ -270,14 +274,15 @@ export default function TeacherDashboardPage() {
             });
         });
         
+        // Final filter to remove duplicates, as a last resort.
         const uniqueRewardReqs = rewardReqs.filter((v, i, a) => 
             a.findIndex(t => (`${t.student.id}-${t.rewardItem.redemptionId}` === `${v.student.id}-${v.rewardItem.redemptionId}`)) === i
         );
-
+    
         return {
             rewardApprovalRequests: uniqueRewardReqs,
-            loanApprovalRequests,
-            challengeApprovalRequests
+            loanApprovalRequests: loanReqs,
+            challengeApprovalRequests: challengeReqs
         };
     }, [students, role, teacherId, teacherClassIds]);
     
@@ -808,6 +813,29 @@ export default function TeacherDashboardPage() {
         }
     };
 
+    const handleClearRedeemedRewards = async () => {
+        if (confirmMaintenanceDelete !== '我確定要刪除') {
+            toast({ title: "確認文字不符", description: "請輸入正確的確認文字。", variant: "destructive" });
+            return;
+        }
+        setIsMaintenanceProcessing(true);
+        try {
+            const batch = writeBatch(db);
+            students.forEach(student => {
+                const studentRef = doc(db, 'students', `${student.classId}-${student.id}`);
+                batch.update(studentRef, { redeemedRewards: [] });
+            });
+            await batch.commit();
+            toast({ title: "操作成功", description: "所有學生的獎勵兌換紀錄都已被清除。" });
+        } catch (error) {
+            toast({ title: "操作失敗", description: "清除資料時發生錯誤。", variant: "destructive" });
+            console.error("Failed to clear redeemed rewards:", error);
+        } finally {
+            setIsMaintenanceProcessing(false);
+            setConfirmMaintenanceDelete('');
+        }
+    };
+
     const getDashboardTabs = () => {
         const tabs = [];
         if (role === 'admin' || role === 'teacher') {
@@ -827,6 +855,9 @@ export default function TeacherDashboardPage() {
             tabs.push(<TabsTrigger key="approvals" value="approvals">審核中心</TabsTrigger>);
         }
         
+        if (role === 'admin') {
+            tabs.push(<TabsTrigger key="maintenance" value="maintenance" className="text-destructive">資料維護</TabsTrigger>);
+        }
         return tabs;
     };
     
@@ -870,7 +901,7 @@ export default function TeacherDashboardPage() {
             </div>
 
             <Tabs defaultValue={defaultTabValue} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-6">
                     {getDashboardTabs()}
                 </TabsList>
 
@@ -1400,6 +1431,64 @@ export default function TeacherDashboardPage() {
                     </div>
                 </TabsContent>
                 )}
+
+                {role === 'admin' && (
+                    <TabsContent value="maintenance" className="mt-6">
+                        <Card className="border-destructive">
+                            <CardHeader>
+                                <CardTitle className="text-destructive flex items-center gap-2">
+                                    <ShieldAlert />
+                                    資料維護中心
+                                </CardTitle>
+                                <CardDescription>
+                                    此區域包含危險操作，僅在確定需要時使用。這些操作無法復原。
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Card className="bg-destructive/5 p-4">
+                                    <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                                        <div>
+                                            <h4 className="font-semibold">清除所有獎勵兌換紀錄</h4>
+                                            <p className="text-sm text-muted-foreground mt-1">
+                                                此操作將刪除所有學生的「我的收藏」和「待審核使用」中的所有獎勵紀錄。
+                                                <br />
+                                                適用於解決因舊的、格式錯誤的兌換資料導致的重複渲染問題。
+                                            </p>
+                                        </div>
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="destructive" className="mt-4 md:mt-0">開始清除</Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>極度危險操作！</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        您確定要清除**所有學生**的獎勵兌換紀錄嗎？這將清空他們的收藏品和待審核請求。
+                                                        此操作無法復原。請輸入「<span className="font-bold text-destructive">我確定要刪除</span>」以確認。
+                                                    </AlertDialogDescription>
+                                                    <Input 
+                                                        value={confirmMaintenanceDelete}
+                                                        onChange={(e) => setConfirmMaintenanceDelete(e.target.value)}
+                                                    />
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel onClick={() => setConfirmMaintenanceDelete('')}>取消</AlertDialogCancel>
+                                                    <AlertDialogAction
+                                                        onClick={handleClearRedeemedRewards}
+                                                        disabled={confirmMaintenanceDelete !== '我確定要刪除' || isMaintenanceProcessing}
+                                                        className={buttonVariants({ variant: "destructive" })}
+                                                    >
+                                                        {isMaintenanceProcessing ? <Loader2 className="animate-spin" /> : "確認清除"}
+                                                    </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    </div>
+                                </Card>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                )}
             </Tabs>
 
             <Dialog open={isAddStudentDialogOpen} onOpenChange={setIsAddStudentDialogOpen}>
@@ -1608,5 +1697,7 @@ export default function TeacherDashboardPage() {
         </div>
     )
 }
+
+    
 
     
