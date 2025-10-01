@@ -246,7 +246,7 @@ export default function TeacherDashboardPage() {
 
         if (role === 'admin') {
             studentsToList = students;
-        } else if (role === 'teacher' || role === 'subject_teacher') {
+        } else if ((role === 'teacher' || role === 'subject_teacher') && teacherId) {
             studentsToList = students.filter(s => teacherClassIds.includes(s.classId));
         }
 
@@ -275,7 +275,7 @@ export default function TeacherDashboardPage() {
             loanApprovalRequests: loanReqs,
             challengeApprovalRequests: challengeReqs
         };
-    }, [students, role, teacherClassIds]);
+    }, [students, role, teacherId, teacherClassIds]);
     
     const handleAddStudent = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -819,7 +819,7 @@ export default function TeacherDashboardPage() {
              tabs.push(<TabsTrigger key="history" value="history">點數歷史</TabsTrigger>);
         }
         
-        if (role === 'admin' || role === 'teacher') {
+        if (role === 'admin' || role === 'teacher' || role === 'subject_teacher') {
             tabs.push(<TabsTrigger key="approvals" value="approvals">審核中心</TabsTrigger>);
         }
         
@@ -1277,7 +1277,7 @@ export default function TeacherDashboardPage() {
                 </TabsContent>
                 )}
                 
-                {(role === 'admin' || role === 'teacher') && (
+                {(role === 'admin' || role === 'teacher' || role === 'subject_teacher') && (
                 <TabsContent value="approvals" className="mt-6">
                      <div className="grid gap-6">
                         <Card>
@@ -1308,7 +1308,7 @@ export default function TeacherDashboardPage() {
                                                                 <TableCell className="text-right">
                                                                     <AlertDialog open={!!challengeToApprove && challengeToApprove.student.id === student.id && challengeToApprove.challenge.challengeId === challenge.challengeId} onOpenChange={(open) => !open && setChallengeToApprove(null)}>
                                                                         <AlertDialogTrigger asChild>
-                                                                            <Button size="sm" onClick={() => setChallengeToApprove({ student, challenge })}>
+                                                                            <Button size="sm" onClick={() => setChallengeToApprove({ student, challenge })} disabled={role === 'admin'}>
                                                                                 <Check className="mr-2" /> 批准 (+{details?.points.toLocaleString()}點)
                                                                             </Button>
                                                                         </AlertDialogTrigger>
@@ -1348,7 +1348,7 @@ export default function TeacherDashboardPage() {
                                                             <TableCell className="text-right">
                                                                 <AlertDialog open={!!loanToProcess && loanToProcess.loan.id === loan.id} onOpenChange={(open) => !open && setLoanToProcess(null)}>
                                                                     <AlertDialogTrigger asChild>
-                                                                        <Button size="sm" className="mr-2" onClick={() => setLoanToProcess({student, loan})}>處理</Button>
+                                                                        <Button size="sm" className="mr-2" onClick={() => setLoanToProcess({student, loan})} disabled={role === 'admin'}>處理</Button>
                                                                     </AlertDialogTrigger>
                                                                     <AlertDialogContent>
                                                                         <AlertDialogHeader>
@@ -1382,7 +1382,7 @@ export default function TeacherDashboardPage() {
                                                             <TableCell>{student.name}</TableCell>
                                                             <TableCell>{rewardItem.reward.name}</TableCell>
                                                             <TableCell className="text-right">
-                                                                <Button size="sm" onClick={() => handleApproveRewardUse(student, rewardItem)}>同意使用</Button>
+                                                                <Button size="sm" onClick={() => handleApproveRewardUse(student, rewardItem)} disabled={role === 'admin'}>同意使用</Button>
                                                             </TableCell>
                                                         </TableRow>
                                                     ))}
