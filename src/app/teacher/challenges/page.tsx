@@ -171,7 +171,7 @@ export default function TeacherChallengesPage() {
                     <TableHead>挑戰名稱</TableHead>
                     <TableHead>描述</TableHead>
                     <TableHead>獎勵點數</TableHead>
-                    {!isReadOnly && <TableHead>提供者</TableHead>}
+                    {isReadOnly && <TableHead>提供者</TableHead>}
                     <TableHead className="text-right">操作</TableHead>
                 </TableRow>
             </TableHeader>
@@ -216,7 +216,7 @@ export default function TeacherChallengesPage() {
                     </TableRow>
                 )) : (
                     <TableRow>
-                        <TableCell colSpan={isReadOnly ? 4 : 5} className="h-24 text-center">目前沒有挑戰。</TableCell>
+                        <TableCell colSpan={isReadOnly ? 5 : 4} className="h-24 text-center">目前沒有挑戰。</TableCell>
                     </TableRow>
                 )}
             </TableBody>
@@ -279,7 +279,7 @@ export default function TeacherChallengesPage() {
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>{provider?.name || '未知老師'}</TableCell>
-                                                     <TableCell>{(provider?.classIds || []).join(', ')}</TableCell>
+                                                     <TableCell>{(provider?.classIds || []).map(id => teachers.find(t => t.classIds.includes(id))?.name || id ).join(', ')}</TableCell>
                                                 </TableRow>
                                             )
                                         }) : (

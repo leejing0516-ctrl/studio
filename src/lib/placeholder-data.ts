@@ -73,10 +73,4 @@ export const stocks: Stock[] = [
     { ticker: "TECH", name: "創新有限責任公司", price: 550.00, change: -12.30, changePercent: -2.18, marketCap: "5.5兆" },
 ];
 
-export const challenges: Challenge[] = [
-    { id: 'challenge-1', name: '閱讀冠軍', description: '一個月內閱讀 5 本書並撰寫心得。', points: 500, scope: 'school', providerId: 'school_admin' },
-    { id: 'challenge-2', name: '數學達人', description: '完成 10 份數學練習卷並達到 90% 正確率。', points: 300, scope: 'class', providerId: 'teacher6A' },
-    { id: 'challenge-3', name: '小小科學家', description: '完成一項科學實驗並提交報告。', points: 400, scope: 'class', providerId: 'teacher6A' },
-];
-
-    
+export const challenges: Challenge[] = [];
