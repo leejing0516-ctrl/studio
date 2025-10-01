@@ -32,7 +32,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -144,7 +143,7 @@ export default function TeacherFundraisingPage() {
           deadline: projectDeadline.toISOString(),
       };
 
-      setPlatformConfig({
+      await setPlatformConfig({
           fundraisingProjects: [...(platformConfig?.fundraisingProjects || []), newProject]
       });
       toast({ title: "已建立募資專案", description: `專案「${title}」已成功建立。` });
@@ -190,7 +189,7 @@ export default function TeacherFundraisingPage() {
         deadline: projectDeadline.toISOString(),
     };
     
-    setPlatformConfig({
+    await setPlatformConfig({
         fundraisingProjects: (platformConfig?.fundraisingProjects || []).map(p => p.id === updatedProject.id ? updatedProject : p)
     });
     toast({ title: "已更新專案", description: `專案「${updatedProject.title}」已更新。` });
@@ -201,9 +200,9 @@ export default function TeacherFundraisingPage() {
     setProjectToDelete(project);
   };
 
-  const handleConfirmDeleteProject = () => {
+  const handleConfirmDeleteProject = async () => {
     if (!projectToDelete) return;
-    setPlatformConfig({
+    await setPlatformConfig({
         fundraisingProjects: (platformConfig?.fundraisingProjects || []).filter(p => p.id !== projectToDelete.id)
     });
     toast({ title: "已刪除專案", description: `專案「${projectToDelete.title}」已被刪除。`, variant: "destructive" });
@@ -483,4 +482,3 @@ export default function TeacherFundraisingPage() {
     </div>
   );
 }
-

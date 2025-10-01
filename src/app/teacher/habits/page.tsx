@@ -48,7 +48,7 @@ import { Separator } from "@/components/ui/separator";
 const HABIT_DURATION = 21;
 
 export default function TeacherHabitsPage() {
-    const { students, setStudents, classes, isLoading, platformConfig, setPlatformConfig } = useContext(AppDataContext);
+    const { students, setStudents, classes, isLoading, runTransaction } = useContext(AppDataContext);
     const { toast } = useToast();
     const router = useRouter();
 
@@ -101,7 +101,7 @@ export default function TeacherHabitsPage() {
         ).sort((a, b) => new Date(b.habit.requestDate).getTime() - new Date(a.habit.requestDate).getTime());
     }, [relevantStudents]);
     
-    const handleApproveHabit = (studentId: string, classId: string, habitId: string) => {
+    const handleApproveHabit = async (studentId: string, classId: string, habitId: string) => {
         const points = pointsToAward[habitId];
         if (!points || points <= 0) {
             toast({ title: "請設定有效的點數", variant: "destructive" });
@@ -109,44 +109,42 @@ export default function TeacherHabitsPage() {
         }
         
         const today = new Date();
-        setStudents(currentStudents => currentStudents.map(s => {
-            if (s.id === studentId && s.classId === classId) {
-                return {
-                    ...s,
-                    habits: (s.habits || []).map(h => 
-                        h.id === habitId 
-                        ? { 
-                            ...h, 
-                            status: 'active' as const, 
-                            points: points,
-                            approvalDate: today.toISOString(),
-                            startDate: today.toISOString(),
-                            endDate: addDays(today, HABIT_DURATION).toISOString(),
-                          } 
-                        : h
-                    )
-                }
-            }
-            return s;
-        }));
+        const studentToUpdate = students.find(s => s.id === studentId && s.classId === classId);
+        if (!studentToUpdate) return;
+        
+        const updatedHabits = (studentToUpdate.habits || []).map(h => 
+            h.id === habitId 
+            ? { 
+                ...h, 
+                status: 'active' as const, 
+                points: points,
+                approvalDate: today.toISOString(),
+                startDate: today.toISOString(),
+                endDate: addDays(today, HABIT_DURATION).toISOString(),
+              } 
+            : h
+        );
+
+        await setStudents(currentStudents => currentStudents.map(s => 
+            s.id === studentId && s.classId === classId ? { ...s, habits: updatedHabits } : s
+        ));
         
         toast({ title: "習慣已批准", description: "學生現在可以開始他們的 21 天挑戰了！" });
     };
     
-    const handleRejectHabit = () => {
+    const handleRejectHabit = async () => {
         if (!habitToReject) return;
         const { student, habit } = habitToReject;
+        
+        const updatedHabits = (student.habits || []).map(h => 
+            h.id === habit.id 
+            ? { ...h, status: 'rejected' as const, rejectionReason: rejectionReason } 
+            : h
+        );
 
-        setStudents(currentStudents => currentStudents.map(s => {
+        await setStudents(currentStudents => currentStudents.map(s => {
             if (s.id === student.id && s.classId === student.classId) {
-                return {
-                    ...s,
-                    habits: (s.habits || []).map(h => 
-                        h.id === habit.id 
-                        ? { ...h, status: 'rejected' as const, rejectionReason: rejectionReason } 
-                        : h
-                    )
-                }
+                return { ...s, habits: updatedHabits };
             }
             return s;
         }));
@@ -156,41 +154,48 @@ export default function TeacherHabitsPage() {
         setRejectionReason("");
     };
     
-    const handleAwardHabitPoints = (student: Student, habit: StudentHabit) => {
-        if (!habit || habit.points <= 0) {
+    const handleAwardHabitPoints = async (student: Student, habit: StudentHabit) => {
+        if (!habit || habit.points <= 0 || !teacherId) {
             toast({ title: "無效的操作", description: "該習慣沒有設定有效的獎勵點數。", variant: "destructive" });
             return;
         }
     
         const pointsToAward = habit.points;
-        const currentSchoolFunds = platformConfig?.schoolFunds || 0;
-    
-        if (currentSchoolFunds < pointsToAward) {
-            toast({ title: "發放失敗", description: "學校總資金不足以支付此習慣獎勵。", variant: "destructive" });
-            return;
-        }
-    
-        // Update local state optimistically
-        setStudents(currentStudents => currentStudents.map(s => {
-            if (s.id === student.id && s.classId === student.classId) {
-                const today = new Date().toISOString();
-                const newHistory = [...(s.pointHistory || []), { points: pointsToAward, date: today, reason: `完成習慣: ${habit.title}` }];
+        
+        try {
+            await runTransaction(async (transaction) => {
+                const configRef = doc(db, 'config', 'main');
+                const configDoc = await transaction.get(configRef);
+                const currentSchoolFunds = (configDoc.data()?.schoolFunds || 0) as number;
+
+                if (currentSchoolFunds < pointsToAward) {
+                    throw new Error("學校總資金不足以支付此習慣獎勵。");
+                }
                 
-                return {
-                    ...s,
-                    points: s.points + pointsToAward,
+                transaction.update(configRef, { schoolFunds: currentSchoolFunds - pointsToAward });
+
+                const studentRef = doc(db, 'students', `${student.classId}-${student.id}`);
+                const studentDoc = await transaction.get(studentRef);
+                if (!studentDoc.exists()) throw new Error("找不到學生資料");
+                const studentData = studentDoc.data();
+
+                const today = new Date().toISOString();
+                const newHistory = [...(studentData.pointHistory || []), { points: pointsToAward, date: today, reason: `完成習慣: ${habit.title}`, teacherId: teacherId }];
+                const updatedHabits = (studentData.habits || []).map(h => h.id === habit.id ? { ...h, status: 'completed' as const } : h);
+
+                transaction.update(studentRef, {
+                    points: studentData.points + pointsToAward,
                     pointHistory: newHistory,
-                    habits: (s.habits || []).map(h => 
-                        h.id === habit.id ? { ...h, status: 'completed' as const } : h
-                    )
-                };
-            }
-            return s;
-        }));
-        
-        setPlatformConfig({ schoolFunds: currentSchoolFunds - pointsToAward });
-        
-        toast({ title: "點數已發放", description: `已成功為 ${student.name} 的習慣「${habit.title}」發放 ${pointsToAward.toLocaleString()} 點。` });
+                    habits: updatedHabits,
+                });
+            });
+
+            toast({ title: "點數已發放", description: `已成功為 ${student.name} 的習慣「${habit.title}」發放 ${pointsToAward.toLocaleString()} 點。` });
+
+        } catch (error: any) {
+            console.error("Failed to award habit points:", error);
+            toast({ title: "發放失敗", description: error.message, variant: "destructive" });
+        }
     }
 
     if (isLoading) {
@@ -212,7 +217,7 @@ export default function TeacherHabitsPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle>習慣養成申請審核</CardTitle>
-                            <CardDescription>評估學生提出的習慣養成計畫，並為他們的努力設定一個合理的點數獎勵。</CardDescription>
+                            <CardDescription>評估學生提出的習慣養成計畫，並為他們的努力設定一個合理的點數獎勵。獎勵點數將從學校總資金中撥付。</CardDescription>
                         </CardHeader>
                         <CardContent>
                              <Table>
@@ -387,5 +392,3 @@ export default function TeacherHabitsPage() {
         </div>
     );
 }
-
-    

@@ -33,7 +33,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -65,7 +64,7 @@ export default function TeacherAnnouncementsPage() {
     const [announcementType, setAnnouncementType] = useState<'school' | 'class'>('school');
 
 
-    useEffect(() => {
+     useEffect(() => {
         const storedRole = localStorage.getItem('teacherRole');
         const storedTeacherId = localStorage.getItem('teacherId');
         const storedTeacherName = localStorage.getItem('teacherName');
@@ -73,17 +72,28 @@ export default function TeacherAnnouncementsPage() {
         setRole(storedRole);
         setTeacherId(storedTeacherId || '');
         setTeacherName(storedTeacherName || '');
+        
+        let ids: string[] = [];
         if (storedClassIdsStr && storedClassIdsStr !== 'undefined') {
-            const ids = JSON.parse(storedClassIdsStr);
-            setTeacherClassIds(ids);
-            if (ids.length > 0) {
-                setSelectedClassId(ids[0]);
-                if (storedRole === 'teacher' || storedRole === 'subject_teacher') {
-                    setAnnouncementType('class');
-                }
+            try {
+                ids = JSON.parse(storedClassIdsStr);
+            } catch (e) {
+                console.error("Failed to parse teacherClassIds from localStorage", e);
+                ids = [];
             }
         }
-    }, []);
+        setTeacherClassIds(ids);
+
+        // Set initial selected class and announcement type based on role
+        if (storedRole === 'admin') {
+            setAnnouncementType('school');
+        } else if (storedRole === 'teacher' || storedRole === 'subject_teacher') {
+            setAnnouncementType('class');
+            if (ids.length > 0 && !selectedClassId) {
+                setSelectedClassId(ids[0]);
+            }
+        }
+    }, [selectedClassId]);
 
     const schoolAnnouncements = useMemo(() => {
         return (platformConfig?.announcements || [])

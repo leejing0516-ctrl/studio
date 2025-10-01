@@ -9,7 +9,6 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-  CardFooter
 } from "@/components/ui/card";
 import {
   Table,
@@ -35,7 +34,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -141,7 +139,7 @@ export default function TeacherRewardsPage() {
             providerId: rewardScope === 'school' ? 'school_admin' : teacherId!,
         };
         
-        setRewards(current => [...current, newReward]);
+        await setRewards(current => [...current, newReward]);
         setIsAddRewardDialogOpen(false);
         toast({
             title: "已新增獎勵",
@@ -183,7 +181,7 @@ export default function TeacherRewardsPage() {
             image: imageUrl
         };
         
-        setRewards(current => current.map(r => r.id === updatedReward.id ? updatedReward : r));
+        await setRewards(current => current.map(r => r.id === updatedReward.id ? updatedReward : r));
         setIsEditRewardDialogOpen(false);
         setEditingReward(null);
         toast({
@@ -196,9 +194,9 @@ export default function TeacherRewardsPage() {
         setRewardToDelete(reward);
     };
 
-    const handleConfirmDeleteReward = () => {
+    const handleConfirmDeleteReward = async () => {
         if (!rewardToDelete) return;
-        setRewards(current => current.filter(r => r.id !== rewardToDelete.id));
+        await setRewards(current => current.filter(r => r.id !== rewardToDelete.id));
         toast({
             title: "已刪除獎勵",
             description: `已成功刪除獎勵「${rewardToDelete.name}」。`,

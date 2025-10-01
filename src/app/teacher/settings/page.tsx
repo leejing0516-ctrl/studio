@@ -35,9 +35,9 @@ export default function TeacherSettingsPage() {
     const router = useRouter();
 
     const [platformLogoFile, setPlatformLogoFile] = useState<File | null>(null);
-    const [platformLogoPreview, setPlatformLogoPreview] = useState<string | null>(null);
+    const [platformLogoPreview, setPlatformLogoPreview] = useState<string | null>(platformConfig?.platformLogoUrl || null);
     const [sponsorLogoFiles, setSponsorLogoFiles] = useState<(File | null)[]>(Array(4).fill(null));
-    const [sponsorLogoPreviews, setSponsorLogoPreviews] = useState<(string | null)[]>([]);
+    const [sponsorLogoPreviews, setSponsorLogoPreviews] = useState<(string | null)[]>(platformConfig?.sponsorLogoUrls || Array(4).fill(null));
     const [isSavingSettings, setIsSavingSettings] = useState(false);
     const [fixedDepositRate, setFixedDepositRate] = useState<number | string>('');
     const [loanInterestRate, setLoanInterestRate] = useState<number | string>('');
@@ -51,12 +51,12 @@ export default function TeacherSettingsPage() {
         }
 
         if (platformConfig) {
-            if (platformLogoPreview === null) setPlatformLogoPreview(platformConfig.platformLogoUrl || null);
-            if (sponsorLogoPreviews.length === 0) setSponsorLogoPreviews(platformConfig.sponsorLogoUrls || Array(4).fill(null));
-            if (fixedDepositRate === '') setFixedDepositRate((platformConfig.fixedDepositInterestRate || 0) * 100);
-            if (loanInterestRate === '') setLoanInterestRate((platformConfig.loanInterestRate || 0) * 100);
+            setPlatformLogoPreview(platformConfig.platformLogoUrl || null);
+            setSponsorLogoPreviews(platformConfig.sponsorLogoUrls || Array(4).fill(null));
+            setFixedDepositRate((platformConfig.fixedDepositInterestRate || 0) * 100);
+            setLoanInterestRate((platformConfig.loanInterestRate || 0) * 100);
         }
-    }, [platformConfig, platformLogoPreview, sponsorLogoPreviews.length, fixedDepositRate, loanInterestRate, router, toast]);
+    }, [platformConfig, router, toast]);
 
     const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -114,20 +114,16 @@ export default function TeacherSettingsPage() {
     const handleSaveSettings = async () => {
         setIsSavingSettings(true);
         try {
-            let platformLogoUrl = platformConfig?.platformLogoUrl;
+            let platformLogoUrl = platformLogoPreview;
             if (platformLogoFile) {
                 platformLogoUrl = await fileToDataUrl(platformLogoFile);
             }
 
-            const newSponsorUrls = [...(platformConfig?.sponsorLogoUrls || Array(4).fill(null))];
+            const newSponsorUrls = [...sponsorLogoPreviews];
             for(let i = 0; i < sponsorLogoFiles.length; i++) {
                 const file = sponsorLogoFiles[i];
                 if (file) {
                     newSponsorUrls[i] = await fileToDataUrl(file);
-                } else {
-                    if (sponsorLogoPreviews[i] === null) {
-                        newSponsorUrls[i] = null;
-                    }
                 }
             }
             

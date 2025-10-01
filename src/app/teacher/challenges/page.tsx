@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useContext, useEffect, useMemo } from "react";
@@ -32,7 +33,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -129,9 +129,13 @@ export default function TeacherChallengesPage() {
             description,
             points,
         };
-
+        
+        // No need for setPlatformConfig here, onSnapshot will handle it.
+        // Let the transaction in parent/context handle the update.
         const currentChallenges = platformConfig?.challenges || [];
-        setPlatformConfig({ challenges: currentChallenges.map(c => c.id === updatedChallenge.id ? updatedChallenge : c) });
+        const finalChallenges = currentChallenges.map(c => c.id === updatedChallenge.id ? updatedChallenge : c);
+        setPlatformConfig({ challenges: finalChallenges });
+
 
         toast({ title: "已更新挑戰", description: `已成功更新挑戰「${name}」。` });
         setIsEditChallengeDialogOpen(false);
@@ -367,5 +371,3 @@ export default function TeacherChallengesPage() {
         </div>
     )
 }
-
-    

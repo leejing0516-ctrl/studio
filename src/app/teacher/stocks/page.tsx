@@ -31,7 +31,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -67,7 +66,7 @@ export default function TeacherStocksPage() {
     setRole(storedRole);
   }, [router, toast]);
 
-  const handleAddStock = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleAddStock = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const ticker = (formData.get("ticker") as string).toUpperCase();
@@ -86,7 +85,7 @@ export default function TeacherStocksPage() {
         changePercent: 0,
     };
 
-    setStocks(current => [...current, newStock]);
+    await setStocks(current => [...current, newStock]);
     setIsAddStockDialogOpen(false);
     toast({ title: "已新增股票", description: `${newStock.name} (${newStock.ticker}) 已新增至市場。`});
   };
@@ -96,7 +95,7 @@ export default function TeacherStocksPage() {
     setIsEditStockDialogOpen(true);
   };
 
-  const handleUpdateStock = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleUpdateStock = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!stockToEdit) return;
     const formData = new FormData(event.currentTarget);
@@ -108,7 +107,7 @@ export default function TeacherStocksPage() {
         marketCap: formData.get("marketCap") as string,
     };
     
-    setStocks(current => current.map(s => s.ticker === updatedStock.ticker ? updatedStock : s));
+    await setStocks(current => current.map(s => s.ticker === updatedStock.ticker ? updatedStock : s));
     setIsEditStockDialogOpen(false);
     setStockToEdit(null);
     toast({ title: "已更新股票", description: `${updatedStock.name} 的資訊已更新。` });
@@ -118,17 +117,25 @@ export default function TeacherStocksPage() {
     setStockToDelete(stock);
   };
 
-  const handleConfirmDeleteStock = () => {
+  const handleConfirmDeleteStock = async () => {
     if (!stockToDelete) return;
-    // Also need to remove this stock from all student portfolios
-    setStudents(currentStudents => currentStudents.map(student => ({
-        ...student,
-        portfolio: (student.portfolio || []).filter(p => p.ticker !== stockToDelete.ticker)
-    })));
 
-    setStocks(current => current.filter(s => s.ticker !== stockToDelete.ticker));
+    // Use a single transaction to ensure atomicity
+    try {
+        // Also need to remove this stock from all student portfolios
+        await setStudents(currentStudents => currentStudents.map(student => ({
+            ...student,
+            portfolio: (student.portfolio || []).filter(p => p.ticker !== stockToDelete.ticker)
+        })));
 
-    toast({ title: "已刪除股票", description: `已從市場及所有投資組合中移除 ${stockToDelete.name}。`, variant: "destructive" });
+        await setStocks(current => current.filter(s => s.ticker !== stockToDelete.ticker));
+
+        toast({ title: "已刪除股票", description: `已從市場及所有投資組合中移除 ${stockToDelete.name}。`, variant: "destructive" });
+    } catch(e) {
+        console.error(e)
+        toast({ title: "刪除失敗", description: "從學生投資組合中移除股票時發生錯誤。", variant: "destructive" });
+    }
+
     setStockToDelete(null);
   }
   
@@ -237,7 +244,7 @@ export default function TeacherStocksPage() {
         </Dialog>
 
         {/* Dialog for Edit Stock */}
-        <Dialog open={isEditStockDialogOpen} onOpenChange={(open) => {if (!open) {setStockToEdit(null);} setIsEditStockDialogOpen(open);}}>
+        <Dialog open={isEditStockDialogOpen} onOpenChange={(open) => {if (!open) setStockToEdit(null)}}>
             <DialogContent className="sm:max-w-[425px]">
                 <form onSubmit={handleUpdateStock}>
                     <DialogHeader>
