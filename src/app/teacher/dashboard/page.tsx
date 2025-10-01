@@ -241,38 +241,35 @@ export default function TeacherDashboardPage() {
         const rewardReqs: { student: Student; rewardItem: RedeemedRewardItem }[] = [];
         const loanReqs: { student: Student; loan: Loan }[] = [];
         const challengeReqs: { student: Student; challenge: StudentChallenge }[] = [];
-    
+
         let studentsToList: Student[] = [];
-    
+
         if (role === 'admin') {
             studentsToList = students;
         } else if (role === 'teacher' || role === 'subject_teacher') {
             studentsToList = students.filter(s => teacherClassIds.includes(s.classId));
         }
-    
+
         studentsToList.forEach(student => {
-            // Reward approvals
             (student.redeemedRewards || []).forEach(r => {
                 if (r.status === 'pending_use') {
                     rewardReqs.push({ student, rewardItem: r });
                 }
             });
-    
-            // Loan approvals
+
             (student.loans || []).forEach(l => {
                 if (l.status === 'pending') {
                     loanReqs.push({ student, loan: l });
                 }
             });
-    
-            // Challenge approvals
+
             (student.challenges || []).forEach(c => {
                 if (c.status === 'pending_approval') {
                     challengeReqs.push({ student, challenge: c });
                 }
             });
         });
-    
+
         return {
             rewardApprovalRequests: rewardReqs,
             loanApprovalRequests: loanReqs,
