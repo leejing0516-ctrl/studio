@@ -3,17 +3,8 @@
 
 import { createContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
 import type { Student, Reward, Class, Teacher, Stock, PlatformConfig, Loan, Announcement, Challenge, FundraisingProject, PointRecord, FixedDeposit, StudentHabit } from '@/lib/types';
-import { 
-    students as initialStudents, 
-    rewards as initialRewards,
-    classes as initialClasses,
-    teachers as initialTeachers,
-    stocks as initialStocks,
-    challenges as initialChallenges,
-    TEACHER_PASSWORD,
-} from '@/lib/placeholder-data';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDocs, writeBatch, setDoc, getDoc, updateDoc, deleteDoc, runTransaction, Transaction, query, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { collection, doc, writeBatch, setDoc, getDoc, updateDoc, deleteDoc, runTransaction, Transaction, query, onSnapshot, Unsubscribe } from 'firebase/firestore';
 
 
 interface AppDataContextType {
@@ -134,7 +125,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
           const batch = writeBatch(db);
           finalState.forEach(stock => {
               const stockRef = doc(db, 'stocks', stock.ticker);
-              batch.set(stockRef, stock);
+              batch.set(stockRef, stock, { merge: true });
           });
           const finalIds = new Set(finalState.map(s => s.ticker));
           stocks.forEach(stock => {
@@ -210,8 +201,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const data = querySnapshot.docs.map(doc => doc.data() as T);
             setter(data);
+            setIsLoading(false);
         }, (error) => {
             console.error(`Error fetching real-time ${collectionName}:`, error);
+            setIsLoading(false);
         });
         return unsubscribe;
     };
@@ -224,8 +217,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             } else {
                 setter(null);
             }
+            setIsLoading(false);
         }, (error) => {
             console.error(`Error fetching real-time doc ${docPath.join('/')}:`, error);
+            setIsLoading(false);
         });
         return unsubscribe;
     };
@@ -237,7 +232,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     subscriptions.push(setupSubscription<Stock>('stocks', setStocksState));
     subscriptions.push(setupDocSubscription<PlatformConfig>(['config', 'main'], setPlatformConfigState));
 
-    setIsLoading(false);
 
     // Set up an interval to check if the market is open
     const marketInterval = setInterval(() => {
@@ -249,6 +243,29 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       clearInterval(marketInterval);
     };
   }, []);
+
+  useEffect(() => {
+    if (isMarketOpen && !isLoading) {
+        const stockUpdateInterval = setInterval(() => {
+            const updatedStocks = stocks.map(stock => {
+                const changePercent = (Math.random() - 0.5) * 0.02; // max 1% change
+                const newPrice = stock.price * (1 + changePercent);
+                const change = newPrice - stock.price;
+                
+                return {
+                    ...stock,
+                    price: newPrice,
+                    change: change,
+                    changePercent: (change / stock.price) * 100,
+                };
+            });
+            // This will trigger the onSnapshot listener for other clients
+            setStocks(() => updatedStocks); 
+        }, 15000); // Update every 15 seconds
+
+        return () => clearInterval(stockUpdateInterval);
+    }
+  }, [isMarketOpen, isLoading, stocks, setStocks]);
 
 
   return (
