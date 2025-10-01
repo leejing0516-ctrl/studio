@@ -248,7 +248,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     if (isMarketOpen && !isLoading) {
         const stockUpdateInterval = setInterval(() => {
             const updatedStocks = stocks.map(stock => {
-                const changePercent = (Math.random() - 0.5) * 0.02; // max 1% change
+                // (Math.random() - 0.485) creates a slight upward bias
+                const changePercent = (Math.random() - 0.485) * 0.02; // max 1% change
                 const newPrice = stock.price * (1 + changePercent);
                 const change = newPrice - stock.price;
                 
