@@ -23,14 +23,13 @@ export default function MyCollectionPage() {
   const handleUseReward = async (redemption: RedeemedRewardItem) => {
     if (!currentStudent) return;
     
-    const studentDocId = `${currentStudent.classId}-${currentStudent.id}`;
-    const studentRef = doc(db, "students", studentDocId);
-
-    const updatedRewards = (currentStudent.redeemedRewards || []).map(r => 
-        r.redemptionId === redemption.redemptionId ? { ...r, status: 'pending_use' as const } : r
-    );
-
+    // Optimistic UI update is removed to rely on snapshot listener
     try {
+        const studentRef = doc(db, "students", `${currentStudent.classId}-${currentStudent.id}`);
+        const updatedRewards = (currentStudent.redeemedRewards || []).map(r => 
+            r.redemptionId === redemption.redemptionId ? { ...r, status: 'pending_use' as const } : r
+        );
+
         await updateDoc(studentRef, {
             redeemedRewards: updatedRewards
         });
@@ -49,7 +48,10 @@ export default function MyCollectionPage() {
     }
   };
 
-  const redeemedRewards = currentStudent?.redeemedRewards || [];
+  const redeemedRewards = useMemo(() => {
+    return currentStudent?.redeemedRewards?.sort((a, b) => new Date(b.redemptionDate).getTime() - new Date(a.redemptionDate).getTime()) || [];
+  }, [currentStudent?.redeemedRewards]);
+
 
   return (
     <div className="animate-in fade-in-0 duration-500">
