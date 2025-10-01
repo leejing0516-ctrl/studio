@@ -33,7 +33,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -238,42 +237,47 @@ export default function TeacherDashboardPage() {
     }, [students, historySelectedTeacherId, historySelectedClassId, teachers]);
 
     const { rewardApprovalRequests, loanApprovalRequests, challengeApprovalRequests } = useMemo(() => {
-        const rewardReqs: any[] = [];
-        const loanReqs: { student: Student, loan: Loan }[] = [];
-        const challengeReqs: { student: Student, challenge: StudentChallenge }[] = [];
+        const rewardReqs: { student: Student; rewardItem: RedeemedRewardItem }[] = [];
+        const loanReqs: { student: Student; loan: Loan }[] = [];
+        const challengeReqs: { student: Student; challenge: StudentChallenge }[] = [];
 
-        const studentsToList = role === 'admin' ? students : students.filter(s => teacherClassIds.includes(s.classId));
+        let studentsToList: Student[] = [];
+
+        if (role === 'admin') {
+            studentsToList = students;
+        } else if (role === 'teacher' || role === 'subject_teacher') {
+            studentsToList = students.filter(s => teacherClassIds.includes(s.classId));
+        }
 
         studentsToList.forEach(student => {
             (student.redeemedRewards || []).forEach(r => {
                 if (r.status === 'pending_use') {
-                    const providerId = r.reward.providerId;
-                     if (role === 'admin') {
-                        rewardReqs.push({ student, rewardItem: r });
-                    } else if (role === 'teacher' && providerId === teacherId) {
-                        // Teacher can only approve rewards they created
+                    // Logic: A teacher can approve a request if the student is in a class they teach.
+                    // Admin can approve all.
+                    if (role === 'admin' || teacherClassIds.includes(student.classId)) {
                         rewardReqs.push({ student, rewardItem: r });
                     }
                 }
             });
             (student.loans || []).forEach(l => {
                 if (l.status === 'pending') {
-                    loanReqs.push({ student, loan: l });
-                }
-            });
-             (student.challenges || []).forEach(c => {
-                if (c.status === 'pending_approval') {
-                    const challengeDetails = platformConfig?.challenges?.find(ch => ch.id === c.challengeId);
-                    if (challengeDetails) {
-                        if (role === 'admin' || (role === 'teacher' && challengeDetails.providerId === teacherId)) {
-                             challengeReqs.push({ student, challenge: c });
-                        }
+                    if (role === 'admin' || teacherClassIds.includes(student.classId)) {
+                        loanReqs.push({ student, loan: l });
                     }
                 }
-            })
+            });
+            (student.challenges || []).forEach(c => {
+                if (c.status === 'pending_approval') {
+                    const challengeDetails = platformConfig?.challenges?.find(ch => ch.id === c.challengeId);
+                    // Admin can approve all. Teacher can approve if student is in their class.
+                    if (challengeDetails && (role === 'admin' || teacherClassIds.includes(student.classId))) {
+                        challengeReqs.push({ student, challenge: c });
+                    }
+                }
+            });
         });
 
-        return { 
+        return {
             rewardApprovalRequests: rewardReqs,
             loanApprovalRequests: loanReqs,
             challengeApprovalRequests: challengeReqs
