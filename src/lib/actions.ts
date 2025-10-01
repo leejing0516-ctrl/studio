@@ -59,7 +59,7 @@ export async function redeemRewardTransaction(input: RedeemRewardInput): Promise
             
             // 1. Update Student
             const newRedeemedItem: RedeemedRewardItem = {
-                redemptionId: `${reward.id}-${Date.now()}`,
+                redemptionId: `${reward.id}-${Date.now()}-${Math.random()}`,
                 reward: reward,
                 status: 'collected',
                 redemptionDate: new Date().toISOString(),
