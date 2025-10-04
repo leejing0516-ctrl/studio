@@ -87,19 +87,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
   const createSetter = <T extends { id: string; _docId?: string }>(
     collectionName: string,
+    state: T[],
   ) => async (action: SetStateActionWithFunction<T[]>) => {
-      const currentState = ((): T[] => {
-          switch (collectionName) {
-              case 'students': return students as any;
-              case 'teachers': return teachers as any;
-              case 'rewards': return rewards as any;
-              case 'stocks': return stocks as any;
-              case 'classes': return classes as any;
-              default: return [];
-          }
-      })();
       
-    const newState = typeof action === 'function' ? action(currentState) : action;
+    const newState = typeof action === 'function' ? action(state) : action;
     const batch = writeBatch(db);
 
     const getDocId = (item: any): string => {
@@ -118,7 +109,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       
     const newStateDocIds = new Set(newState.map(getDocId));
       
-    currentState.forEach((item: any) => {
+    state.forEach((item: any) => {
         const docId = getDocId(item);
         if (!newStateDocIds.has(docId)) {
             const itemRef = doc(db, collectionName, docId);
@@ -129,11 +120,11 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       await batch.commit();
   };
 
-  const setStudents = createSetter<Student>('students');
-  const setTeachers = createSetter<Teacher>('teachers');
-  const setRewards = createSetter<Reward>('rewards');
-  const setStocks = createSetter<Stock>('stocks');
-  const setClasses = createSetter<Class>('classes');
+  const setStudents = createSetter<Student>('students', students);
+  const setTeachers = createSetter<Teacher>('teachers', teachers);
+  const setRewards = createSetter<Reward>('rewards', rewards);
+  const setStocks = createSetter<Stock>('stocks', stocks);
+  const setClasses = createSetter<Class>('classes', classes);
   
   const setPlatformConfigWithFunction = async (action: SetStateActionWithFunction<PlatformConfig | null>) => {
     const currentState = platformConfig;
@@ -165,8 +156,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             querySnapshot.forEach(doc => {
               const docData = doc.data();
               if (collectionName === 'students') {
+                  // For students, the doc.id is `classId-id`. We keep `id` as the student's own ID.
                   data.push({ ...docData, _docId: doc.id });
               } else {
+                  // For other collections, the doc.id is the actual id.
                   data.push({ ...(doc.data() as T), id: doc.id, _docId: doc.id });
               }
             });

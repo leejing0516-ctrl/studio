@@ -26,10 +26,10 @@ export default function HomePage() {
   const router = useRouter();
   const { toast } = useToast();
   const appData = useContext(AppDataContext);
-  const { classes, isLoading } = appData;
+  const { classes, isLoading, students, teachers } = appData;
 
   const sortedTeachers = useMemo(() => {
-    return [...appData.teachers].sort((a, b) => {
+    return [...teachers].sort((a, b) => {
         const orderA = a.sortOrder || 99;
         const orderB = b.sortOrder || 99;
         if (orderA !== orderB) {
@@ -37,7 +37,7 @@ export default function HomePage() {
         }
         return (a.name || '').localeCompare(b.name || '');
     });
-  }, [appData.teachers]);
+  }, [teachers]);
 
   useEffect(() => {
     const userRole = localStorage.getItem('userRole');
@@ -62,7 +62,7 @@ export default function HomePage() {
         return;
     }
     
-    const foundStudent = appData.students.find(
+    const foundStudent = students.find(
       (s: Student) => s.classId === classId && s.id === studentIdInput
     );
 
@@ -80,7 +80,7 @@ export default function HomePage() {
         });
         setIsLoggingIn(false);
     }
-  }, [classId, studentIdInput, studentPassword, appData.students, router, toast]);
+  }, [classId, studentIdInput, studentPassword, students, router, toast]);
   
   const handleTeacherLogin = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -95,7 +95,7 @@ export default function HomePage() {
         return;
     }
 
-    const teacher = appData.teachers.find(t => t.id === selectedTeacherId);
+    const teacher = teachers.find(t => t.id === selectedTeacherId);
     if (teacher && teacher.password === teacherPassword) {
         localStorage.setItem('userRole', 'teacher');
         localStorage.setItem('teacherId', selectedTeacherId);
@@ -109,7 +109,7 @@ export default function HomePage() {
         });
         setIsLoggingIn(false);
     }
-  }, [selectedTeacherId, teacherPassword, appData.teachers, router, toast]);
+  }, [selectedTeacherId, teacherPassword, teachers, router, toast]);
 
   const isFormDisabled = isLoading || isLoggingIn;
 
