@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useContext, useEffect, useMemo } from "react";
@@ -1611,7 +1612,7 @@ export default function TeacherDashboardPage() {
                     </form>
                  </DialogContent>
             </Dialog>
-            <Dialog open={isEditTeacherDialogOpen} onOpenChange={(open) => {if (!open) setTeacherToEdit(null);}}>
+            <Dialog open={isEditTeacherDialogOpen} onOpenChange={(open) => {if (!open) {setTeacherToEdit(null);} setIsEditTeacherDialogOpen(open);}}>
                  <DialogContent>
                     <form onSubmit={handleUpdateTeacher}>
                         <DialogHeader><DialogTitle>編輯 {teacherToEdit?.name} 的資料</DialogTitle></DialogHeader>
