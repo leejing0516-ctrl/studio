@@ -29,9 +29,11 @@ export default function HomePage() {
   const { classes, isLoading, students, teachers } = appData;
 
   const sortedTeachers = useMemo(() => {
-    return [...teachers].sort((a, b) => {
-        const orderA = a.sortOrder || 99;
-        const orderB = b.sortOrder || 99;
+    return [...teachers]
+      .filter(t => t.sortOrder !== undefined) // Filter out items that don't have sortOrder
+      .sort((a, b) => {
+        const orderA = a.sortOrder!;
+        const orderB = b.sortOrder!;
         if (orderA !== orderB) {
             return orderA - orderB;
         }
@@ -97,6 +99,7 @@ export default function HomePage() {
 
     const teacher = teachers.find(t => t.id === selectedTeacherId);
     if (teacher && teacher.password === teacherPassword) {
+        toast({ title: "登入成功！", description: `歡迎回來，${teacher.name}！` });
         localStorage.setItem('userRole', 'teacher');
         localStorage.setItem('teacherId', selectedTeacherId);
         localStorage.setItem('teacherPassword', teacherPassword);

@@ -95,34 +95,45 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     setter(newState);
 
     const batch = writeBatch(db);
+    const newDocKeys = new Set<string>();
 
-    const getDocId = (item: any): string => {
+    for (const item of newState) {
+        let docId: string;
+        let itemData: any = { ...item };
+
         if (collectionName === 'students') {
-            return item._docId || `${item.classId}-${item.id}`;
+            const student = item as any as Student;
+            docId = student._docId || `${student.classId}-${student.id}`;
+            // Ensure _docId is not written to Firestore
+            delete itemData._docId;
+        } else {
+            docId = item._docId || item.id;
+            delete itemData._docId;
         }
-        return item._docId || item.id;
-    }
-      
-    const newDocIds = new Set<string>();
-
-    newState.forEach((item: any) => {
-        const docId = getDocId(item);
-        newDocIds.add(docId);
-        const { _docId, ...itemData } = item;
+        
+        newDocKeys.add(docId);
         const itemRef = doc(db, collectionName, docId);
         batch.set(itemRef, itemData, { merge: true });
-    });
+    }
       
-    state.forEach((item: any) => {
-        const docId = getDocId(item);
-        if (!newDocIds.has(docId)) {
+    for (const item of state) {
+        let docId: string;
+        if (collectionName === 'students') {
+            const student = item as any as Student;
+            docId = student._docId || `${student.classId}-${student.id}`;
+        } else {
+            docId = item._docId || item.id;
+        }
+
+        if (!newDocKeys.has(docId)) {
             const itemRef = doc(db, collectionName, docId);
             batch.delete(itemRef);
         }
-    });
+    }
 
-      await batch.commit();
+    await batch.commit();
   };
+
 
   const setStudents = createSetter<Student>('students', students, setStudentsState);
   const setTeachers = createSetter<Teacher>('teachers', teachers, setTeachersState);
@@ -149,7 +160,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const subscriptions: Unsubscribe[] = [];
 
-    const setupSubscription = <T,>(
+    const setupSubscription = <T extends { id: string }>(
         collectionName: string, 
         setter: React.Dispatch<React.SetStateAction<any[]>>,
         stateKey: keyof LoadingStates
@@ -158,15 +169,15 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const data: any[] = [];
             querySnapshot.forEach(doc => {
-              const docData = doc.data();
-              if (collectionName === 'students') {
-                  // For students, preserve the original student `id` (student number)
-                  // and store the Firestore document ID separately in `_docId`.
-                  data.push({ ...docData, _docId: doc.id });
-              } else {
-                  // For other collections, the Firestore doc.id is the primary `id`.
-                  data.push({ ...(doc.data() as T), id: doc.id, _docId: doc.id });
-              }
+                const docData = doc.data();
+                if (collectionName === 'students') {
+                    // For students, keep the original `id` from the document data,
+                    // and store the Firestore document ID in `_docId`.
+                    data.push({ ...docData, _docId: doc.id });
+                } else {
+                    // For all other collections, the Firestore doc.id is the primary ID.
+                    data.push({ ...docData, id: doc.id, _docId: doc.id });
+                }
             });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
