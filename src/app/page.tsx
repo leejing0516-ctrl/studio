@@ -26,8 +26,10 @@ export default function HomePage() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const router = useRouter();
   const { toast, dismiss } = useToast();
-  const { classes, teachers, students, isLoading, platformConfig } = useContext(AppDataContext);
+  const appData = useContext(AppDataContext);
   const { setStudentData } = useContext(StudentDataContext);
+
+  const { classes, teachers, platformConfig, isLoading } = appData;
 
   const sortedTeachers = useMemo(() => {
     return [...teachers].sort((a, b) => {
@@ -53,8 +55,11 @@ export default function HomePage() {
         return;
     }
     
+    // Access the latest students list directly from the context provider
+    const currentStudents = appData.students;
+
     try {
-        const student = students.find(s => s.classId === classId && s.id === studentId);
+        const student = currentStudents.find(s => s.classId === classId && s.id === studentId);
 
         if (student) {
             if (student.password === studentPassword) {
