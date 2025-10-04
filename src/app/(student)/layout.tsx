@@ -67,7 +67,7 @@ export default function StudentLayout({
   const router = useRouter();
   const { studentData, setStudentData } = useContext(StudentDataContext);
   const { students, setStudents, isLoading } = useContext(AppDataContext);
-  const { toast, dismiss } = useToast();
+  const { toast } = useToast();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -78,14 +78,13 @@ export default function StudentLayout({
   const student = useMemo(() => studentData.student, [studentData.student]);
 
   const handleLogout = useCallback(() => {
-    dismiss();
     setStudentData({ student: null });
     localStorage.removeItem('studentId');
     localStorage.removeItem('studentClassId');
     localStorage.removeItem('studentPassword');
     localStorage.removeItem('userRole');
     router.push('/');
-  }, [dismiss, router, setStudentData]);
+  }, [router, setStudentData]);
 
   // Effect to handle initial load and re-authentication from localStorage
   useEffect(() => {
@@ -114,7 +113,7 @@ export default function StudentLayout({
                 setStudentData({ student: foundStudent });
             }
         } else {
-            toast({ title: "登入驗證失敗", description: "您的帳號或密碼不正確，請重新登入。", variant: "destructive" });
+            // Do not toast here, just log out
             handleLogout();
         }
     } else {

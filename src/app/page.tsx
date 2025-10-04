@@ -22,7 +22,8 @@ export default function HomePage() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const { classes, teachers, platformConfig, isLoading } = useContext(AppDataContext);
+  const appData = useContext(AppDataContext);
+  const { classes, teachers, platformConfig, isLoading } = appData;
 
   const sortedTeachers = useMemo(() => {
     return [...teachers].sort((a, b) => {
