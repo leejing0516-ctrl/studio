@@ -25,12 +25,12 @@ export default function HomePage() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const { classes, isLoading, students, teachers, platformConfig } = useContext(AppDataContext);
+  const { classes, isLoading, students, teachers: allTeachers, platformConfig } = useContext(AppDataContext);
 
   const sortedTeachers = useMemo(() => {
-    if (!teachers) return [];
-    return [...teachers]
-      .filter(t => t && t.sortOrder !== undefined) // Ensure t is defined
+    if (!allTeachers) return [];
+    return [...allTeachers]
+      .filter(t => t && t.sortOrder !== undefined)
       .sort((a, b) => {
         const orderA = a.sortOrder!;
         const orderB = b.sortOrder!;
@@ -39,7 +39,7 @@ export default function HomePage() {
         }
         return (a.name || '').localeCompare(b.name || '');
     });
-  }, [teachers]);
+  }, [allTeachers]);
 
   useEffect(() => {
     const userRole = localStorage.getItem('userRole');
@@ -97,7 +97,7 @@ export default function HomePage() {
         return;
     }
 
-    const teacher = teachers.find(t => t.id === selectedTeacherId);
+    const teacher = allTeachers.find(t => t.id === selectedTeacherId);
     if (teacher && teacher.password === teacherPassword) {
         toast({ title: "登入成功！", description: `歡迎回來，${teacher.name}！` });
         localStorage.setItem('userRole', 'teacher');
@@ -112,7 +112,7 @@ export default function HomePage() {
         });
         setIsLoggingIn(false);
     }
-  }, [selectedTeacherId, teacherPassword, teachers, router, toast]);
+  }, [selectedTeacherId, teacherPassword, allTeachers, router, toast]);
 
   const isFormDisabled = isLoading || isLoggingIn;
 
@@ -276,5 +276,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    
