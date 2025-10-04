@@ -4,7 +4,6 @@
 import { suggestRewards, type RewardSuggestionInput } from "@/ai/flows/reward-suggestion";
 import { getAdminDb } from './firebase-admin';
 import type { Student, Reward, Teacher, PlatformConfig, RedeemedRewardItem } from './types';
-import { db } from "./firebase";
 
 
 export async function getRewardSuggestions(input: RewardSuggestionInput) {
@@ -19,7 +18,7 @@ export async function getRewardSuggestions(input: RewardSuggestionInput) {
 
 export async function savePlatformSettings(settings: Partial<PlatformConfig>): Promise<{success: boolean, error?: string}> {
     try {
-        const adminDb = getAdminDb(); // Use the getter to ensure initialization
+        const adminDb = getAdminDb();
         const configRef = adminDb.collection('config').doc('main');
         await configRef.set(settings, { merge: true });
         return { success: true };
