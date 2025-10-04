@@ -11,4 +11,4 @@
  * To change the logo, simply replace the content of this string
  * with the new image URL.
  */
-export const LOGO_URL = "https://i.imgur.com/7x202p7.png";
+export const LOGO_URL = "/logo.png";
