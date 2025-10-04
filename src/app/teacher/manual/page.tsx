@@ -1,6 +1,6 @@
-
 "use client";
 
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -28,6 +28,20 @@ const SimpleRenderer = ({ content }: { content: string }) => {
                  if (line.startsWith('*   ')) {
                     return <li key={index} className="ml-4 list-disc">{line.substring(4)}</li>;
                 }
+                if (line.match(/\[(.*?)\]\((.*?)\)/)) {
+                    const linkMatch = line.match(/\[(.*?)\]\((.*?)\)/);
+                    if (linkMatch) {
+                        return (
+                            <p key={index} className="mb-2 leading-relaxed">
+                                {line.substring(0, linkMatch.index)}
+                                <Link href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80">
+                                    {linkMatch[1]}
+                                </Link>
+                                {line.substring(linkMatch.index! + linkMatch[0].length)}
+                            </p>
+                        )
+                    }
+                }
                  if (line.startsWith('![') && line.includes('](') && line.endsWith(')')) {
                     const alt = line.substring(2, line.indexOf(']('));
                     const src = line.substring(line.indexOf('](') + 2, line.length - 1);
@@ -36,13 +50,16 @@ const SimpleRenderer = ({ content }: { content: string }) => {
                 if (line.trim() === '---') {
                     return <hr key={index} className="my-6" />;
                 }
-                // Handle bold text with **text**
-                const parts = line.split(/(\*\*.*?\*\*)/g);
+                // Handle bold text with **text** and `code`
+                const parts = line.split(/(\*\*.*?\*\*|`.*?`)/g);
                 return (
                     <p key={index} className="mb-2 leading-relaxed">
                         {parts.map((part, i) => {
                             if (part.startsWith('**') && part.endsWith('**')) {
                                 return <strong key={i}>{part.slice(2, -2)}</strong>;
+                            }
+                            if (part.startsWith('`') && part.endsWith('`')) {
+                                return <code key={i} className="bg-muted text-foreground font-mono text-sm px-1 py-0.5 rounded-sm">{part.slice(1, -1)}</code>;
                             }
                             return part;
                         })}
