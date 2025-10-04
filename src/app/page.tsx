@@ -29,7 +29,7 @@ export default function HomePage() {
   const [teacherId, setTeacherId] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const router = useRouter();
-  const { toast } = useToast();
+  const { toast, dismiss } = useToast();
   const { classes, teachers, isLoading, platformConfig } = useContext(AppDataContext);
   const { setStudentData } = useContext(StudentDataContext);
 
@@ -142,7 +142,6 @@ export default function HomePage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
       <header className="mb-8 text-center animate-in fade-in slide-in-from-top duration-700">
-        <Logo className="h-16 w-auto mx-auto mb-4" />
         <h1 className="text-4xl md:text-5xl font-bold font-headline text-foreground">
           歡迎來到南梓實小虛擬銀行
         </h1>
