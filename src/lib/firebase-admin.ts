@@ -1,4 +1,3 @@
-
 /**
  * This file contains configurable settings for the application.
  *

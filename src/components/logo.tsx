@@ -1,19 +1,13 @@
 
-import { useContext } from 'react';
 import Image from 'next/image';
 import { cn } from "@/lib/utils";
-import { AppDataContext } from '@/context/AppDataContext';
+import { LOGO_URL } from '@/lib/config';
 
 const Logo = ({ className }: { className?: string }) => {
-  const { platformConfig, isLoading } = useContext(AppDataContext);
-
-  const logoUrl = platformConfig?.platformLogoUrl;
-
-  // Do not render anything if still loading config or if no URL is set
-  if (isLoading || !logoUrl) {
+  if (!LOGO_URL) {
     return (
         <div className={cn("relative bg-muted rounded-md", className)}>
-            {/* You can place a skeleton loader here if you want */}
+            {/* Placeholder for when no logo is set */}
         </div>
     );
   }
@@ -21,7 +15,7 @@ const Logo = ({ className }: { className?: string }) => {
   return (
     <div className={cn("relative", className)}>
         <Image 
-            src={logoUrl}
+            src={LOGO_URL}
             alt="Platform Logo"
             fill
             sizes="(max-width: 768px) 100vw, 100px" // Provide appropriate sizes
