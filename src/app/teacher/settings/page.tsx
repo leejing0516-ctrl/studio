@@ -18,9 +18,11 @@ import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
 import { useFirebaseStorage } from "@/hooks/use-firebase-storage";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function TeacherSettingsPage() {
-    const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
+    const { platformConfig, setPlatformConfig: setConfigInContext } = useContext(AppDataContext);
     const { toast } = useToast();
     const router = useRouter();
     const { uploadFile, isUploading, error: uploadError } = useFirebaseStorage();
@@ -97,14 +99,21 @@ export default function TeacherSettingsPage() {
 
     const handleSaveSettings = async () => {
         setIsSavingSettings(true);
+        const newConfig = {
+            ...platformConfig,
+            fixedDepositInterestRate: Number(fixedDepositRate) / 100,
+            loanInterestRate: Number(loanInterestRate) / 100,
+            platformLogoUrl: logoPreview,
+            sponsorLogoUrls: sponsorPreviews,
+        };
+
         try {
-            await setPlatformConfig({
-                fixedDepositInterestRate: Number(fixedDepositRate) / 100,
-                loanInterestRate: Number(loanInterestRate) / 100,
-                platformLogoUrl: logoPreview,
-                sponsorLogoUrls: sponsorPreviews,
-            });
+            const configRef = doc(db, 'config', 'main');
+            await setDoc(configRef, newConfig, { merge: true });
             
+            // Optimistically update context
+            setConfigInContext(newConfig);
+
             toast({ title: "設定已儲存", description: "平台設定已成功更新。" });
         } catch (error: any) {
             console.error("Error saving settings:", error);
@@ -166,7 +175,7 @@ export default function TeacherSettingsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>平台 Logo</CardTitle>
-                    <CardDescription>上傳新的 Logo 來取代目前的平台 Logo (檔案上限 5MB)。</CardDescription>
+                    <CardDescription>上傳新的 Logo 來取代目前的平台 Logo。建議尺寸為 256x256 像素，檔案上限 1MB。</CardDescription>
                 </CardHeader>
                 <CardContent className="flex items-center gap-6">
                      <div className="w-32 h-32 bg-muted rounded-md flex items-center justify-center">
@@ -194,7 +203,7 @@ export default function TeacherSettingsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>贊助商 Logo</CardTitle>
-                    <CardDescription>上傳最多四個贊助商 Logo，將會顯示在登入頁面 (每個檔案上限 5MB)。</CardDescription>
+                    <CardDescription>上傳最多四個贊助商 Logo，將會顯示在登入頁面。建議尺寸為 288x96 像素，每個檔案上限 1MB。</CardDescription>
                 </CardHeader>
                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                     {Array.from({ length: 4 }).map((_, index) => (
