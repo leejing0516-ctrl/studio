@@ -3,44 +3,33 @@ import { useContext } from 'react';
 import Image from 'next/image';
 import { cn } from "@/lib/utils";
 import { AppDataContext } from '@/context/AppDataContext';
-import placeholderImages from '@/lib/placeholder-images.json';
 
 const Logo = ({ className }: { className?: string }) => {
-  const { platformConfig } = useContext(AppDataContext);
+  const { platformConfig, isLoading } = useContext(AppDataContext);
 
-  const logoUrl = platformConfig?.platformLogoUrl || placeholderImages.platformLogo.src;
+  const logoUrl = platformConfig?.platformLogoUrl;
 
-  if (logoUrl) {
-    // Check if the logoUrl is a Base64 string or a regular URL/path
-    if (logoUrl.startsWith('data:image')) {
-      return (
-        <div className={cn("relative", className)}>
-            <Image 
-                src={logoUrl}
-                alt="Platform Logo"
-                fill
-                sizes="100px"
-                className="object-contain"
-            />
-        </div>
-      )
-    }
-    // Handle regular URLs/paths
+  // Do not render anything if still loading config or if no URL is set
+  if (isLoading || !logoUrl) {
     return (
-        <div className={cn("relative", className)}>
-            <Image 
-                src={logoUrl}
-                alt="Platform Logo"
-                fill
-                sizes="100px"
-                className="object-contain"
-                unoptimized // Add this if your static paths are not configured in next.config.js
-            />
+        <div className={cn("relative bg-muted rounded-md", className)}>
+            {/* You can place a skeleton loader here if you want */}
         </div>
-    )
+    );
   }
-  
-  return null;
+
+  return (
+    <div className={cn("relative", className)}>
+        <Image 
+            src={logoUrl}
+            alt="Platform Logo"
+            fill
+            sizes="(max-width: 768px) 100vw, 100px" // Provide appropriate sizes
+            className="object-contain"
+            priority // Prioritize loading the logo
+        />
+    </div>
+  )
 };
 
 export default Logo;

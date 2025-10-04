@@ -10,14 +10,26 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Percent } from "lucide-react";
+import { Loader2, Percent, ImageOff, UploadCloud } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
-import placeholderImages from '@/lib/placeholder-images.json';
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { app } from "@/lib/firebase";
+
+const storage = getStorage(app);
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+
+// Helper function to upload a file and get its URL
+const uploadFile = async (file: File, path: string): Promise<string> => {
+    const storageRef = ref(storage, path);
+    await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(storageRef);
+    return downloadURL;
+};
 
 export default function TeacherSettingsPage() {
     const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
@@ -27,6 +39,13 @@ export default function TeacherSettingsPage() {
     const [isSavingSettings, setIsSavingSettings] = useState(false);
     const [fixedDepositRate, setFixedDepositRate] = useState<number | string>('');
     const [loanInterestRate, setLoanInterestRate] = useState<number | string>('');
+    
+    // State for image previews and files
+    const [logoPreview, setLogoPreview] = useState<string | null>(null);
+    const [logoFile, setLogoFile] = useState<File | null>(null);
+    const [sponsorPreviews, setSponsorPreviews] = useState<(string | null)[]>([]);
+    const [sponsorFiles, setSponsorFiles] = useState<(File | null)[]>([]);
+
 
     useEffect(() => {
         const role = localStorage.getItem('teacherRole');
@@ -39,20 +58,70 @@ export default function TeacherSettingsPage() {
         if (platformConfig) {
             setFixedDepositRate((platformConfig.fixedDepositInterestRate || 0) * 100);
             setLoanInterestRate((platformConfig.loanInterestRate || 0) * 100);
+            setLogoPreview(platformConfig.platformLogoUrl || null);
+            setSponsorPreviews(platformConfig.sponsorLogoUrls || [null, null, null, null]);
         }
     }, [platformConfig, router, toast]);
+
+    const handleImageChange = (
+        e: React.ChangeEvent<HTMLInputElement>, 
+        type: 'platform' | 'sponsor', 
+        index?: number
+    ) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > MAX_FILE_SIZE) {
+            toast({ title: "圖片太大", description: "檔案大小不能超過 2MB。", variant: "destructive" });
+            return;
+        }
+
+        const previewUrl = URL.createObjectURL(file);
+
+        if (type === 'platform') {
+            setLogoFile(file);
+            setLogoPreview(previewUrl);
+        } else if (type === 'sponsor' && index !== undefined) {
+            setSponsorFiles(prev => {
+                const newFiles = [...prev];
+                newFiles[index] = file;
+                return newFiles;
+            });
+            setSponsorPreviews(prev => {
+                const newPreviews = [...prev];
+                newPreviews[index] = previewUrl;
+                return newPreviews;
+            });
+        }
+    };
 
 
     const handleSaveSettings = async () => {
         setIsSavingSettings(true);
         try {
+            let platformLogoUrl = platformConfig?.platformLogoUrl || "";
+            if (logoFile) {
+                platformLogoUrl = await uploadFile(logoFile, `logos/platform_logo_${Date.now()}`);
+            }
+
+            const sponsorLogoUrls = [...(platformConfig?.sponsorLogoUrls || [null, null, null, null])];
+            for (let i = 0; i < sponsorFiles.length; i++) {
+                const file = sponsorFiles[i];
+                if (file) {
+                    sponsorLogoUrls[i] = await uploadFile(file, `logos/sponsor_${i}_${Date.now()}`);
+                }
+            }
+
             await setPlatformConfig({
-                // We no longer save image data to firestore. They are static assets.
-                platformLogoUrl: placeholderImages.platformLogo.src,
-                sponsorLogoUrls: placeholderImages.sponsorLogos.map(logo => logo.src),
+                platformLogoUrl,
+                sponsorLogoUrls,
                 fixedDepositInterestRate: Number(fixedDepositRate) / 100,
                 loanInterestRate: Number(loanInterestRate) / 100
             });
+
+            // Reset file states
+            setLogoFile(null);
+            setSponsorFiles([]);
 
             toast({ title: "設定已儲存", description: "平台設定已成功更新。" });
         } catch (error) {
@@ -115,31 +184,51 @@ export default function TeacherSettingsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>平台 Logo</CardTitle>
-                    <CardDescription>平台 Logo 目前為靜態資源，若要更換請在專案的 `src/lib/placeholder-images.json` 中修改路徑。</CardDescription>
+                    <CardDescription>上傳新的 Logo 來取代目前的平台 Logo (檔案上限 2MB)。</CardDescription>
                 </CardHeader>
                 <CardContent className="flex items-center gap-6">
                      <div className="w-32 h-32 bg-muted rounded-md flex items-center justify-center">
-                        {platformConfig?.platformLogoUrl && (
-                            <Image src={platformConfig.platformLogoUrl} alt="Logo Preview" width={128} height={128} className="object-contain rounded-md" />
+                        {logoPreview ? (
+                            <Image src={logoPreview} alt="Logo Preview" width={128} height={128} className="object-contain rounded-md" />
+                        ) : (
+                            <ImageOff className="h-10 w-10 text-muted-foreground"/>
                         )}
+                    </div>
+                    <div className="space-y-2">
+                        <Input id="logo-upload" type="file" accept="image/*" onChange={(e) => handleImageChange(e, 'platform')} className="hidden" />
+                        <Label htmlFor="logo-upload" className={buttonVariants({ variant: "outline" })}>
+                            <UploadCloud className="mr-2"/> 上傳圖片
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                            {logoFile ? logoFile.name : "尚未選擇檔案"}
+                        </p>
                     </div>
                 </CardContent>
             </Card>
             <Card>
                 <CardHeader>
                     <CardTitle>贊助商 Logo</CardTitle>
-                    <CardDescription>贊助商 Logo 目前為靜態資源，若要更換請在專案的 `src/lib/placeholder-images.json` 中修改路徑。</CardDescription>
+                    <CardDescription>上傳最多四個贊助商 Logo，將會顯示在登入頁面 (每個檔案上限 2MB)。</CardDescription>
                 </CardHeader>
                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                    {(platformConfig?.sponsorLogoUrls || []).map((url, index) => (
+                    {Array.from({ length: 4 }).map((_, index) => (
                         <div key={index} className="flex items-center gap-4">
                             <div className="w-48 h-24 bg-muted rounded-md flex items-center justify-center relative group">
-                                {url && (
-                                    <Image src={url} alt={`Sponsor Logo ${index + 1} Preview`} fill className="object-contain p-2" />
+                                {sponsorPreviews[index] ? (
+                                    <Image src={sponsorPreviews[index]!} alt={`Sponsor Logo ${index + 1} Preview`} fill className="object-contain p-2" />
+                                ) : (
+                                    <ImageOff className="h-10 w-10 text-muted-foreground"/>
                                 )}
                             </div>
                              <div className="space-y-2">
                                 <Label>Logo {index + 1}</Label>
+                                <Input id={`sponsor-upload-${index}`} type="file" accept="image/*" onChange={(e) => handleImageChange(e, 'sponsor', index)} className="hidden" />
+                                <Label htmlFor={`sponsor-upload-${index}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                                    <UploadCloud className="mr-2"/> 上傳
+                                </Label>
+                                <p className="text-xs text-muted-foreground">
+                                    {sponsorFiles[index] ? sponsorFiles[index]?.name : "尚未選擇檔案"}
+                                </p>
                             </div>
                         </div>
                     ))}
