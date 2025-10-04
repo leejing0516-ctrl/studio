@@ -38,12 +38,10 @@ export default function HomePage() {
                 return orderA - orderB;
             }
         } else if (orderA !== undefined) {
-            return -1; // a has order, b does not, so a comes first
+            return -1;
         } else if (orderB !== undefined) {
-            return 1;  // b has order, a does not, so b comes first
+            return 1;
         }
-
-        // If sortOrder is the same or both are undefined, sort by name
         return (a.name || '').localeCompare(b.name || '');
     });
   }, [allTeachers]);
@@ -71,8 +69,9 @@ export default function HomePage() {
         return;
     }
     
+    const studentDocId = `${classId}-${studentIdInput}`;
     const foundStudent = students.find(
-      (s: Student) => s.classId === classId && s.id === studentIdInput
+      (s: Student) => s._docId === studentDocId
     );
 
     if (foundStudent && foundStudent.password === studentPassword) {

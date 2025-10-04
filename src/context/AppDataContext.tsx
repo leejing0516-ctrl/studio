@@ -92,7 +92,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   ) => async (action: SetStateActionWithFunction<T[]>) => {
     const currentState = typeof action === 'function' ? action(state) : action;
     
-    // We update the local state optimistically
     setter(currentState);
 
     const batch = writeBatch(db);
@@ -100,15 +99,17 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
     for (const item of currentState) {
         let docId: string;
-        let itemData: any = { ...item };
         
-        if (collectionName === 'students') {
+        if (item._docId) {
+            docId = item._docId;
+        } else if (collectionName === 'students') {
             const student = item as any as Student;
-            docId = student._docId || `${student.classId}-${student.id}`;
+            docId = `${student.classId}-${student.id}`;
         } else {
-            docId = item._docId || item.id;
+            docId = item.id;
         }
 
+        const itemData: any = { ...item };
         delete itemData._docId;
 
         newDocKeys.add(docId);
@@ -116,8 +117,9 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         batch.set(itemRef, itemData, { merge: true });
     }
       
-    const oldDocs = await getDocs(query(collection(db, collectionName)));
-    oldDocs.forEach(doc => {
+    const oldDocsQuery = query(collection(db, collectionName));
+    const oldDocsSnapshot = await getDocs(oldDocsQuery);
+    oldDocsSnapshot.forEach(doc => {
         if (!newDocKeys.has(doc.id)) {
             batch.delete(doc.ref);
         }
@@ -127,7 +129,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         await batch.commit();
     } catch (error) {
         console.error(`Batch write for ${collectionName} failed:`, error);
-        // Optionally, revert the optimistic update here or show an error
     }
   };
 
@@ -166,14 +167,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const data: any[] = [];
             querySnapshot.forEach(doc => {
-                if (collectionName === 'students') {
-                    // For students, keep the original `id` from the document data,
-                    // and store the Firestore document ID separately in `_docId`.
-                    data.push({ ...doc.data(), _docId: doc.id });
-                } else {
-                    // For all other collections, the Firestore doc.id is the primary ID.
-                    data.push({ ...doc.data(), id: doc.id, _docId: doc.id });
-                }
+                data.push({ ...doc.data(), id: doc.id, _docId: doc.id });
             });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));

@@ -275,12 +275,14 @@ export default function TeacherDashboardPage() {
     const handleAddStudent = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
+        const studentId = formData.get('id') as string;
+        
         const newStudent: Student = {
-            id: formData.get('id') as string,
+            id: studentId,
             name: formData.get('name') as string,
             classId: selectedClassId,
             points: 0,
-            avatar: `https://picsum.photos/seed/${formData.get('id') as string}/100`,
+            avatar: `https://picsum.photos/seed/${studentId}/100`,
             password: formData.get('password') as string,
             portfolio: [],
             pointHistory: [],
@@ -545,7 +547,7 @@ export default function TeacherDashboardPage() {
             return;
         }
 
-        setIsProcessing(student.id);
+        setIsProcessing(student._docId!);
 
         try {
             await runTransaction(async (transaction) => {
@@ -600,13 +602,13 @@ export default function TeacherDashboardPage() {
         } finally {
             if (!isBatch) {
                 setIsProcessing(null);
-                setPointInputs(prev => ({ ...prev, [student.id]: '' }));
+                setPointInputs(prev => ({ ...prev, [student._docId!]: '' }));
             }
         }
     };
     
     const handleAwardPoints = async (student: Student) => {
-        const pointsStr = pointInputs[student.id];
+        const pointsStr = pointInputs[student._docId!];
         if (!pointsStr) return;
         const points = parseInt(pointsStr, 10);
         
@@ -1123,12 +1125,12 @@ export default function TeacherDashboardPage() {
                                                     <Input 
                                                         type="number"
                                                         placeholder="點數 (例如: 50, -50)"
-                                                        value={pointInputs[student.id] || ''}
-                                                        onChange={e => setPointInputs({...pointInputs, [student.id]: e.target.value})}
+                                                        value={pointInputs[student._docId!] || ''}
+                                                        onChange={e => setPointInputs({...pointInputs, [student._docId!]: e.target.value})}
                                                         disabled={!!isProcessing}
                                                     />
-                                                     <Button onClick={() => handleAwardPoints(student)} disabled={isProcessing === student.id || !pointInputs[student.id]}>
-                                                        {isProcessing === student.id ? <Loader2 className="h-4 w-4 animate-spin"/> : '執行'}
+                                                     <Button onClick={() => handleAwardPoints(student)} disabled={isProcessing === student._docId || !pointInputs[student._docId!]}>
+                                                        {isProcessing === student._docId ? <Loader2 className="h-4 w-4 animate-spin"/> : '執行'}
                                                      </Button>
                                                 </div>
                                             </TableCell>
