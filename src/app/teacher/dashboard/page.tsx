@@ -34,7 +34,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -991,7 +990,7 @@ export default function TeacherDashboardPage() {
                                                     <Button variant="ghost" size="icon" onClick={() => {setTeacherToAllocate(t); setIsAllocatePointsDialogOpen(true);}} disabled={t.role === 'admin'}><Coins className="h-4 w-4"/></Button>
                                                     <Button variant="ghost" size="icon" onClick={() => {setTeacherToEdit(t); setEditedTeacherRole(t.role); setIsEditTeacherDialogOpen(true);}}><Edit className="h-4 w-4"/></Button>
                                                     <Button variant="ghost" size="icon" onClick={() => {setTeacherToImpersonate(t); setIsImpersonateDialogOpen(true);}} disabled={t.id === teacherId}><KeyRound className="h-4 w-4"/></Button>
-                                                    <AlertDialog open={!!teacherToDelete && teacherToDelete.id === t.id} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
+                                                    <AlertDialog>
                                                         <AlertDialogTrigger asChild>
                                                             <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setTeacherToDelete(t)} disabled={t.role === 'admin'}><Trash2 className="h-4 w-4"/></Button>
                                                         </AlertDialogTrigger>
@@ -1035,7 +1034,7 @@ export default function TeacherDashboardPage() {
                                                 {classes.map(c => (
                                                     <div key={c.id} className="flex justify-between items-center p-2 bg-muted/50 rounded-md">
                                                         <span>{c.name} ({c.id})</span>
-                                                        <AlertDialog open={!!classToDelete && classToDelete.id === c.id} onOpenChange={(open) => {if(!open) setClassToDelete(null)}}>
+                                                        <AlertDialog>
                                                             <AlertDialogTrigger asChild>
                                                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setClassToDelete(c)}><Trash2 className="h-4 w-4"/></Button>
                                                             </AlertDialogTrigger>
@@ -1325,7 +1324,7 @@ export default function TeacherDashboardPage() {
                                                                 <TableCell>{student.name}</TableCell>
                                                                 <TableCell>{details?.name}</TableCell>
                                                                 <TableCell className="text-right">
-                                                                    <AlertDialog open={!!challengeToApprove && challengeToApprove.student._docId === student._docId && challengeToApprove.challenge.challengeId === challenge.challengeId} onOpenChange={(open) => !open && setChallengeToApprove(null)}>
+                                                                    <AlertDialog>
                                                                         <AlertDialogTrigger asChild>
                                                                             <Button size="sm" onClick={() => setChallengeToApprove({ student, challenge })}>
                                                                                 <Check className="mr-2" /> 批准 (+{details?.points.toLocaleString()}點)
@@ -1365,7 +1364,7 @@ export default function TeacherDashboardPage() {
                                                             <TableCell>{loan.amount.toLocaleString()}</TableCell>
                                                             <TableCell>{loan.reason}</TableCell>
                                                             <TableCell className="text-right">
-                                                                <AlertDialog open={!!loanToProcess && loanToProcess.loan.id === loan.id} onOpenChange={(open) => !open && setLoanToProcess(null)}>
+                                                                <AlertDialog>
                                                                     <AlertDialogTrigger asChild>
                                                                         <Button size="sm" className="mr-2" onClick={() => setLoanToProcess({student, loan})}>處理</Button>
                                                                     </AlertDialogTrigger>

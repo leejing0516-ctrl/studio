@@ -95,25 +95,19 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     setter(currentState);
 
     const batch = writeBatch(db);
-    const docIdsInState = new Set<string>();
+    const existingDocIds = new Set(state.map(item => item._docId).filter(Boolean));
 
     for (const item of currentState) {
-      if (item._docId) {
-        docIdsInState.add(item._docId);
+      if (item._docId && existingDocIds.has(item._docId)) {
+        // This is an update
         const { _docId, ...itemData } = item;
         const itemRef = doc(db, collectionName, _docId);
-        batch.set(itemRef, itemData, { merge: true });
+        batch.update(itemRef, itemData);
       } else {
-        // This is a new item
-        let newDocRef;
-        if (collectionName === 'students' && item.classId && item.id) {
-          // Use composite key for students to prevent duplicates
-          newDocRef = doc(db, collectionName, `${item.classId}-${item.id}`);
-        } else {
-          // Let Firestore generate ID for other collections
-          newDocRef = doc(collection(db, collectionName));
-        }
-        batch.set(newDocRef, item);
+        // This is a new item, let Firestore generate ID
+        const { _docId, ...itemData } = item; // remove _docId if it exists but is not in existingDocIds
+        const newDocRef = doc(collection(db, collectionName));
+        batch.set(newDocRef, itemData);
       }
     }
 
@@ -148,36 +142,35 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const subscriptions: Unsubscribe[] = [];
 
-    const setupSubscription = <T extends { id: string }>(
+    const setupSubscription = <T extends { id?: string }>(
         collectionName: string, 
-        setter: React.Dispatch<React.SetStateAction<T[]>>,
+        setter: React.Dispatch<React.SetStateAction<any[]>>,
         stateKey: keyof LoadingStates,
-        isStudentCollection: boolean = false
     ) => {
         const q = query(collection(db, collectionName));
         const unsubscribe = onSnapshot(q, async (querySnapshot) => {
-            if (isStudentCollection && querySnapshot.empty) {
-                console.log("Student collection is empty, attempting to restore from placeholder data...");
+             // Emergency data restore for students
+            if (collectionName === 'students' && querySnapshot.empty && initialStudents.length > 0) {
+                console.log("EMERGENCY RESTORE: Student collection is empty. Restoring from placeholder data...");
                 try {
                     const batch = writeBatch(db);
                     initialStudents.forEach(student => {
-                        const docRef = doc(db, 'students', `${student.classId}-${student.id}`);
+                        // Create a new doc with a Firestore-generated ID
+                        const docRef = doc(collection(db, 'students'));
                         batch.set(docRef, student);
                     });
                     await batch.commit();
-                    console.log("Successfully restored students from placeholder data.");
-                    // Data will be re-fetched by onSnapshot, so we don't set state here.
+                    console.log("EMERGENCY RESTORE: Successfully restored students from placeholder data.");
+                    // Snapshot listener will be re-triggered with the new data, so we can just return here.
                     return;
                 } catch (error) {
-                    console.error("Failed to restore student data:", error);
+                    console.error("EMERGENCY RESTORE: Failed to restore student data:", error);
                 }
             }
 
-            const data: T[] = [];
+            const data: (T & { _docId: string })[] = [];
             querySnapshot.forEach(doc => {
-                const docData = doc.data() as T;
-                const id = isStudentCollection ? (docData as any).id : doc.id;
-                data.push({ ...docData, id: id, _docId: doc.id });
+                data.push({ ...doc.data() as T, _docId: doc.id });
             });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
@@ -208,7 +201,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         return unsubscribe;
     };
     
-    subscriptions.push(setupSubscription<Student>('students', setStudentsState, 'students', true));
+    subscriptions.push(setupSubscription<Student>('students', setStudentsState, 'students'));
     subscriptions.push(setupSubscription<Teacher>('teachers', setTeachersState, 'teachers'));
     subscriptions.push(setupSubscription<Class>('classes', setClassesState, 'classes'));
     subscriptions.push(setupSubscription<Reward>('rewards', setRewardsState, 'rewards'));
