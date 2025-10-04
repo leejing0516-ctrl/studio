@@ -83,43 +83,41 @@ export default function TeacherLayout({
   }, [router]);
 
   useEffect(() => {
-    if (isLoading) return; // Wait for data to load
+    if (isLoading) return;
 
     const userRole = localStorage.getItem('userRole');
-    if (userRole !== 'teacher') {
-      handleLogout();
-      return;
-    }
-    
     const storedTeacherId = localStorage.getItem('teacherId');
     const storedTeacherPassword = localStorage.getItem('teacherPassword');
 
-    if (storedTeacherId && storedTeacherPassword) {
-        const teacher = teachers.find(t => t.id === storedTeacherId);
-        if (teacher) {
-            const correctPassword = teacher.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
-            if (storedTeacherPassword === correctPassword) {
-                // Auth successful
-                setTeacherId(teacher.id);
-                setTeacherName(teacher.name);
-                setTeacherRole(teacher.role);
-                setIsImpersonating(!!localStorage.getItem('impersonator'));
+    if (userRole !== 'teacher' || !storedTeacherId || !storedTeacherPassword) {
+      handleLogout();
+      return;
+    }
 
-                // Update localStorage with potentially new data from db
-                localStorage.setItem('teacherName', teacher.name);
-                localStorage.setItem('teacherRole', teacher.role);
-                localStorage.setItem('teacherClassIds', JSON.stringify(teacher.classIds || []));
+    const teacher = teachers.find(t => t.id === storedTeacherId);
 
-            } else {
-                handleLogout();
-            }
+    if (teacher) {
+        const correctPassword = teacher.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
+        if (storedTeacherPassword === correctPassword) {
+            // Auth successful: Set React state immediately
+            setTeacherId(teacher.id);
+            setTeacherName(teacher.name);
+            setTeacherRole(teacher.role);
+            setIsImpersonating(!!localStorage.getItem('impersonator'));
+
+            // Update localStorage with potentially new data from db
+            localStorage.setItem('teacherName', teacher.name);
+            localStorage.setItem('teacherRole', teacher.role);
+            localStorage.setItem('teacherClassIds', JSON.stringify(teacher.classIds || []));
         } else {
+            toast({ title: "驗證失敗", description: "密碼不正確，請重新登入。", variant: "destructive" });
             handleLogout();
         }
     } else {
+        toast({ title: "找不到帳號", description: "找不到您的教師帳號，請重新登入。", variant: "destructive" });
         handleLogout();
     }
-  }, [isLoading, teachers, platformConfig, handleLogout]);
+  }, [isLoading, teachers, platformConfig, handleLogout, toast]);
 
   
   const handleStopImpersonating = () => {
@@ -252,7 +250,7 @@ export default function TeacherLayout({
             >
                 <path d="M21 12a9 9 0 1 1-6.219-8.56" />
             </svg>
-            載入中...
+            驗證身份中...
         </div>
     );
   }
