@@ -100,23 +100,29 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     for (const item of currentState) {
         let docId: string;
         
+        // Determine document ID
         if (item._docId) {
             docId = item._docId;
         } else if (collectionName === 'students') {
             const student = item as any as Student;
+            if (!student.classId || !student.id) {
+                console.error("Attempted to save a student without classId or id", student);
+                continue;
+            }
             docId = `${student.classId}-${student.id}`;
         } else {
             docId = item.id;
         }
 
         const itemData: any = { ...item };
-        delete itemData._docId;
+        delete itemData._docId; // Don't save internal _docId to Firestore
 
         newDocKeys.add(docId);
         const itemRef = doc(db, collectionName, docId);
         batch.set(itemRef, itemData, { merge: true });
     }
       
+    // Delete documents that are no longer in the state
     const oldDocsQuery = query(collection(db, collectionName));
     const oldDocsSnapshot = await getDocs(oldDocsQuery);
     oldDocsSnapshot.forEach(doc => {
@@ -131,7 +137,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         console.error(`Batch write for ${collectionName} failed:`, error);
     }
   };
-
 
   const setStudents = createSetter<Student>('students', students, setStudentsState);
   const setTeachers = createSetter<Teacher>('teachers', teachers, setTeachersState);
@@ -149,7 +154,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
-
   useEffect(() => {
     const allLoaded = Object.values(loadingStates).every(state => state === false);
     setIsLoading(!allLoaded);
@@ -158,7 +162,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const subscriptions: Unsubscribe[] = [];
 
-    const setupSubscription = <T extends { id: string }>(
+    const setupSubscription = <T,>(
         collectionName: string, 
         setter: React.Dispatch<React.SetStateAction<any[]>>,
         stateKey: keyof LoadingStates
@@ -167,7 +171,14 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const data: any[] = [];
             querySnapshot.forEach(doc => {
-                data.push({ ...doc.data(), id: doc.id, _docId: doc.id });
+                const docData = doc.data();
+                if (collectionName === 'students') {
+                     // For students, the doc.id is `classId-id`. We want to preserve the original `id`.
+                     data.push({ ...docData, _docId: doc.id });
+                } else {
+                     // For all other collections, the doc.id is the primary identifier.
+                     data.push({ ...docData, id: doc.id, _docId: doc.id });
+                }
             });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
@@ -198,11 +209,11 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         return unsubscribe;
     };
     
-    subscriptions.push(setupSubscription<Student>('students', setStudentsState, 'students'));
-    subscriptions.push(setupSubscription<Teacher>('teachers', setTeachersState, 'teachers'));
-    subscriptions.push(setupSubscription<Class>('classes', setClassesState, 'classes'));
-    subscriptions.push(setupSubscription<Reward>('rewards', setRewardsState, 'rewards'));
-    subscriptions.push(setupSubscription<Stock>('stocks', setStocksState, 'stocks'));
+    subscriptions.push(setupSubscription('students', setStudentsState, 'students'));
+    subscriptions.push(setupSubscription('teachers', setTeachersState, 'teachers'));
+    subscriptions.push(setupSubscription('classes', setClassesState, 'classes'));
+    subscriptions.push(setupSubscription('rewards', setRewardsState, 'rewards'));
+    subscriptions.push(setupSubscription('stocks', setStocksState, 'stocks'));
     subscriptions.push(setupDocSubscription<PlatformConfig>(['config', 'main'], setPlatformConfigState, 'config'));
 
     const marketInterval = setInterval(() => {

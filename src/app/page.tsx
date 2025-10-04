@@ -69,9 +69,8 @@ export default function HomePage() {
         return;
     }
     
-    const studentDocId = `${classId}-${studentIdInput}`;
     const foundStudent = students.find(
-      (s: Student) => s._docId === studentDocId
+      (s: Student) => s.classId === classId && s.id === studentIdInput
     );
 
     if (foundStudent && foundStudent.password === studentPassword) {
