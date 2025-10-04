@@ -32,7 +32,7 @@ export const redeemRewardTransaction = async ({
       }
 
       const student = studentDoc.data() as Student;
-      const reward = rewardDoc.data() as Reward;
+      const reward = { ...rewardDoc.data(), id: rewardDoc.id } as Reward;
 
       if (student.points < reward.cost) {
         throw new Error("點數不足。");
@@ -48,7 +48,7 @@ export const redeemRewardTransaction = async ({
           ...(student.redeemedRewards || []),
           {
             redemptionId: `redeem-${Date.now()}`,
-            reward: reward,
+            reward: reward, // The full reward object
             status: 'collected',
             redemptionDate: new Date().toISOString(),
           },
@@ -101,5 +101,3 @@ export const useRewardTransaction = async ({
         return { success: false, error: e.message };
     }
 };
-
-    

@@ -88,33 +88,47 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const createSetter = <T extends { id: string }>(
     currentState: T[],
     setter: React.Dispatch<React.SetStateAction<T[]>>,
-    collectionName: string
+    collectionName: string,
+    isStudent: boolean = false
   ) => async (action: SetStateActionWithFunction<T[]>) => {
     const newState = typeof action === 'function' ? action(currentState) : action;
     const batch = writeBatch(db);
     
-    newState.forEach(item => {
-        if (!item.id) {
-            console.error(`Item in collection ${collectionName} is missing an ID.`, item);
-            return;
+    newState.forEach((item: any) => {
+        let docId: string;
+        if (isStudent) {
+            if (!item.classId || !item.id) {
+                 console.error(`Student item is missing classId or id.`, item);
+                 return;
+            }
+            docId = `${item.classId}-${item.id}`;
+        } else {
+            if (!item.id) {
+                console.error(`Item in collection ${collectionName} is missing an ID.`, item);
+                return;
+            }
+            docId = item.id;
         }
-        const itemRef = doc(db, collectionName, item.id);
+
+        const itemRef = doc(db, collectionName, docId);
         batch.set(itemRef, item, { merge: true });
     });
     
-    const newStateIds = new Set(newState.map(s => s.id));
-    const itemsToDelete = currentState.filter(s => !newStateIds.has(s.id));
+    const newStateIds = new Set(newState.map((item: any) => isStudent ? `${item.classId}-${item.id}` : item.id));
     
-    itemsToDelete.forEach(item => {
-        const itemRef = doc(db, collectionName, item.id);
-        batch.delete(itemRef);
+    currentState.forEach((item: any) => {
+        const docId = isStudent ? `${item.classId}-${item.id}` : item.id;
+        if (!newStateIds.has(docId)) {
+            const itemRef = doc(db, collectionName, docId);
+            batch.delete(itemRef);
+        }
     });
 
     await batch.commit();
     // No direct state update here, relying on onSnapshot
   };
 
-  const setStudents = createSetter(students, setStudentsState, 'students');
+  const setStudents = createSetter(students, setStudentsState, 'students', true);
   const setTeachers = createSetter(teachers, setTeachersState, 'teachers');
   const setRewards = createSetter(rewards, setRewardsState, 'rewards');
   const setStocks = createSetter(stocks, setStocksState, 'stocks');
@@ -141,14 +155,17 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         collectionName: string, 
         setter: React.Dispatch<React.SetStateAction<T[]>>,
         stateKey: keyof LoadingStates,
+        isStudent: boolean = false
     ) => {
         const q = query(collection(db, collectionName));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const data: T[] = [];
             querySnapshot.forEach(doc => {
-              const docData = doc.data() as T;
-              // IMPORTANT: Assign the document ID to the object
-              data.push({ ...docData, id: doc.id });
+              const docData = doc.data() as any;
+              // For students, the doc.id is `classId-studentId`. We want the internal id.
+              // For others, the doc.id is the actual id.
+              const id = isStudent ? docData.id : doc.id;
+              data.push({ ...docData, id: id });
             });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
@@ -179,7 +196,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         return unsubscribe;
     };
     
-    subscriptions.push(setupSubscription<Student>('students', setStudentsState, 'students'));
+    subscriptions.push(setupSubscription<Student>('students', setStudentsState, 'students', true));
     subscriptions.push(setupSubscription<Teacher>('teachers', setTeachersState, 'teachers'));
     subscriptions.push(setupSubscription<Class>('classes', setClassesState, 'classes'));
     subscriptions.push(setupSubscription<Reward>('rewards', setRewardsState, 'rewards'));

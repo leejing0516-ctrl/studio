@@ -65,9 +65,8 @@ export default function HomePage() {
         return;
     }
     
-    const combinedStudentId = `${classId}-${studentIdInput}`;
     const foundStudent = appData.students.find(
-      (s: Student) => s.id === combinedStudentId
+      (s: Student) => s.classId === classId && s.id === studentIdInput
     );
 
     if (foundStudent && foundStudent.password === studentPassword) {
@@ -75,7 +74,7 @@ export default function HomePage() {
         localStorage.setItem('userRole', 'student');
         localStorage.setItem('studentClassId', classId);
         localStorage.setItem('studentId', studentIdInput);
-        localStorage.setItem('studentDocId', foundStudent.id);
+        localStorage.setItem('studentDocId', `${classId}-${studentIdInput}`);
         localStorage.setItem('studentPassword', studentPassword);
         router.push('/dashboard');
     } else {
