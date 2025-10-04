@@ -20,7 +20,7 @@ import { useRouter } from "next/navigation";
 import { savePlatformSettings } from "@/lib/actions";
 
 export default function TeacherSettingsPage() {
-    const { platformConfig } = useContext(AppDataContext);
+    const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
     const { toast } = useToast();
     const router = useRouter();
 

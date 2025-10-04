@@ -4,7 +4,7 @@
 import { createContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import type { Student, Reward, Class, Teacher, Stock, PlatformConfig } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { collection, doc, runTransaction, Transaction, query, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { collection, doc, runTransaction, Transaction, query, onSnapshot, Unsubscribe, setDoc } from 'firebase/firestore';
 
 interface AppDataContextType {
   students: Student[];
@@ -16,6 +16,7 @@ interface AppDataContextType {
   isLoading: boolean;
   isMarketOpen: boolean;
   runTransaction: (updateFunction: (transaction: Transaction) => Promise<any>) => Promise<any>;
+  setPlatformConfig: (newConfig: Partial<PlatformConfig>) => Promise<void>;
 }
 
 const defaultState: AppDataContextType = {
@@ -28,6 +29,7 @@ const defaultState: AppDataContextType = {
   isLoading: true,
   isMarketOpen: false,
   runTransaction: async () => {},
+  setPlatformConfig: async () => {},
 };
 
 export const AppDataContext = createContext<AppDataContextType>(defaultState);
@@ -51,6 +53,16 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
   const handleRunTransaction = useCallback(async (updateFunction: (transaction: Transaction) => Promise<any>) => {
     return await runTransaction(db, updateFunction);
+  }, []);
+  
+  const handleSetPlatformConfig = useCallback(async (newConfig: Partial<PlatformConfig>) => {
+    const configDocRef = doc(db, 'config', 'main');
+    try {
+        await setDoc(configDocRef, newConfig, { merge: true });
+    } catch(e) {
+        console.error("Failed to update platform config:", e);
+        throw e; // Re-throw the error to be caught by the caller
+    }
   }, []);
 
   useEffect(() => {
@@ -114,6 +126,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         isLoading,
         isMarketOpen,
         runTransaction: handleRunTransaction,
+        setPlatformConfig: handleSetPlatformConfig,
     }}>
       {children}
     </AppDataContext.Provider>
