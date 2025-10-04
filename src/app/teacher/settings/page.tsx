@@ -17,21 +17,10 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { storage } from "@/lib/firebase";
-
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-
-// Helper function to upload a file and get its URL
-const uploadFile = async (file: File, path: string): Promise<string> => {
-    const storageRef = ref(storage, path);
-    await uploadBytes(storageRef, file);
-    const downloadURL = await getDownloadURL(storageRef);
-    return downloadURL;
-};
+import { savePlatformSettings } from "@/lib/actions";
 
 export default function TeacherSettingsPage() {
-    const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
+    const { platformConfig } = useContext(AppDataContext);
     const { toast } = useToast();
     const router = useRouter();
 
@@ -70,6 +59,7 @@ export default function TeacherSettingsPage() {
         const file = e.target.files?.[0];
         if (!file) return;
 
+        const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
         if (file.size > MAX_FILE_SIZE) {
             toast({ title: "圖片太大", description: "檔案大小不能超過 2MB。", variant: "destructive" });
             return;
@@ -81,63 +71,37 @@ export default function TeacherSettingsPage() {
             setLogoFile(file);
             setLogoPreview(previewUrl);
         } else if (type === 'sponsor' && index !== undefined) {
-            setSponsorFiles(prev => {
-                const newFiles = [...prev];
-                newFiles[index] = file;
-                return newFiles;
-            });
-            setSponsorPreviews(prev => {
-                const newPreviews = [...prev];
-                newPreviews[index] = previewUrl;
-                return newPreviews;
-            });
+            const newFiles = [...sponsorFiles];
+            newFiles[index] = file;
+            setSponsorFiles(newFiles);
+
+            const newPreviews = [...sponsorPreviews];
+            newPreviews[index] = previewUrl;
+            setSponsorPreviews(newPreviews);
         }
     };
 
     const handleSaveSettings = async () => {
         setIsSavingSettings(true);
         try {
-            const uploadPromises: Promise<string | null>[] = [];
-    
-            // Platform logo promise
-            if (logoFile) {
-                uploadPromises.push(uploadFile(logoFile, `logos/platform_logo_${Date.now()}`));
-            } else {
-                uploadPromises.push(Promise.resolve(platformConfig?.platformLogoUrl || null));
-            }
-    
-            // Sponsor logos promises
-            const currentSponsorUrls = platformConfig?.sponsorLogoUrls || Array(4).fill(null);
-            for (let i = 0; i < 4; i++) {
-                const file = sponsorFiles[i];
-                if (file) {
-                    uploadPromises.push(uploadFile(file, `logos/sponsor_${i}_${Date.now()}`));
-                } else {
-                    uploadPromises.push(Promise.resolve(currentSponsorUrls[i]));
-                }
-            }
-    
-            const allUrls = await Promise.all(uploadPromises);
-    
-            const finalPlatformLogoUrl = allUrls[0] as string | null;
-            const finalSponsorLogoUrls = allUrls.slice(1) as (string | null)[];
-    
-            await setPlatformConfig({
-                platformLogoUrl: finalPlatformLogoUrl || "",
-                sponsorLogoUrls: finalSponsorLogoUrls,
+            const result = await savePlatformSettings({
                 fixedDepositInterestRate: Number(fixedDepositRate) / 100,
-                loanInterestRate: Number(loanInterestRate) / 100
+                loanInterestRate: Number(loanInterestRate) / 100,
+                logoFile,
+                sponsorFiles,
+                currentConfig: platformConfig,
             });
-    
-            // Reset file states after successful save
-            setLogoFile(null);
-            setSponsorFiles([]);
-    
-            toast({ title: "設定已儲存", description: "平台設定已成功更新。" });
-    
-        } catch (error) {
+
+            if (result.success) {
+                toast({ title: "設定已儲存", description: "平台設定已成功更新。" });
+                setLogoFile(null);
+                setSponsorFiles([]);
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error: any) {
             console.error("Error saving settings:", error);
-            toast({ title: "儲存失敗", description: "儲存平台設定時發生錯誤。", variant: "destructive" });
+            toast({ title: "儲存失敗", description: error.message || "儲存平台設定時發生錯誤。", variant: "destructive" });
         } finally {
             setIsSavingSettings(false);
         }

@@ -2,8 +2,9 @@
 "use server";
 
 import { suggestRewards, type RewardSuggestionInput } from "@/ai/flows/reward-suggestion";
-import { db } from './firebase';
-import { doc, runTransaction, getDoc } from 'firebase/firestore';
+import { db, storage } from './firebase';
+import { doc, runTransaction, getDoc, setDoc, writeBatch } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import type { Student, Reward, Teacher, PlatformConfig, RedeemedRewardItem } from './types';
 
 export async function getRewardSuggestions(input: RewardSuggestionInput) {
@@ -56,7 +57,6 @@ export async function redeemRewardTransaction(input: RedeemRewardInput): Promise
                 throw new Error("此獎勵的庫存不足。");
             }
             
-            // 1. Update Student
             const newRedeemedItem: RedeemedRewardItem = {
                 redemptionId: `redeem-${Date.now()}-${Math.random()}`,
                 reward: reward,
@@ -68,12 +68,10 @@ export async function redeemRewardTransaction(input: RedeemRewardInput): Promise
                 redeemedRewards: [...(student.redeemedRewards || []), newRedeemedItem]
             });
 
-            // 2. Update Reward Stock
             transaction.update(rewardRef, {
                 stock: reward.stock - 1
             });
 
-            // 3. Return points to provider
             if (reward.scope === 'school') {
                 const configRef = doc(db, 'config', 'main');
                 const configDoc = await transaction.get(configRef);
@@ -149,3 +147,67 @@ export async function useRewardTransaction(input: UseRewardInput): Promise<UseRe
         return { success: false, error: error.message || "請求失敗，請稍後再試。" };
     }
 }
+
+
+interface SaveSettingsInput {
+    fixedDepositInterestRate: number;
+    loanInterestRate: number;
+    logoFile: File | null;
+    sponsorFiles: (File | null)[];
+    currentConfig: PlatformConfig | null;
+}
+
+const uploadFile = async (file: File, path: string): Promise<string> => {
+    const storageRef = ref(storage, path);
+    await uploadBytes(storageRef, file);
+    return await getDownloadURL(storageRef);
+};
+
+export async function savePlatformSettings(input: SaveSettingsInput): Promise<{success: boolean, error?: string}> {
+    try {
+        const { fixedDepositInterestRate, loanInterestRate, logoFile, sponsorFiles, currentConfig } = input;
+
+        let platformLogoUrl = currentConfig?.platformLogoUrl || null;
+        if (logoFile) {
+            platformLogoUrl = await uploadFile(logoFile, `logos/platform_logo_${Date.now()}`);
+        }
+
+        const sponsorUploadPromises = sponsorFiles.map((file, index) => {
+            if (file) {
+                return uploadFile(file, `logos/sponsor_${index}_${Date.now()}`);
+            }
+            return Promise.resolve(currentConfig?.sponsorLogoUrls?.[index] || null);
+        });
+        
+        const newSponsorUrls = await Promise.all(sponsorUploadPromises);
+
+        const newConfig: Partial<PlatformConfig> = {
+            fixedDepositInterestRate,
+            loanInterestRate,
+            platformLogoUrl: platformLogoUrl || "",
+            sponsorLogoUrls: newSponsorUrls,
+        };
+
+        const configDocRef = doc(db, 'config', 'main');
+        await setDoc(configDocRef, newConfig, { merge: true });
+
+        return { success: true };
+    } catch (error: any) {
+        console.error("Failed to save platform settings:", error);
+        return { success: false, error: error.message || "儲存設定時發生未知錯誤。" };
+    }
+}
+
+// All other `set` functions that were in AppDataContext can be refactored into server actions here.
+// For example:
+export async function setStudents(students: Student[]) {
+    const batch = writeBatch(db);
+    students.forEach(student => {
+        const studentDocId = `${student.classId}-${student.id}`;
+        const studentRef = doc(db, 'students', studentDocId);
+        batch.set(studentRef, student, { merge: true });
+    });
+    await batch.commit();
+}
+
+// ... and so on for setRewards, setStocks, setClasses, setTeachers

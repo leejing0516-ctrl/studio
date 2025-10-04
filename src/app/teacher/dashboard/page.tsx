@@ -33,7 +33,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -41,36 +40,33 @@ import { AppDataContext } from "@/context/AppDataContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Papa from "papaparse";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
-import { doc, writeBatch, Transaction } from "firebase/firestore";
+import { doc, writeBatch, Transaction, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { format, parseISO } from "date-fns";
-
+import { setStudents as saveStudents } from "@/lib/actions";
 
 const CONFIRM_DELETE_TEXT = "我確定要刪除";
 
 export default function TeacherDashboardPage() {
     const { 
-        students, setStudents, 
-        classes, setClasses,
-        teachers, setTeachers,
-        isLoading, platformConfig, setPlatformConfig, runTransaction
+        students, 
+        classes, 
+        teachers,
+        isLoading, platformConfig, runTransaction
     } = useContext(AppDataContext);
     const { toast } = useToast();
 
-    // Teacher/Role state
     const [role, setRole] = useState<string | null>(null);
     const [teacherId, setTeacherId] = useState<string | null>(null);
     const [teacherName, setTeacherName] = useState<string | null>(null);
     const [teacherClassIds, setTeacherClassIds] = useState<string[]>([]);
     
-    // UI State
     const [selectedClassId, setSelectedClassId] = useState<string>('');
     const [pointInputs, setPointInputs] = useState<{ [studentId: string]: string }>({});
     const [isProcessing, setIsProcessing] = useState<string | null>(null);
 
-    // Dialogs and Modals state
     const [isAddStudentDialogOpen, setIsAddStudentDialogOpen] = useState(false);
     const [isEditStudentDialogOpen, setIsEditStudentDialogOpen] = useState(false);
     const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
@@ -80,7 +76,6 @@ export default function TeacherDashboardPage() {
     const [isAllocatePointsDialogOpen, setIsAllocatePointsDialogOpen] = useState(false);
     const [isImpersonateDialogOpen, setIsImpersonateDialogOpen] = useState(false);
 
-    // Entity-specific states for forms/dialogs
     const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
     const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
     const [studentToResetPassword, setStudentToResetPassword] = useState<Student | null>(null);
@@ -95,30 +90,23 @@ export default function TeacherDashboardPage() {
     const [classToDelete, setClassToDelete] = useState<Class | null>(null);
     const [editedTeacherRole, setEditedTeacherRole] = useState<string | undefined>(undefined);
 
-
-    // Batch operation states
     const [batchPoints, setBatchPoints] = useState<number | ''>('');
     const [isBatchProcessing, setIsBatchProcessing] = useState(false);
     
-    // Approval states
     const [loanToProcess, setLoanToProcess] = useState<{ student: Student, loan: Loan } | null>(null);
     const [challengeToApprove, setChallengeToApprove] = useState<{ student: Student, challenge: StudentChallenge } | null>(null);
 
-    // Point History State
     const [historySelectedTeacherId, setHistorySelectedTeacherId] = useState<string>('');
     const [historySelectedClassId, setHistorySelectedClassId] = useState<string>('');
 
-    // Data Maintenance state
     const [isMaintenanceProcessing, setIsMaintenanceProcessing] = useState(false);
     const [confirmMaintenanceDelete, setConfirmMaintenanceDelete] = useState('');
     
-    // Derived state for available classes
     const classOptions = useMemo(() => {
         if (role === 'admin') return classes;
         return classes.filter(c => teacherClassIds.includes(c.id));
     }, [role, classes, teacherClassIds]);
 
-    // Set auth/role info once on mount
     useEffect(() => {
         const storedRole = localStorage.getItem('teacherRole');
         const storedTeacherId = localStorage.getItem('teacherId');
@@ -138,7 +126,6 @@ export default function TeacherDashboardPage() {
         }
     }, []);
 
-    // Set default class selections based on role and available classes
     useEffect(() => {
         if (classOptions.length > 0) {
             const currentClassIds = classOptions.map(c => c.id);
@@ -151,7 +138,6 @@ export default function TeacherDashboardPage() {
         }
     }, [classOptions, selectedClassId, historySelectedClassId]);
 
-    // Auto-select current teacher for history view
     useEffect(() => {
         if (role && (role === 'teacher' || role === 'subject_teacher') && teacherId) {
             setHistorySelectedTeacherId(teacherId);
@@ -211,13 +197,12 @@ export default function TeacherDashboardPage() {
             let totalDeducted = 0;
 
             (student.pointHistory || []).forEach(record => {
-                // Ensure record.teacherId is checked
                 if (record.teacherId === historySelectedTeacherId) {
                     records.push({ ...record, studentName: student.name });
                     if (record.points > 0) {
                         totalAwarded += record.points;
                     } else {
-                        totalDeducted += record.points; // This will be a negative number
+                        totalDeducted += record.points;
                     }
                 }
             });
@@ -274,7 +259,6 @@ export default function TeacherDashboardPage() {
             });
         });
         
-        // Final filter to remove duplicates, as a last resort.
         const uniqueRewardReqs = rewardReqs.filter((v, i, a) => 
             a.findIndex(t => (`${t.student.id}-${t.rewardItem.redemptionId}` === `${v.student.id}-${v.rewardItem.redemptionId}`)) === i
         );
@@ -285,8 +269,8 @@ export default function TeacherDashboardPage() {
             challengeApprovalRequests: challengeReqs
         };
     }, [students, role, teacherId, teacherClassIds]);
-    
-    const handleAddStudent = (event: React.FormEvent<HTMLFormElement>) => {
+
+    const handleAddStudent = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
         const newStudent: Student = {
@@ -299,15 +283,15 @@ export default function TeacherDashboardPage() {
             portfolio: [],
             pointHistory: [],
         };
-        setStudents(current => [...current, newStudent]);
+        await saveStudents([...students, newStudent]);
         setIsAddStudentDialogOpen(false);
         toast({
             title: "學生已新增",
             description: `${newStudent.name} 已被加入 ${classes.find(c=>c.id === selectedClassId)?.name} 班。`
         });
     };
-
-    const handleEditStudent = (event: React.FormEvent<HTMLFormElement>) => {
+    
+    const handleEditStudent = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!studentToEdit) return;
 
@@ -318,7 +302,7 @@ export default function TeacherDashboardPage() {
             name: formData.get('name') as string,
         };
         
-        setStudents(current => current.map(s => (s.id === studentToEdit.id && s.classId === studentToEdit.classId) ? updatedStudent : s));
+        await saveStudents(students.map(s => (s.id === studentToEdit.id && s.classId === studentToEdit.classId) ? updatedStudent : s));
         setIsEditStudentDialogOpen(false);
         toast({
             title: "學生資料已更新",
@@ -326,9 +310,9 @@ export default function TeacherDashboardPage() {
         });
     };
 
-    const handleDeleteStudent = () => {
+    const handleDeleteStudent = async () => {
         if (!studentToDelete) return;
-        setStudents(current => current.filter(s => !(s.id === studentToDelete.id && s.classId === studentToDelete.classId)));
+        await saveStudents(students.filter(s => !(s.id === studentToDelete.id && s.classId === studentToDelete.classId)));
         toast({
             title: "學生已刪除",
             description: `${studentToDelete.name} 已被從班級中移除。`,
@@ -337,14 +321,14 @@ export default function TeacherDashboardPage() {
         setStudentToDelete(null);
     };
 
-    const handleResetPassword = (event: React.FormEvent<HTMLFormElement>) => {
+    const handleResetPassword = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!studentToResetPassword) return;
 
         const formData = new FormData(event.currentTarget);
         const newPassword = formData.get('new-password') as string;
 
-        setStudents(current => current.map(s => 
+        await saveStudents(students.map(s => 
             (s.id === studentToResetPassword.id && s.classId === studentToResetPassword.classId)
             ? { ...s, password: newPassword }
             : s
@@ -363,7 +347,7 @@ export default function TeacherDashboardPage() {
             header: false,
             skipEmptyLines: true,
             complete: (results) => {
-                setCsvPreview(results.data.slice(0, 5)); // Show first 5 rows
+                setCsvPreview(results.data.slice(0, 5));
                 const studentData = results.data.slice(1).map((row: string[]) => {
                     const [classId, id, name, password] = row;
                     return {
@@ -373,24 +357,23 @@ export default function TeacherDashboardPage() {
                         portfolio: [],
                         pointHistory: []
                     };
-                }).filter(s => s.id && s.name && s.classId && s.password); // Basic validation
+                }).filter(s => s.id && s.name && s.classId && s.password);
                 setParsedCsvData(studentData);
             }
         });
     };
 
-    const handleImportStudents = () => {
+    const handleImportStudents = async () => {
         if (parsedCsvData.length === 0) return;
         
-        setStudents(currentStudents => {
-            const existingStudentKeys = new Set(currentStudents.map(s => `${s.classId}-${s.id}`));
-            const newStudents = parsedCsvData.filter(s => !existingStudentKeys.has(`${s.classId}-${s.id}`));
-            return [...currentStudents, ...newStudents];
-        });
+        const existingStudentKeys = new Set(students.map(s => `${s.classId}-${s.id}`));
+        const newStudents = parsedCsvData.filter(s => !existingStudentKeys.has(`${s.classId}-${s.id}`));
+        
+        await saveStudents([...students, ...newStudents]);
 
         toast({
             title: `匯入完成`,
-            description: `已成功新增 ${parsedCsvData.length} 位學生。`
+            description: `已成功新增 ${newStudents.length} 位學生。`
         });
         setIsImportDialogOpen(false);
         setParsedCsvData([]);
@@ -414,7 +397,8 @@ export default function TeacherDashboardPage() {
             password: platformConfig?.teacherPassword || TEACHER_PASSWORD,
         };
 
-        await setTeachers(current => [...current, newTeacher]);
+        const teacherRef = doc(db, 'teachers', newTeacher.id);
+        await setDoc(teacherRef, newTeacher);
         toast({ title: "教師已新增", description: `${name} 已被新增至系統中。` });
         setIsAddTeacherDialogOpen(false);
     };
@@ -435,14 +419,16 @@ export default function TeacherDashboardPage() {
             classIds: newRole === 'teacher' && classId ? [classId] : (newRole === 'subject_teacher' ? (teacherToEdit.classIds || []) : []),
         };
 
-        await setTeachers(current => current.map(t => t.id === teacherToEdit.id ? updatedTeacher : t));
+        const teacherRef = doc(db, 'teachers', teacherToEdit.id);
+        await setDoc(teacherRef, updatedTeacher, { merge: true });
         toast({ title: "教師資料已更新" });
         setIsEditTeacherDialogOpen(false);
     };
 
     const handleDeleteTeacher = async () => {
         if (!teacherToDelete) return;
-        await setTeachers(current => current.filter(t => t.id !== teacherToDelete.id));
+        const teacherRef = doc(db, 'teachers', teacherToDelete.id);
+        await deleteDoc(teacherRef);
         toast({ title: "教師已刪除", variant: "destructive" });
         setTeacherToDelete(null);
     };
@@ -474,7 +460,6 @@ export default function TeacherDashboardPage() {
                 transaction.update(teacherRef, { pointBalance: teacherBalance + amount });
             });
             
-             // UI update will be handled by onSnapshot listener.
             toast({ title: "點數已撥款" });
             setIsAllocatePointsDialogOpen(false);
 
@@ -498,7 +483,7 @@ export default function TeacherDashboardPage() {
         window.location.reload();
     }
 
-    const handleAddClass = (event: React.FormEvent<HTMLFormElement>) => {
+    const handleAddClass = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
         const id = formData.get('id') as string;
@@ -510,7 +495,8 @@ export default function TeacherDashboardPage() {
         }
 
         const newClass: Class = { id, name, announcements: [] };
-        setClasses(current => [...current, newClass]);
+        const classRef = doc(db, 'classes', newClass.id);
+        await setDoc(classRef, newClass);
         (event.target as HTMLFormElement).reset();
     };
 
@@ -614,7 +600,7 @@ export default function TeacherDashboardPage() {
 
         } catch (error: any) {
             console.error(`Point operation failed for student ${studentId}:`, error);
-            throw error; // Re-throw to be caught by caller
+            throw error;
         } finally {
             if (!isBatch) {
                 setIsProcessing(null);
@@ -630,7 +616,6 @@ export default function TeacherDashboardPage() {
         
         try {
             await performPointOperation(studentId, points, false);
-            // UI update is now handled by onSnapshot listener in AppDataContext
         } catch(error: any) {
              toast({ title: "操作失敗", description: error.message, variant: "destructive" });
              setIsProcessing(null);
@@ -677,8 +662,6 @@ export default function TeacherDashboardPage() {
         
         for (const student of studentsToUpdate) {
             try {
-                // Here we perform the operation but don't need to await each one if we don't need sequential execution
-                // For simplicity and to show progress, we await. For performance, could use Promise.all
                 await performPointOperation(student.id, points, true);
                 successfulOperations++;
             } catch (error: any) {
@@ -1697,7 +1680,3 @@ export default function TeacherDashboardPage() {
         </div>
     )
 }
-
-    
-
-    
