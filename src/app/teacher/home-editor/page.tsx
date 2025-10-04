@@ -18,17 +18,17 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
-import { useFirebaseStorage } from "@/hooks/use-firebase-storage";
 import { Textarea } from "@/components/ui/textarea";
+import { useFirebaseStorage } from "@/hooks/use-firebase-storage";
+
 
 export default function TeacherHomeEditorPage() {
     const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
     const { toast } = useToast();
     const router = useRouter();
-    const { uploadFile, isUploading, error: uploadError } = useFirebaseStorage();
-
+    const { uploadFile, isUploading } = useFirebaseStorage();
+    
     const [isSavingSettings, setIsSavingSettings] = useState(false);
-    const [uploadingKey, setUploadingKey] = useState<string | null>(null);
 
     const [homeTitle, setHomeTitle] = useState<string>('');
     const [homeSubtitle, setHomeSubtitle] = useState<string>('');
@@ -53,19 +53,12 @@ export default function TeacherHomeEditorPage() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        const uploadKey = `illustration_${Date.now()}`;
-        setUploadingKey(uploadKey);
-
-        const path = `home/${uploadKey}`;
+        const path = `home/illustration_${Date.now()}`;
         const url = await uploadFile(file, path);
         
-        setUploadingKey(null);
-
         if (url) {
             setIllustrationPreview(url);
             toast({ title: "圖片已上傳", description: "預覽圖已更新。請記得點擊下方的「儲存設定」以保存變更。" });
-        } else {
-             toast({ title: "上傳失敗", description: uploadError || "發生未知錯誤", variant: "destructive" });
         }
     };
 
@@ -132,13 +125,13 @@ export default function TeacherHomeEditorPage() {
                                 )}
                             </div>
                             <div className="flex items-center gap-2">
-                                <Input id="illustration-upload" type="file" accept="image/*" onChange={handleImageUpload} className="hidden" disabled={!!uploadingKey} />
-                                <Label htmlFor="illustration-upload" className={buttonVariants({ variant: "outline", size: "sm", disabled: !!uploadingKey })}>
-                                     {uploadingKey ? <Loader2 className="mr-2 animate-spin"/> : <UploadCloud className="mr-2"/>}
+                                <Input id="illustration-upload" type="file" accept="image/*" onChange={handleImageUpload} className="hidden" disabled={isUploading} />
+                                <Label htmlFor="illustration-upload" className={buttonVariants({ variant: "outline", size: "sm", disabled: isUploading })}>
+                                     {isUploading ? <Loader2 className="mr-2 animate-spin"/> : <UploadCloud className="mr-2"/>}
                                      上傳圖片
                                 </Label>
                                 {illustrationPreview && (
-                                    <Button variant="link" size="sm" className="text-destructive h-auto p-0 flex items-center gap-1" onClick={handleRemoveImage} disabled={!!uploadingKey}>
+                                    <Button variant="link" size="sm" className="text-destructive h-auto p-0 flex items-center gap-1" onClick={handleRemoveImage} disabled={isUploading}>
                                         <Trash2 className="h-4 w-4" />
                                         移除圖片
                                     </Button>
@@ -149,8 +142,8 @@ export default function TeacherHomeEditorPage() {
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end">
-                    <Button onClick={handleSaveSettings} disabled={isSavingSettings || !!uploadingKey}>
-                        {isSavingSettings && <Loader2 className="mr-2 animate-spin" />}
+                    <Button onClick={handleSaveSettings} disabled={isSavingSettings || isUploading}>
+                        {(isSavingSettings || isUploading) && <Loader2 className="mr-2 animate-spin" />}
                         儲存變更
                     </Button>
                 </CardFooter>
@@ -158,3 +151,4 @@ export default function TeacherHomeEditorPage() {
         </div>
     );
 }
+
