@@ -148,34 +148,37 @@ export async function useRewardTransaction(input: UseRewardInput): Promise<UseRe
     }
 }
 
-
-interface SaveSettingsInput {
-    fixedDepositInterestRate: number;
-    loanInterestRate: number;
-    logoFile: File | null;
-    sponsorFiles: (File | null)[];
-    currentConfig: PlatformConfig | null;
-}
-
 const uploadFile = async (file: File, path: string): Promise<string> => {
     const storageRef = ref(storage, path);
     await uploadBytes(storageRef, file);
     return await getDownloadURL(storageRef);
 };
 
-export async function savePlatformSettings(input: SaveSettingsInput): Promise<{success: boolean, error?: string}> {
+export async function savePlatformSettings(formData: FormData): Promise<{success: boolean, error?: string}> {
     try {
-        const { fixedDepositInterestRate, loanInterestRate, logoFile, sponsorFiles, currentConfig } = input;
+        const fixedDepositInterestRate = Number(formData.get('fixedDepositInterestRate'));
+        const loanInterestRate = Number(formData.get('loanInterestRate'));
+        const currentConfigString = formData.get('currentConfig') as string;
+        const currentConfig: PlatformConfig | null = currentConfigString ? JSON.parse(currentConfigString) : null;
+
+        const logoFile = formData.get('logoFile') as File | null;
+        const sponsorFiles = [
+            formData.get('sponsorFile0') as File | null,
+            formData.get('sponsorFile1') as File | null,
+            formData.get('sponsorFile2') as File | null,
+            formData.get('sponsorFile3') as File | null,
+        ];
 
         let platformLogoUrl = currentConfig?.platformLogoUrl || null;
-        if (logoFile) {
+        if (logoFile && logoFile.size > 0) {
             platformLogoUrl = await uploadFile(logoFile, `logos/platform_logo_${Date.now()}`);
         }
 
         const sponsorUploadPromises = sponsorFiles.map((file, index) => {
-            if (file) {
+            if (file && file.size > 0) {
                 return uploadFile(file, `logos/sponsor_${index}_${Date.now()}`);
             }
+            // Keep the existing URL if no new file is uploaded
             return Promise.resolve(currentConfig?.sponsorLogoUrls?.[index] || null);
         });
         
@@ -210,4 +213,20 @@ export async function setStudents(students: Student[]) {
     await batch.commit();
 }
 
-// ... and so on for setRewards, setStocks, setClasses, setTeachers
+export async function setRewards(rewards: Reward[]) {
+    const batch = writeBatch(db);
+    rewards.forEach(reward => {
+        const rewardRef = doc(db, 'rewards', reward.id);
+        batch.set(rewardRef, reward, { merge: true });
+    });
+    await batch.commit();
+}
+
+export async function setStocks(stocks: Stock[]) {
+    const batch = writeBatch(db);
+    stocks.forEach(stock => {
+        const stockRef = doc(db, 'stocks', stock.ticker);
+        batch.set(stockRef, stock, { merge: true });
+    });
+    await batch.commit();
+}

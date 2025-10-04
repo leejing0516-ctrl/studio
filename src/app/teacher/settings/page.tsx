@@ -84,13 +84,22 @@ export default function TeacherSettingsPage() {
     const handleSaveSettings = async () => {
         setIsSavingSettings(true);
         try {
-            const result = await savePlatformSettings({
-                fixedDepositInterestRate: Number(fixedDepositRate) / 100,
-                loanInterestRate: Number(loanInterestRate) / 100,
-                logoFile,
-                sponsorFiles,
-                currentConfig: platformConfig,
+            const formData = new FormData();
+            formData.append('fixedDepositInterestRate', String(Number(fixedDepositRate) / 100));
+            formData.append('loanInterestRate', String(Number(loanInterestRate) / 100));
+            formData.append('currentConfig', JSON.stringify(platformConfig));
+
+            if (logoFile) {
+                formData.append('logoFile', logoFile);
+            }
+
+            sponsorFiles.forEach((file, index) => {
+                if (file) {
+                    formData.append(`sponsorFile${index}`, file);
+                }
             });
+
+            const result = await savePlatformSettings(formData);
 
             if (result.success) {
                 toast({ title: "設定已儲存", description: "平台設定已成功更新。" });
