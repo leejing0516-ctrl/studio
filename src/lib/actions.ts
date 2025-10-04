@@ -3,7 +3,6 @@
 
 import { suggestRewards, type RewardSuggestionInput } from "@/ai/flows/reward-suggestion";
 import { getAdminDb } from './firebase-admin';
-import { doc, runTransaction, getDoc, setDoc, writeBatch, updateDoc } from 'firebase/firestore';
 import type { Student, Reward, Teacher, PlatformConfig, RedeemedRewardItem } from './types';
 import { db } from "./firebase";
 
@@ -20,7 +19,7 @@ export async function getRewardSuggestions(input: RewardSuggestionInput) {
 
 export async function savePlatformSettings(settings: Partial<PlatformConfig>): Promise<{success: boolean, error?: string}> {
     try {
-        const adminDb = getAdminDb();
+        const adminDb = getAdminDb(); // Use the getter to ensure initialization
         const configRef = adminDb.collection('config').doc('main');
         await configRef.set(settings, { merge: true });
         return { success: true };
@@ -44,20 +43,21 @@ interface RedeemRewardOutput {
 
 export async function redeemRewardTransaction(input: RedeemRewardInput): Promise<RedeemRewardOutput> {
     try {
-        await runTransaction(db, async (transaction) => {
+        const adminDb = getAdminDb();
+        await adminDb.runTransaction(async (transaction) => {
             const studentDocId = `${input.classId}-${input.studentId}`;
-            const studentRef = doc(db, 'students', studentDocId);
-            const rewardRef = doc(db, 'rewards', input.rewardId);
+            const studentRef = adminDb.collection('students').doc(studentDocId);
+            const rewardRef = adminDb.collection('rewards').doc(input.rewardId);
 
             const [studentDoc, rewardDoc] = await Promise.all([
                 transaction.get(studentRef),
                 transaction.get(rewardRef)
             ]);
 
-            if (!studentDoc.exists()) {
+            if (!studentDoc.exists) {
                 throw new Error("找不到該學生。");
             }
-            if (!rewardDoc.exists()) {
+            if (!rewardDoc.exists) {
                 throw new Error("找不到該獎勵。");
             }
 
@@ -87,16 +87,16 @@ export async function redeemRewardTransaction(input: RedeemRewardInput): Promise
             });
 
             if (reward.scope === 'school') {
-                const configRef = doc(db, 'config', 'main');
+                const configRef = adminDb.collection('config').doc('main');
                 const configDoc = await transaction.get(configRef);
                 const currentConfig = configDoc.data() as PlatformConfig;
                 transaction.update(configRef, {
                     schoolFunds: (currentConfig.schoolFunds || 0) + reward.cost
                 });
             } else {
-                const teacherRef = doc(db, 'teachers', reward.providerId);
+                const teacherRef = adminDb.collection('teachers').doc(reward.providerId);
                 const teacherDoc = await transaction.get(teacherRef);
-                if (teacherDoc.exists()) {
+                if (teacherDoc.exists) {
                     const teacher = teacherDoc.data() as Teacher;
                     transaction.update(teacherRef, {
                         pointBalance: (teacher.pointBalance || 0) + reward.cost
@@ -127,13 +127,14 @@ interface UseRewardOutput {
 
 export async function useRewardTransaction(input: UseRewardInput): Promise<UseRewardOutput> {
      try {
-        await runTransaction(db, async (transaction) => {
+        const adminDb = getAdminDb();
+        await adminDb.runTransaction(async (transaction) => {
             const studentDocId = `${input.classId}-${input.studentId}`;
-            const studentRef = doc(db, 'students', studentDocId);
+            const studentRef = adminDb.collection('students').doc(studentDocId);
 
             const studentDoc = await transaction.get(studentRef);
 
-            if (!studentDoc.exists()) {
+            if (!studentDoc.exists) {
                 throw new Error("找不到該學生。");
             }
             
@@ -164,15 +165,16 @@ export async function useRewardTransaction(input: UseRewardInput): Promise<UseRe
 
 export async function removeLogo({ type, index }: { type: 'platform' | 'sponsor'; index?: number }): Promise<{success: boolean, error?: string}> {
      try {
-        const configDocRef = doc(db, 'config', 'main');
-        const configDoc = await getDoc(configDocRef);
-        if (!configDoc.exists()) {
+        const adminDb = getAdminDb();
+        const configDocRef = adminDb.collection('config').doc('main');
+        const configDoc = await configDocRef.get();
+        if (!configDoc.exists) {
             throw new Error("找不到平台設定。");
         }
         const currentConfig = configDoc.data() as PlatformConfig;
         
         let urlToDelete: string | null | undefined = null;
-        let updatePayload: Partial<PlatformConfig> = {};
+        let updatePayload: any = {};
 
         if (type === 'platform') {
             urlToDelete = currentConfig.platformLogoUrl;
@@ -186,8 +188,7 @@ export async function removeLogo({ type, index }: { type: 'platform' | 'sponsor'
             throw new Error("無效的移除類型或索引。");
         }
         
-        // Update Firestore first
-        await updateDoc(configDocRef, updatePayload);
+        await configDocRef.update(updatePayload);
         
         if (urlToDelete) {
             // Cannot delete from storage via server action in this implementation
@@ -201,28 +202,31 @@ export async function removeLogo({ type, index }: { type: 'platform' | 'sponsor'
 }
 
 export async function setStudents(students: Student[]) {
-    const batch = writeBatch(db);
+    const adminDb = getAdminDb();
+    const batch = adminDb.batch();
     students.forEach(student => {
         const studentDocId = `${student.classId}-${student.id}`;
-        const studentRef = doc(db, 'students', studentDocId);
+        const studentRef = adminDb.collection('students').doc(studentDocId);
         batch.set(studentRef, student, { merge: true });
     });
     await batch.commit();
 }
 
 export async function setRewards(rewards: Reward[]) {
-    const batch = writeBatch(db);
+    const adminDb = getAdminDb();
+    const batch = adminDb.batch();
     rewards.forEach(reward => {
-        const rewardRef = doc(db, 'rewards', reward.id);
+        const rewardRef = adminDb.collection('rewards').doc(reward.id);
         batch.set(rewardRef, reward, { merge: true });
     });
     await batch.commit();
 }
 
 export async function setStocks(stocks: Stock[]) {
-    const batch = writeBatch(db);
+    const adminDb = getAdminDb();
+    const batch = adminDb.batch();
     stocks.forEach(stock => {
-        const stockRef = doc(db, 'stocks', stock.ticker);
+        const stockRef = adminDb.collection('stocks').doc(stock.ticker);
         batch.set(stockRef, stock, { merge: true });
     });
     await batch.commit();
