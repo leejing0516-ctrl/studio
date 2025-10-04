@@ -18,11 +18,9 @@ import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
 import { useFirebaseStorage } from "@/hooks/use-firebase-storage";
-import { doc, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 
 export default function TeacherSettingsPage() {
-    const { platformConfig, setPlatformConfig: setConfigInContext } = useContext(AppDataContext);
+    const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
     const { toast } = useToast();
     const router = useRouter();
     const { uploadFile, isUploading, error: uploadError } = useFirebaseStorage();
@@ -36,7 +34,6 @@ export default function TeacherSettingsPage() {
     const [loanInterestRate, setLoanInterestRate] = useState<number | string>('');
     
     // State for image previews
-    const [logoPreview, setLogoPreview] = useState<string | null>(null);
     const [sponsorPreviews, setSponsorPreviews] = useState<(string | null)[]>([]);
 
     useEffect(() => {
@@ -50,20 +47,19 @@ export default function TeacherSettingsPage() {
         if (platformConfig) {
             setFixedDepositRate((platformConfig.fixedDepositInterestRate || 0) * 100);
             setLoanInterestRate((platformConfig.loanInterestRate || 0) * 100);
-            setLogoPreview(platformConfig.platformLogoUrl || null);
             setSponsorPreviews(platformConfig.sponsorLogoUrls || [null, null, null, null]);
         }
     }, [platformConfig, router, toast]);
 
     const handleImageUpload = async (
         e: React.ChangeEvent<HTMLInputElement>, 
-        type: 'platform' | 'sponsor', 
+        type: 'sponsor', 
         index?: number
     ) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        const uploadKey = type === 'platform' ? 'platform' : `sponsor_${index}`;
+        const uploadKey = `sponsor_${index}`;
         setUploadingKey(uploadKey);
 
         const path = `logos/${uploadKey}_${Date.now()}`;
@@ -72,9 +68,7 @@ export default function TeacherSettingsPage() {
         setUploadingKey(null);
 
         if (url) {
-            if (type === 'platform') {
-                setLogoPreview(url);
-            } else if (index !== undefined) {
+            if (index !== undefined) {
                 const newPreviews = [...sponsorPreviews];
                 newPreviews[index] = url;
                 setSponsorPreviews(newPreviews);
@@ -86,10 +80,8 @@ export default function TeacherSettingsPage() {
     };
 
 
-    const handleRemoveLogo = async (type: 'platform' | 'sponsor', index?: number) => {
-       if (type === 'platform') {
-            setLogoPreview(null);
-        } else if (index !== undefined) {
+    const handleRemoveLogo = async (type: 'sponsor', index?: number) => {
+       if (index !== undefined) {
             const newPreviews = [...sponsorPreviews];
             newPreviews[index] = null;
             setSponsorPreviews(newPreviews);
@@ -99,20 +91,13 @@ export default function TeacherSettingsPage() {
 
     const handleSaveSettings = async () => {
         setIsSavingSettings(true);
-        const newConfig = {
-            ...platformConfig,
-            fixedDepositInterestRate: Number(fixedDepositRate) / 100,
-            loanInterestRate: Number(loanInterestRate) / 100,
-            platformLogoUrl: logoPreview,
-            sponsorLogoUrls: sponsorPreviews,
-        };
-
+        
         try {
-            const configRef = doc(db, 'config', 'main');
-            await setDoc(configRef, newConfig, { merge: true });
-            
-            // Optimistically update context
-            setConfigInContext(newConfig);
+            await setPlatformConfig({
+                fixedDepositInterestRate: Number(fixedDepositRate) / 100,
+                loanInterestRate: Number(loanInterestRate) / 100,
+                sponsorLogoUrls: sponsorPreviews,
+            });
 
             toast({ title: "設定已儲存", description: "平台設定已成功更新。" });
         } catch (error: any) {
@@ -169,34 +154,6 @@ export default function TeacherSettingsPage() {
                             />
                             <Percent className="h-4 w-4 text-muted-foreground" />
                         </div>
-                    </div>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle>平台 Logo</CardTitle>
-                    <CardDescription>上傳新的 Logo 來取代目前的平台 Logo。建議尺寸為 256x256 像素，檔案上限 1MB。</CardDescription>
-                </CardHeader>
-                <CardContent className="flex items-center gap-6">
-                     <div className="w-32 h-32 bg-muted rounded-md flex items-center justify-center">
-                        {logoPreview ? (
-                            <Image src={logoPreview} alt="Logo Preview" width={128} height={128} className="object-contain rounded-md" />
-                        ) : (
-                            <ImageOff className="h-10 w-10 text-muted-foreground"/>
-                        )}
-                    </div>
-                    <div className="space-y-2">
-                        <Input id="logo-upload" type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'platform')} className="hidden" disabled={!!uploadingKey} />
-                        <Label htmlFor="logo-upload" className={buttonVariants({ variant: "outline", disabled: !!uploadingKey })}>
-                            {uploadingKey === 'platform' ? <Loader2 className="mr-2 animate-spin"/> : <UploadCloud className="mr-2"/>} 
-                             上傳圖片
-                        </Label>
-                        {logoPreview && (
-                            <Button variant="link" size="sm" className="text-destructive h-auto p-0 flex items-center gap-1" onClick={() => handleRemoveLogo('platform')} disabled={!!uploadingKey}>
-                                <Trash2 className="h-4 w-4" />
-                                移除目前 Logo
-                            </Button>
-                        )}
                     </div>
                 </CardContent>
             </Card>
