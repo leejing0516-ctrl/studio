@@ -10,12 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { User, School, ArrowRight, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { StudentDataContext } from '@/context/StudentDataContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AppDataContext } from '@/context/AppDataContext';
-import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
-import type { Student } from '@/lib/types';
-
 
 export default function HomePage() {
   const [studentId, setStudentId] = useState('');
@@ -25,11 +21,8 @@ export default function HomePage() {
   const [teacherId, setTeacherId] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const router = useRouter();
-  const { toast, dismiss } = useToast();
-  const appData = useContext(AppDataContext);
-  const { setStudentData } = useContext(StudentDataContext);
-
-  const { classes, teachers, platformConfig, isLoading } = appData;
+  const { toast } = useToast();
+  const { classes, teachers, platformConfig, isLoading } = useContext(AppDataContext);
 
   const sortedTeachers = useMemo(() => {
     return [...teachers].sort((a, b) => {
@@ -42,90 +35,57 @@ export default function HomePage() {
     });
   }, [teachers]);
 
-  const handleStudentLogin = async (e: React.FormEvent) => {
+  // Redirect if already logged in
+  useEffect(() => {
+    const userRole = localStorage.getItem('userRole');
+    if (userRole === 'student') {
+        router.replace('/dashboard');
+    } else if (userRole === 'teacher') {
+        router.replace('/teacher/dashboard');
+    }
+  }, [router]);
+
+  const handleStudentLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoggingIn(true);
-    if (!classId) {
+    if (!classId || !studentId || !studentPassword) {
         toast({
-            title: "登入失敗",
-            description: "請選擇您的班級。",
+            title: "資訊不完整",
+            description: "請填寫所有欄位。",
             variant: "destructive",
         });
         setIsLoggingIn(false);
         return;
     }
     
-    // Access the latest students list directly from the context provider
-    const currentStudents = appData.students;
-
-    try {
-        const student = currentStudents.find(s => s.classId === classId && s.id === studentId);
-
-        if (student) {
-            if (student.password === studentPassword) {
-                toast({
-                    title: "登入成功！",
-                    description: `歡迎回來，${student.name}！`,
-                });
-                setStudentData({ student: student });
-                localStorage.setItem('studentId', student.id);
-                localStorage.setItem('studentClassId', student.classId);
-                localStorage.setItem('userRole', 'student');
-                router.push('/dashboard');
-            } else {
-                throw new Error("密碼不正確。");
-            }
-        } else {
-             throw new Error("找不到您的學生帳號。");
-        }
-
-    } catch (error: any) {
-         toast({
-            title: "登入失敗",
-            description: "您輸入的班級、編號或密碼不正確。",
-            variant: "destructive",
-        });
-    } finally {
-        setIsLoggingIn(false);
-    }
+    // Store credentials and role, then redirect. Validation will happen in the layout.
+    localStorage.setItem('userRole', 'student');
+    localStorage.setItem('studentClassId', classId);
+    localStorage.setItem('studentId', studentId);
+    localStorage.setItem('studentPassword', studentPassword);
+    
+    router.push('/dashboard');
   };
   
-  const handleTeacherLogin = async (e: React.FormEvent) => {
+  const handleTeacherLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoggingIn(true);
-
-    try {
-        const teacher = teachers.find(t => t.id === teacherId);
-
-        if (!teacher) {
-            throw new Error("找不到該教師帳號。");
-        }
-
-        const correctPassword = teacher.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
-
-        if (teacherPassword === correctPassword) {
-            toast({
-                title: "教師登入成功",
-                description: `歡迎，${teacher.name}！`,
-            });
-            localStorage.setItem('userRole', 'teacher');
-            localStorage.setItem('teacherId', teacher.id);
-            localStorage.setItem('teacherRole', teacher.role);
-            localStorage.setItem('teacherClassIds', JSON.stringify(teacher.classIds || []));
-            localStorage.setItem('teacherName', teacher.name);
-            router.push('/teacher/dashboard');
-        } else {
-            throw new Error("密碼不正確。");
-        }
-    } catch (error: any) {
+    if (!teacherId || !teacherPassword) {
         toast({
-            title: "登入失敗",
-            description: error.message || "您輸入的帳號或密碼不正確。",
+            title: "資訊不完整",
+            description: "請選擇帳號並輸入密碼。",
             variant: "destructive",
         });
-    } finally {
         setIsLoggingIn(false);
+        return;
     }
+
+    // Store credentials and role, then redirect. Validation will happen in the layout.
+    localStorage.setItem('userRole', 'teacher');
+    localStorage.setItem('teacherId', teacherId);
+    localStorage.setItem('teacherPassword', teacherPassword);
+
+    router.push('/teacher/dashboard');
   };
 
   if (isLoading) {
@@ -298,5 +258,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    

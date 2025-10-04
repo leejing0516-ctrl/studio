@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import Link from "next/link";
@@ -19,7 +18,6 @@ import {
   SidebarInset,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import Logo from "@/components/logo";
 import {
   LayoutDashboard,
   Gift,
@@ -77,52 +75,69 @@ export default function StudentLayout({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  // Effect to handle initial load and re-authentication from localStorage
-  useEffect(() => {
-    if (studentData.student || isLoading) return;
-
-    const storedId = localStorage.getItem('studentId');
-    const storedClassId = localStorage.getItem('studentClassId');
-    
-    if (storedId && storedClassId) {
-        const foundStudent = students.find(s => s.id === storedId && s.classId === storedClassId);
-        if (foundStudent) {
-            setStudentData({ student: foundStudent });
-        } else {
-            handleLogout();
-        }
-    } else {
-      router.push('/');
-    }
-  }, [students, studentData.student, isLoading]);
-
-  // Effect to sync local studentData with global students list from AppDataContext
-  useEffect(() => {
-    if (!studentData.student || isLoading) return;
-
-    const latestStudentData = students.find(s => s.id === studentData.student!.id && s.classId === studentData.student!.classId);
-    
-    if (latestStudentData) {
-      if (JSON.stringify(latestStudentData) !== JSON.stringify(studentData.student)) {
-        setStudentData({ student: latestStudentData });
-      }
-    } else {
-        toast({ title: "帳號已登出", description: "您的帳號資訊可能已被管理者變更，請重新登入。", variant: "destructive" });
-        handleLogout();
-    }
-  }, [students, studentData.student, isLoading]);
-
-
   const student = useMemo(() => studentData.student, [studentData.student]);
-  
-  const handleLogout = () => {
+
+  const handleLogout = useCallback(() => {
     dismiss();
     setStudentData({ student: null });
     localStorage.removeItem('studentId');
     localStorage.removeItem('studentClassId');
+    localStorage.removeItem('studentPassword');
     localStorage.removeItem('userRole');
     router.push('/');
-  }
+  }, [dismiss, router, setStudentData]);
+
+  // Effect to handle initial load and re-authentication from localStorage
+  useEffect(() => {
+    if (isLoading) return; // Wait for all data to be loaded
+
+    const userRole = localStorage.getItem('userRole');
+    if (userRole !== 'student') {
+        handleLogout();
+        return;
+    }
+    
+    // If student is already in context and matches localStorage, do nothing.
+    const storedId = localStorage.getItem('studentId');
+    const storedClassId = localStorage.getItem('studentClassId');
+    if (student?.id === storedId && student?.classId === storedClassId) {
+        return;
+    }
+
+    // Try to authenticate
+    const storedPassword = localStorage.getItem('studentPassword');
+    if (storedId && storedClassId && storedPassword) {
+        const foundStudent = students.find(s => s.id === storedId && s.classId === storedClassId);
+        
+        if (foundStudent && foundStudent.password === storedPassword) {
+            if (JSON.stringify(foundStudent) !== JSON.stringify(student)) {
+                setStudentData({ student: foundStudent });
+            }
+        } else {
+            toast({ title: "登入驗證失敗", description: "您的帳號或密碼不正確，請重新登入。", variant: "destructive" });
+            handleLogout();
+        }
+    } else {
+      handleLogout();
+    }
+  }, [isLoading, students, student, setStudentData, handleLogout, toast]);
+
+  // Effect to sync local studentData with global students list from AppDataContext
+  useEffect(() => {
+    if (isLoading || !student) return;
+
+    const latestStudentData = students.find(s => s.id === student.id && s.classId === student.classId);
+    
+    if (latestStudentData) {
+      if (JSON.stringify(latestStudentData) !== JSON.stringify(student)) {
+        setStudentData({ student: latestStudentData });
+      }
+    } else {
+        // This can happen if the student is deleted by the teacher while logged in
+        toast({ title: "帳號已登出", description: "您的帳號資訊可能已被管理者變更，請重新登入。", variant: "destructive" });
+        handleLogout();
+    }
+  }, [students, student, isLoading, setStudentData, handleLogout, toast]);
 
   const handleChangePassword = async () => {
     if (!student) return;
@@ -156,6 +171,9 @@ export default function StudentLayout({
             return s;
         }));
         
+        // Update password in localStorage as well
+        localStorage.setItem('studentPassword', newPassword);
+
         toast({ title: "密碼已更新", description: "您的密碼已成功更新。" });
         setIsSettingsOpen(false);
         setCurrentPassword("");
@@ -187,8 +205,8 @@ export default function StudentLayout({
   }, [student]);
 
 
-  if (!student) {
-      return null; // Or a loading spinner, as the useEffect will redirect
+  if (isLoading || !student) {
+      return null; // Or a loading spinner, as the useEffect will handle authentication
   }
   
   const NotificationItem = ({ record }: { record: PointRecord }) => {

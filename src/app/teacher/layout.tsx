@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext, useCallback } from "react";
 import {
   SidebarProvider,
   Sidebar,
@@ -71,34 +71,60 @@ export default function TeacherLayout({
 
   const [isImpersonating, setIsImpersonating] = useState(false);
 
-
-  useEffect(() => {
-    const id = localStorage.getItem('teacherId');
-    const name = localStorage.getItem('teacherName');
-    const role = localStorage.getItem('teacherRole');
-    const impersonator = localStorage.getItem('impersonator');
-    
-    setTeacherId(id);
-    setTeacherName(name);
-    setTeacherRole(role);
-    setIsImpersonating(!!impersonator);
-    
-    if (!localStorage.getItem('userRole')?.includes('teacher')) {
-      router.push('/');
-    }
-  }, [router, pathname]); // Depend on pathname to re-check on navigation
-  
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     dismiss();
     localStorage.removeItem('teacherName');
     localStorage.removeItem('teacherRole');
     localStorage.removeItem('teacherClassIds');
     localStorage.removeItem('teacherId');
+    localStorage.removeItem('teacherPassword');
     localStorage.removeItem('userRole');
     localStorage.removeItem('impersonator');
     router.push('/');
-  }
+  }, [dismiss, router]);
 
+  useEffect(() => {
+    if (isLoading) return; // Wait for data to load
+
+    const userRole = localStorage.getItem('userRole');
+    if (userRole !== 'teacher') {
+      handleLogout();
+      return;
+    }
+    
+    const storedTeacherId = localStorage.getItem('teacherId');
+    const storedTeacherPassword = localStorage.getItem('teacherPassword');
+
+    if (storedTeacherId && storedTeacherPassword) {
+        const teacher = teachers.find(t => t.id === storedTeacherId);
+        if (teacher) {
+            const correctPassword = teacher.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
+            if (storedTeacherPassword === correctPassword) {
+                // Auth successful
+                setTeacherId(teacher.id);
+                setTeacherName(teacher.name);
+                setTeacherRole(teacher.role);
+                setIsImpersonating(!!localStorage.getItem('impersonator'));
+
+                // Update localStorage with potentially new data from db
+                localStorage.setItem('teacherName', teacher.name);
+                localStorage.setItem('teacherRole', teacher.role);
+                localStorage.setItem('teacherClassIds', JSON.stringify(teacher.classIds || []));
+
+            } else {
+                toast({ title: "登入驗證失敗", description: "密碼不正確，請重新登入。", variant: "destructive" });
+                handleLogout();
+            }
+        } else {
+            toast({ title: "登入驗證失敗", description: "找不到您的教師帳號。", variant: "destructive" });
+            handleLogout();
+        }
+    } else {
+        handleLogout();
+    }
+  }, [isLoading, teachers, platformConfig, handleLogout, toast]);
+
+  
   const handleStopImpersonating = () => {
     const originalAdminId = localStorage.getItem('impersonator');
     const originalAdmin = teachers.find(t => t.id === originalAdminId);
@@ -108,11 +134,11 @@ export default function TeacherLayout({
       return;
     }
     
+    const correctPassword = originalAdmin.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
+
     localStorage.setItem('userRole', 'teacher');
     localStorage.setItem('teacherId', originalAdmin.id);
-    localStorage.setItem('teacherRole', originalAdmin.role);
-    localStorage.setItem('teacherClassIds', JSON.stringify(originalAdmin.classIds));
-    localStorage.setItem('teacherName', originalAdmin.name);
+    localStorage.setItem('teacherPassword', correctPassword); // Use the correct password for re-auth
     localStorage.removeItem('impersonator');
 
     toast({ title: "已返回校長身份" });
@@ -171,6 +197,10 @@ export default function TeacherLayout({
           }
           return t;
       }));
+
+      // Update password in localStorage
+      localStorage.setItem('teacherPassword', newPassword);
+
       toast({ title: "密碼已更新", description: "您的登入密碼已成功更新。" });
       setIsSettingsOpen(false);
       setCurrentPassword("");
