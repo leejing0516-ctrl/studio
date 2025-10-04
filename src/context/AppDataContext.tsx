@@ -16,6 +16,12 @@ interface AppDataContextType {
   isLoading: boolean;
   isMarketOpen: boolean;
   runTransaction: (updateFunction: (transaction: Transaction) => Promise<any>) => Promise<any>;
+  setStudents: (students: Student[]) => Promise<void>;
+  setRewards: (rewards: Reward[]) => Promise<void>;
+  setStocks: (stocks: Stock[]) => Promise<void>;
+  setClasses: (classes: Class[]) => Promise<void>;
+  setTeachers: (teachers: Teacher[]) => Promise<void>;
+  setPlatformConfig: (config: Partial<PlatformConfig>) => Promise<void>;
 }
 
 const defaultState: AppDataContextType = {
@@ -28,6 +34,12 @@ const defaultState: AppDataContextType = {
   isLoading: true,
   isMarketOpen: false,
   runTransaction: async () => {},
+  setStudents: async () => {},
+  setRewards: async () => {},
+  setStocks: async () => {},
+  setClasses: async () => {},
+  setTeachers: async () => {},
+  setPlatformConfig: async () => {},
 };
 
 export const AppDataContext = createContext<AppDataContextType>(defaultState);
@@ -71,6 +83,11 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     return firestoreRunTransaction(db, updateFunction);
   }, []);
   
+  const handleSetPlatformConfig = useCallback(async (config: Partial<PlatformConfig>) => {
+    const configRef = doc(db, 'config', 'main');
+    await setDoc(configRef, config, { merge: true });
+  }, []);
+
   useEffect(() => {
     const allLoaded = Object.values(loadingStates).every(state => state === false);
     if (!allLoaded) {
@@ -83,14 +100,18 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const subscriptions: Unsubscribe[] = [];
 
-    const setupSubscription = <T,>(
+    const setupSubscription = <T extends {id: string}>(
         collectionName: string, 
         setter: React.Dispatch<React.SetStateAction<T[]>>,
         stateKey: keyof LoadingStates
     ) => {
         const q = query(collection(db, collectionName));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const data = querySnapshot.docs.map(doc => doc.data() as T);
+            const data: T[] = [];
+            querySnapshot.forEach(doc => {
+              // Ensure the document ID is part of the object
+              data.push({ ...doc.data(), id: doc.id } as T);
+            });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
         }, (error) => {
@@ -148,6 +169,14 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         isLoading,
         isMarketOpen,
         runTransaction: handleRunTransaction,
+        // The following setters are for convenience but may not be needed if all writes go through transactions
+        // For now, they are empty promises. In a real app, they would write to Firestore.
+        setStudents: async () => {},
+        setRewards: async () => {},
+        setStocks: async () => {},
+        setClasses: async () => {},
+        setTeachers: async () => {},
+        setPlatformConfig: handleSetPlatformConfig,
     }}>
       {children}
     </AppDataContext.Provider>

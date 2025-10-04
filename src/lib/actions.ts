@@ -149,19 +149,6 @@ export async function useRewardTransaction(input: UseRewardInput): Promise<UseRe
     }
 }
 
-export async function savePlatformSettings(newConfig: Partial<PlatformConfig>): Promise<{success: boolean, error?: string}> {
-    try {
-        const configDocRef = doc(db, 'config', 'main');
-        // For settings, we merge to avoid overwriting fields not present in newConfig
-        await setDoc(configDocRef, newConfig, { merge: true });
-        return { success: true };
-    } catch (error: any) {
-        console.error("Failed to save platform settings:", error);
-        return { success: false, error: error.message || "儲存設定時發生未知錯誤。" };
-    }
-}
-
-
 export async function removeLogo({ type, index }: { type: 'platform' | 'sponsor'; index?: number }): Promise<{success: boolean, error?: string}> {
      try {
         const configDocRef = doc(db, 'config', 'main');
