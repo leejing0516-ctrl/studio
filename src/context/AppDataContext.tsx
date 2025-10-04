@@ -5,6 +5,7 @@ import { createContext, useState, ReactNode, useEffect, useCallback } from 'reac
 import type { Student, Reward, Class, Teacher, Stock, PlatformConfig } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { collection, doc, runTransaction as firestoreRunTransaction, Transaction, query, onSnapshot, Unsubscribe, setDoc, writeBatch, getDocs, addDoc } from 'firebase/firestore';
+import { students as initialStudents } from '@/lib/placeholder-data';
 
 type SetStateActionWithFunction<S> = S | ((prevState: S) => S);
 
@@ -85,64 +86,41 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     return firestoreRunTransaction(db, updateFunction);
   }, []);
   
-  const createSetter = <T extends { id: string; _docId?: string }>(
+  const createSetter = <T extends { id: string; _docId?: string; classId?: string; }>(
     collectionName: string,
     state: T[],
     setter: React.Dispatch<React.SetStateAction<T[]>>
   ) => async (action: SetStateActionWithFunction<T[]>) => {
     const currentState = typeof action === 'function' ? action(state) : action;
-    
     setter(currentState);
 
     const batch = writeBatch(db);
-    const existingDocIds = new Set<string>();
+    const docIdsInState = new Set<string>();
 
     for (const item of currentState) {
-        const itemData: any = { ...item };
-        
-        if (item._docId) {
-             existingDocIds.add(item._docId);
-             delete itemData._docId;
-             const itemRef = doc(db, collectionName, item._docId);
-             batch.set(itemRef, itemData, { merge: true });
+      if (item._docId) {
+        docIdsInState.add(item._docId);
+        const { _docId, ...itemData } = item;
+        const itemRef = doc(db, collectionName, _docId);
+        batch.set(itemRef, itemData, { merge: true });
+      } else {
+        // This is a new item
+        let newDocRef;
+        if (collectionName === 'students' && item.classId && item.id) {
+          // Use composite key for students to prevent duplicates
+          newDocRef = doc(db, collectionName, `${item.classId}-${item.id}`);
         } else {
-             // This is a new item, let Firestore generate the ID
-             delete itemData.id;
-             delete itemData._docId;
-             const newDocRef = doc(collection(db, collectionName));
-             batch.set(newDocRef, itemData);
+          // Let Firestore generate ID for other collections
+          newDocRef = doc(collection(db, collectionName));
         }
+        batch.set(newDocRef, item);
+      }
     }
-      
-    const allDocsInDB = await getDocs(query(collection(db, collectionName)));
-    allDocsInDB.forEach(doc => {
-        if (!existingDocIds.has(doc.id)) {
-            let shouldKeep = false;
-            // Check if the doc from DB is actually represented in the new state, but just didn't have a _docId yet.
-            // This is a safeguard against race conditions on initial load.
-            if (currentState.some(item => !item._docId && item.id === doc.data().id)) { // weak check, relies on 'id' property
-              shouldKeep = true;
-            }
-            if(!shouldKeep) {
-              // This is a temporary guard to prevent deleting all students if something goes wrong.
-              // In a real scenario, a more robust check is needed.
-              if (collectionName === 'students' && currentState.length > 0) {
-                 const currentStudentDoc = doc.data();
-                 if (!currentState.find(s => s.id === currentStudentDoc.id && s.classId === currentStudentDoc.classId)) {
-                    batch.delete(doc.ref);
-                 }
-              } else if (collectionName !== 'students') {
-                 batch.delete(doc.ref);
-              }
-            }
-        }
-    });
-
 
     try {
-        await batch.commit();
+      await batch.commit();
     } catch (error) {
-        console.error(`Batch write for ${collectionName} failed:`, error);
+      console.error(`Batch write for ${collectionName} failed:`, error);
     }
   };
 
@@ -170,24 +148,36 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const subscriptions: Unsubscribe[] = [];
 
-    const setupSubscription = (
+    const setupSubscription = <T extends { id: string }>(
         collectionName: string, 
-        setter: React.Dispatch<React.SetStateAction<any[]>>,
-        stateKey: keyof LoadingStates
+        setter: React.Dispatch<React.SetStateAction<T[]>>,
+        stateKey: keyof LoadingStates,
+        isStudentCollection: boolean = false
     ) => {
         const q = query(collection(db, collectionName));
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const data: any[] = [];
-            querySnapshot.forEach(doc => {
-                const docData = doc.data();
-                // Crucially, we assign Firestore's doc.id to a unique _docId property,
-                // and keep the object's original 'id' (like student number) untouched.
-                // For collections other than students, their primary id is the doc id.
-                 if (collectionName === 'students') {
-                    data.push({ ...docData, _docId: doc.id });
-                } else {
-                    data.push({ ...docData, id: doc.id, _docId: doc.id });
+        const unsubscribe = onSnapshot(q, async (querySnapshot) => {
+            if (isStudentCollection && querySnapshot.empty) {
+                console.log("Student collection is empty, attempting to restore from placeholder data...");
+                try {
+                    const batch = writeBatch(db);
+                    initialStudents.forEach(student => {
+                        const docRef = doc(db, 'students', `${student.classId}-${student.id}`);
+                        batch.set(docRef, student);
+                    });
+                    await batch.commit();
+                    console.log("Successfully restored students from placeholder data.");
+                    // Data will be re-fetched by onSnapshot, so we don't set state here.
+                    return;
+                } catch (error) {
+                    console.error("Failed to restore student data:", error);
                 }
+            }
+
+            const data: T[] = [];
+            querySnapshot.forEach(doc => {
+                const docData = doc.data() as T;
+                const id = isStudentCollection ? (docData as any).id : doc.id;
+                data.push({ ...docData, id: id, _docId: doc.id });
             });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
@@ -218,11 +208,11 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         return unsubscribe;
     };
     
-    subscriptions.push(setupSubscription('students', setStudentsState, 'students'));
-    subscriptions.push(setupSubscription('teachers', setTeachersState, 'teachers'));
-    subscriptions.push(setupSubscription('classes', setClassesState, 'classes'));
-    subscriptions.push(setupSubscription('rewards', setRewardsState, 'rewards'));
-    subscriptions.push(setupSubscription('stocks', setStocksState, 'stocks'));
+    subscriptions.push(setupSubscription<Student>('students', setStudentsState, 'students', true));
+    subscriptions.push(setupSubscription<Teacher>('teachers', setTeachersState, 'teachers'));
+    subscriptions.push(setupSubscription<Class>('classes', setClassesState, 'classes'));
+    subscriptions.push(setupSubscription<Reward>('rewards', setRewardsState, 'rewards'));
+    subscriptions.push(setupSubscription<Stock>('stocks', setStocksState, 'stocks'));
     subscriptions.push(setupDocSubscription<PlatformConfig>(['config', 'main'], setPlatformConfigState, 'config'));
 
     const marketInterval = setInterval(() => {
