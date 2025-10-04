@@ -16,7 +16,6 @@ interface AppDataContextType {
   isLoading: boolean;
   isMarketOpen: boolean;
   runTransaction: (updateFunction: (transaction: Transaction) => Promise<any>) => Promise<any>;
-  setPlatformConfig: (config: Partial<PlatformConfig>) => Promise<void>;
 }
 
 const defaultState: AppDataContextType = {
@@ -29,7 +28,6 @@ const defaultState: AppDataContextType = {
   isLoading: true,
   isMarketOpen: false,
   runTransaction: async () => {},
-  setPlatformConfig: async () => {},
 };
 
 export const AppDataContext = createContext<AppDataContextType>(defaultState);
@@ -71,11 +69,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
   const handleRunTransaction = useCallback(async (updateFunction: (transaction: Transaction) => Promise<any>) => {
     return firestoreRunTransaction(db, updateFunction);
-  }, []);
-  
-  const handleSetPlatformConfig = useCallback(async (config: Partial<PlatformConfig>) => {
-    const configRef = doc(db, 'config', 'main');
-    await setDoc(configRef, config, { merge: true });
   }, []);
 
   useEffect(() => {
@@ -154,7 +147,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         isLoading,
         isMarketOpen,
         runTransaction: handleRunTransaction,
-        setPlatformConfig: handleSetPlatformConfig,
     }}>
       {children}
     </AppDataContext.Provider>

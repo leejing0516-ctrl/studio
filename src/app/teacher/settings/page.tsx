@@ -17,11 +17,11 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
-import { removeLogo } from "@/lib/actions";
+import { removeLogo, savePlatformSettings } from "@/lib/actions";
 import { useFirebaseStorage } from "@/hooks/use-firebase-storage";
 
 export default function TeacherSettingsPage() {
-    const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
+    const { platformConfig } = useContext(AppDataContext);
     const { toast } = useToast();
     const router = useRouter();
     const { uploadFile: uploadStorageFile, isUploading: isUploadingStorage, error: uploadError } = useFirebaseStorage();
@@ -112,19 +112,18 @@ export default function TeacherSettingsPage() {
 
     const handleSaveSettings = async () => {
         setIsSavingSettings(true);
-        try {
-            await setPlatformConfig({
-                fixedDepositInterestRate: Number(fixedDepositRate) / 100,
-                loanInterestRate: Number(loanInterestRate) / 100,
-                platformLogoUrl: logoPreview,
-                sponsorLogoUrls: sponsorPreviews,
-            });
+        const result = await savePlatformSettings({
+            fixedDepositInterestRate: Number(fixedDepositRate) / 100,
+            loanInterestRate: Number(loanInterestRate) / 100,
+            platformLogoUrl: logoPreview,
+            sponsorLogoUrls: sponsorPreviews,
+        });
+        setIsSavingSettings(false);
+
+        if (result.success) {
             toast({ title: "設定已儲存", description: "平台設定已成功更新。" });
-        } catch (error: any) {
-            console.error("Error saving settings:", error);
-            toast({ title: "儲存失敗", description: error.message || "儲存平台設定時發生錯誤。", variant: "destructive" });
-        } finally {
-            setIsSavingSettings(false);
+        } else {
+            toast({ title: "儲存失敗", description: result.error || "儲存平台設定時發生錯誤。", variant: "destructive" });
         }
     };
 

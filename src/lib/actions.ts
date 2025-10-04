@@ -2,7 +2,7 @@
 "use server";
 
 import { suggestRewards, type RewardSuggestionInput } from "@/ai/flows/reward-suggestion";
-import { db, storage } from './firebase'; // Switch from admin SDK to client/web SDK
+import { db, storage } from './firebase';
 import { doc, runTransaction, getDoc, setDoc, writeBatch, updateDoc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import type { Student, Reward, Teacher, PlatformConfig, RedeemedRewardItem } from './types';
@@ -17,6 +17,18 @@ export async function getRewardSuggestions(input: RewardSuggestionInput) {
         return { success: false, error: "無法取得獎勵建議。" };
     }
 }
+
+export async function savePlatformSettings(settings: Partial<PlatformConfig>): Promise<{success: boolean, error?: string}> {
+    try {
+        const configRef = doc(db, 'config', 'main');
+        await setDoc(configRef, settings, { merge: true });
+        return { success: true };
+    } catch (error: any) {
+        console.error("Error saving platform settings:", error);
+        return { success: false, error: error.message || "儲存設定時發生錯誤。" };
+    }
+}
+
 
 interface RedeemRewardInput {
     studentId: string;
