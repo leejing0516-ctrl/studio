@@ -127,6 +127,7 @@ export default function TeacherRewardsPage() {
                 imageUrl = await fileToDataUrl(rewardImageFile);
             } catch (error) {
                 toast({title: "圖片上傳失敗", variant: "destructive"});
+                return;
             }
         }
         
@@ -171,6 +172,7 @@ export default function TeacherRewardsPage() {
                 imageUrl = await fileToDataUrl(rewardImageFile);
             } catch (error) {
                 toast({title: "圖片上傳失敗", variant: "destructive"});
+                return;
             }
         }
         

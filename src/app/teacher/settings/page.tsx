@@ -17,23 +17,29 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
-import { useFirebaseStorage } from "@/hooks/use-firebase-storage";
+
+const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
+
+const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
 
 export default function TeacherSettingsPage() {
     const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
     const { toast } = useToast();
     const router = useRouter();
-    const { uploadFile, isUploading, error: uploadError } = useFirebaseStorage();
-
 
     const [isSavingSettings, setIsSavingSettings] = useState(false);
     const [uploadingKey, setUploadingKey] = useState<string | null>(null);
 
-
     const [fixedDepositRate, setFixedDepositRate] = useState<number | string>('');
     const [loanInterestRate, setLoanInterestRate] = useState<number | string>('');
     
-    // State for image previews
     const [sponsorPreviews, setSponsorPreviews] = useState<(string | null)[]>([]);
 
     useEffect(() => {
@@ -59,26 +65,28 @@ export default function TeacherSettingsPage() {
         const file = e.target.files?.[0];
         if (!file) return;
 
+        if (file.size > MAX_FILE_SIZE) {
+            toast({ title: "檔案太大", description: `請選擇小於 ${MAX_FILE_SIZE / 1024 / 1024}MB 的圖片。`, variant: "destructive" });
+            return;
+        }
+
         const uploadKey = `sponsor_${index}`;
         setUploadingKey(uploadKey);
-
-        const path = `logos/${uploadKey}_${Date.now()}`;
-        const url = await uploadFile(file, path);
         
-        setUploadingKey(null);
-
-        if (url) {
+        try {
+            const dataUrl = await fileToDataUrl(file);
             if (index !== undefined) {
                 const newPreviews = [...sponsorPreviews];
-                newPreviews[index] = url;
+                newPreviews[index] = dataUrl;
                 setSponsorPreviews(newPreviews);
             }
-            toast({ title: "圖片已上傳", description: "預覽圖已更新。請記得點擊下方的「儲存設定」以保存變更。" });
-        } else {
-             toast({ title: "上傳失敗", description: uploadError || "發生未知錯誤", variant: "destructive" });
+            toast({ title: "圖片已預覽", description: "請記得點擊下方的「儲存設定」以保存變更。" });
+        } catch (error) {
+            toast({ title: "圖片讀取失敗", variant: "destructive" });
+        } finally {
+            setUploadingKey(null);
         }
     };
-
 
     const handleRemoveLogo = async (type: 'sponsor', index?: number) => {
        if (index !== undefined) {
@@ -107,7 +115,6 @@ export default function TeacherSettingsPage() {
             setIsSavingSettings(false);
         }
     };
-
 
     return (
         <div className="space-y-6 animate-in fade-in-0 duration-500">
@@ -199,3 +206,5 @@ export default function TeacherSettingsPage() {
         </div>
     );
 }
+
+    

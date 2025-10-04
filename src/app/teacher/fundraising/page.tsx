@@ -128,6 +128,7 @@ export default function TeacherFundraisingPage() {
               imageUrl = await fileToDataUrl(projectImageFile);
           } catch (error) {
               toast({ title: "圖片上傳失敗", variant: "destructive" });
+              return;
           }
       }
 
@@ -177,6 +178,7 @@ export default function TeacherFundraisingPage() {
             imageUrl = await fileToDataUrl(projectImageFile);
         } catch (error) {
             toast({ title: "圖片上傳失敗", variant: "destructive" });
+            return;
         }
     }
     
@@ -483,3 +485,5 @@ export default function TeacherFundraisingPage() {
     </div>
   );
 }
+
+    
