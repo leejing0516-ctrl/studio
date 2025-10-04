@@ -185,6 +185,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         await setDoc(configDocRef, newConfig, { merge: true });
     } catch(e) {
         console.error("Failed to update platform config:", e);
+        throw e; // Re-throw the error so the caller can handle it
     }
   }
 
