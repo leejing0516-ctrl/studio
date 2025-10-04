@@ -30,7 +30,7 @@ export const RESTORE_MANUAL_CONTENT = `
 2.  在「建構」類別下方，點擊「**Firestore Database**」。
     
 
-3.  进入 Firestore 页面后，点击上方的「**還原**」(Restore) 分页。
+3.  進入 Firestore 頁面後，點擊上方的「**還原**」(Restore) 分頁。
     
 
 4.  **檢查 PITR 狀態**：
