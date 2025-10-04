@@ -12,6 +12,7 @@ import { User, School, ArrowRight, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AppDataContext } from '@/context/AppDataContext';
+import type { Student } from '@/lib/types';
 
 export default function HomePage() {
   const [studentId, setStudentId] = useState('');
@@ -49,6 +50,7 @@ export default function HomePage() {
   const handleStudentLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoggingIn(true);
+
     if (!classId || !studentId || !studentPassword) {
         toast({
             title: "資訊不完整",
@@ -59,13 +61,28 @@ export default function HomePage() {
         return;
     }
     
-    // Store credentials and role, then redirect. Validation will happen in the layout.
-    localStorage.setItem('userRole', 'student');
-    localStorage.setItem('studentClassId', classId);
-    localStorage.setItem('studentId', studentId);
-    localStorage.setItem('studentPassword', studentPassword);
-    
-    router.push('/dashboard');
+    // Use the latest student list from the context for validation
+    const foundStudent = appData.students.find(
+      (s: Student) => s.id === studentId && s.classId === classId
+    );
+
+    if (foundStudent && foundStudent.password === studentPassword) {
+        // Validation successful
+        toast({ title: "登入成功！", description: `歡迎回來，${foundStudent.name}！`});
+        localStorage.setItem('userRole', 'student');
+        localStorage.setItem('studentClassId', classId);
+        localStorage.setItem('studentId', studentId);
+        localStorage.setItem('studentPassword', studentPassword);
+        router.push('/dashboard');
+    } else {
+        // Validation failed
+        toast({
+            title: "登入失敗",
+            description: "您輸入的班級、學號或密碼不正確。",
+            variant: "destructive",
+        });
+        setIsLoggingIn(false);
+    }
   };
   
   const handleTeacherLogin = (e: React.FormEvent) => {

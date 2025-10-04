@@ -91,52 +91,35 @@ export default function StudentLayout({
     if (isLoading) return; // Wait for all data to be loaded
 
     const userRole = localStorage.getItem('userRole');
-    if (userRole !== 'student') {
-        handleLogout();
-        return;
-    }
-    
-    // If student is already in context and matches localStorage, do nothing.
     const storedId = localStorage.getItem('studentId');
     const storedClassId = localStorage.getItem('studentClassId');
+    const storedPassword = localStorage.getItem('studentPassword');
+
+    if (userRole !== 'student' || !storedId || !storedClassId || !storedPassword) {
+      handleLogout();
+      return;
+    }
+
+    // If student is already in context, just ensure it's the latest version.
     if (student?.id === storedId && student?.classId === storedClassId) {
+        const latestStudentData = students.find(s => s.id === storedId && s.classId === storedClassId);
+        if (latestStudentData && JSON.stringify(latestStudentData) !== JSON.stringify(student)) {
+             setStudentData({ student: latestStudentData });
+        }
         return;
     }
-
-    // Try to authenticate
-    const storedPassword = localStorage.getItem('studentPassword');
-    if (storedId && storedClassId && storedPassword) {
-        const foundStudent = students.find(s => s.id === storedId && s.classId === storedClassId);
-        
-        if (foundStudent && foundStudent.password === storedPassword) {
-            if (JSON.stringify(foundStudent) !== JSON.stringify(student)) {
-                setStudentData({ student: foundStudent });
-            }
-        } else {
-            // Do not toast here, just log out
-            handleLogout();
-        }
-    } else {
-      handleLogout();
-    }
-  }, [isLoading, students, student, setStudentData, handleLogout, toast]);
-
-  // Effect to sync local studentData with global students list from AppDataContext
-  useEffect(() => {
-    if (isLoading || !student) return;
-
-    const latestStudentData = students.find(s => s.id === student.id && s.classId === student.classId);
     
-    if (latestStudentData) {
-      if (JSON.stringify(latestStudentData) !== JSON.stringify(student)) {
-        setStudentData({ student: latestStudentData });
-      }
+    // Try to authenticate and set student data
+    const foundStudent = students.find(s => s.id === storedId && s.classId === storedClassId);
+    
+    if (foundStudent && foundStudent.password === storedPassword) {
+        setStudentData({ student: foundStudent });
     } else {
-        // This can happen if the student is deleted by the teacher while logged in
-        toast({ title: "帳號已登出", description: "您的帳號資訊可能已被管理者變更，請重新登入。", variant: "destructive" });
+        // Don't toast here, just log out. The login page will handle feedback.
         handleLogout();
     }
-  }, [students, student, isLoading, setStudentData, handleLogout, toast]);
+  }, [isLoading, students, student, setStudentData, handleLogout]);
+
 
   const handleChangePassword = async () => {
     if (!student) return;
