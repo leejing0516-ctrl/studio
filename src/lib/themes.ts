@@ -53,11 +53,11 @@ export const themes: Theme[] = [
     label: "美妝粉 (白/粉)",
     cssVars: {
       dark: {
-        background: "0 0% 100%",
+        background: "350 50% 98%",
         foreground: "350 20% 25%",
-        card: "0 0% 100%",
+        card: "350 50% 98%",
         "card-foreground": "350 20% 25%",
-        popover: "0 0% 100%",
+        popover: "350 50% 98%",
         "popover-foreground": "350 20% 25%",
         primary: "350 70% 65%",
         "primary-foreground": "0 0% 100%",
