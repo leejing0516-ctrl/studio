@@ -56,7 +56,7 @@ export default function TeacherLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { toast, dismiss } = useToast();
+  const { toast } = useToast();
   const { teachers, setTeachers, platformConfig, setPlatformConfig, isLoading } = useContext(AppDataContext);
 
   const [teacherId, setTeacherId] = useState<string | null>(null);
@@ -72,7 +72,6 @@ export default function TeacherLayout({
   const [isImpersonating, setIsImpersonating] = useState(false);
 
   const handleLogout = useCallback(() => {
-    dismiss();
     localStorage.removeItem('teacherName');
     localStorage.removeItem('teacherRole');
     localStorage.removeItem('teacherClassIds');
@@ -81,7 +80,7 @@ export default function TeacherLayout({
     localStorage.removeItem('userRole');
     localStorage.removeItem('impersonator');
     router.push('/');
-  }, [dismiss, router]);
+  }, [router]);
 
   useEffect(() => {
     if (isLoading) return; // Wait for data to load
@@ -112,17 +111,15 @@ export default function TeacherLayout({
                 localStorage.setItem('teacherClassIds', JSON.stringify(teacher.classIds || []));
 
             } else {
-                toast({ title: "登入驗證失敗", description: "密碼不正確，請重新登入。", variant: "destructive" });
                 handleLogout();
             }
         } else {
-            toast({ title: "登入驗證失敗", description: "找不到您的教師帳號。", variant: "destructive" });
             handleLogout();
         }
     } else {
         handleLogout();
     }
-  }, [isLoading, teachers, platformConfig, handleLogout, toast]);
+  }, [isLoading, teachers, platformConfig, handleLogout]);
 
   
   const handleStopImpersonating = () => {
