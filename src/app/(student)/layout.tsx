@@ -48,6 +48,7 @@ import {
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import type { Student, PointRecord } from "@/lib/types";
@@ -96,7 +97,7 @@ export default function StudentLayout({
       return;
     }
     
-    const foundStudent = students.find(s => s.id === storedDocId);
+    const foundStudent = students.find(s => s._docId === storedDocId);
     
     if (foundStudent && foundStudent.password === storedPassword) {
         if (JSON.stringify(foundStudent) !== JSON.stringify(studentData.student)) {
@@ -125,7 +126,7 @@ export default function StudentLayout({
         return;
     }
     
-    const studentToUpdate = students.find(s => s.id === student.id);
+    const studentToUpdate = students.find(s => s._docId === student._docId);
 
     if (studentToUpdate?.password !== currentPassword) {
         toast({ title: "密碼錯誤", description: "您輸入的目前密碼不正確。", variant: "destructive" });
@@ -135,7 +136,7 @@ export default function StudentLayout({
 
     try {
         await setStudents(currentStudents => currentStudents.map(s => {
-            if (s.id === student.id) {
+            if (s._docId === student._docId) {
                 return { ...s, password: newPassword };
             }
             return s;
