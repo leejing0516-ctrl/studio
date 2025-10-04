@@ -10,7 +10,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { getRewardSuggestions } from "@/lib/actions";
+import { suggestRewards } from "@/ai/flows/reward-suggestion";
 import { Wand2, Gift, Loader2, AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -31,16 +31,17 @@ export default function RewardSuggestion({ studentPoints, stockMarketPerformance
     setSuggestions([]);
     setIsOpen(true);
 
-    const result = await getRewardSuggestions({
-      studentPoints,
-      stockMarketPerformance,
-    });
-
-    if (result.success && result.data) {
-      setSuggestions(result.data.suggestedRewards);
-    } else {
-      setError(result.error || "發生未知錯誤。");
+    try {
+      const result = await suggestRewards({
+        studentPoints,
+        stockMarketPerformance,
+      });
+      setSuggestions(result.suggestedRewards);
+    } catch (e: any) {
+      console.error(e);
+      setError(e.message || "發生未知錯誤。");
     }
+
     setIsLoading(false);
   };
 
