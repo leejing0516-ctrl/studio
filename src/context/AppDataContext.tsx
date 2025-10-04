@@ -90,8 +90,9 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     state: T[],
     setter: React.Dispatch<React.SetStateAction<T[]>>
   ) => async (action: SetStateActionWithFunction<T[]>) => {
-    
     const newState = typeof action === 'function' ? action(state) : action;
+    
+    // We update the local state optimistically
     setter(newState);
 
     const batch = writeBatch(db);
@@ -100,27 +101,30 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     for (const item of newState) {
         let docId: string;
         let itemData: any = { ...item };
-
+        
         if (collectionName === 'students') {
             const student = item as any as Student;
+            // Use _docId if it exists, otherwise construct it for new items.
             docId = student._docId || `${student.classId}-${student.id}`;
-            // Ensure _docId is not written to Firestore
-            delete itemData._docId;
         } else {
+            // For other collections, the docId is either in _docId or id.
             docId = item._docId || item.id;
-            delete itemData._docId;
         }
-        
+
+        // Clean up internal-only fields before writing to Firestore
+        delete itemData._docId;
+
         newDocKeys.add(docId);
         const itemRef = doc(db, collectionName, docId);
         batch.set(itemRef, itemData, { merge: true });
     }
       
+    // Delete items that are no longer in the new state
     for (const item of state) {
         let docId: string;
         if (collectionName === 'students') {
             const student = item as any as Student;
-            docId = student._docId || `${student.classId}-${student.id}`;
+            docId = student._docId!;
         } else {
             docId = item._docId || item.id;
         }
@@ -131,7 +135,12 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         }
     }
 
-    await batch.commit();
+    try {
+        await batch.commit();
+    } catch (error) {
+        console.error(`Batch write for ${collectionName} failed:`, error);
+        // Optionally, revert the optimistic update here or show an error
+    }
   };
 
 
@@ -172,7 +181,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 const docData = doc.data();
                 if (collectionName === 'students') {
                     // For students, keep the original `id` from the document data,
-                    // and store the Firestore document ID in `_docId`.
+                    // and store the Firestore document ID separately in `_docId`.
                     data.push({ ...docData, _docId: doc.id });
                 } else {
                     // For all other collections, the Firestore doc.id is the primary ID.

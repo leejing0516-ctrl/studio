@@ -25,8 +25,7 @@ export default function HomePage() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const appData = useContext(AppDataContext);
-  const { classes, isLoading, students, teachers } = appData;
+  const { classes, isLoading, students, teachers, platformConfig } = useContext(AppDataContext);
 
   const sortedTeachers = useMemo(() => {
     return [...teachers]
@@ -119,10 +118,10 @@ export default function HomePage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
       <header className="mb-8 text-center animate-in fade-in slide-in-from-top duration-700">
-        {appData.platformConfig?.homeIllustrationUrl && (
+        {platformConfig?.homeIllustrationUrl && (
             <div className="relative h-48 w-full max-w-md mx-auto mb-4">
                 <Image 
-                    src={appData.platformConfig.homeIllustrationUrl}
+                    src={platformConfig.homeIllustrationUrl}
                     alt="首頁插圖"
                     fill
                     className="object-contain"
@@ -131,10 +130,10 @@ export default function HomePage() {
             </div>
         )}
         <h1 className="text-4xl md:text-5xl font-bold font-headline text-foreground">
-          {appData.platformConfig?.homeTitle || '歡迎來到南梓實小虛擬銀行'}
+          {platformConfig?.homeTitle || '歡迎來到南梓實小虛擬銀行'}
         </h1>
         <p className="text-lg text-muted-foreground mt-2 max-w-2xl mx-auto">
-          {appData.platformConfig?.homeSubtitle || '您通往金融素養的門戶，在這裡學習金錢知識既有回報又充滿樂趣！'}
+          {platformConfig?.homeSubtitle || '您通往金融素養的門戶，在這裡學習金錢知識既有回報又充滿樂趣！'}
         </p>
       </header>
 
@@ -253,11 +252,11 @@ export default function HomePage() {
         </div>
       </div>
       <footer className="text-center mt-8 text-muted-foreground text-sm">
-        {appData.platformConfig?.sponsorLogoUrls && appData.platformConfig.sponsorLogoUrls.some(url => url) ? (
+        {platformConfig?.sponsorLogoUrls && platformConfig.sponsorLogoUrls.some(url => url) ? (
             <div className="flex flex-col items-center gap-4">
                 <span className="text-xs">贊助單位</span>
                 <div className="flex flex-wrap justify-center items-center gap-8">
-                    {appData.platformConfig.sponsorLogoUrls.map((url, index) => url && (
+                    {platformConfig.sponsorLogoUrls.map((url, index) => url && (
                         <div key={index} className="relative h-12 w-36">
                             <Image 
                                 src={url}
