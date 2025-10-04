@@ -2,7 +2,7 @@
 "use server";
 
 import { suggestRewards, type RewardSuggestionInput } from "@/ai/flows/reward-suggestion";
-import { adminDb } from './firebase-admin'; // Use the server-side admin SDK
+import { getAdminDb } from './firebase-admin';
 import { doc, runTransaction, getDoc, setDoc, writeBatch, updateDoc } from 'firebase/firestore';
 import type { Student, Reward, Teacher, PlatformConfig, RedeemedRewardItem } from './types';
 import { db } from "./firebase";
@@ -20,6 +20,7 @@ export async function getRewardSuggestions(input: RewardSuggestionInput) {
 
 export async function savePlatformSettings(settings: Partial<PlatformConfig>): Promise<{success: boolean, error?: string}> {
     try {
+        const adminDb = getAdminDb();
         const configRef = adminDb.collection('config').doc('main');
         await configRef.set(settings, { merge: true });
         return { success: true };
