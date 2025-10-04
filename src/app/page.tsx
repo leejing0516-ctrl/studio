@@ -28,8 +28,9 @@ export default function HomePage() {
   const { classes, isLoading, students, teachers, platformConfig } = useContext(AppDataContext);
 
   const sortedTeachers = useMemo(() => {
+    if (!teachers) return [];
     return [...teachers]
-      .filter(t => t.sortOrder !== undefined) // Filter out items that don't have sortOrder
+      .filter(t => t && t.sortOrder !== undefined) // Ensure t is defined
       .sort((a, b) => {
         const orderA = a.sortOrder!;
         const orderB = b.sortOrder!;
@@ -275,3 +276,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
