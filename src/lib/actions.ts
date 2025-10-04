@@ -4,7 +4,7 @@
 import { suggestRewards, type RewardSuggestionInput } from "@/ai/flows/reward-suggestion";
 import { db, storage } from './firebase'; // Switch from admin SDK to client/web SDK
 import { doc, runTransaction, getDoc, setDoc, writeBatch, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, deleteObject } from 'firebase/storage';
 import type { Student, Reward, Teacher, PlatformConfig, RedeemedRewardItem } from './types';
 
 
@@ -149,34 +149,11 @@ export async function useRewardTransaction(input: UseRewardInput): Promise<UseRe
     }
 }
 
-export async function uploadFile(
-  formData: FormData
-): Promise<{ success: boolean; url?: string; error?: string }> {
-  try {
-    const file = formData.get('file') as File;
-    const path = formData.get('path') as string;
-
-    if (!file || !path) {
-      throw new Error('缺少檔案或路徑。');
-    }
-    
-    const storageRef = ref(storage, path);
-    
-    await uploadBytes(storageRef, file, { contentType: file.type });
-
-    const downloadURL = await getDownloadURL(storageRef);
-    
-    return { success: true, url: downloadURL };
-  } catch (error: any) {
-    console.error("File upload failed:", error);
-    return { success: false, error: error.message || '檔案上傳時發生未知錯誤。' };
-  }
-}
-
 export async function savePlatformSettings(newConfig: Partial<PlatformConfig>): Promise<{success: boolean, error?: string}> {
     try {
         const configDocRef = doc(db, 'config', 'main');
-        await updateDoc(configDocRef, newConfig);
+        // For settings, we merge to avoid overwriting fields not present in newConfig
+        await setDoc(configDocRef, newConfig, { merge: true });
         return { success: true };
     } catch (error: any) {
         console.error("Failed to save platform settings:", error);

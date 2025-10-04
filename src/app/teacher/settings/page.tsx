@@ -17,16 +17,20 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
-import { savePlatformSettings, removeLogo, uploadFile } from "@/lib/actions";
+import { savePlatformSettings, removeLogo } from "@/lib/actions";
+import { useFirebaseStorage } from "@/hooks/use-firebase-storage";
 
 export default function TeacherSettingsPage() {
     const { platformConfig } = useContext(AppDataContext);
     const { toast } = useToast();
     const router = useRouter();
+    const { uploadFile: uploadStorageFile, isUploading: isUploadingStorage, error: uploadError } = useFirebaseStorage();
+
 
     const [isSavingSettings, setIsSavingSettings] = useState(false);
     const [isRemoving, setIsRemoving] = useState<string | null>(null);
-    const [isUploading, setIsUploading] = useState<string | null>(null);
+    const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+
 
     const [fixedDepositRate, setFixedDepositRate] = useState<number | string>('');
     const [loanInterestRate, setLoanInterestRate] = useState<number | string>('');
@@ -60,37 +64,24 @@ export default function TeacherSettingsPage() {
         if (!file) return;
 
         const uploadKey = type === 'platform' ? 'platform' : `sponsor_${index}`;
-        setIsUploading(uploadKey);
+        setUploadingKey(uploadKey);
 
-        try {
-            const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-            if (file.size > MAX_FILE_SIZE) {
-                throw new Error("檔案大小不能超過 2MB。");
+        const path = `logos/${uploadKey}_${Date.now()}`;
+        const url = await uploadStorageFile(file, path);
+        
+        setUploadingKey(null);
+
+        if (url) {
+            if (type === 'platform') {
+                setLogoPreview(url);
+            } else if (index !== undefined) {
+                const newPreviews = [...sponsorPreviews];
+                newPreviews[index] = url;
+                setSponsorPreviews(newPreviews);
             }
-            
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('path', `logos/${uploadKey}_${Date.now()}`);
-
-            const result = await uploadFile(formData);
-            
-            if (result.success && result.url) {
-                if (type === 'platform') {
-                    setLogoPreview(result.url);
-                } else if (index !== undefined) {
-                    const newPreviews = [...sponsorPreviews];
-                    newPreviews[index] = result.url;
-                    setSponsorPreviews(newPreviews);
-                }
-                toast({ title: "圖片已上傳", description: "預覽圖已更新。請記得點擊下方的「儲存設定」以保存變更。" });
-            } else {
-                throw new Error(result.error || '上傳失敗');
-            }
-
-        } catch (error: any) {
-            toast({ title: "上傳失敗", description: error.message, variant: "destructive" });
-        } finally {
-            setIsUploading(null);
+            toast({ title: "圖片已上傳", description: "預覽圖已更新。請記得點擊下方的「儲存設定」以保存變更。" });
+        } else {
+             toast({ title: "上傳失敗", description: uploadError || "發生未知錯誤", variant: "destructive" });
         }
     };
 
@@ -207,9 +198,9 @@ export default function TeacherSettingsPage() {
                         )}
                     </div>
                     <div className="space-y-2">
-                        <Input id="logo-upload" type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'platform')} className="hidden" disabled={!!isUploading} />
-                        <Label htmlFor="logo-upload" className={buttonVariants({ variant: "outline", disabled: !!isUploading })}>
-                            {isUploading === 'platform' ? <Loader2 className="mr-2 animate-spin"/> : <UploadCloud className="mr-2"/>} 
+                        <Input id="logo-upload" type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'platform')} className="hidden" disabled={!!uploadingKey} />
+                        <Label htmlFor="logo-upload" className={buttonVariants({ variant: "outline", disabled: !!uploadingKey })}>
+                            {uploadingKey === 'platform' ? <Loader2 className="mr-2 animate-spin"/> : <UploadCloud className="mr-2"/>} 
                              上傳圖片
                         </Label>
                         {logoPreview && (
@@ -238,9 +229,9 @@ export default function TeacherSettingsPage() {
                             </div>
                              <div className="space-y-2">
                                 <Label>Logo {index + 1}</Label>
-                                <Input id={`sponsor-upload-${index}`} type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'sponsor', index)} className="hidden" disabled={!!isUploading} />
-                                <Label htmlFor={`sponsor-upload-${index}`} className={buttonVariants({ variant: "outline", size: "sm", disabled: !!isUploading })}>
-                                     {isUploading === `sponsor_${index}` ? <Loader2 className="mr-2 animate-spin"/> : <UploadCloud className="mr-2"/>}
+                                <Input id={`sponsor-upload-${index}`} type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'sponsor', index)} className="hidden" disabled={!!uploadingKey} />
+                                <Label htmlFor={`sponsor-upload-${index}`} className={buttonVariants({ variant: "outline", size: "sm", disabled: !!uploadingKey })}>
+                                     {uploadingKey === `sponsor_${index}` ? <Loader2 className="mr-2 animate-spin"/> : <UploadCloud className="mr-2"/>}
                                      上傳
                                 </Label>
                                 {sponsorPreviews[index] && (
@@ -255,7 +246,7 @@ export default function TeacherSettingsPage() {
                 </CardContent>
             </Card>
              <div className="flex justify-end">
-                <Button onClick={handleSaveSettings} disabled={isSavingSettings || !!isUploading}>
+                <Button onClick={handleSaveSettings} disabled={isSavingSettings || !!uploadingKey}>
                     {isSavingSettings && <Loader2 className="mr-2 animate-spin" />}
                     儲存設定
                 </Button>
