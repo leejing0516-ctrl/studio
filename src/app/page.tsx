@@ -29,14 +29,21 @@ export default function HomePage() {
 
   const sortedTeachers = useMemo(() => {
     if (!allTeachers) return [];
-    return [...allTeachers]
-      .filter(t => t && t.sortOrder !== undefined)
-      .sort((a, b) => {
-        const orderA = a.sortOrder!;
-        const orderB = b.sortOrder!;
-        if (orderA !== orderB) {
-            return orderA - orderB;
+    return [...allTeachers].sort((a, b) => {
+        const orderA = a.sortOrder;
+        const orderB = b.sortOrder;
+
+        if (orderA !== undefined && orderB !== undefined) {
+            if (orderA !== orderB) {
+                return orderA - orderB;
+            }
+        } else if (orderA !== undefined) {
+            return -1; // a has order, b does not, so a comes first
+        } else if (orderB !== undefined) {
+            return 1;  // b has order, a does not, so b comes first
         }
+
+        // If sortOrder is the same or both are undefined, sort by name
         return (a.name || '').localeCompare(b.name || '');
     });
   }, [allTeachers]);
