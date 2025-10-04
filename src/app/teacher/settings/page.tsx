@@ -68,14 +68,11 @@ export default function TeacherSettingsPage() {
                 throw new Error("檔案大小不能超過 2MB。");
             }
             
-            const arrayBuffer = await file.arrayBuffer();
-            const path = `logos/${uploadKey}_${Date.now()}`;
-            
-            const result = await uploadFile({
-                fileBuffer: arrayBuffer,
-                contentType: file.type,
-                path: path
-            });
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('path', `logos/${uploadKey}_${Date.now()}`);
+
+            const result = await uploadFile(formData);
             
             if (result.success && result.url) {
                 if (type === 'platform') {
@@ -85,7 +82,7 @@ export default function TeacherSettingsPage() {
                     newPreviews[index] = result.url;
                     setSponsorPreviews(newPreviews);
                 }
-                toast({ title: "圖片已上傳", description: "請記得點擊下方的「儲存設定」以保存變更。" });
+                toast({ title: "圖片已上傳", description: "預覽圖已更新。請記得點擊下方的「儲存設定」以保存變更。" });
             } else {
                 throw new Error(result.error || '上傳失敗');
             }
@@ -104,7 +101,7 @@ export default function TeacherSettingsPage() {
         try {
             const result = await removeLogo({ type, index });
             if (result.success) {
-                toast({ title: "圖片已移除" });
+                toast({ title: "圖片已從資料庫移除" });
                 if (type === 'platform') {
                     setLogoPreview(null);
                 } else if (index !== undefined) {
@@ -216,7 +213,7 @@ export default function TeacherSettingsPage() {
                              上傳圖片
                         </Label>
                         {logoPreview && (
-                            <Button variant="link" size="sm" className="text-destructive h-auto p-0" onClick={() => handleRemoveLogo('platform')} disabled={isRemoving === 'platform'}>
+                            <Button variant="link" size="sm" className="text-destructive h-auto p-0 flex items-center gap-1" onClick={() => handleRemoveLogo('platform')} disabled={isRemoving === 'platform'}>
                                 {isRemoving === 'platform' ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
                                 移除目前 Logo
                             </Button>
@@ -247,7 +244,7 @@ export default function TeacherSettingsPage() {
                                      上傳
                                 </Label>
                                 {sponsorPreviews[index] && (
-                                    <Button variant="link" size="sm" className="text-destructive h-auto p-0" onClick={() => handleRemoveLogo('sponsor', index)} disabled={isRemoving === `sponsor_${index}`}>
+                                    <Button variant="link" size="sm" className="text-destructive h-auto p-0 flex items-center gap-1" onClick={() => handleRemoveLogo('sponsor', index)} disabled={isRemoving === `sponsor_${index}`}>
                                         {isRemoving === `sponsor_${index}` ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
                                         移除
                                     </Button>
