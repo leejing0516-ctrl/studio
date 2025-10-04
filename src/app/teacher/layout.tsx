@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import Link from "next/link";
@@ -55,7 +56,7 @@ export default function TeacherLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { toast } = useToast();
+  const { toast, dismiss } = useToast();
   const { teachers, setTeachers, platformConfig, setPlatformConfig, isLoading } = useContext(AppDataContext);
 
   const [teacherId, setTeacherId] = useState<string | null>(null);
@@ -88,6 +89,7 @@ export default function TeacherLayout({
   }, [router, pathname]); // Depend on pathname to re-check on navigation
   
   const handleLogout = () => {
+    dismiss();
     localStorage.removeItem('teacherName');
     localStorage.removeItem('teacherRole');
     localStorage.removeItem('teacherClassIds');
