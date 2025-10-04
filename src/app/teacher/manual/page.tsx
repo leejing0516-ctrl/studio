@@ -45,6 +45,8 @@ const SimpleRenderer = ({ content }: { content: string }) => {
                  if (line.startsWith('![') && line.includes('](') && line.endsWith(')')) {
                     const alt = line.substring(2, line.indexOf(']('));
                     const src = line.substring(line.indexOf('](') + 2, line.length - 1);
+                    // Use a standard <img> tag for external images to avoid Next.js Image optimization issues without proper config.
+                    // eslint-disable-next-line @next/next/no-img-element
                     return <img key={index} src={src} alt={alt} className="my-4 rounded-md border shadow-sm" />;
                 }
                 if (line.trim() === '---') {
