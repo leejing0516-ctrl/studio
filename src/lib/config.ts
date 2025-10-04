@@ -11,4 +11,4 @@
  * To change the logo, simply replace the content of this string
  * with the new image URL.
  */
-export const LOGO_URL = "https://firebasestorage.googleapis.com/v0/b/firebase-studiop-app-2.appspot.com/o/assets%2Flogo.png?alt=media&token=68233596-f18c-4573-8ac1-cea212d1b585";
+export const LOGO_URL = "https://i.imgur.com/rS2Tjso.png";
