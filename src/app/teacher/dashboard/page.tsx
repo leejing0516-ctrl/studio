@@ -46,7 +46,7 @@ import { doc, writeBatch, Transaction, setDoc, deleteDoc, collection, getDocs, q
 import { db } from "@/lib/firebase";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, subDays, isAfter } from "date-fns";
 
 const CONFIRM_DELETE_TEXT = "我確定要刪除";
 
@@ -180,23 +180,26 @@ export default function TeacherDashboardPage() {
         if (!historySelectedTeacherId || !historySelectedClassId) {
             return { records: [], studentTotals: new Map(), classSummary: [] };
         }
-    
+
+        const twentyDaysAgo = subDays(new Date(), 20);
+
         const targetTeacher = teachers.find(t => t.id === historySelectedTeacherId);
         if (!targetTeacher) {
             return { records: [], studentTotals: new Map(), classSummary: [] };
         }
-    
+
         const records: (PointRecord & { studentName: string })[] = [];
         const studentTotals = new Map<string, { name: string, total: number }>();
-    
+
         const classStudents = students.filter(s => s.classId === historySelectedClassId);
-        
+
         const classSummary = classStudents.map(student => {
             let totalAwarded = 0;
             let totalDeducted = 0;
 
             (student.pointHistory || []).forEach(record => {
-                if (record.teacherId === historySelectedTeacherId) {
+                const recordDate = parseISO(record.date);
+                if (record.teacherId === historySelectedTeacherId && isAfter(recordDate, twentyDaysAgo)) {
                     records.push({ ...record, studentName: student.name });
                     if (record.points > 0) {
                         totalAwarded += record.points;
@@ -205,7 +208,7 @@ export default function TeacherDashboardPage() {
                     }
                 }
             });
-            
+
             const netTotal = totalAwarded + totalDeducted;
             if (netTotal !== 0) {
                 studentTotals.set(student.id, { name: student.name, total: netTotal });
@@ -218,10 +221,10 @@ export default function TeacherDashboardPage() {
                 deducted: totalDeducted,
                 net: netTotal,
             };
-        });
-    
+        }).filter(summary => summary.awarded !== 0 || summary.deducted !== 0);
+
         records.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-    
+
         return { records, studentTotals, classSummary };
     }, [students, historySelectedTeacherId, historySelectedClassId, teachers]);
     
@@ -1193,7 +1196,7 @@ export default function TeacherDashboardPage() {
                                         <CardHeader>
                                             <CardTitle>班級發放總表</CardTitle>
                                             <CardDescription>
-                                                {teachers.find(t=>t.id === historySelectedTeacherId)?.name} 老師在 {classes.find(c=>c.id === historySelectedClassId)?.name} 的點數紀錄。
+                                                {teachers.find(t=>t.id === historySelectedTeacherId)?.name} 老師在 {classes.find(c=>c.id === historySelectedClassId)?.name} 班級，最近 20 天的點數紀錄。
                                             </CardDescription>
                                         </CardHeader>
                                         <CardContent>
@@ -1219,7 +1222,7 @@ export default function TeacherDashboardPage() {
                                                             </TableRow>
                                                         )) : (
                                                             <TableRow>
-                                                                <TableCell colSpan={4} className="h-24 text-center">此班級尚無相關點數紀錄。</TableCell>
+                                                                <TableCell colSpan={4} className="h-24 text-center">此條件下尚無相關點數紀錄。</TableCell>
                                                             </TableRow>
                                                         )}
                                                     </TableBody>
