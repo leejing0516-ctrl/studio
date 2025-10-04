@@ -34,7 +34,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -1155,7 +1154,7 @@ export default function TeacherDashboardPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle>點數歷史查詢</CardTitle>
-                            <CardDescription>查詢指定老師在特定班級的點數發放與扣除總計。</CardDescription>
+                            <CardDescription>查詢指定老師在特定班級的點數發放與扣除總計 (最近 20 天)。</CardDescription>
                         </CardHeader>
                         <CardContent>
                              <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">

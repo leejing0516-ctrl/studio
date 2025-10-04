@@ -4,7 +4,7 @@
 import { createContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import type { Student, Reward, Class, Teacher, Stock, PlatformConfig } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { collection, doc, runTransaction as firestoreRunTransaction, Transaction, query, onSnapshot, Unsubscribe, setDoc, writeBatch, getDocs, addDoc } from 'firebase/firestore';
+import { collection, doc, runTransaction as firestoreRunTransaction, Transaction, query, onSnapshot, Unsubscribe, setDoc, writeBatch, getDocs, addDoc, getCountFromServer } from 'firebase/firestore';
 import { students as initialStudents } from '@/lib/placeholder-data';
 
 type SetStateActionWithFunction<S> = S | ((prevState: S) => S);
@@ -101,8 +101,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         if (item._docId) { // Existing item
             const { _docId, ...itemData } = item;
             batch.update(doc(db, collectionName, _docId), itemData);
-        } else { // New item
-            const newDocRef = doc(db, collectionName);
+        } else { // New item - now uses a random doc ID
+            const newDocRef = doc(collection(db, collectionName));
             batch.set(newDocRef, item);
         }
     }
@@ -154,23 +154,27 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         const unsubscribe = onSnapshot(q, async (querySnapshot) => {
             // EMERGENCY DATA RESTORE for students
             if (collectionName === 'students' && querySnapshot.empty && initialStudents.length > 0) {
-                console.warn("CRITICAL: Student collection is empty. Attempting emergency restore from placeholder data...");
-                try {
-                    const batch = writeBatch(db);
-                    initialStudents.forEach(student => {
-                        const { _docId, ...studentData } = student as any;
-                        const newStudentRef = doc(db, "students", `${student.classId}-${student.id}`);
-                        batch.set(newStudentRef, studentData);
-                    });
-                    await batch.commit();
-                    console.log("EMERGENCY RESTORE: Successfully restored students from placeholder data. The page will now reflect the restored data.");
-                    // Snapshot listener will be re-triggered with the new data, so we can just return here.
-                    return;
-                } catch (error) {
-                    console.error("EMERGENCY RESTORE: Failed to restore student data:", error);
+                const hasRestored = sessionStorage.getItem('emergency_restored_students');
+                if (!hasRestored) {
+                    console.warn("CRITICAL: Student collection is empty. Attempting emergency restore from placeholder data...");
+                    try {
+                        const batch = writeBatch(db);
+                        initialStudents.forEach(student => {
+                            const { _docId, ...studentData } = student as any;
+                            const newStudentRef = doc(collection(db, "students")); // Let Firestore generate ID
+                            batch.set(newStudentRef, studentData);
+                        });
+                        await batch.commit();
+                        sessionStorage.setItem('emergency_restored_students', 'true');
+                        console.log("EMERGENCY RESTORE: Successfully restored students from placeholder data. The page will now reflect the restored data.");
+                        // Snapshot listener will be re-triggered with the new data, so we can just return here.
+                        return;
+                    } catch (error) {
+                        console.error("EMERGENCY RESTORE: Failed to restore student data:", error);
+                    }
                 }
             }
-
+            
             const data: (T & { _docId: string })[] = [];
             querySnapshot.forEach(doc => {
                 data.push({ ...doc.data() as T, _docId: doc.id });
