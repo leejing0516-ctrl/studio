@@ -84,13 +84,13 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const handleRunTransaction = useCallback(async (updateFunction: (transaction: Transaction) => Promise<any>) => {
     return firestoreRunTransaction(db, updateFunction);
   }, []);
-
+  
   const createSetter = <T extends { id: string; _docId?: string }>(
     collectionName: string,
     state: T[],
     setter: React.Dispatch<React.SetStateAction<T[]>>
   ) => async (action: SetStateActionWithFunction<T[]>) => {
-      
+    
     const newState = typeof action === 'function' ? action(state) : action;
     setter(newState);
 
@@ -103,18 +103,19 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         return item._docId || item.id;
     }
       
+    const newDocIds = new Set<string>();
+
     newState.forEach((item: any) => {
         const docId = getDocId(item);
+        newDocIds.add(docId);
         const { _docId, ...itemData } = item;
         const itemRef = doc(db, collectionName, docId);
         batch.set(itemRef, itemData, { merge: true });
     });
       
-    const newStateDocIds = new Set(newState.map(getDocId));
-      
     state.forEach((item: any) => {
         const docId = getDocId(item);
-        if (!newStateDocIds.has(docId)) {
+        if (!newDocIds.has(docId)) {
             const itemRef = doc(db, collectionName, docId);
             batch.delete(itemRef);
         }
@@ -159,11 +160,11 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             querySnapshot.forEach(doc => {
               const docData = doc.data();
               if (collectionName === 'students') {
-                  // For students, the doc.id is `classId-id`. We keep `id` as the student's own ID.
-                  // The Firestore doc ID is stored in _docId for update/delete operations.
+                  // For students, preserve the original student `id` (student number)
+                  // and store the Firestore document ID separately in `_docId`.
                   data.push({ ...docData, _docId: doc.id });
               } else {
-                  // For other collections, the doc.id is the actual id.
+                  // For other collections, the Firestore doc.id is the primary `id`.
                   data.push({ ...(doc.data() as T), id: doc.id, _docId: doc.id });
               }
             });

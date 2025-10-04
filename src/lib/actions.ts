@@ -68,17 +68,14 @@ export const redeemRewardTransaction = async ({
 };
 
 export const useRewardTransaction = async ({
-    studentId,
-    classId,
+    studentDocId,
     redemptionId,
 }: {
-    studentId: string;
-    classId: string;
+    studentDocId: string;
     redemptionId: string;
 }) => {
     try {
         await runTransaction(db, async (transaction) => {
-            const studentDocId = `${classId}-${studentId}`;
             const studentRef = doc(db, "students", studentDocId);
             const studentDoc = await transaction.get(studentRef);
 
