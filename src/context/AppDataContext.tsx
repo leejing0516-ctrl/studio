@@ -16,11 +16,6 @@ interface AppDataContextType {
   isLoading: boolean;
   isMarketOpen: boolean;
   runTransaction: (updateFunction: (transaction: Transaction) => Promise<any>) => Promise<any>;
-  setStudents: (students: Student[]) => Promise<void>;
-  setRewards: (rewards: Reward[]) => Promise<void>;
-  setStocks: (stocks: Stock[]) => Promise<void>;
-  setClasses: (classes: Class[]) => Promise<void>;
-  setTeachers: (teachers: Teacher[]) => Promise<void>;
   setPlatformConfig: (config: Partial<PlatformConfig>) => Promise<void>;
 }
 
@@ -34,11 +29,6 @@ const defaultState: AppDataContextType = {
   isLoading: true,
   isMarketOpen: false,
   runTransaction: async () => {},
-  setStudents: async () => {},
-  setRewards: async () => {},
-  setStocks: async () => {},
-  setClasses: async () => {},
-  setTeachers: async () => {},
   setPlatformConfig: async () => {},
 };
 
@@ -90,11 +80,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const allLoaded = Object.values(loadingStates).every(state => state === false);
-    if (!allLoaded) {
-        setIsLoading(true);
-    } else {
-        setIsLoading(false);
-    }
+    setIsLoading(!allLoaded);
   }, [loadingStates]);
 
   useEffect(() => {
@@ -109,14 +95,13 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const data: T[] = [];
             querySnapshot.forEach(doc => {
-              // Ensure the document ID is part of the object
               data.push({ ...doc.data(), id: doc.id } as T);
             });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
         }, (error) => {
             console.error(`Error fetching real-time ${collectionName}:`, error);
-            setLoadingStates(prev => ({...prev, [stateKey]: false})); // Still mark as loaded to avoid infinite loading
+            setLoadingStates(prev => ({...prev, [stateKey]: false}));
         });
         return unsubscribe;
     };
@@ -136,7 +121,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
         }, (error) => {
             console.error(`Error fetching real-time doc ${docPath.join('/')}:`, error);
-            setLoadingStates(prev => ({...prev, [stateKey]: false})); // Still mark as loaded
+            setLoadingStates(prev => ({...prev, [stateKey]: false}));
         });
         return unsubscribe;
     };
@@ -169,13 +154,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         isLoading,
         isMarketOpen,
         runTransaction: handleRunTransaction,
-        // The following setters are for convenience but may not be needed if all writes go through transactions
-        // For now, they are empty promises. In a real app, they would write to Firestore.
-        setStudents: async () => {},
-        setRewards: async () => {},
-        setStocks: async () => {},
-        setClasses: async () => {},
-        setTeachers: async () => {},
         setPlatformConfig: handleSetPlatformConfig,
     }}>
       {children}
