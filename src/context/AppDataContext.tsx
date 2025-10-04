@@ -4,7 +4,7 @@
 import { createContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import type { Student, Reward, Class, Teacher, Stock, PlatformConfig } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { collection, doc, runTransaction as firestoreRunTransaction, Transaction, query, onSnapshot, Unsubscribe, setDoc, writeBatch, getDocs, deleteDoc } from 'firebase/firestore';
+import { collection, doc, runTransaction as firestoreRunTransaction, Transaction, query, onSnapshot, Unsubscribe, setDoc, writeBatch, getDocs, addDoc } from 'firebase/firestore';
 
 type SetStateActionWithFunction<S> = S | ((prevState: S) => S);
 
@@ -95,39 +95,49 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     setter(currentState);
 
     const batch = writeBatch(db);
-    const newDocKeys = new Set<string>();
+    const existingDocIds = new Set<string>();
 
     for (const item of currentState) {
-        let docId: string;
+        const itemData: any = { ...item };
         
         if (item._docId) {
-            docId = item._docId;
-        } else if (collectionName === 'students') {
-            const student = item as any as Student;
-            if (!student.classId || !student.id) {
-                console.error("Attempted to save a student without classId or student id", student);
-                continue;
-            }
-            docId = `${student.classId}-${student.id}`;
+             existingDocIds.add(item._docId);
+             delete itemData._docId;
+             const itemRef = doc(db, collectionName, item._docId);
+             batch.set(itemRef, itemData, { merge: true });
         } else {
-            docId = item.id;
+             // This is a new item, let Firestore generate the ID
+             delete itemData.id;
+             delete itemData._docId;
+             const newDocRef = doc(collection(db, collectionName));
+             batch.set(newDocRef, itemData);
         }
-
-        const itemData: any = { ...item };
-        delete itemData._docId; 
-
-        newDocKeys.add(docId);
-        const itemRef = doc(db, collectionName, docId);
-        batch.set(itemRef, itemData, { merge: true });
     }
       
-    const oldDocsQuery = query(collection(db, collectionName));
-    const oldDocsSnapshot = await getDocs(oldDocsQuery);
-    oldDocsSnapshot.forEach(doc => {
-        if (!newDocKeys.has(doc.id)) {
-            batch.delete(doc.ref);
+    const allDocsInDB = await getDocs(query(collection(db, collectionName)));
+    allDocsInDB.forEach(doc => {
+        if (!existingDocIds.has(doc.id)) {
+            let shouldKeep = false;
+            // Check if the doc from DB is actually represented in the new state, but just didn't have a _docId yet.
+            // This is a safeguard against race conditions on initial load.
+            if (currentState.some(item => !item._docId && item.id === doc.data().id)) { // weak check, relies on 'id' property
+              shouldKeep = true;
+            }
+            if(!shouldKeep) {
+              // This is a temporary guard to prevent deleting all students if something goes wrong.
+              // In a real scenario, a more robust check is needed.
+              if (collectionName === 'students' && currentState.length > 0) {
+                 const currentStudentDoc = doc.data();
+                 if (!currentState.find(s => s.id === currentStudentDoc.id && s.classId === currentStudentDoc.classId)) {
+                    batch.delete(doc.ref);
+                 }
+              } else if (collectionName !== 'students') {
+                 batch.delete(doc.ref);
+              }
+            }
         }
     });
+
 
     try {
         await batch.commit();
@@ -170,10 +180,13 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             const data: any[] = [];
             querySnapshot.forEach(doc => {
                 const docData = doc.data();
-                if (collectionName === 'students') {
-                     data.push({ ...docData, _docId: doc.id });
+                // Crucially, we assign Firestore's doc.id to a unique _docId property,
+                // and keep the object's original 'id' (like student number) untouched.
+                // For collections other than students, their primary id is the doc id.
+                 if (collectionName === 'students') {
+                    data.push({ ...docData, _docId: doc.id });
                 } else {
-                     data.push({ ...docData, id: doc.id, _docId: doc.id });
+                    data.push({ ...docData, id: doc.id, _docId: doc.id });
                 }
             });
             setter(data);

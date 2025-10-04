@@ -42,7 +42,7 @@ import { AppDataContext } from "@/context/AppDataContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Papa from "papaparse";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
-import { doc, writeBatch, Transaction, setDoc, deleteDoc } from "firebase/firestore";
+import { doc, writeBatch, Transaction, setDoc, deleteDoc, collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -337,7 +337,7 @@ export default function TeacherDashboardPage() {
     };
 
     const handleDeleteStudent = async () => {
-        if (!studentToDelete) return;
+        if (!studentToDelete || !studentToDelete._docId) return;
         await setStudents(students.filter(s => s._docId !== studentToDelete._docId));
         toast({
             title: "學生已刪除",
@@ -454,22 +454,22 @@ export default function TeacherDashboardPage() {
     };
 
     const handleDeleteTeacher = async () => {
-        if (!teacherToDelete) return;
-        await setTeachers(prev => prev.filter(t => t.id !== teacherToDelete.id));
+        if (!teacherToDelete || !teacherToDelete._docId) return;
+        await setTeachers(prev => prev.filter(t => t._docId !== teacherToDelete._docId));
         toast({ title: "教師已刪除", variant: "destructive" });
         setTeacherToDelete(null);
     };
 
     const handleAllocatePoints = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!teacherToAllocate || !runTransaction) return;
+        if (!teacherToAllocate || !runTransaction || !teacherToAllocate._docId) return;
 
         const formData = new FormData(event.currentTarget);
         const amount = Number(formData.get('amount'));
         
         await runTransaction(async (transaction: Transaction) => {
             const configRef = doc(db, 'config', 'main');
-            const teacherRef = doc(db, 'teachers', teacherToAllocate._docId!);
+            const teacherRef = doc(db, 'teachers', teacherToAllocate!._docId!);
             
             const [configDoc, teacherDoc] = await Promise.all([
                 transaction.get(configRef),
@@ -524,7 +524,7 @@ export default function TeacherDashboardPage() {
     };
 
     const handleDeleteClass = async () => {
-        if (!classToDelete) return;
+        if (!classToDelete || !classToDelete._docId) return;
         if (students.some(s => s.classId === classToDelete.id)) {
             toast({ title: "刪除失敗", description: "此班級中仍有學生，無法刪除。", variant: "destructive" });
             setConfirmDeleteInput("");
@@ -539,7 +539,7 @@ export default function TeacherDashboardPage() {
             return t;
         }));
         
-        await setClasses(prev => prev.filter(c => c.id !== classToDelete.id));
+        await setClasses(prev => prev.filter(c => c._docId !== classToDelete._docId));
 
         toast({ title: "班級已刪除", variant: "destructive" });
         
@@ -552,10 +552,10 @@ export default function TeacherDashboardPage() {
             toast({ title: "操作無效", description: "教師資訊不完整，請重新登入。", variant: "destructive" });
             return;
         }
-        if (points === 0) return;
+        if (points === 0 || !student._docId) return;
 
         const currentOperator = teachers.find(t => t.id === teacherId);
-        if (!currentOperator) {
+        if (!currentOperator || !currentOperator._docId) {
             toast({ title: "操作無效", description: "找不到您的教師資料。", variant: "destructive" });
             return;
         }
@@ -626,7 +626,8 @@ export default function TeacherDashboardPage() {
     };
     
     const handleAwardPoints = async (student: Student) => {
-        const pointsStr = pointInputs[student._docId!];
+        if (!student._docId) return;
+        const pointsStr = pointInputs[student._docId];
         if (!pointsStr) return;
         const points = parseInt(pointsStr, 10);
         
@@ -694,6 +695,7 @@ export default function TeacherDashboardPage() {
     };
 
     const handleApproveRewardUse = async (student: Student, rewardItem: RedeemedRewardItem) => {
+        if (!student._docId) return;
         await setStudents(prev => prev.map(s => {
             if (s._docId === student._docId) {
                 const updatedRewards = (s.redeemedRewards || []).filter(r => r.redemptionId !== rewardItem.redemptionId);
@@ -705,7 +707,7 @@ export default function TeacherDashboardPage() {
     };
     
     const handleProcessLoan = async (status: 'active' | 'rejected') => {
-        if (!loanToProcess || !teacherId) return;
+        if (!loanToProcess || !teacherId || !loanToProcess.student._docId) return;
         const { student, loan } = loanToProcess;
 
         try {
@@ -718,7 +720,7 @@ export default function TeacherDashboardPage() {
                     const currentOperatorId = impersonatorId || teacherId;
                     const operator = teachers.find(t => t.id === currentOperatorId);
 
-                    if (!operator) throw new Error("找不到操作者資訊。");
+                    if (!operator || !operator._docId) throw new Error("找不到操作者資訊。");
 
                     if (operator.role === 'admin') {
                         sourceRef = doc(db, 'config', 'main');
@@ -726,7 +728,7 @@ export default function TeacherDashboardPage() {
                         sourceFunds = ((sourceDoc.data() as any).schoolFunds || 0);
                         sourceField = 'schoolFunds';
                     } else {
-                        sourceRef = doc(db, 'teachers', operator._docId!);
+                        sourceRef = doc(db, 'teachers', operator._docId);
                          const sourceDoc = await transaction.get(sourceRef);
                         sourceFunds = ((sourceDoc.data() as any).pointBalance || 0);
                         sourceField = 'pointBalance';
@@ -764,7 +766,7 @@ export default function TeacherDashboardPage() {
     };
     
     const handleApproveChallenge = async () => {
-        if (!challengeToApprove || !teacherId) return;
+        if (!challengeToApprove || !teacherId || !challengeToApprove.student._docId) return;
         const { student, challenge } = challengeToApprove;
         const challengeDetails = platformConfig?.challenges?.find(c => c.id === challenge.challengeId);
         if (!challengeDetails) {
@@ -817,18 +819,38 @@ export default function TeacherDashboardPage() {
         }
     };
 
-    const handleClearRedeemedRewards = async () => {
+    const handleClearDuplicateStudents = async () => {
         if (confirmMaintenanceDelete !== '我確定要刪除') {
             toast({ title: "確認文字不符", description: "請輸入正確的確認文字。", variant: "destructive" });
             return;
         }
         setIsMaintenanceProcessing(true);
         try {
-            await setStudents(prev => prev.map(student => ({ ...student, redeemedRewards: [] })));
-            toast({ title: "操作成功", description: "所有學生的獎勵兌換紀錄都已被清除。" });
+            const studentsCollectionRef = collection(db, "students");
+            const studentsSnapshot = await getDocs(studentsCollectionRef);
+            const batch = writeBatch(db);
+            let deletedCount = 0;
+
+            studentsSnapshot.forEach(doc => {
+                // The signature of an erroneously created student is that its doc ID is `classId-studentId`
+                const docId = doc.id;
+                const studentData = doc.data() as Student;
+                if (docId === `${studentData.classId}-${studentData.id}`) {
+                    batch.delete(doc.ref);
+                    deletedCount++;
+                }
+            });
+
+            if (deletedCount > 0) {
+                await batch.commit();
+                toast({ title: "操作成功", description: `已成功清除 ${deletedCount} 筆重複的學生資料。` });
+            } else {
+                toast({ title: "無需操作", description: "未找到任何格式錯誤的重複學生資料。" });
+            }
+
         } catch (error) {
             toast({ title: "操作失敗", description: "清除資料時發生錯誤。", variant: "destructive" });
-            console.error("Failed to clear redeemed rewards:", error);
+            console.error("Failed to clear duplicate students:", error);
         } finally {
             setIsMaintenanceProcessing(false);
             setConfirmMaintenanceDelete('');
@@ -1454,11 +1476,11 @@ export default function TeacherDashboardPage() {
                                 <Card className="bg-destructive/5 p-4">
                                     <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                                         <div>
-                                            <h4 className="font-semibold">清除所有獎勵兌換紀錄</h4>
+                                            <h4 className="font-semibold">清除前綴式重複學生資料</h4>
                                             <p className="text-sm text-muted-foreground mt-1">
-                                                此操作將刪除所有學生的「我的收藏」和「待審核使用」中的所有獎勵紀錄。
+                                                此操作將刪除所有因為舊的錯誤邏輯而產生的、ID 為 `班級-學號` 格式的重複學生資料。
                                                 <br />
-                                                適用於解決因舊的、格式錯誤的兌換資料導致的重複渲染問題。
+                                                **建議：** 在執行此操作前，請確保系統已更新至最新版，以防問題再次發生。
                                             </p>
                                         </div>
                                         <AlertDialog>
@@ -1469,7 +1491,7 @@ export default function TeacherDashboardPage() {
                                                 <AlertDialogHeader>
                                                     <AlertDialogTitle>極度危險操作！</AlertDialogTitle>
                                                     <AlertDialogDescription>
-                                                        您確定要清除**所有學生**的獎勵兌換紀錄嗎？這將清空他們的收藏品和待審核請求。
+                                                        您確定要清除所有格式錯誤的重複學生資料嗎？此操作會刪除資料庫中 ID 格式為 `班級-學號` 的學生文件。
                                                         此操作無法復原。請輸入「<span className="font-bold text-destructive">我確定要刪除</span>」以確認。
                                                     </AlertDialogDescription>
                                                     <Input 
@@ -1480,7 +1502,7 @@ export default function TeacherDashboardPage() {
                                                 <AlertDialogFooter>
                                                     <AlertDialogCancel onClick={() => setConfirmMaintenanceDelete('')}>取消</AlertDialogCancel>
                                                     <AlertDialogAction
-                                                        onClick={handleClearRedeemedRewards}
+                                                        onClick={handleClearDuplicateStudents}
                                                         disabled={confirmMaintenanceDelete !== '我確定要刪除' || isMaintenanceProcessing}
                                                         className={buttonVariants({ variant: "destructive" })}
                                                     >
