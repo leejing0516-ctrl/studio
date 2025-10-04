@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useContext, useEffect, useMemo } from 'react';
@@ -15,8 +14,6 @@ import { StudentDataContext } from '@/context/StudentDataContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AppDataContext } from '@/context/AppDataContext';
 import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import type { Student } from '@/lib/types';
 
 
@@ -29,7 +26,7 @@ export default function HomePage() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const router = useRouter();
   const { toast, dismiss } = useToast();
-  const { classes, teachers, isLoading, platformConfig } = useContext(AppDataContext);
+  const { classes, teachers, students, isLoading, platformConfig } = useContext(AppDataContext);
   const { setStudentData } = useContext(StudentDataContext);
 
   const sortedTeachers = useMemo(() => {
@@ -57,11 +54,9 @@ export default function HomePage() {
     }
     
     try {
-        const studentDocRef = doc(db, 'students', `${classId}-${studentId}`);
-        const studentSnap = await getDoc(studentDocRef);
+        const student = students.find(s => s.classId === classId && s.id === studentId);
 
-        if (studentSnap.exists()) {
-            const student = studentSnap.data() as Student;
+        if (student) {
             if (student.password === studentPassword) {
                 toast({
                     title: "登入成功！",
@@ -298,3 +293,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
