@@ -46,13 +46,12 @@ import { db } from "@/lib/firebase";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { format, parseISO } from "date-fns";
-import { setStudents as saveStudents } from "@/lib/actions";
 
 const CONFIRM_DELETE_TEXT = "我確定要刪除";
 
 export default function TeacherDashboardPage() {
     const { 
-        students, 
+        students, setStudents,
         classes, 
         teachers,
         isLoading, platformConfig, runTransaction
@@ -284,7 +283,7 @@ export default function TeacherDashboardPage() {
             portfolio: [],
             pointHistory: [],
         };
-        await saveStudents([...students, newStudent]);
+        await setStudents([...students, newStudent]);
         setIsAddStudentDialogOpen(false);
         toast({
             title: "學生已新增",
@@ -303,7 +302,7 @@ export default function TeacherDashboardPage() {
             name: formData.get('name') as string,
         };
         
-        await saveStudents(students.map(s => (s.id === studentToEdit.id && s.classId === studentToEdit.classId) ? updatedStudent : s));
+        await setStudents(students.map(s => (s.id === studentToEdit.id && s.classId === studentToEdit.classId) ? updatedStudent : s));
         setIsEditStudentDialogOpen(false);
         toast({
             title: "學生資料已更新",
@@ -313,7 +312,7 @@ export default function TeacherDashboardPage() {
 
     const handleDeleteStudent = async () => {
         if (!studentToDelete) return;
-        await saveStudents(students.filter(s => !(s.id === studentToDelete.id && s.classId === studentToDelete.classId)));
+        await setStudents(students.filter(s => !(s.id === studentToDelete.id && s.classId === studentToDelete.classId)));
         toast({
             title: "學生已刪除",
             description: `${studentToDelete.name} 已被從班級中移除。`,
@@ -329,7 +328,7 @@ export default function TeacherDashboardPage() {
         const formData = new FormData(event.currentTarget);
         const newPassword = formData.get('new-password') as string;
 
-        await saveStudents(students.map(s => 
+        await setStudents(students.map(s => 
             (s.id === studentToResetPassword.id && s.classId === studentToResetPassword.classId)
             ? { ...s, password: newPassword }
             : s
@@ -370,7 +369,7 @@ export default function TeacherDashboardPage() {
         const existingStudentKeys = new Set(students.map(s => `${s.classId}-${s.id}`));
         const newStudents = parsedCsvData.filter(s => !existingStudentKeys.has(`${s.classId}-${s.id}`));
         
-        await saveStudents([...students, ...newStudents]);
+        await setStudents([...students, ...newStudents]);
 
         toast({
             title: `匯入完成`,
@@ -679,7 +678,7 @@ export default function TeacherDashboardPage() {
     };
 
     const handleApproveRewardUse = async (student: Student, rewardItem: RedeemedRewardItem) => {
-        await runTransaction(db, async (transaction) => {
+        await runTransaction(async (transaction) => {
             const studentRef = doc(db, 'students', `${student.classId}-${student.id}`);
             const studentDoc = await transaction.get(studentRef);
             if (!studentDoc.exists()) {
@@ -1681,3 +1680,5 @@ export default function TeacherDashboardPage() {
         </div>
     )
 }
+
+    
