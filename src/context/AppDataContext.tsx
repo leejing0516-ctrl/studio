@@ -18,6 +18,7 @@ interface AppDataContextType {
   teachers: Teacher[];
   setTeachers: (teachers: Teacher[]) => Promise<void>;
   platformConfig: PlatformConfig | null;
+  setPlatformConfig: (config: Partial<PlatformConfig>) => Promise<void>;
   isLoading: boolean;
   isMarketOpen: boolean;
   runTransaction: (updateFunction: (transaction: Transaction) => Promise<any>) => Promise<any>;
@@ -35,6 +36,7 @@ const defaultState: AppDataContextType = {
   teachers: [],
   setTeachers: async () => {},
   platformConfig: null,
+  setPlatformConfig: async () => {},
   isLoading: true,
   isMarketOpen: false,
   runTransaction: async () => {},
@@ -121,7 +123,11 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     });
     await batch;
   }
-
+  
+  const setPlatformConfig = async (config: Partial<PlatformConfig>) => {
+    const configRef = doc(db, 'config', 'main');
+    await setDoc(configRef, config, { merge: true });
+  }
 
   useEffect(() => {
     const allLoaded = Object.values(loadingStates).every(state => state === false);
@@ -201,6 +207,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         teachers,
         setTeachers,
         platformConfig,
+        setPlatformConfig,
         isLoading,
         isMarketOpen,
         runTransaction: handleRunTransaction,

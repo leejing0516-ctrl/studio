@@ -17,18 +17,18 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
-import { removeLogo, savePlatformSettings } from "@/lib/actions";
 import { useFirebaseStorage } from "@/hooks/use-firebase-storage";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function TeacherSettingsPage() {
-    const { platformConfig } = useContext(AppDataContext);
+    const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
     const { toast } = useToast();
     const router = useRouter();
-    const { uploadFile: uploadStorageFile, isUploading: isUploadingStorage, error: uploadError } = useFirebaseStorage();
+    const { uploadFile, isUploading, error: uploadError } = useFirebaseStorage();
 
 
     const [isSavingSettings, setIsSavingSettings] = useState(false);
-    const [isRemoving, setIsRemoving] = useState<string | null>(null);
     const [uploadingKey, setUploadingKey] = useState<string | null>(null);
 
 
@@ -67,7 +67,7 @@ export default function TeacherSettingsPage() {
         setUploadingKey(uploadKey);
 
         const path = `logos/${uploadKey}_${Date.now()}`;
-        const url = await uploadStorageFile(file, path);
+        const url = await uploadFile(file, path);
         
         setUploadingKey(null);
 
@@ -87,43 +87,33 @@ export default function TeacherSettingsPage() {
 
 
     const handleRemoveLogo = async (type: 'platform' | 'sponsor', index?: number) => {
-        const key = type === 'platform' ? 'platform' : `sponsor_${index}`;
-        setIsRemoving(key);
-        try {
-            const result = await removeLogo({ type, index });
-            if (result.success) {
-                toast({ title: "圖片已從資料庫移除" });
-                if (type === 'platform') {
-                    setLogoPreview(null);
-                } else if (index !== undefined) {
-                    const newPreviews = [...sponsorPreviews];
-                    newPreviews[index] = null;
-                    setSponsorPreviews(newPreviews);
-                }
-            } else {
-                throw new Error(result.error);
-            }
-        } catch (error: any) {
-             toast({ title: "移除失敗", description: error.message, variant: "destructive" });
-        } finally {
-            setIsRemoving(null);
+       if (type === 'platform') {
+            setLogoPreview(null);
+        } else if (index !== undefined) {
+            const newPreviews = [...sponsorPreviews];
+            newPreviews[index] = null;
+            setSponsorPreviews(newPreviews);
         }
+        toast({ title: "預覽已移除", description: "請儲存設定以讓變更生效。" });
     }
 
     const handleSaveSettings = async () => {
         setIsSavingSettings(true);
-        const result = await savePlatformSettings({
-            fixedDepositInterestRate: Number(fixedDepositRate) / 100,
-            loanInterestRate: Number(loanInterestRate) / 100,
-            platformLogoUrl: logoPreview,
-            sponsorLogoUrls: sponsorPreviews,
-        });
-        setIsSavingSettings(false);
-
-        if (result.success) {
+        try {
+            const configRef = doc(db, 'config', 'main');
+            await setDoc(configRef, {
+                fixedDepositInterestRate: Number(fixedDepositRate) / 100,
+                loanInterestRate: Number(loanInterestRate) / 100,
+                platformLogoUrl: logoPreview,
+                sponsorLogoUrls: sponsorPreviews,
+            }, { merge: true });
+            
             toast({ title: "設定已儲存", description: "平台設定已成功更新。" });
-        } else {
-            toast({ title: "儲存失敗", description: result.error || "儲存平台設定時發生錯誤。", variant: "destructive" });
+        } catch (error: any) {
+            console.error("Error saving settings:", error);
+            toast({ title: "儲存失敗", description: error.message || "儲存平台設定時發生錯誤。", variant: "destructive" });
+        } finally {
+            setIsSavingSettings(false);
         }
     };
 
@@ -196,8 +186,8 @@ export default function TeacherSettingsPage() {
                              上傳圖片
                         </Label>
                         {logoPreview && (
-                            <Button variant="link" size="sm" className="text-destructive h-auto p-0 flex items-center gap-1" onClick={() => handleRemoveLogo('platform')} disabled={isRemoving === 'platform'}>
-                                {isRemoving === 'platform' ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
+                            <Button variant="link" size="sm" className="text-destructive h-auto p-0 flex items-center gap-1" onClick={() => handleRemoveLogo('platform')} disabled={!!uploadingKey}>
+                                <Trash2 className="h-4 w-4" />
                                 移除目前 Logo
                             </Button>
                         )}
@@ -227,8 +217,8 @@ export default function TeacherSettingsPage() {
                                      上傳
                                 </Label>
                                 {sponsorPreviews[index] && (
-                                    <Button variant="link" size="sm" className="text-destructive h-auto p-0 flex items-center gap-1" onClick={() => handleRemoveLogo('sponsor', index)} disabled={isRemoving === `sponsor_${index}`}>
-                                        {isRemoving === `sponsor_${index}` ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
+                                    <Button variant="link" size="sm" className="text-destructive h-auto p-0 flex items-center gap-1" onClick={() => handleRemoveLogo('sponsor', index)} disabled={!!uploadingKey}>
+                                        <Trash2 className="h-4 w-4" />
                                         移除
                                     </Button>
                                 )}
