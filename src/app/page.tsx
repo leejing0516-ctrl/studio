@@ -106,15 +106,7 @@ export default function HomePage() {
     router.push('/teacher/dashboard');
   };
 
-  if (isLoading) {
-      return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
-            <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-            <p className="text-muted-foreground">正在從雲端同步資料...</p>
-        </div>
-      );
-  }
-
+  const isFormDisabled = isLoading || isLoggingIn;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
@@ -157,7 +149,7 @@ export default function HomePage() {
                 <CardContent className="space-y-4">
                 <div className="space-y-2">
                     <Label htmlFor="class-select">班級</Label>
-                    <Select onValueChange={(value) => setClassId(value)} value={classId} disabled={isLoggingIn}>
+                    <Select onValueChange={(value) => setClassId(value)} value={classId} disabled={isFormDisabled}>
                         <SelectTrigger id="class-select">
                             <SelectValue placeholder="請選擇班級" />
                         </SelectTrigger>
@@ -176,7 +168,7 @@ export default function HomePage() {
                     required 
                     value={studentId}
                     onChange={(e) => setStudentId(e.target.value)}
-                    disabled={isLoggingIn}
+                    disabled={isFormDisabled}
                     />
                 </div>
                 <div className="space-y-2">
@@ -188,14 +180,14 @@ export default function HomePage() {
                     required 
                     value={studentPassword}
                     onChange={(e) => setStudentPassword(e.target.value)}
-                    disabled={isLoggingIn}
+                    disabled={isFormDisabled}
                     />
                 </div>
                 </CardContent>
                 <CardFooter>
-                <Button type="submit" className="w-full" disabled={isLoggingIn}>
-                    {isLoggingIn ? <Loader2 className="animate-spin" /> : "登入"}
-                    {!isLoggingIn && <ArrowRight className="ml-2 h-4 w-4" />}
+                <Button type="submit" className="w-full" disabled={isFormDisabled}>
+                    {isLoading ? <Loader2 className="animate-spin" /> : isLoggingIn ? <Loader2 className="animate-spin" /> : <ArrowRight className="ml-2 h-4 w-4" />}
+                    {isLoading ? "同步資料中..." : isLoggingIn ? "登入中..." : "登入"}
                 </Button>
                 </CardFooter>
             </form>
@@ -218,7 +210,7 @@ export default function HomePage() {
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
                     <Label htmlFor="teacher-id">教師帳號</Label>
-                    <Select onValueChange={(value) => setTeacherId(value)} value={teacherId} disabled={isLoggingIn}>
+                    <Select onValueChange={(value) => setTeacherId(value)} value={teacherId} disabled={isFormDisabled}>
                         <SelectTrigger id="teacher-id-select">
                             <SelectValue placeholder="請選擇您的帳號" />
                         </SelectTrigger>
@@ -238,14 +230,14 @@ export default function HomePage() {
                         required 
                         value={teacherPassword}
                         onChange={(e) => setTeacherPassword(e.target.value)}
-                        disabled={isLoggingIn}
+                        disabled={isFormDisabled}
                     />
                     </div>
                 </CardContent>
                 <CardFooter>
-                <Button type="submit" className="w-full" variant="outline" disabled={isLoggingIn}>
-                    {isLoggingIn ? <Loader2 className="animate-spin" /> : "以老師身份進入"}
-                    {!isLoggingIn && <ArrowRight className="ml-2 h-4 w-4" />}
+                <Button type="submit" className="w-full" variant="outline" disabled={isFormDisabled}>
+                    {isLoading ? <Loader2 className="animate-spin" /> : isLoggingIn ? <Loader2 className="animate-spin" /> : <ArrowRight className="ml-2 h-4 w-4" />}
+                    {isLoading ? "同步資料中..." : isLoggingIn ? "登入中..." : "以老師身份進入"}
                 </Button>
                 </CardFooter>
             </form>
@@ -276,3 +268,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
