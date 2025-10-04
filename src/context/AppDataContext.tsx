@@ -16,7 +16,6 @@ interface AppDataContextType {
   isLoading: boolean;
   isMarketOpen: boolean;
   runTransaction: (updateFunction: (transaction: Transaction) => Promise<any>) => Promise<any>;
-  setPlatformConfig: (newConfig: Partial<PlatformConfig>) => Promise<void>;
 }
 
 const defaultState: AppDataContextType = {
@@ -29,7 +28,6 @@ const defaultState: AppDataContextType = {
   isLoading: true,
   isMarketOpen: false,
   runTransaction: async () => {},
-  setPlatformConfig: async () => {},
 };
 
 export const AppDataContext = createContext<AppDataContextType>(defaultState);
@@ -41,6 +39,15 @@ const checkMarketOpen = () => {
     return day >= 1 && day <= 5 && hour >= 9 && hour < 14;
 };
 
+type LoadingStates = {
+    students: boolean;
+    teachers: boolean;
+    classes: boolean;
+    rewards: boolean;
+    stocks: boolean;
+    config: boolean;
+}
+
 export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [students, setStudentsState] = useState<Student[]>([]);
   const [rewards, setRewardsState] = useState<Reward[]>([]);
@@ -51,38 +58,53 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isMarketOpen, setIsMarketOpen] = useState(checkMarketOpen());
 
+  const [loadingStates, setLoadingStates] = useState<LoadingStates>({
+      students: true,
+      teachers: true,
+      classes: true,
+      rewards: true,
+      stocks: true,
+      config: true,
+  });
+
   const handleRunTransaction = useCallback(async (updateFunction: (transaction: Transaction) => Promise<any>) => {
     return await runTransaction(db, updateFunction);
   }, []);
   
-  const handleSetPlatformConfig = useCallback(async (newConfig: Partial<PlatformConfig>) => {
-    const configDocRef = doc(db, 'config', 'main');
-    try {
-        await setDoc(configDocRef, newConfig, { merge: true });
-    } catch(e) {
-        console.error("Failed to update platform config:", e);
-        throw e; // Re-throw the error to be caught by the caller
+  useEffect(() => {
+    const allLoaded = Object.values(loadingStates).every(state => state === false);
+    if (!allLoaded) {
+        setIsLoading(true);
+    } else {
+        setIsLoading(false);
     }
-  }, []);
+  }, [loadingStates]);
 
   useEffect(() => {
-    setIsLoading(true);
     const subscriptions: Unsubscribe[] = [];
 
-    const setupSubscription = <T,>(collectionName: string, setter: React.Dispatch<React.SetStateAction<T[]>>) => {
+    const setupSubscription = <T,>(
+        collectionName: string, 
+        setter: React.Dispatch<React.SetStateAction<T[]>>,
+        stateKey: keyof LoadingStates
+    ) => {
         const q = query(collection(db, collectionName));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const data = querySnapshot.docs.map(doc => doc.data() as T);
             setter(data);
-            setIsLoading(false);
+            setLoadingStates(prev => ({...prev, [stateKey]: false}));
         }, (error) => {
             console.error(`Error fetching real-time ${collectionName}:`, error);
-            setIsLoading(false);
+            setLoadingStates(prev => ({...prev, [stateKey]: false})); // Still mark as loaded to avoid infinite loading
         });
         return unsubscribe;
     };
     
-    const setupDocSubscription = <T,>(docPath: string[], setter: React.Dispatch<React.SetStateAction<T | null>>) => {
+    const setupDocSubscription = <T,>(
+        docPath: string[], 
+        setter: React.Dispatch<React.SetStateAction<T | null>>,
+        stateKey: keyof LoadingStates
+    ) => {
         const docRef = doc(db, ...docPath);
         const unsubscribe = onSnapshot(docRef, (docSnap) => {
             if (docSnap.exists()) {
@@ -90,20 +112,20 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             } else {
                 setter(null);
             }
-            setIsLoading(false);
+            setLoadingStates(prev => ({...prev, [stateKey]: false}));
         }, (error) => {
             console.error(`Error fetching real-time doc ${docPath.join('/')}:`, error);
-            setIsLoading(false);
+            setLoadingStates(prev => ({...prev, [stateKey]: false})); // Still mark as loaded
         });
         return unsubscribe;
     };
 
-    subscriptions.push(setupSubscription<Student>('students', setStudentsState));
-    subscriptions.push(setupSubscription<Teacher>('teachers', setTeachersState));
-    subscriptions.push(setupSubscription<Class>('classes', setClassesState));
-    subscriptions.push(setupSubscription<Reward>('rewards', setRewardsState));
-    subscriptions.push(setupSubscription<Stock>('stocks', setStocksState));
-    subscriptions.push(setupDocSubscription<PlatformConfig>(['config', 'main'], setPlatformConfigState));
+    subscriptions.push(setupSubscription<Student>('students', setStudentsState, 'students'));
+    subscriptions.push(setupSubscription<Teacher>('teachers', setTeachersState, 'teachers'));
+    subscriptions.push(setupSubscription<Class>('classes', setClassesState, 'classes'));
+    subscriptions.push(setupSubscription<Reward>('rewards', setRewardsState, 'rewards'));
+    subscriptions.push(setupSubscription<Stock>('stocks', setStocksState, 'stocks'));
+    subscriptions.push(setupDocSubscription<PlatformConfig>(['config', 'main'], setPlatformConfigState, 'config'));
 
     const marketInterval = setInterval(() => {
       setIsMarketOpen(checkMarketOpen());
@@ -126,7 +148,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         isLoading,
         isMarketOpen,
         runTransaction: handleRunTransaction,
-        setPlatformConfig: handleSetPlatformConfig,
     }}>
       {children}
     </AppDataContext.Provider>
