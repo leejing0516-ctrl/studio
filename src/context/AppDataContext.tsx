@@ -88,9 +88,12 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const createSetter = <T extends { id: string; _docId?: string }>(
     collectionName: string,
     state: T[],
+    setter: React.Dispatch<React.SetStateAction<T[]>>
   ) => async (action: SetStateActionWithFunction<T[]>) => {
       
     const newState = typeof action === 'function' ? action(state) : action;
+    setter(newState);
+
     const batch = writeBatch(db);
 
     const getDocId = (item: any): string => {
@@ -120,15 +123,15 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       await batch.commit();
   };
 
-  const setStudents = createSetter<Student>('students', students);
-  const setTeachers = createSetter<Teacher>('teachers', teachers);
-  const setRewards = createSetter<Reward>('rewards', rewards);
-  const setStocks = createSetter<Stock>('stocks', stocks);
-  const setClasses = createSetter<Class>('classes', classes);
+  const setStudents = createSetter<Student>('students', students, setStudentsState);
+  const setTeachers = createSetter<Teacher>('teachers', teachers, setTeachersState);
+  const setRewards = createSetter<Reward>('rewards', rewards, setRewardsState);
+  const setStocks = createSetter<Stock>('stocks', stocks, setStocksState);
+  const setClasses = createSetter<Class>('classes', classes, setClassesState);
   
   const setPlatformConfigWithFunction = async (action: SetStateActionWithFunction<PlatformConfig | null>) => {
-    const currentState = platformConfig;
-    const newConfig = typeof action === 'function' ? action(currentState) : { ...currentState, ...action };
+    const newConfig = typeof action === 'function' ? action(platformConfig) : { ...platformConfig, ...action };
+    setPlatformConfigState(newConfig);
     if (newConfig) {
         const { id, ...configData } = newConfig;
         const configRef = doc(db, 'config', 'main');
@@ -157,6 +160,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
               const docData = doc.data();
               if (collectionName === 'students') {
                   // For students, the doc.id is `classId-id`. We keep `id` as the student's own ID.
+                  // The Firestore doc ID is stored in _docId for update/delete operations.
                   data.push({ ...docData, _docId: doc.id });
               } else {
                   // For other collections, the doc.id is the actual id.

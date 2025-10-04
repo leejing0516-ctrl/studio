@@ -318,7 +318,7 @@ export default function TeacherDashboardPage() {
 
     const handleDeleteStudent = async () => {
         if (!studentToDelete) return;
-        await setStudents(students.filter(s => s.id !== studentToDelete.id || s.classId !== studentToDelete.classId));
+        await setStudents(students.filter(s => s._docId !== studentToDelete._docId));
         toast({
             title: "學生已刪除",
             description: `${studentToDelete.name} 已被從班級中移除。`,
@@ -449,7 +449,7 @@ export default function TeacherDashboardPage() {
         
         await runTransaction(async (transaction: Transaction) => {
             const configRef = doc(db, 'config', 'main');
-            const teacherRef = doc(db, 'teachers', teacherToAllocate.id);
+            const teacherRef = doc(db, 'teachers', teacherToAllocate._docId!);
             
             const [configDoc, teacherDoc] = await Promise.all([
                 transaction.get(configRef),
@@ -918,7 +918,7 @@ export default function TeacherDashboardPage() {
                                             <TableCell className="text-right">
                                                 <Button variant="ghost" size="icon" onClick={() => { setStudentToEdit(student); setIsEditStudentDialogOpen(true); }}><Edit className="h-4 w-4"/></Button>
                                                 <Button variant="ghost" size="icon" onClick={() => { setStudentToResetPassword(student); setIsResetPasswordDialogOpen(true); }}><KeyRound className="h-4 w-4"/></Button>
-                                                <AlertDialog open={!!studentToDelete && studentToDelete.id === student.id} onOpenChange={(open) => !open && setStudentToDelete(null)}>
+                                                <AlertDialog open={!!studentToDelete && studentToDelete._docId === student._docId} onOpenChange={(open) => !open && setStudentToDelete(null)}>
                                                     <AlertDialogTrigger asChild>
                                                         <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setStudentToDelete(student)}><Trash2 className="h-4 w-4"/></Button>
                                                     </AlertDialogTrigger>
