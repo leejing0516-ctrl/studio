@@ -88,54 +88,52 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const createSetter = <T extends { id: string }>(
     currentState: T[],
     setter: React.Dispatch<React.SetStateAction<T[]>>,
-    collectionName: string,
-    isStudent: boolean = false
+    collectionName: string
   ) => async (action: SetStateActionWithFunction<T[]>) => {
-    const newState = typeof action === 'function' ? action(currentState) : action;
-    const batch = writeBatch(db);
-    
-    newState.forEach((item: any) => {
-        let docId: string;
-        if (isStudent) {
-            if (!item.classId || !item.id) {
-                 console.error(`Student item is missing classId or id.`, item);
-                 return;
-            }
-            docId = `${item.classId}-${item.id}`;
-        } else {
-            if (!item.id) {
-                console.error(`Item in collection ${collectionName} is missing an ID.`, item);
-                return;
-            }
-            docId = item.id;
-        }
+      const newState = typeof action === 'function' ? action(currentState) : action;
+      const batch = writeBatch(db);
 
-        const itemRef = doc(db, collectionName, docId);
-        batch.set(itemRef, item, { merge: true });
-    });
-    
-    const newStateIds = new Set(newState.map((item: any) => isStudent ? `${item.classId}-${item.id}` : item.id));
-    
-    currentState.forEach((item: any) => {
-        const docId = isStudent ? `${item.classId}-${item.id}` : item.id;
-        if (!newStateIds.has(docId)) {
-            const itemRef = doc(db, collectionName, docId);
-            batch.delete(itemRef);
-        }
-    });
+      const getDocId = (item: any): string | null => {
+          if (collectionName === 'students') {
+              if (item.classId && item.id) {
+                  return `${item.classId}-${item.id}`;
+              }
+              return null;
+          }
+          return item.id;
+      }
+      
+      newState.forEach((item: any) => {
+          const docId = getDocId(item);
+          if (docId) {
+              const itemRef = doc(db, collectionName, docId);
+              batch.set(itemRef, item, { merge: true });
+          }
+      });
+      
+      const newStateIds = new Set(newState.map(getDocId).filter(Boolean));
+      
+      currentState.forEach((item: any) => {
+          const docId = getDocId(item);
+          if (docId && !newStateIds.has(docId)) {
+              const itemRef = doc(db, collectionName, docId);
+              batch.delete(itemRef);
+          }
+      });
 
-    await batch.commit();
-    // No direct state update here, relying on onSnapshot
+      await batch.commit();
+      // No direct state update here, relying on onSnapshot
   };
 
-  const setStudents = createSetter(students, setStudentsState, 'students', true);
+  const setStudents = createSetter(students, setStudentsState, 'students');
   const setTeachers = createSetter(teachers, setTeachersState, 'teachers');
   const setRewards = createSetter(rewards, setRewardsState, 'rewards');
   const setStocks = createSetter(stocks, setStocksState, 'stocks');
   const setClasses = createSetter(classes, setClassesState, 'classes');
   
   const setPlatformConfigWithFunction = async (action: SetStateActionWithFunction<PlatformConfig | null>) => {
-    const newConfig = typeof action === 'function' ? action(platformConfig) : action;
+    const currentState = platformConfig;
+    const newConfig = typeof action === 'function' ? action(currentState) : { ...currentState, ...action };
     if (newConfig) {
         const configRef = doc(db, 'config', 'main');
         await setDoc(configRef, newConfig, { merge: true });
@@ -154,18 +152,13 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     const setupSubscription = <T,>(
         collectionName: string, 
         setter: React.Dispatch<React.SetStateAction<T[]>>,
-        stateKey: keyof LoadingStates,
-        isStudent: boolean = false
+        stateKey: keyof LoadingStates
     ) => {
         const q = query(collection(db, collectionName));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const data: T[] = [];
             querySnapshot.forEach(doc => {
-              const docData = doc.data() as any;
-              // For students, the doc.id is `classId-studentId`. We want the internal id.
-              // For others, the doc.id is the actual id.
-              const id = isStudent ? docData.id : doc.id;
-              data.push({ ...docData, id: id });
+              data.push({ ...(doc.data() as T), id: doc.id });
             });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
@@ -196,7 +189,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         return unsubscribe;
     };
     
-    subscriptions.push(setupSubscription<Student>('students', setStudentsState, 'students', true));
+    subscriptions.push(setupSubscription<Student>('students', setStudentsState, 'students'));
     subscriptions.push(setupSubscription<Teacher>('teachers', setTeachersState, 'teachers'));
     subscriptions.push(setupSubscription<Class>('classes', setClassesState, 'classes'));
     subscriptions.push(setupSubscription<Reward>('rewards', setRewardsState, 'rewards'));

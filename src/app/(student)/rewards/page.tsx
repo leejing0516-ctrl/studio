@@ -5,7 +5,7 @@ import { useState, useContext, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
-import type { Reward } from "@/lib/types";
+import type { Reward, Student } from "@/lib/types";
 import { Coins, ShoppingCart, School, Users, Building, GraduationCap } from "lucide-react";
 import {
   AlertDialog,
@@ -22,7 +22,6 @@ import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { redeemRewardTransaction } from "@/lib/actions";
 
 export default function RewardsPage() {
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
@@ -30,7 +29,7 @@ export default function RewardsPage() {
   const [isRedeeming, setIsRedeeming] = useState(false);
   const { toast } = useToast();
   const { studentData } = useContext(StudentDataContext);
-  const { rewards, teachers } = useContext(AppDataContext);
+  const { rewards, teachers, setStudents, setRewards } = useContext(AppDataContext);
 
   const student = studentData.student;
   
@@ -42,23 +41,19 @@ export default function RewardsPage() {
     const teacherIdsForClass = teachersForClass.map(t => t.id);
 
     const availableRewards = rewards.filter(reward => {
-        // A reward is available if its provider still exists in the system
         const providerExists = reward.scope === 'school' || teachers.some(t => t.id === reward.providerId);
         if (!providerExists) {
             return false;
         }
 
-        // School-wide rewards are always available
         if (reward.scope === 'school') {
             return true;
         }
         
-        // Class-specific rewards are available if their provider teaches the student's class
         if (reward.scope === 'class' && teacherIdsForClass.includes(reward.providerId)) {
             return true;
         }
         
-        // For subject teachers who might create rewards for multiple classes they teach
         const provider = teachers.find(t => t.id === reward.providerId);
         if (provider?.role === 'subject_teacher' && provider.classIds.includes(student.classId)) {
             return true;
@@ -104,32 +99,49 @@ export default function RewardsPage() {
     setIsRedeeming(true);
 
     try {
-        const result = await redeemRewardTransaction({
-            studentId: student.id,
-            classId: student.classId,
-            rewardId: selectedReward.id,
-        });
-        
-        if (result.success) {
-            // UI update will be handled by the real-time listener in AppDataContext
-            toast({
-                title: "兌換成功！",
-                description: `您已成功兌換「${selectedReward.name}」。前往「我的收藏」查看！`,
-            });
-        } else {
-            // If the transaction failed, show the error message from the server
-            toast({
-                title: "兌換失敗",
-                description: result.error,
-                variant: "destructive",
-            });
-        }
+        await setStudents(prev => prev.map(s => {
+            if (s.id === student.id) {
+                if (s.points < selectedReward.cost) {
+                    throw new Error("點數不足。");
+                }
+                const updatedStudent: Student = {
+                    ...s,
+                    points: s.points - selectedReward.cost,
+                    redeemedRewards: [
+                        ...(s.redeemedRewards || []),
+                        {
+                            redemptionId: `redeem-${Date.now()}`,
+                            reward: selectedReward,
+                            status: 'collected',
+                            redemptionDate: new Date().toISOString(),
+                        },
+                    ],
+                };
+                return updatedStudent;
+            }
+            return s;
+        }));
 
-    } catch (error) {
+        await setRewards(prev => prev.map(r => {
+             if (r.id === selectedReward.id) {
+                if (r.stock <= 0) {
+                    throw new Error("此獎勵已無庫存。");
+                }
+                return { ...r, stock: r.stock - 1 };
+             }
+             return r;
+        }));
+
+        toast({
+            title: "兌換成功！",
+            description: `您已成功兌換「${selectedReward.name}」。前往「我的收藏」查看！`,
+        });
+
+    } catch (error: any) {
         console.error("Redemption transaction failed:", error);
         toast({
             title: "兌換失敗",
-            description: "發生未知錯誤，請稍後再試。",
+            description: error.message || "發生未知錯誤，請稍後再試。",
             variant: "destructive",
         });
     } finally {

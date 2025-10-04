@@ -15,7 +15,7 @@ export const redeemRewardTransaction = async ({
 }) => {
   try {
     await runTransaction(db, async (transaction) => {
-      const studentDocId = `${classId}-${studentId}`;
+      const studentDocId = `${classId}-${studentId.split('-').pop()}`;
       const studentRef = doc(db, "students", studentDocId);
       const rewardRef = doc(db, "rewards", rewardId);
 
@@ -78,7 +78,7 @@ export const useRewardTransaction = async ({
 }) => {
     try {
         await runTransaction(db, async (transaction) => {
-            const studentDocId = `${classId}-${studentId}`;
+            const studentDocId = `${classId}-${studentId.split('-').pop()}`;
             const studentRef = doc(db, "students", studentDocId);
             const studentDoc = await transaction.get(studentRef);
 

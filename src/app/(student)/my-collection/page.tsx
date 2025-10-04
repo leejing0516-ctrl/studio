@@ -18,7 +18,7 @@ export default function MyCollectionPage() {
   const { studentData } = useContext(StudentDataContext);
   const { toast } = useToast();
   const [isUsing, setIsUsing] = useState<string | null>(null);
-  const { runTransaction: runContextTransaction } = useContext(AppDataContext);
+  const { runTransaction: runContextTransaction, setStudents } = useContext(AppDataContext);
   
   const currentStudent = studentData.student;
 
@@ -27,19 +27,16 @@ export default function MyCollectionPage() {
     
     setIsUsing(redemption.redemptionId);
     try {
-        await runContextTransaction(async (transaction: Transaction) => {
-            const studentDocId = `${currentStudent.classId}-${currentStudent.id}`;
-            const studentRef = doc(db, 'students', studentDocId);
-            const studentDoc = await transaction.get(studentRef);
-
-            if (!studentDoc.exists()) {
-                throw new Error("找不到您的學生資料。");
-            }
-            const studentData = studentDoc.data() as Student;
-            const updatedRewards = (studentData.redeemedRewards || []).map(r => 
-                r.redemptionId === redemption.redemptionId ? { ...r, status: 'pending_use' as const } : r
-            );
-            transaction.update(studentRef, { redeemedRewards: updatedRewards });
+        await setStudents(prev => {
+            return prev.map(s => {
+                if (s.id === currentStudent.id) {
+                     const updatedRewards = (s.redeemedRewards || []).map(r => 
+                        r.redemptionId === redemption.redemptionId ? { ...r, status: 'pending_use' as const } : r
+                    );
+                    return { ...s, redeemedRewards: updatedRewards };
+                }
+                return s;
+            })
         });
 
         toast({

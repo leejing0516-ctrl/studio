@@ -49,7 +49,6 @@ import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import type { Student, PointRecord } from "@/lib/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -79,17 +78,14 @@ export default function StudentLayout({
 
   const handleLogout = useCallback(() => {
     setStudentData({ student: null });
-    localStorage.removeItem('studentId');
-    localStorage.removeItem('studentClassId');
+    localStorage.removeItem('studentDocId');
     localStorage.removeItem('studentPassword');
     localStorage.removeItem('userRole');
-    localStorage.removeItem('studentDocId');
     router.push('/');
   }, [router, setStudentData]);
 
-  // Effect to handle initial load and re-authentication from localStorage
   useEffect(() => {
-    if (isLoading) return; // Wait for all data to be loaded
+    if (isLoading) return;
 
     const userRole = localStorage.getItem('userRole');
     const storedDocId = localStorage.getItem('studentDocId');
@@ -99,25 +95,18 @@ export default function StudentLayout({
       handleLogout();
       return;
     }
-
-    // If student is already in context, just ensure it's the latest version.
-    if (student?.id === storedDocId) {
-        const latestStudentData = students.find(s => s.id === storedDocId);
-        if (latestStudentData && JSON.stringify(latestStudentData) !== JSON.stringify(student)) {
-             setStudentData({ student: latestStudentData });
-        }
-        return;
-    }
     
-    // Try to authenticate and set student data
     const foundStudent = students.find(s => s.id === storedDocId);
     
     if (foundStudent && foundStudent.password === storedPassword) {
-        setStudentData({ student: foundStudent });
+        if (JSON.stringify(foundStudent) !== JSON.stringify(studentData.student)) {
+            setStudentData({ student: foundStudent });
+        }
     } else {
+        toast({ title: "驗證失敗", description: "您的登入資訊已過期或不正確，請重新登入。", variant: "destructive" });
         handleLogout();
     }
-  }, [isLoading, students, student, setStudentData, handleLogout]);
+  }, [isLoading, students, studentData.student, setStudentData, handleLogout, toast]);
 
 
   const handleChangePassword = async () => {
@@ -152,7 +141,6 @@ export default function StudentLayout({
             return s;
         }));
         
-        // Update password in localStorage as well
         localStorage.setItem('studentPassword', newPassword);
 
         toast({ title: "密碼已更新", description: "您的密碼已成功更新。" });
@@ -187,7 +175,7 @@ export default function StudentLayout({
 
 
   if (isLoading || !student) {
-      return null; // Or a loading spinner, as the useEffect will handle authentication
+      return null;
   }
   
   const NotificationItem = ({ record }: { record: PointRecord }) => {

@@ -15,12 +15,10 @@ import { AppDataContext } from '@/context/AppDataContext';
 import type { Student, Teacher } from '@/lib/types';
 
 export default function HomePage() {
-  // Student states
   const [studentIdInput, setStudentIdInput] = useState('');
   const [studentPassword, setStudentPassword] = useState('');
   const [classId, setClassId] = useState('');
   
-  // Teacher states
   const [teacherPassword, setTeacherPassword] = useState('');
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
 
@@ -37,11 +35,11 @@ export default function HomePage() {
         if (orderA !== orderB) {
             return orderA - orderB;
         }
-        return a.id.localeCompare(b.id);
+        // Firestore doc IDs can be complex, so use name as a secondary sort key if id is not simple
+        return (a.name || '').localeCompare(b.name || '');
     });
   }, [appData.teachers]);
 
-  // Redirect if already logged in
   useEffect(() => {
     const userRole = localStorage.getItem('userRole');
     if (userRole === 'student') {
@@ -65,16 +63,16 @@ export default function HomePage() {
         return;
     }
     
+    // The student ID in the database is a composite key, but the `id` field on the object is the student's own ID.
+    // We must find the student by matching classId and their own id field.
     const foundStudent = appData.students.find(
-      (s: Student) => s.classId === classId && s.id === studentIdInput
+      (s: Student) => s.classId === classId && s.id.endsWith(`-${studentIdInput}`)
     );
 
     if (foundStudent && foundStudent.password === studentPassword) {
         toast({ title: "登入成功！", description: `歡迎回來，${foundStudent.name}！`});
         localStorage.setItem('userRole', 'student');
-        localStorage.setItem('studentClassId', classId);
-        localStorage.setItem('studentId', studentIdInput);
-        localStorage.setItem('studentDocId', `${classId}-${studentIdInput}`);
+        localStorage.setItem('studentDocId', foundStudent.id); // The full Firestore doc ID
         localStorage.setItem('studentPassword', studentPassword);
         router.push('/dashboard');
     } else {
