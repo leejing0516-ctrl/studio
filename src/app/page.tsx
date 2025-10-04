@@ -15,11 +15,15 @@ import { AppDataContext } from '@/context/AppDataContext';
 import type { Student } from '@/lib/types';
 
 export default function HomePage() {
+  // Student states
   const [studentId, setStudentId] = useState('');
   const [studentPassword, setStudentPassword] = useState('');
-  const [teacherPassword, setTeacherPassword] = useState('');
   const [classId, setClassId] = useState('');
-  const [teacherId, setTeacherId] = useState('');
+  
+  // Teacher states
+  const [teacherPassword, setTeacherPassword] = useState('');
+  const [selectedTeacherId, setSelectedTeacherId] = useState('');
+
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
@@ -88,7 +92,7 @@ export default function HomePage() {
   const handleTeacherLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoggingIn(true);
-    if (!teacherId || !teacherPassword) {
+    if (!selectedTeacherId || !teacherPassword) {
         toast({
             title: "資訊不完整",
             description: "請選擇帳號並輸入密碼。",
@@ -100,7 +104,7 @@ export default function HomePage() {
 
     // Store credentials and role, then redirect. Validation will happen in the layout.
     localStorage.setItem('userRole', 'teacher');
-    localStorage.setItem('teacherId', teacherId);
+    localStorage.setItem('teacherId', selectedTeacherId);
     localStorage.setItem('teacherPassword', teacherPassword);
 
     router.push('/teacher/dashboard');
@@ -186,8 +190,8 @@ export default function HomePage() {
                 </CardContent>
                 <CardFooter>
                 <Button type="submit" className="w-full" disabled={isFormDisabled}>
-                    {isLoading ? <Loader2 className="animate-spin" /> : isLoggingIn ? <Loader2 className="animate-spin" /> : <ArrowRight className="ml-2 h-4 w-4" />}
-                    {isLoading ? "同步資料中..." : isLoggingIn ? "登入中..." : "登入"}
+                    {isFormDisabled ? <Loader2 className="animate-spin mr-2" /> : <ArrowRight className="mr-2 h-4 w-4" />}
+                    {isFormDisabled ? "同步資料中..." : "登入"}
                 </Button>
                 </CardFooter>
             </form>
@@ -209,8 +213,8 @@ export default function HomePage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
-                    <Label htmlFor="teacher-id">教師帳號</Label>
-                    <Select onValueChange={(value) => setTeacherId(value)} value={teacherId} disabled={isFormDisabled}>
+                    <Label htmlFor="teacher-id-select">教師帳號</Label>
+                    <Select onValueChange={(value) => setSelectedTeacherId(value)} value={selectedTeacherId} disabled={isFormDisabled}>
                         <SelectTrigger id="teacher-id-select">
                             <SelectValue placeholder="請選擇您的帳號" />
                         </SelectTrigger>
@@ -236,8 +240,8 @@ export default function HomePage() {
                 </CardContent>
                 <CardFooter>
                 <Button type="submit" className="w-full" variant="outline" disabled={isFormDisabled}>
-                    {isLoading ? <Loader2 className="animate-spin" /> : isLoggingIn ? <Loader2 className="animate-spin" /> : <ArrowRight className="ml-2 h-4 w-4" />}
-                    {isLoading ? "同步資料中..." : isLoggingIn ? "登入中..." : "以老師身份進入"}
+                    {isFormDisabled ? <Loader2 className="animate-spin mr-2" /> : <ArrowRight className="mr-2 h-4 w-4" />}
+                    {isFormDisabled ? "同步資料中..." : "以老師身份進入"}
                 </Button>
                 </CardFooter>
             </form>
