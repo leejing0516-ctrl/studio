@@ -18,7 +18,6 @@ import {
   SidebarInset,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import Logo from "@/components/logo";
 import {
   LayoutDashboard,
   Settings,
@@ -32,6 +31,7 @@ import {
   Repeat,
   AlertTriangle,
   BookUser,
+  Home,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -192,6 +192,7 @@ export default function TeacherLayout({
     { href: "/teacher/habits", label: "習慣審核", icon: Repeat, roles: ['admin', 'teacher'] },
     { href: "/teacher/stocks", label: "股票管理", icon: LineChart, roles: ['admin'] },
     { href: "/teacher/fundraising", label: "募資管理", icon: HeartHandshake, roles: ['admin'] },
+    { href: "/teacher/home-editor", label: "首頁編輯", icon: Home, roles: ['admin'] },
     { href: "/teacher/settings", label: "平台設定", icon: Settings, roles: ['admin'] },
     { href: "/teacher/manual", label: "操作手冊", icon: BookUser, roles: ['admin', 'teacher', 'subject_teacher'] },
   ];

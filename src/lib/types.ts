@@ -1,4 +1,5 @@
 
+
 export type Donation = {
   studentId: string;
   studentName: string;
@@ -166,7 +167,6 @@ export type Announcement = {
 export type PlatformConfig = {
     id: 'main';
     schoolFunds?: number;
-    platformLogoUrl?: string;
     sponsorLogoUrls?: (string | null)[];
     teacherPassword?: string;
     announcements?: Announcement[];
@@ -175,6 +175,9 @@ export type PlatformConfig = {
     fixedDepositInterestRate?: number;
     loanInterestRate?: number;
     lastAutoBackupDate?: string;
+    homeTitle?: string;
+    homeSubtitle?: string;
+    homeIllustrationUrl?: string;
 }
 
     

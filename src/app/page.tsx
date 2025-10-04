@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { User, School, ArrowRight, Loader2 } from "lucide-react";
-import Logo from "@/components/logo";
 import { useToast } from "@/hooks/use-toast";
 import { StudentDataContext } from '@/context/StudentDataContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -142,11 +141,22 @@ export default function HomePage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
       <header className="mb-8 text-center animate-in fade-in slide-in-from-top duration-700">
+        {platformConfig?.homeIllustrationUrl && (
+            <div className="relative h-48 w-full max-w-md mx-auto mb-4">
+                <Image 
+                    src={platformConfig.homeIllustrationUrl}
+                    alt="首頁插圖"
+                    fill
+                    className="object-contain"
+                    priority
+                />
+            </div>
+        )}
         <h1 className="text-4xl md:text-5xl font-bold font-headline text-foreground">
-          歡迎來到南梓實小虛擬銀行
+          {platformConfig?.homeTitle || '歡迎來到南梓實小虛擬銀行'}
         </h1>
         <p className="text-lg text-muted-foreground mt-2 max-w-2xl mx-auto">
-          您通往金融素養的門戶，在這裡學習金錢知識既有回報又充滿樂趣！
+          {platformConfig?.homeSubtitle || '您通往金融素養的門戶，在這裡學習金錢知識既有回報又充滿樂趣！'}
         </p>
       </header>
 
