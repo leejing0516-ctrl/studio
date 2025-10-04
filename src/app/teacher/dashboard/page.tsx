@@ -34,7 +34,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -473,11 +472,14 @@ export default function TeacherDashboardPage() {
     const handleImpersonate = () => {
         if (!teacherToImpersonate || !teacherId) return;
         
+        const teacherPassword = teacherToImpersonate.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
+
         localStorage.setItem('userRole', 'teacher');
         localStorage.setItem('teacherId', teacherToImpersonate.id);
         localStorage.setItem('teacherRole', teacherToImpersonate.role);
         localStorage.setItem('teacherClassIds', JSON.stringify(teacherToImpersonate.classIds || []));
         localStorage.setItem('teacherName', teacherToImpersonate.name);
+        localStorage.setItem('teacherPassword', teacherPassword);
         localStorage.setItem('impersonator', teacherId);
 
         toast({ title: `開始模擬 ${teacherToImpersonate.name}`});
@@ -563,7 +565,7 @@ export default function TeacherDashboardPage() {
                     sourceRef = doc(db, 'config', 'main');
                     sourceField = 'schoolFunds';
                 } else {
-                    sourceRef = doc(db, 'teachers', teacherId);
+                    sourceRef = doc(db, 'teachers', currentOperator._docId!);
                     sourceField = 'pointBalance';
                 }
 
@@ -691,13 +693,19 @@ export default function TeacherDashboardPage() {
                 
                 if (status === 'active') {
                     let sourceRef, sourceFunds, sourceField;
-                    if (role === 'admin') {
+                    const impersonatorId = localStorage.getItem('impersonator');
+                    const currentOperatorId = impersonatorId || teacherId;
+                    const operator = teachers.find(t => t.id === currentOperatorId);
+
+                    if (!operator) throw new Error("找不到操作者資訊。");
+
+                    if (operator.role === 'admin') {
                         sourceRef = doc(db, 'config', 'main');
                         const sourceDoc = await transaction.get(sourceRef);
                         sourceFunds = ((sourceDoc.data() as any).schoolFunds || 0);
                         sourceField = 'schoolFunds';
                     } else {
-                        sourceRef = doc(db, 'teachers', teacherId);
+                        sourceRef = doc(db, 'teachers', operator._docId!);
                          const sourceDoc = await transaction.get(sourceRef);
                         sourceFunds = ((sourceDoc.data() as any).pointBalance || 0);
                         sourceField = 'pointBalance';
@@ -759,7 +767,9 @@ export default function TeacherDashboardPage() {
                     sourceFunds = ((sourceDoc.data() as any).schoolFunds || 0);
                     sourceField = 'schoolFunds';
                 } else { // class challenge
-                    sourceRef = doc(db, 'teachers', challengeDetails.providerId);
+                    const provider = teachers.find(t => t.id === challengeDetails.providerId);
+                    if (!provider || !provider._docId) throw new Error("找不到挑戰提供者的資料");
+                    sourceRef = doc(db, 'teachers', provider._docId);
                     const sourceDoc = await transaction.get(sourceRef);
                     sourceFunds = ((sourceDoc.data() as any).pointBalance || 0);
                     sourceField = 'pointBalance';
@@ -918,7 +928,7 @@ export default function TeacherDashboardPage() {
                                             <TableCell className="text-right">
                                                 <Button variant="ghost" size="icon" onClick={() => { setStudentToEdit(student); setIsEditStudentDialogOpen(true); }}><Edit className="h-4 w-4"/></Button>
                                                 <Button variant="ghost" size="icon" onClick={() => { setStudentToResetPassword(student); setIsResetPasswordDialogOpen(true); }}><KeyRound className="h-4 w-4"/></Button>
-                                                <AlertDialog open={!!studentToDelete && studentToDelete.id === student.id} onOpenChange={(open) => !open && setStudentToDelete(null)}>
+                                                <AlertDialog open={!!studentToDelete && studentToDelete._docId === student._docId} onOpenChange={(open) => !open && setStudentToDelete(null)}>
                                                     <AlertDialogTrigger asChild>
                                                         <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setStudentToDelete(student)}><Trash2 className="h-4 w-4"/></Button>
                                                     </AlertDialogTrigger>
@@ -1311,7 +1321,7 @@ export default function TeacherDashboardPage() {
                                                                 <TableCell className="text-right">
                                                                     <AlertDialog open={!!challengeToApprove && challengeToApprove.student._docId === student._docId && challengeToApprove.challenge.challengeId === challenge.challengeId} onOpenChange={(open) => !open && setChallengeToApprove(null)}>
                                                                         <AlertDialogTrigger asChild>
-                                                                            <Button size="sm" onClick={() => setChallengeToApprove({ student, challenge })} disabled={role === 'admin'}>
+                                                                            <Button size="sm" onClick={() => setChallengeToApprove({ student, challenge })}>
                                                                                 <Check className="mr-2" /> 批准 (+{details?.points.toLocaleString()}點)
                                                                             </Button>
                                                                         </AlertDialogTrigger>
@@ -1351,7 +1361,7 @@ export default function TeacherDashboardPage() {
                                                             <TableCell className="text-right">
                                                                 <AlertDialog open={!!loanToProcess && loanToProcess.loan.id === loan.id} onOpenChange={(open) => !open && setLoanToProcess(null)}>
                                                                     <AlertDialogTrigger asChild>
-                                                                        <Button size="sm" className="mr-2" onClick={() => setLoanToProcess({student, loan})} disabled={role === 'admin'}>處理</Button>
+                                                                        <Button size="sm" className="mr-2" onClick={() => setLoanToProcess({student, loan})}>處理</Button>
                                                                     </AlertDialogTrigger>
                                                                     <AlertDialogContent>
                                                                         <AlertDialogHeader>
@@ -1385,7 +1395,7 @@ export default function TeacherDashboardPage() {
                                                             <TableCell>{student.name}</TableCell>
                                                             <TableCell>{rewardItem.reward.name}</TableCell>
                                                             <TableCell className="text-right">
-                                                                <Button size="sm" onClick={() => handleApproveRewardUse(student, rewardItem)} disabled={role === 'admin'}>同意使用</Button>
+                                                                <Button size="sm" onClick={() => handleApproveRewardUse(student, rewardItem)}>同意使用</Button>
                                                             </TableCell>
                                                         </TableRow>
                                                     ))}
