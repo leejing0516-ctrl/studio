@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
-import { savePlatformSettings, removeLogo } from "@/lib/actions";
+import { savePlatformSettings, removeLogo, uploadFile } from "@/lib/actions";
 
 export default function TeacherSettingsPage() {
     const { platformConfig } = useContext(AppDataContext);
@@ -26,15 +26,14 @@ export default function TeacherSettingsPage() {
 
     const [isSavingSettings, setIsSavingSettings] = useState(false);
     const [isRemoving, setIsRemoving] = useState<string | null>(null);
+    const [isUploading, setIsUploading] = useState<string | null>(null);
+
     const [fixedDepositRate, setFixedDepositRate] = useState<number | string>('');
     const [loanInterestRate, setLoanInterestRate] = useState<number | string>('');
     
-    // State for image previews and files
+    // State for image previews
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
-    const [logoFile, setLogoFile] = useState<File | null>(null);
     const [sponsorPreviews, setSponsorPreviews] = useState<(string | null)[]>([]);
-    const [sponsorFiles, setSponsorFiles] = useState<(File | null)[]>([]);
-
 
     useEffect(() => {
         const role = localStorage.getItem('teacherRole');
@@ -52,7 +51,7 @@ export default function TeacherSettingsPage() {
         }
     }, [platformConfig, router, toast]);
 
-    const handleImageChange = (
+    const handleImageUpload = async (
         e: React.ChangeEvent<HTMLInputElement>, 
         type: 'platform' | 'sponsor', 
         index?: number
@@ -60,27 +59,44 @@ export default function TeacherSettingsPage() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-        if (file.size > MAX_FILE_SIZE) {
-            toast({ title: "圖片太大", description: "檔案大小不能超過 2MB。", variant: "destructive" });
-            return;
-        }
+        const uploadKey = type === 'platform' ? 'platform' : `sponsor_${index}`;
+        setIsUploading(uploadKey);
 
-        const previewUrl = URL.createObjectURL(file);
+        try {
+            const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+            if (file.size > MAX_FILE_SIZE) {
+                throw new Error("檔案大小不能超過 2MB。");
+            }
+            
+            const arrayBuffer = await file.arrayBuffer();
+            const path = `logos/${uploadKey}_${Date.now()}`;
+            
+            const result = await uploadFile({
+                fileBuffer: arrayBuffer,
+                contentType: file.type,
+                path: path
+            });
+            
+            if (result.success && result.url) {
+                if (type === 'platform') {
+                    setLogoPreview(result.url);
+                } else if (index !== undefined) {
+                    const newPreviews = [...sponsorPreviews];
+                    newPreviews[index] = result.url;
+                    setSponsorPreviews(newPreviews);
+                }
+                toast({ title: "圖片已上傳", description: "請記得點擊下方的「儲存設定」以保存變更。" });
+            } else {
+                throw new Error(result.error || '上傳失敗');
+            }
 
-        if (type === 'platform') {
-            setLogoFile(file);
-            setLogoPreview(previewUrl);
-        } else if (type === 'sponsor' && index !== undefined) {
-            const newFiles = [...sponsorFiles];
-            newFiles[index] = file;
-            setSponsorFiles(newFiles);
-
-            const newPreviews = [...sponsorPreviews];
-            newPreviews[index] = previewUrl;
-            setSponsorPreviews(newPreviews);
+        } catch (error: any) {
+            toast({ title: "上傳失敗", description: error.message, variant: "destructive" });
+        } finally {
+            setIsUploading(null);
         }
     };
+
 
     const handleRemoveLogo = async (type: 'platform' | 'sponsor', index?: number) => {
         const key = type === 'platform' ? 'platform' : `sponsor_${index}`;
@@ -91,14 +107,10 @@ export default function TeacherSettingsPage() {
                 toast({ title: "圖片已移除" });
                 if (type === 'platform') {
                     setLogoPreview(null);
-                    setLogoFile(null);
                 } else if (index !== undefined) {
                     const newPreviews = [...sponsorPreviews];
                     newPreviews[index] = null;
                     setSponsorPreviews(newPreviews);
-                     const newFiles = [...sponsorFiles];
-                    newFiles[index] = null;
-                    setSponsorFiles(newFiles);
                 }
             } else {
                 throw new Error(result.error);
@@ -113,26 +125,17 @@ export default function TeacherSettingsPage() {
     const handleSaveSettings = async () => {
         setIsSavingSettings(true);
         try {
-            const formData = new FormData();
-            formData.append('fixedDepositInterestRate', String(Number(fixedDepositRate) / 100));
-            formData.append('loanInterestRate', String(Number(loanInterestRate) / 100));
+            const newConfig = {
+                fixedDepositInterestRate: Number(fixedDepositRate) / 100,
+                loanInterestRate: Number(loanInterestRate) / 100,
+                platformLogoUrl: logoPreview,
+                sponsorLogoUrls: sponsorPreviews,
+            };
 
-            if (logoFile) {
-                formData.append('logoFile', logoFile);
-            }
-
-            sponsorFiles.forEach((file, index) => {
-                if (file) {
-                    formData.append(`sponsorFile${index}`, file);
-                }
-            });
-
-            const result = await savePlatformSettings(formData);
+            const result = await savePlatformSettings(newConfig);
 
             if (result.success) {
                 toast({ title: "設定已儲存", description: "平台設定已成功更新。" });
-                setLogoFile(null);
-                setSponsorFiles(new Array(4).fill(null));
             } else {
                 throw new Error(result.error);
             }
@@ -207,13 +210,11 @@ export default function TeacherSettingsPage() {
                         )}
                     </div>
                     <div className="space-y-2">
-                        <Input id="logo-upload" type="file" accept="image/*" onChange={(e) => handleImageChange(e, 'platform')} className="hidden" />
-                        <Label htmlFor="logo-upload" className={buttonVariants({ variant: "outline" })}>
-                            <UploadCloud className="mr-2"/> 上傳圖片
+                        <Input id="logo-upload" type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'platform')} className="hidden" disabled={!!isUploading} />
+                        <Label htmlFor="logo-upload" className={buttonVariants({ variant: "outline", disabled: !!isUploading })}>
+                            {isUploading === 'platform' ? <Loader2 className="mr-2 animate-spin"/> : <UploadCloud className="mr-2"/>} 
+                             上傳圖片
                         </Label>
-                        <p className="text-xs text-muted-foreground">
-                            {logoFile ? logoFile.name : "尚未選擇檔案"}
-                        </p>
                         {logoPreview && (
                             <Button variant="link" size="sm" className="text-destructive h-auto p-0" onClick={() => handleRemoveLogo('platform')} disabled={isRemoving === 'platform'}>
                                 {isRemoving === 'platform' ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
@@ -240,13 +241,11 @@ export default function TeacherSettingsPage() {
                             </div>
                              <div className="space-y-2">
                                 <Label>Logo {index + 1}</Label>
-                                <Input id={`sponsor-upload-${index}`} type="file" accept="image/*" onChange={(e) => handleImageChange(e, 'sponsor', index)} className="hidden" />
-                                <Label htmlFor={`sponsor-upload-${index}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
-                                    <UploadCloud className="mr-2"/> 上傳
+                                <Input id={`sponsor-upload-${index}`} type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'sponsor', index)} className="hidden" disabled={!!isUploading} />
+                                <Label htmlFor={`sponsor-upload-${index}`} className={buttonVariants({ variant: "outline", size: "sm", disabled: !!isUploading })}>
+                                     {isUploading === `sponsor_${index}` ? <Loader2 className="mr-2 animate-spin"/> : <UploadCloud className="mr-2"/>}
+                                     上傳
                                 </Label>
-                                <p className="text-xs text-muted-foreground">
-                                    {sponsorFiles[index] ? sponsorFiles[index]?.name : "尚未選擇檔案"}
-                                </p>
                                 {sponsorPreviews[index] && (
                                     <Button variant="link" size="sm" className="text-destructive h-auto p-0" onClick={() => handleRemoveLogo('sponsor', index)} disabled={isRemoving === `sponsor_${index}`}>
                                         {isRemoving === `sponsor_${index}` ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
@@ -259,7 +258,7 @@ export default function TeacherSettingsPage() {
                 </CardContent>
             </Card>
              <div className="flex justify-end">
-                <Button onClick={handleSaveSettings} disabled={isSavingSettings}>
+                <Button onClick={handleSaveSettings} disabled={isSavingSettings || !!isUploading}>
                     {isSavingSettings && <Loader2 className="mr-2 animate-spin" />}
                     儲存設定
                 </Button>

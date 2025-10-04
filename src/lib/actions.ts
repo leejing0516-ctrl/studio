@@ -2,10 +2,10 @@
 "use server";
 
 import { suggestRewards, type RewardSuggestionInput } from "@/ai/flows/reward-suggestion";
-import { db, storage } from './firebase';
+import { db, storage } from './firebase-admin'; // Switch to admin SDK
 import { doc, runTransaction, getDoc, setDoc, writeBatch, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import type { Student, Reward, Teacher, PlatformConfig, RedeemedRewardItem } from './types';
+import { getDownloadURL } from "firebase-admin/storage";
 
 export async function getRewardSuggestions(input: RewardSuggestionInput) {
     try {
@@ -30,20 +30,20 @@ interface RedeemRewardOutput {
 
 export async function redeemRewardTransaction(input: RedeemRewardInput): Promise<RedeemRewardOutput> {
     try {
-        await runTransaction(db, async (transaction) => {
+        await db.runTransaction(async (transaction) => {
             const studentDocId = `${input.classId}-${input.studentId}`;
-            const studentRef = doc(db, 'students', studentDocId);
-            const rewardRef = doc(db, 'rewards', input.rewardId);
+            const studentRef = db.collection('students').doc(studentDocId);
+            const rewardRef = db.collection('rewards').doc(input.rewardId);
 
             const [studentDoc, rewardDoc] = await Promise.all([
                 transaction.get(studentRef),
                 transaction.get(rewardRef)
             ]);
 
-            if (!studentDoc.exists()) {
+            if (!studentDoc.exists) {
                 throw new Error("找不到該學生。");
             }
-            if (!rewardDoc.exists()) {
+            if (!rewardDoc.exists) {
                 throw new Error("找不到該獎勵。");
             }
 
@@ -73,16 +73,16 @@ export async function redeemRewardTransaction(input: RedeemRewardInput): Promise
             });
 
             if (reward.scope === 'school') {
-                const configRef = doc(db, 'config', 'main');
+                const configRef = db.collection('config').doc('main');
                 const configDoc = await transaction.get(configRef);
                 const currentConfig = configDoc.data() as PlatformConfig;
                 transaction.update(configRef, {
                     schoolFunds: (currentConfig.schoolFunds || 0) + reward.cost
                 });
             } else {
-                const teacherRef = doc(db, 'teachers', reward.providerId);
+                const teacherRef = db.collection('teachers').doc(reward.providerId);
                 const teacherDoc = await transaction.get(teacherRef);
-                if (teacherDoc.exists()) {
+                if (teacherDoc.exists) {
                     const teacher = teacherDoc.data() as Teacher;
                     transaction.update(teacherRef, {
                         pointBalance: (teacher.pointBalance || 0) + reward.cost
@@ -113,13 +113,13 @@ interface UseRewardOutput {
 
 export async function useRewardTransaction(input: UseRewardInput): Promise<UseRewardOutput> {
      try {
-        await runTransaction(db, async (transaction) => {
+        await db.runTransaction(async (transaction) => {
             const studentDocId = `${input.classId}-${input.studentId}`;
-            const studentRef = doc(db, 'students', studentDocId);
+            const studentRef = db.collection('students').doc(studentDocId);
 
             const studentDoc = await transaction.get(studentRef);
 
-            if (!studentDoc.exists()) {
+            if (!studentDoc.exists) {
                 throw new Error("找不到該學生。");
             }
             
@@ -148,55 +148,32 @@ export async function useRewardTransaction(input: UseRewardInput): Promise<UseRe
     }
 }
 
-const uploadFile = async (file: File, path: string): Promise<string> => {
-    const storageRef = ref(storage, path);
-    await uploadBytes(storageRef, file);
-    return await getDownloadURL(storageRef);
-};
+export async function uploadFile(
+  { fileBuffer, contentType, path }: { fileBuffer: ArrayBuffer, contentType: string, path: string }
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  try {
+    const bucket = storage.bucket();
+    const file = bucket.file(path);
+    const buffer = Buffer.from(fileBuffer);
+    
+    await file.save(buffer, {
+      metadata: {
+        contentType,
+      },
+    });
 
-export async function savePlatformSettings(formData: FormData): Promise<{success: boolean, error?: string}> {
+    const downloadURL = await getDownloadURL(file);
+    return { success: true, url: downloadURL };
+  } catch (error: any) {
+    console.error("File upload failed:", error);
+    return { success: false, error: error.message || '檔案上傳時發生未知錯誤。' };
+  }
+}
+
+export async function savePlatformSettings(newConfig: Partial<PlatformConfig>): Promise<{success: boolean, error?: string}> {
     try {
         const configDocRef = doc(db, 'config', 'main');
-        const configDoc = await getDoc(configDocRef);
-        const currentConfig = configDoc.data() as PlatformConfig | undefined;
-
-        const fixedDepositInterestRate = Number(formData.get('fixedDepositInterestRate'));
-        const loanInterestRate = Number(formData.get('loanInterestRate'));
-        
-        const newConfig: Partial<PlatformConfig> = {
-            fixedDepositInterestRate,
-            loanInterestRate,
-        };
-
-        // Handle logo upload
-        const logoFile = formData.get('logoFile') as File | null;
-        if (logoFile) {
-            newConfig.platformLogoUrl = await uploadFile(logoFile, `logos/platform_logo_${Date.now()}`);
-        }
-
-        // Handle sponsor logos upload
-        const sponsorUploadPromises: Promise<string | null>[] = [];
-        const newSponsorUrls: (string | null)[] = [...(currentConfig?.sponsorLogoUrls || [null, null, null, null])];
-
-        for (let i = 0; i < 4; i++) {
-            const file = formData.get(`sponsorFile${i}`) as File | null;
-            if (file) {
-                const promise = uploadFile(file, `logos/sponsor_${i}_${Date.now()}`).then(url => {
-                    newSponsorUrls[i] = url;
-                    return url;
-                });
-                sponsorUploadPromises.push(promise);
-            }
-        }
-        
-        await Promise.all(sponsorUploadPromises);
-
-        if(sponsorUploadPromises.length > 0) {
-            newConfig.sponsorLogoUrls = newSponsorUrls;
-        }
-
         await updateDoc(configDocRef, newConfig);
-
         return { success: true };
     } catch (error: any) {
         console.error("Failed to save platform settings:", error);
@@ -232,11 +209,15 @@ export async function removeLogo({ type, index }: { type: 'platform' | 'sponsor'
         // Update Firestore first
         await updateDoc(configDocRef, updatePayload);
         
-        // Then, delete from Storage
         if (urlToDelete) {
             try {
-                const storageRef = ref(storage, urlToDelete);
-                await deleteObject(storageRef);
+                // To delete from storage, you need to parse the URL to get the path
+                const path = new URL(urlToDelete).pathname.split('/').pop();
+                if (path) {
+                    const decodedPath = decodeURIComponent(path);
+                    const file = storage.bucket().file(decodedPath);
+                    await file.delete();
+                }
             } catch (storageError: any) {
                 // If deletion fails (e.g. file not found), log it but don't fail the whole operation
                 // as the URL has already been removed from Firestore.
@@ -251,31 +232,29 @@ export async function removeLogo({ type, index }: { type: 'platform' | 'sponsor'
     }
 }
 
-// All other `set` functions that were in AppDataContext can be refactored into server actions here.
-// For example:
 export async function setStudents(students: Student[]) {
-    const batch = writeBatch(db);
+    const batch = db.batch();
     students.forEach(student => {
         const studentDocId = `${student.classId}-${student.id}`;
-        const studentRef = doc(db, 'students', studentDocId);
+        const studentRef = db.collection('students').doc(studentDocId);
         batch.set(studentRef, student, { merge: true });
     });
     await batch.commit();
 }
 
 export async function setRewards(rewards: Reward[]) {
-    const batch = writeBatch(db);
+    const batch = db.batch();
     rewards.forEach(reward => {
-        const rewardRef = doc(db, 'rewards', reward.id);
+        const rewardRef = db.collection('rewards').doc(reward.id);
         batch.set(rewardRef, reward, { merge: true });
     });
     await batch.commit();
 }
 
 export async function setStocks(stocks: Stock[]) {
-    const batch = writeBatch(db);
+    const batch = db.batch();
     stocks.forEach(stock => {
-        const stockRef = doc(db, 'stocks', stock.ticker);
+        const stockRef = db.collection('stocks').doc(stock.ticker);
         batch.set(stockRef, stock, { merge: true });
     });
     await batch.commit();
