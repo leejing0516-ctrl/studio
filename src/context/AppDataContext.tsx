@@ -104,12 +104,30 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         const itemRef = doc(db, collectionName, _docId);
         batch.update(itemRef, itemData);
       } else {
-        // This is a new item, let Firestore generate ID
-        const { _docId, ...itemData } = item; // remove _docId if it exists but is not in existingDocIds
-        const newDocRef = doc(collection(db, collectionName));
+        // This is a new item
+        let newDocId: string;
+        if (collectionName === 'students' && item.classId && item.id) {
+          newDocId = `${item.classId}-${item.id}`;
+        } else {
+          // Let firestore generate for others, or handle if new ID logic is needed
+          newDocId = doc(collection(db, collectionName)).id;
+        }
+        
+        const { _docId, ...itemData } = item;
+        const newDocRef = doc(db, collectionName, newDocId);
         batch.set(newDocRef, itemData);
       }
     }
+  
+    // Now handle deletions
+    const currentStateDocIds = new Set(currentState.map(item => item._docId).filter(Boolean));
+    for (const oldDocId of existingDocIds) {
+        if (!currentStateDocIds.has(oldDocId)) {
+            const docToDeleteRef = doc(db, collectionName, oldDocId);
+            batch.delete(docToDeleteRef);
+        }
+    }
+
 
     try {
       await batch.commit();
@@ -155,8 +173,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 try {
                     const batch = writeBatch(db);
                     initialStudents.forEach(student => {
-                        // Create a new doc with a Firestore-generated ID
-                        const docRef = doc(collection(db, 'students'));
+                        const docId = `${student.classId}-${student.id}`;
+                        const docRef = doc(db, 'students', docId);
                         batch.set(docRef, student);
                     });
                     await batch.commit();
@@ -170,7 +188,9 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
             const data: (T & { _docId: string })[] = [];
             querySnapshot.forEach(doc => {
-                data.push({ ...doc.data() as T, _docId: doc.id });
+                const docData = doc.data() as T;
+                const id = collectionName === 'students' ? (docData as any).id : doc.id;
+                data.push({ ...docData, id, _docId: doc.id });
             });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
