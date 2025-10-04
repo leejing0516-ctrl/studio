@@ -228,10 +228,11 @@ export default function TeacherDashboardPage() {
         return { records, studentTotals, classSummary };
     }, [students, historySelectedTeacherId, historySelectedClassId, teachers]);
     
-    const { rewardApprovalRequests, loanApprovalRequests, challengeApprovalRequests } = useMemo(() => {
+    const { rewardApprovalRequests, loanApprovalRequests, challengeApprovalRequests, habitApprovalRequests } = useMemo(() => {
         const rewardReqs: { student: Student; rewardItem: RedeemedRewardItem }[] = [];
         const loanReqs: { student: Student; loan: Loan }[] = [];
         const challengeReqs: { student: Student; challenge: StudentChallenge }[] = [];
+        const habitReqs: { student: Student; habit: StudentHabit }[] = [];
     
         let studentsToList: Student[] = [];
     
@@ -259,6 +260,12 @@ export default function TeacherDashboardPage() {
                     challengeReqs.push({ student, challenge: c });
                 }
             });
+
+            (student.habits || []).forEach(h => {
+                if (h.status === 'pending_approval') {
+                    habitReqs.push({ student, habit: h });
+                }
+            });
         });
         
         const uniqueRewardReqs = rewardReqs.filter((v, i, a) => 
@@ -268,7 +275,8 @@ export default function TeacherDashboardPage() {
         return {
             rewardApprovalRequests: uniqueRewardReqs,
             loanApprovalRequests: loanReqs,
-            challengeApprovalRequests: challengeReqs
+            challengeApprovalRequests: challengeReqs,
+            habitApprovalRequests: habitReqs,
         };
     }, [students, role, teacherId, teacherClassIds]);
 
@@ -277,6 +285,16 @@ export default function TeacherDashboardPage() {
         const formData = new FormData(event.currentTarget);
         const studentId = formData.get('id') as string;
         
+        const existingStudent = students.find(s => s.classId === selectedClassId && s.id === studentId);
+        if (existingStudent) {
+            toast({
+                title: "新增失敗",
+                description: `ID 為 ${studentId} 的學生已存在於此班級中。`,
+                variant: "destructive",
+            });
+            return;
+        }
+
         const newStudent: Student = {
             id: studentId,
             name: formData.get('name') as string,
@@ -832,7 +850,7 @@ export default function TeacherDashboardPage() {
              tabs.push(<TabsTrigger key="history" value="history">點數歷史</TabsTrigger>);
         }
         
-        if (role === 'admin' || role === 'teacher' || role === 'subject_teacher') {
+        if (role === 'admin' || role === 'teacher') {
             tabs.push(<TabsTrigger key="approvals" value="approvals">審核中心</TabsTrigger>);
         }
         
@@ -850,7 +868,7 @@ export default function TeacherDashboardPage() {
         );
     }
     
-    const defaultTabValue = role === 'subject_teacher' ? 'points' : 'students';
+    const defaultTabValue = (role === 'teacher' || role === 'admin') ? 'students' : 'points';
     
     return (
         <div className="space-y-6 animate-in fade-in-0 duration-500">
@@ -1293,7 +1311,7 @@ export default function TeacherDashboardPage() {
                 </TabsContent>
                 )}
                 
-                {(role === 'admin' || role === 'teacher' || role === 'subject_teacher') && (
+                {(role === 'admin' || role === 'teacher') && (
                 <TabsContent value="approvals" className="mt-6">
                      <div className="grid gap-6">
                         <Card>
@@ -1303,6 +1321,13 @@ export default function TeacherDashboardPage() {
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-6">
+                                    <div>
+                                        <h3 className="text-lg font-semibold mb-2">習慣養成申請 ({habitApprovalRequests.length})</h3>
+                                        {habitApprovalRequests.length > 0 ? (
+                                            <p className="text-sm text-muted-foreground">請前往「習慣審核」頁面進行處理。</p>
+                                        ) : <p className="text-sm text-muted-foreground">沒有待審核的習慣申請。</p>}
+                                    </div>
+                                    <Separator />
                                     <div>
                                         <h3 className="text-lg font-semibold mb-2">挑戰任務審核 ({challengeApprovalRequests.length})</h3>
                                         {challengeApprovalRequests.length > 0 ? (
