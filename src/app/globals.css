@@ -47,41 +47,39 @@ body {
   }
 
   .dark {
-    --background: hsl(var(--background-hsl));
-    --foreground: hsl(var(--foreground-hsl));
-    --card: hsl(var(--card-hsl));
-    --card-foreground: hsl(var(--card-foreground-hsl));
-    --popover: hsl(var(--popover-hsl));
-    --popover-foreground: hsl(var(--popover-foreground-hsl));
-    --primary: hsl(var(--primary-hsl));
-    --primary-foreground: hsl(var(--primary-foreground-hsl));
-    --secondary: hsl(var(--secondary-hsl));
-    --secondary-foreground: hsl(var(--secondary-foreground-hsl));
-    --muted: hsl(var(--muted-hsl));
-    --muted-foreground: hsl(var(--muted-foreground-hsl));
-    --accent: hsl(var(--accent-hsl));
-    --accent-foreground: hsl(var(--accent-foreground-hsl));
-    --destructive: hsl(var(--destructive-hsl));
-    --destructive-foreground: hsl(var(--destructive-foreground-hsl));
-    --success: 140 70% 35%;
-    --success-foreground: 0 0% 98%;
-    --border: hsl(var(--border-hsl));
-    --input: hsl(var(--input-hsl));
-    --ring: hsl(var(--ring-hsl));
-    --chart-1: hsl(var(--chart-1-hsl));
-    --chart-2: hsl(var(--chart-2-hsl));
-    --chart-3: hsl(var(--chart-3-hsl));
-    --chart-4: hsl(var(--chart-4-hsl));
-    --chart-5: hsl(var(--chart-5-hsl));
+    --background-hsl: var(--background);
+    --foreground-hsl: var(--foreground);
+    --card-hsl: var(--card);
+    --card-foreground-hsl: var(--card-foreground);
+    --popover-hsl: var(--popover);
+    --popover-foreground-hsl: var(--popover-foreground);
+    --primary-hsl: var(--primary);
+    --primary-foreground-hsl: var(--primary-foreground);
+    --secondary-hsl: var(--secondary);
+    --secondary-foreground-hsl: var(--secondary-foreground);
+    --muted-hsl: var(--muted);
+    --muted-foreground-hsl: var(--muted-foreground);
+    --accent-hsl: var(--accent);
+    --accent-foreground-hsl: var(--accent-foreground);
+    --destructive-hsl: var(--destructive);
+    --destructive-foreground-hsl: var(--destructive-foreground);
+    --border-hsl: var(--border);
+    --input-hsl: var(--input);
+    --ring-hsl: var(--ring);
+    --chart-1-hsl: var(--chart-1);
+    --chart-2-hsl: var(--chart-2);
+    --chart-3-hsl: var(--chart-3);
+    --chart-4-hsl: var(--chart-4);
+    --chart-5-hsl: var(--chart-5);
 
-    --sidebar-background: hsl(var(--sidebar-background-hsl));
-    --sidebar-foreground: hsl(var(--sidebar-foreground-hsl));
-    --sidebar-primary: hsl(var(--sidebar-primary-hsl));
-    --sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground-hsl));
-    --sidebar-accent: hsl(var(--sidebar-accent-hsl));
-    --sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground-hsl));
-    --sidebar-border: hsl(var(--sidebar-border-hsl));
-    --sidebar-ring: hsl(var(--sidebar-ring-hsl));
+    --sidebar-background-hsl: var(--sidebar-background);
+    --sidebar-foreground-hsl: var(--sidebar-foreground);
+    --sidebar-primary-hsl: var(--sidebar-primary);
+    --sidebar-primary-foreground-hsl: var(--sidebar-primary-foreground);
+    --sidebar-accent-hsl: var(--sidebar-accent);
+    --sidebar-accent-foreground-hsl: var(--sidebar-accent-foreground);
+    --sidebar-border-hsl: var(--sidebar-border);
+    --sidebar-ring-hsl: var(--sidebar-ring);
   }
 }
 

@@ -1,16 +1,36 @@
 
-import type { Metadata } from "next";
+"use client";
+
+import { useContext, useEffect, useMemo } from "react";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
-import { AppDataProvider } from "@/context/AppDataContext";
+import { AppDataProvider, AppDataContext } from "@/context/AppDataContext";
 import { StudentDataProvider } from "@/context/StudentDataContext";
-import { ThemeProvider } from "@/context/ThemeContext";
+import { themes } from "@/lib/themes";
 
 
-export const metadata: Metadata = {
-  title: "南梓實小虛擬銀行",
-  description: "一個為學生設計，充滿活力的獎勵與金融素養應用程式。",
-};
+const ThemeInjector = ({ children }: { children: React.ReactNode }) => {
+  const { platformConfig } = useContext(AppDataContext);
+  const themeName = useMemo(() => platformConfig?.theme || 'default', [platformConfig]);
+
+  useEffect(() => {
+    const theme = themes.find(t => t.name === themeName) || themes[0];
+    
+    const root = document.documentElement;
+    root.classList.remove(...themes.map(t => t.name));
+    root.classList.add(theme.name);
+
+    if (theme.cssVars.dark) {
+      Object.entries(theme.cssVars.dark).forEach(([key, value]) => {
+        root.style.setProperty(`--${key}`, value);
+      });
+    }
+
+  }, [themeName]);
+
+  return <>{children}</>;
+}
+
 
 export default function RootLayout({
   children,
@@ -20,6 +40,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <title>南梓實小虛擬銀行</title>
+        <meta name="description" content="一個為學生設計，充滿活力的獎勵與金融素養應用程式。" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
@@ -29,12 +51,12 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <AppDataProvider>
-          <ThemeProvider>
+          <ThemeInjector>
             <StudentDataProvider>
                 {children}
                 <Toaster />
             </StudentDataProvider>
-          </ThemeProvider>
+          </ThemeInjector>
         </AppDataProvider>
       </body>
     </html>
