@@ -10,12 +10,15 @@ import { Button } from "@/components/ui/button";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useToast } from "@/hooks/use-toast";
 import type { RedeemedRewardItem, Student } from "@/lib/types";
-import { useRewardTransaction } from "@/lib/actions";
+import { doc, runTransaction, Transaction } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
 
 export default function MyCollectionPage() {
   const { studentData } = useContext(StudentDataContext);
   const { toast } = useToast();
   const [isUsing, setIsUsing] = useState<string | null>(null);
+  const { runTransaction: runContextTransaction } = useContext(AppDataContext);
   
   const currentStudent = studentData.student;
 
@@ -24,29 +27,30 @@ export default function MyCollectionPage() {
     
     setIsUsing(redemption.redemptionId);
     try {
-        const result = await useRewardTransaction({
-            studentId: currentStudent.id,
-            classId: currentStudent.classId,
-            redemptionId: redemption.redemptionId,
+        await runContextTransaction(async (transaction: Transaction) => {
+            const studentDocId = `${currentStudent.classId}-${currentStudent.id}`;
+            const studentRef = doc(db, 'students', studentDocId);
+            const studentDoc = await transaction.get(studentRef);
+
+            if (!studentDoc.exists()) {
+                throw new Error("找不到您的學生資料。");
+            }
+            const studentData = studentDoc.data() as Student;
+            const updatedRewards = (studentData.redeemedRewards || []).map(r => 
+                r.redemptionId === redemption.redemptionId ? { ...r, status: 'pending_use' as const } : r
+            );
+            transaction.update(studentRef, { redeemedRewards: updatedRewards });
         });
 
-        if (result.success) {
-            toast({
-                title: "已提出使用請求",
-                description: `您已請求使用「${redemption.reward.name}」。請等待老師同意。`
-            });
-        } else {
-             toast({
-                title: "請求失敗",
-                description: result.error,
-                variant: "destructive"
-            });
-        }
-    } catch (error) {
+        toast({
+            title: "已提出使用請求",
+            description: `您已請求使用「${redemption.reward.name}」。請等待老師同意。`
+        });
+    } catch (error: any) {
         console.error("Failed to request reward usage:", error);
         toast({
             title: "請求失敗",
-            description: "更新您的收藏品狀態時發生錯誤，請稍後再試。",
+            description: error.message || "更新您的收藏品狀態時發生錯誤，請稍後再試。",
             variant: "destructive"
         });
     } finally {
@@ -107,3 +111,5 @@ export default function MyCollectionPage() {
     </div>
   );
 }
+
+    

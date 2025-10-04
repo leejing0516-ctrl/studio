@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext, useEffect, useMemo } from 'react';
+import { useState, useContext, useEffect, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -28,10 +28,10 @@ export default function HomePage() {
   const router = useRouter();
   const { toast } = useToast();
   const appData = useContext(AppDataContext);
-  const { classes, teachers, platformConfig, isLoading } = appData;
+  const { classes, isLoading } = appData;
 
   const sortedTeachers = useMemo(() => {
-    return [...teachers].sort((a, b) => {
+    return [...appData.teachers].sort((a, b) => {
         const orderA = a.sortOrder || 99;
         const orderB = b.sortOrder || 99;
         if (orderA !== orderB) {
@@ -39,7 +39,7 @@ export default function HomePage() {
         }
         return a.id.localeCompare(b.id);
     });
-  }, [teachers]);
+  }, [appData.teachers]);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -51,7 +51,7 @@ export default function HomePage() {
     }
   }, [router]);
 
-  const handleStudentLogin = (e: React.FormEvent) => {
+  const handleStudentLogin = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     setIsLoggingIn(true);
 
@@ -87,9 +87,9 @@ export default function HomePage() {
         });
         setIsLoggingIn(false);
     }
-  };
+  }, [classId, studentId, studentPassword, appData, router, toast]);
   
-  const handleTeacherLogin = (e: React.FormEvent) => {
+  const handleTeacherLogin = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     setIsLoggingIn(true);
     if (!selectedTeacherId || !teacherPassword) {
@@ -102,23 +102,31 @@ export default function HomePage() {
         return;
     }
 
-    // Store credentials and role, then redirect. Validation will happen in the layout.
-    localStorage.setItem('userRole', 'teacher');
-    localStorage.setItem('teacherId', selectedTeacherId);
-    localStorage.setItem('teacherPassword', teacherPassword);
-
-    router.push('/teacher/dashboard');
-  };
+    const teacher = appData.teachers.find(t => t.id === selectedTeacherId);
+    if (teacher && teacher.password === teacherPassword) {
+        localStorage.setItem('userRole', 'teacher');
+        localStorage.setItem('teacherId', selectedTeacherId);
+        localStorage.setItem('teacherPassword', teacherPassword);
+        router.push('/teacher/dashboard');
+    } else {
+        toast({
+            title: "登入失敗",
+            description: "您輸入的帳號或密碼不正確。",
+            variant: "destructive",
+        });
+        setIsLoggingIn(false);
+    }
+  }, [selectedTeacherId, teacherPassword, appData.teachers, router, toast]);
 
   const isFormDisabled = isLoading || isLoggingIn;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
       <header className="mb-8 text-center animate-in fade-in slide-in-from-top duration-700">
-        {platformConfig?.homeIllustrationUrl && (
+        {appData.platformConfig?.homeIllustrationUrl && (
             <div className="relative h-48 w-full max-w-md mx-auto mb-4">
                 <Image 
-                    src={platformConfig.homeIllustrationUrl}
+                    src={appData.platformConfig.homeIllustrationUrl}
                     alt="首頁插圖"
                     fill
                     className="object-contain"
@@ -127,10 +135,10 @@ export default function HomePage() {
             </div>
         )}
         <h1 className="text-4xl md:text-5xl font-bold font-headline text-foreground">
-          {platformConfig?.homeTitle || '歡迎來到南梓實小虛擬銀行'}
+          {appData.platformConfig?.homeTitle || '歡迎來到南梓實小虛擬銀行'}
         </h1>
         <p className="text-lg text-muted-foreground mt-2 max-w-2xl mx-auto">
-          {platformConfig?.homeSubtitle || '您通往金融素養的門戶，在這裡學習金錢知識既有回報又充滿樂趣！'}
+          {appData.platformConfig?.homeSubtitle || '您通往金融素養的門戶，在這裡學習金錢知識既有回報又充滿樂趣！'}
         </p>
       </header>
 
@@ -249,11 +257,11 @@ export default function HomePage() {
         </div>
       </div>
       <footer className="text-center mt-8 text-muted-foreground text-sm">
-        {platformConfig?.sponsorLogoUrls && platformConfig.sponsorLogoUrls.some(url => url) ? (
+        {appData.platformConfig?.sponsorLogoUrls && appData.platformConfig.sponsorLogoUrls.some(url => url) ? (
             <div className="flex flex-col items-center gap-4">
                 <span className="text-xs">贊助單位</span>
                 <div className="flex flex-wrap justify-center items-center gap-8">
-                    {platformConfig.sponsorLogoUrls.map((url, index) => url && (
+                    {appData.platformConfig.sponsorLogoUrls.map((url, index) => url && (
                         <div key={index} className="relative h-12 w-36">
                             <Image 
                                 src={url}
