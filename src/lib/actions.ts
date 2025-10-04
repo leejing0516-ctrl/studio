@@ -3,8 +3,8 @@
 
 import { suggestRewards, type RewardSuggestionInput } from "@/ai/flows/reward-suggestion";
 import { db, storage } from './firebase';
-import { doc, runTransaction, getDoc, setDoc, writeBatch } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { doc, runTransaction, getDoc, setDoc, writeBatch, updateDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import type { Student, Reward, Teacher, PlatformConfig, RedeemedRewardItem } from './types';
 
 export async function getRewardSuggestions(input: RewardSuggestionInput) {
@@ -156,48 +156,98 @@ const uploadFile = async (file: File, path: string): Promise<string> => {
 
 export async function savePlatformSettings(formData: FormData): Promise<{success: boolean, error?: string}> {
     try {
+        const configDocRef = doc(db, 'config', 'main');
+        const configDoc = await getDoc(configDocRef);
+        const currentConfig = configDoc.data() as PlatformConfig | undefined;
+
         const fixedDepositInterestRate = Number(formData.get('fixedDepositInterestRate'));
         const loanInterestRate = Number(formData.get('loanInterestRate'));
-        const currentConfigString = formData.get('currentConfig') as string;
-        const currentConfig: PlatformConfig | null = currentConfigString ? JSON.parse(currentConfigString) : null;
-
-        const logoFile = formData.get('logoFile') as File | null;
-        const sponsorFiles = [
-            formData.get('sponsorFile0') as File | null,
-            formData.get('sponsorFile1') as File | null,
-            formData.get('sponsorFile2') as File | null,
-            formData.get('sponsorFile3') as File | null,
-        ];
-
-        let platformLogoUrl = currentConfig?.platformLogoUrl || null;
-        if (logoFile && logoFile.size > 0) {
-            platformLogoUrl = await uploadFile(logoFile, `logos/platform_logo_${Date.now()}`);
-        }
-
-        const sponsorUploadPromises = sponsorFiles.map((file, index) => {
-            if (file && file.size > 0) {
-                return uploadFile(file, `logos/sponsor_${index}_${Date.now()}`);
-            }
-            // Keep the existing URL if no new file is uploaded
-            return Promise.resolve(currentConfig?.sponsorLogoUrls?.[index] || null);
-        });
         
-        const newSponsorUrls = await Promise.all(sponsorUploadPromises);
-
         const newConfig: Partial<PlatformConfig> = {
             fixedDepositInterestRate,
             loanInterestRate,
-            platformLogoUrl: platformLogoUrl || "",
-            sponsorLogoUrls: newSponsorUrls,
         };
 
-        const configDocRef = doc(db, 'config', 'main');
-        await setDoc(configDocRef, newConfig, { merge: true });
+        // Handle logo upload
+        const logoFile = formData.get('logoFile') as File | null;
+        if (logoFile) {
+            newConfig.platformLogoUrl = await uploadFile(logoFile, `logos/platform_logo_${Date.now()}`);
+        }
+
+        // Handle sponsor logos upload
+        const sponsorUploadPromises: Promise<string | null>[] = [];
+        const newSponsorUrls: (string | null)[] = [...(currentConfig?.sponsorLogoUrls || [null, null, null, null])];
+
+        for (let i = 0; i < 4; i++) {
+            const file = formData.get(`sponsorFile${i}`) as File | null;
+            if (file) {
+                const promise = uploadFile(file, `logos/sponsor_${i}_${Date.now()}`).then(url => {
+                    newSponsorUrls[i] = url;
+                    return url;
+                });
+                sponsorUploadPromises.push(promise);
+            }
+        }
+        
+        await Promise.all(sponsorUploadPromises);
+
+        if(sponsorUploadPromises.length > 0) {
+            newConfig.sponsorLogoUrls = newSponsorUrls;
+        }
+
+        await updateDoc(configDocRef, newConfig);
 
         return { success: true };
     } catch (error: any) {
         console.error("Failed to save platform settings:", error);
         return { success: false, error: error.message || "儲存設定時發生未知錯誤。" };
+    }
+}
+
+
+export async function removeLogo({ type, index }: { type: 'platform' | 'sponsor'; index?: number }): Promise<{success: boolean, error?: string}> {
+     try {
+        const configDocRef = doc(db, 'config', 'main');
+        const configDoc = await getDoc(configDocRef);
+        if (!configDoc.exists()) {
+            throw new Error("找不到平台設定。");
+        }
+        const currentConfig = configDoc.data() as PlatformConfig;
+        
+        let urlToDelete: string | null | undefined = null;
+        let updatePayload: Partial<PlatformConfig> = {};
+
+        if (type === 'platform') {
+            urlToDelete = currentConfig.platformLogoUrl;
+            updatePayload.platformLogoUrl = '';
+        } else if (type === 'sponsor' && index !== undefined) {
+            const currentUrls = [...(currentConfig.sponsorLogoUrls || [])];
+            urlToDelete = currentUrls[index];
+            currentUrls[index] = null;
+            updatePayload.sponsorLogoUrls = currentUrls;
+        } else {
+            throw new Error("無效的移除類型或索引。");
+        }
+        
+        // Update Firestore first
+        await updateDoc(configDocRef, updatePayload);
+        
+        // Then, delete from Storage
+        if (urlToDelete) {
+            try {
+                const storageRef = ref(storage, urlToDelete);
+                await deleteObject(storageRef);
+            } catch (storageError: any) {
+                // If deletion fails (e.g. file not found), log it but don't fail the whole operation
+                // as the URL has already been removed from Firestore.
+                console.warn(`Failed to delete old file from storage: ${urlToDelete}`, storageError);
+            }
+        }
+        
+        return { success: true };
+    } catch (error: any) {
+        console.error("Failed to remove logo:", error);
+        return { success: false, error: error.message || "移除圖片時發生錯誤。" };
     }
 }
 

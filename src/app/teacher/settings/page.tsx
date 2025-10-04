@@ -12,19 +12,20 @@ import {
 } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Percent, ImageOff, UploadCloud } from "lucide-react";
+import { Loader2, Percent, ImageOff, UploadCloud, Trash2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
-import { savePlatformSettings } from "@/lib/actions";
+import { savePlatformSettings, removeLogo } from "@/lib/actions";
 
 export default function TeacherSettingsPage() {
-    const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
+    const { platformConfig } = useContext(AppDataContext);
     const { toast } = useToast();
     const router = useRouter();
 
     const [isSavingSettings, setIsSavingSettings] = useState(false);
+    const [isRemoving, setIsRemoving] = useState<string | null>(null);
     const [fixedDepositRate, setFixedDepositRate] = useState<number | string>('');
     const [loanInterestRate, setLoanInterestRate] = useState<number | string>('');
     
@@ -81,13 +82,40 @@ export default function TeacherSettingsPage() {
         }
     };
 
+    const handleRemoveLogo = async (type: 'platform' | 'sponsor', index?: number) => {
+        const key = type === 'platform' ? 'platform' : `sponsor_${index}`;
+        setIsRemoving(key);
+        try {
+            const result = await removeLogo({ type, index });
+            if (result.success) {
+                toast({ title: "圖片已移除" });
+                if (type === 'platform') {
+                    setLogoPreview(null);
+                    setLogoFile(null);
+                } else if (index !== undefined) {
+                    const newPreviews = [...sponsorPreviews];
+                    newPreviews[index] = null;
+                    setSponsorPreviews(newPreviews);
+                     const newFiles = [...sponsorFiles];
+                    newFiles[index] = null;
+                    setSponsorFiles(newFiles);
+                }
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error: any) {
+             toast({ title: "移除失敗", description: error.message, variant: "destructive" });
+        } finally {
+            setIsRemoving(null);
+        }
+    }
+
     const handleSaveSettings = async () => {
         setIsSavingSettings(true);
         try {
             const formData = new FormData();
             formData.append('fixedDepositInterestRate', String(Number(fixedDepositRate) / 100));
             formData.append('loanInterestRate', String(Number(loanInterestRate) / 100));
-            formData.append('currentConfig', JSON.stringify(platformConfig));
 
             if (logoFile) {
                 formData.append('logoFile', logoFile);
@@ -104,7 +132,7 @@ export default function TeacherSettingsPage() {
             if (result.success) {
                 toast({ title: "設定已儲存", description: "平台設定已成功更新。" });
                 setLogoFile(null);
-                setSponsorFiles([]);
+                setSponsorFiles(new Array(4).fill(null));
             } else {
                 throw new Error(result.error);
             }
@@ -186,6 +214,12 @@ export default function TeacherSettingsPage() {
                         <p className="text-xs text-muted-foreground">
                             {logoFile ? logoFile.name : "尚未選擇檔案"}
                         </p>
+                        {logoPreview && (
+                            <Button variant="link" size="sm" className="text-destructive h-auto p-0" onClick={() => handleRemoveLogo('platform')} disabled={isRemoving === 'platform'}>
+                                {isRemoving === 'platform' ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
+                                移除目前 Logo
+                            </Button>
+                        )}
                     </div>
                 </CardContent>
             </Card>
@@ -213,6 +247,12 @@ export default function TeacherSettingsPage() {
                                 <p className="text-xs text-muted-foreground">
                                     {sponsorFiles[index] ? sponsorFiles[index]?.name : "尚未選擇檔案"}
                                 </p>
+                                {sponsorPreviews[index] && (
+                                    <Button variant="link" size="sm" className="text-destructive h-auto p-0" onClick={() => handleRemoveLogo('sponsor', index)} disabled={isRemoving === `sponsor_${index}`}>
+                                        {isRemoving === `sponsor_${index}` ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
+                                        移除
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     ))}
