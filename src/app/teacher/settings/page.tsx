@@ -17,10 +17,9 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
-import { app } from "@/lib/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { storage } from "@/lib/firebase";
 
-const storage = getStorage(app);
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 
 // Helper function to upload a file and get its URL
@@ -98,17 +97,16 @@ export default function TeacherSettingsPage() {
     const handleSaveSettings = async () => {
         setIsSavingSettings(true);
         try {
-            // Create an array of all upload promises
-            const uploadPromises = [];
-
-            // Platform logo upload promise
+            const uploadPromises: Promise<string | null>[] = [];
+    
+            // Platform logo promise
             if (logoFile) {
                 uploadPromises.push(uploadFile(logoFile, `logos/platform_logo_${Date.now()}`));
             } else {
                 uploadPromises.push(Promise.resolve(platformConfig?.platformLogoUrl || null));
             }
-
-            // Sponsor logos upload promises
+    
+            // Sponsor logos promises
             const currentSponsorUrls = platformConfig?.sponsorLogoUrls || Array(4).fill(null);
             for (let i = 0; i < 4; i++) {
                 const file = sponsorFiles[i];
@@ -118,28 +116,25 @@ export default function TeacherSettingsPage() {
                     uploadPromises.push(Promise.resolve(currentSponsorUrls[i]));
                 }
             }
-
-            // Await all promises together
+    
             const allUrls = await Promise.all(uploadPromises);
-
-            // Extract URLs from results
-            const platformLogoUrl = allUrls[0] as string | null;
-            const newSponsorLogoUrls = allUrls.slice(1) as (string | null)[];
-            
-            // Set the final config
+    
+            const finalPlatformLogoUrl = allUrls[0] as string | null;
+            const finalSponsorLogoUrls = allUrls.slice(1) as (string | null)[];
+    
             await setPlatformConfig({
-                platformLogoUrl: platformLogoUrl || "",
-                sponsorLogoUrls: newSponsorLogoUrls,
+                platformLogoUrl: finalPlatformLogoUrl || "",
+                sponsorLogoUrls: finalSponsorLogoUrls,
                 fixedDepositInterestRate: Number(fixedDepositRate) / 100,
                 loanInterestRate: Number(loanInterestRate) / 100
             });
-
+    
             // Reset file states after successful save
             setLogoFile(null);
             setSponsorFiles([]);
-
+    
             toast({ title: "設定已儲存", description: "平台設定已成功更新。" });
-
+    
         } catch (error) {
             console.error("Error saving settings:", error);
             toast({ title: "儲存失敗", description: "儲存平台設定時發生錯誤。", variant: "destructive" });
