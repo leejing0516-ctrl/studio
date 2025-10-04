@@ -83,6 +83,7 @@ export default function StudentLayout({
     localStorage.removeItem('studentClassId');
     localStorage.removeItem('studentPassword');
     localStorage.removeItem('userRole');
+    localStorage.removeItem('studentDocId');
     router.push('/');
   }, [router, setStudentData]);
 
@@ -91,18 +92,17 @@ export default function StudentLayout({
     if (isLoading) return; // Wait for all data to be loaded
 
     const userRole = localStorage.getItem('userRole');
-    const storedId = localStorage.getItem('studentId');
-    const storedClassId = localStorage.getItem('studentClassId');
+    const storedDocId = localStorage.getItem('studentDocId');
     const storedPassword = localStorage.getItem('studentPassword');
 
-    if (userRole !== 'student' || !storedId || !storedClassId || !storedPassword) {
+    if (userRole !== 'student' || !storedDocId || !storedPassword) {
       handleLogout();
       return;
     }
 
     // If student is already in context, just ensure it's the latest version.
-    if (student?.id === storedId && student?.classId === storedClassId) {
-        const latestStudentData = students.find(s => s.id === storedId && s.classId === storedClassId);
+    if (student?.id === storedDocId) {
+        const latestStudentData = students.find(s => s.id === storedDocId);
         if (latestStudentData && JSON.stringify(latestStudentData) !== JSON.stringify(student)) {
              setStudentData({ student: latestStudentData });
         }
@@ -110,12 +110,11 @@ export default function StudentLayout({
     }
     
     // Try to authenticate and set student data
-    const foundStudent = students.find(s => s.id === storedId && s.classId === storedClassId);
+    const foundStudent = students.find(s => s.id === storedDocId);
     
     if (foundStudent && foundStudent.password === storedPassword) {
         setStudentData({ student: foundStudent });
     } else {
-        // Don't toast here, just log out. The login page will handle feedback.
         handleLogout();
     }
   }, [isLoading, students, student, setStudentData, handleLogout]);
@@ -137,7 +136,7 @@ export default function StudentLayout({
         return;
     }
     
-    const studentToUpdate = students.find(s => s.id === student.id && s.classId === student.classId);
+    const studentToUpdate = students.find(s => s.id === student.id);
 
     if (studentToUpdate?.password !== currentPassword) {
         toast({ title: "密碼錯誤", description: "您輸入的目前密碼不正確。", variant: "destructive" });
@@ -147,7 +146,7 @@ export default function StudentLayout({
 
     try {
         await setStudents(currentStudents => currentStudents.map(s => {
-            if (s.id === student.id && s.classId === student.classId) {
+            if (s.id === student.id) {
                 return { ...s, password: newPassword };
             }
             return s;

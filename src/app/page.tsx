@@ -12,11 +12,11 @@ import { User, School, ArrowRight, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AppDataContext } from '@/context/AppDataContext';
-import type { Student } from '@/lib/types';
+import type { Student, Teacher } from '@/lib/types';
 
 export default function HomePage() {
   // Student states
-  const [studentId, setStudentId] = useState('');
+  const [studentIdInput, setStudentIdInput] = useState('');
   const [studentPassword, setStudentPassword] = useState('');
   const [classId, setClassId] = useState('');
   
@@ -55,7 +55,7 @@ export default function HomePage() {
     e.preventDefault();
     setIsLoggingIn(true);
 
-    if (!classId || !studentId || !studentPassword) {
+    if (!classId || !studentIdInput || !studentPassword) {
         toast({
             title: "資訊不完整",
             description: "請填寫所有欄位。",
@@ -65,21 +65,20 @@ export default function HomePage() {
         return;
     }
     
-    // Use the latest student list from the context for validation
+    const combinedStudentId = `${classId}-${studentIdInput}`;
     const foundStudent = appData.students.find(
-      (s: Student) => s.id === studentId && s.classId === classId
+      (s: Student) => s.id === combinedStudentId
     );
 
     if (foundStudent && foundStudent.password === studentPassword) {
-        // Validation successful
         toast({ title: "登入成功！", description: `歡迎回來，${foundStudent.name}！`});
         localStorage.setItem('userRole', 'student');
         localStorage.setItem('studentClassId', classId);
-        localStorage.setItem('studentId', studentId);
+        localStorage.setItem('studentId', studentIdInput);
+        localStorage.setItem('studentDocId', foundStudent.id);
         localStorage.setItem('studentPassword', studentPassword);
         router.push('/dashboard');
     } else {
-        // Validation failed
         toast({
             title: "登入失敗",
             description: "您輸入的班級、學號或密碼不正確。",
@@ -87,7 +86,7 @@ export default function HomePage() {
         });
         setIsLoggingIn(false);
     }
-  }, [classId, studentId, studentPassword, appData, router, toast]);
+  }, [classId, studentIdInput, studentPassword, appData.students, router, toast]);
   
   const handleTeacherLogin = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -178,8 +177,8 @@ export default function HomePage() {
                     id="student-id" 
                     placeholder="請輸入您的編號" 
                     required 
-                    value={studentId}
-                    onChange={(e) => setStudentId(e.target.value)}
+                    value={studentIdInput}
+                    onChange={(e) => setStudentIdInput(e.target.value)}
                     disabled={isFormDisabled}
                     />
                 </div>
@@ -280,5 +279,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    
