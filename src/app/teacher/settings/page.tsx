@@ -104,17 +104,25 @@ export default function TeacherSettingsPage() {
                 platformLogoUrl = await uploadFile(logoFile, `logos/platform_logo_${Date.now()}`);
             }
 
-            const sponsorLogoUrls = [...(platformConfig?.sponsorLogoUrls || [null, null, null, null])];
-            for (let i = 0; i < sponsorFiles.length; i++) {
-                const file = sponsorFiles[i];
+            const newSponsorLogoUrls = [...(platformConfig?.sponsorLogoUrls || Array(4).fill(null))];
+            
+            const uploadPromises = sponsorFiles.map((file, index) => {
                 if (file) {
-                    sponsorLogoUrls[i] = await uploadFile(file, `logos/sponsor_${i}_${Date.now()}`);
+                    return uploadFile(file, `logos/sponsor_${index}_${Date.now()}`).then(url => ({ url, index }));
                 }
+                return null;
+            }).filter(p => p !== null) as Promise<{ url: string; index: number }>[];
+
+            if (uploadPromises.length > 0) {
+                const settledPromises = await Promise.all(uploadPromises);
+                settledPromises.forEach(({ url, index }) => {
+                    newSponsorLogoUrls[index] = url;
+                });
             }
 
             await setPlatformConfig({
                 platformLogoUrl,
-                sponsorLogoUrls,
+                sponsorLogoUrls: newSponsorLogoUrls,
                 fixedDepositInterestRate: Number(fixedDepositRate) / 100,
                 loanInterestRate: Number(loanInterestRate) / 100
             });
