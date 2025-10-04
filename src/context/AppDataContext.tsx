@@ -102,7 +102,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             const { _docId, ...itemData } = item;
             batch.update(doc(db, collectionName, _docId), itemData);
         } else { // New item
-            const newDocRef = doc(collection(db, collectionName));
+            const newDocRef = doc(db, collectionName);
             batch.set(newDocRef, item);
         }
     }
@@ -158,9 +158,9 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 try {
                     const batch = writeBatch(db);
                     initialStudents.forEach(student => {
-                        // The placeholder data doesn't have a _docId, so we let Firestore generate one.
-                        const newStudentRef = doc(collection(db, "students"));
-                        batch.set(newStudentRef, student);
+                        const { _docId, ...studentData } = student as any;
+                        const newStudentRef = doc(db, "students", `${student.classId}-${student.id}`);
+                        batch.set(newStudentRef, studentData);
                     });
                     await batch.commit();
                     console.log("EMERGENCY RESTORE: Successfully restored students from placeholder data. The page will now reflect the restored data.");
