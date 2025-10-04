@@ -68,7 +68,7 @@ export default function StudentLayout({
   const pathname = usePathname();
   const router = useRouter();
   const { studentData, setStudentData } = useContext(StudentDataContext);
-  const { students, setStudents } = useContext(AppDataContext);
+  const { students, setStudents, isLoading } = useContext(AppDataContext);
   const { toast, dismiss } = useToast();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -79,7 +79,7 @@ export default function StudentLayout({
 
   // Effect to handle initial load and re-authentication from localStorage
   useEffect(() => {
-    if (studentData.student) return;
+    if (studentData.student || isLoading) return;
 
     const storedId = localStorage.getItem('studentId');
     const storedClassId = localStorage.getItem('studentClassId');
@@ -88,17 +88,17 @@ export default function StudentLayout({
         const foundStudent = students.find(s => s.id === storedId && s.classId === storedClassId);
         if (foundStudent) {
             setStudentData({ student: foundStudent });
-        } else if (students.length > 0) { // Only force re-login if students have loaded
+        } else {
             handleLogout();
         }
     } else {
       router.push('/');
     }
-  }, [students, studentData.student]);
+  }, [students, studentData.student, isLoading]);
 
   // Effect to sync local studentData with global students list from AppDataContext
   useEffect(() => {
-    if (!studentData.student) return;
+    if (!studentData.student || isLoading) return;
 
     const latestStudentData = students.find(s => s.id === studentData.student!.id && s.classId === studentData.student!.classId);
     
@@ -106,11 +106,11 @@ export default function StudentLayout({
       if (JSON.stringify(latestStudentData) !== JSON.stringify(studentData.student)) {
         setStudentData({ student: latestStudentData });
       }
-    } else if (students.length > 0) { // Only logout if students list is loaded and student is not found
+    } else {
         toast({ title: "帳號已登出", description: "您的帳號資訊可能已被管理者變更，請重新登入。", variant: "destructive" });
         handleLogout();
     }
-  }, [students, studentData.student]);
+  }, [students, studentData.student, isLoading]);
 
 
   const student = useMemo(() => studentData.student, [studentData.student]);
