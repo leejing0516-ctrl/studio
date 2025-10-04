@@ -9,6 +9,7 @@ export type Donation = {
 
 export type FundraisingProject = {
   id: string;
+  _docId?: string;
   title: string;
   description: string;
   image: string;
@@ -87,6 +88,7 @@ export type StudentHabit = {
 
 export type Student = {
   id: string; // Student ID within the class
+  _docId?: string; // Firestore document ID
   name: string;
   classId: string; // Links to the Class object
   points: number;
@@ -103,6 +105,7 @@ export type Student = {
 
 export type Reward = {
   id: string;
+  _docId?: string;
   name: string;
   description: string;
   cost: number;
@@ -114,6 +117,7 @@ export type Reward = {
 
 export type Challenge = {
   id: string;
+  _docId?: string;
   name:string;
   description: string;
   points: number;
@@ -122,6 +126,8 @@ export type Challenge = {
 };
 
 export type Stock = {
+  id: string; // Ticker is the ID
+  _docId?: string;
   ticker: string;
   name: string;
   price: number;
@@ -130,22 +136,16 @@ export type Stock = {
   marketCap: string;
 };
 
-export type PortfolioItem = {
-  ticker: string;
-  name: string;
-  shares: number;
-  avgCost: number;
-  lastPurchaseDate?: string; // ISO date string
-};
-
 export type Class = {
     id: string;
+    _docId?: string;
     name: string;
     announcements: Announcement[];
 }
 
 export type Teacher = {
     id: string;
+    _docId?: string;
     name: string;
     role: 'teacher' | 'admin' | 'subject_teacher';
     classIds: string[]; // Homeroom teacher will have one, subject teacher can have multiple. Empty for admin/unassigned.
@@ -179,5 +179,3 @@ export type PlatformConfig = {
     homeIllustrationUrl?: string;
     theme?: string;
 }
-
-    

@@ -85,58 +85,63 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     return firestoreRunTransaction(db, updateFunction);
   }, []);
 
-  const createSetter = <T extends { id: string }>(
-    currentState: T[],
-    setter: React.Dispatch<React.SetStateAction<T[]>>,
-    collectionName: string
+  const createSetter = <T extends { id: string; _docId?: string }>(
+    collectionName: string,
   ) => async (action: SetStateActionWithFunction<T[]>) => {
-      const newState = typeof action === 'function' ? action(currentState) : action;
-      const batch = writeBatch(db);
+      const currentState = ((): T[] => {
+          switch (collectionName) {
+              case 'students': return students as any;
+              case 'teachers': return teachers as any;
+              case 'rewards': return rewards as any;
+              case 'stocks': return stocks as any;
+              case 'classes': return classes as any;
+              default: return [];
+          }
+      })();
+      
+    const newState = typeof action === 'function' ? action(currentState) : action;
+    const batch = writeBatch(db);
 
-      const getDocId = (item: any): string | null => {
-          if (collectionName === 'students') {
-              if (item.classId && item.id) {
-                  return `${item.classId}-${item.id}`;
-              }
-              return null;
-          }
-          return item.id;
-      }
+    const getDocId = (item: any): string => {
+        if (collectionName === 'students') {
+            return item._docId || `${item.classId}-${item.id}`;
+        }
+        return item._docId || item.id;
+    }
       
-      newState.forEach((item: any) => {
-          const docId = getDocId(item);
-          if (docId) {
-              const itemRef = doc(db, collectionName, docId);
-              batch.set(itemRef, item, { merge: true });
-          }
-      });
+    newState.forEach((item: any) => {
+        const docId = getDocId(item);
+        const { _docId, ...itemData } = item;
+        const itemRef = doc(db, collectionName, docId);
+        batch.set(itemRef, itemData, { merge: true });
+    });
       
-      const newStateIds = new Set(newState.map(getDocId).filter(Boolean));
+    const newStateDocIds = new Set(newState.map(getDocId));
       
-      currentState.forEach((item: any) => {
-          const docId = getDocId(item);
-          if (docId && !newStateIds.has(docId)) {
-              const itemRef = doc(db, collectionName, docId);
-              batch.delete(itemRef);
-          }
-      });
+    currentState.forEach((item: any) => {
+        const docId = getDocId(item);
+        if (!newStateDocIds.has(docId)) {
+            const itemRef = doc(db, collectionName, docId);
+            batch.delete(itemRef);
+        }
+    });
 
       await batch.commit();
-      // No direct state update here, relying on onSnapshot
   };
 
-  const setStudents = createSetter(students, setStudentsState, 'students');
-  const setTeachers = createSetter(teachers, setTeachersState, 'teachers');
-  const setRewards = createSetter(rewards, setRewardsState, 'rewards');
-  const setStocks = createSetter(stocks, setStocksState, 'stocks');
-  const setClasses = createSetter(classes, setClassesState, 'classes');
+  const setStudents = createSetter<Student>('students');
+  const setTeachers = createSetter<Teacher>('teachers');
+  const setRewards = createSetter<Reward>('rewards');
+  const setStocks = createSetter<Stock>('stocks');
+  const setClasses = createSetter<Class>('classes');
   
   const setPlatformConfigWithFunction = async (action: SetStateActionWithFunction<PlatformConfig | null>) => {
     const currentState = platformConfig;
     const newConfig = typeof action === 'function' ? action(currentState) : { ...currentState, ...action };
     if (newConfig) {
+        const { id, ...configData } = newConfig;
         const configRef = doc(db, 'config', 'main');
-        await setDoc(configRef, newConfig, { merge: true });
+        await setDoc(configRef, configData, { merge: true });
     }
   }
 
@@ -151,14 +156,19 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
     const setupSubscription = <T,>(
         collectionName: string, 
-        setter: React.Dispatch<React.SetStateAction<T[]>>,
+        setter: React.Dispatch<React.SetStateAction<any[]>>,
         stateKey: keyof LoadingStates
     ) => {
         const q = query(collection(db, collectionName));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const data: T[] = [];
+            const data: any[] = [];
             querySnapshot.forEach(doc => {
-              data.push({ ...(doc.data() as T), id: doc.id });
+              const docData = doc.data();
+              if (collectionName === 'students') {
+                  data.push({ ...docData, _docId: doc.id });
+              } else {
+                  data.push({ ...(doc.data() as T), id: doc.id, _docId: doc.id });
+              }
             });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
@@ -177,7 +187,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         const docRef = doc(db, ...docPath);
         const unsubscribe = onSnapshot(docRef, (docSnap) => {
             if (docSnap.exists()) {
-                setter(docSnap.data() as T);
+                setter({ ...docSnap.data(), id: docSnap.id } as T);
             } else {
                 setter(null);
             }

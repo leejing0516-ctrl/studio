@@ -35,7 +35,6 @@ export default function HomePage() {
         if (orderA !== orderB) {
             return orderA - orderB;
         }
-        // Firestore doc IDs can be complex, so use name as a secondary sort key if id is not simple
         return (a.name || '').localeCompare(b.name || '');
     });
   }, [appData.teachers]);
@@ -63,16 +62,14 @@ export default function HomePage() {
         return;
     }
     
-    // The student ID in the database is a composite key, but the `id` field on the object is the student's own ID.
-    // We must find the student by matching classId and their own id field.
     const foundStudent = appData.students.find(
-      (s: Student) => s.classId === classId && s.id.endsWith(`-${studentIdInput}`)
+      (s: Student) => s.classId === classId && s.id === studentIdInput
     );
 
     if (foundStudent && foundStudent.password === studentPassword) {
         toast({ title: "登入成功！", description: `歡迎回來，${foundStudent.name}！`});
         localStorage.setItem('userRole', 'student');
-        localStorage.setItem('studentDocId', foundStudent.id); // The full Firestore doc ID
+        localStorage.setItem('studentDocId', foundStudent._docId!);
         localStorage.setItem('studentPassword', studentPassword);
         router.push('/dashboard');
     } else {

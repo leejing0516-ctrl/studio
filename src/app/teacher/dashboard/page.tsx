@@ -53,9 +53,9 @@ const CONFIRM_DELETE_TEXT = "我確定要刪除";
 export default function TeacherDashboardPage() {
     const { 
         students, setStudents,
-        classes, 
-        teachers,
-        isLoading, platformConfig, runTransaction
+        classes, setClasses,
+        teachers, setTeachers,
+        isLoading, platformConfig, runTransaction, setPlatformConfig
     } = useContext(AppDataContext);
     const { toast } = useToast();
 
@@ -149,6 +149,7 @@ export default function TeacherDashboardPage() {
     const teacher = useMemo(() => teachers.find(t => t.id === teacherId), [teachers, teacherId]);
 
     const studentsInClass = useMemo(() => {
+        if (!selectedClassId) return [];
         return students.filter(s => s.classId === selectedClassId);
     }, [students, selectedClassId]);
 
@@ -261,7 +262,7 @@ export default function TeacherDashboardPage() {
         });
         
         const uniqueRewardReqs = rewardReqs.filter((v, i, a) => 
-            a.findIndex(t => (`${t.student.id}-${t.rewardItem.redemptionId}` === `${v.student.id}-${v.rewardItem.redemptionId}`)) === i
+            a.findIndex(t => (`${t.student._docId}-${t.rewardItem.redemptionId}` === `${v.student._docId}-${v.rewardItem.redemptionId}`)) === i
         );
     
         return {
@@ -297,23 +298,27 @@ export default function TeacherDashboardPage() {
         if (!studentToEdit) return;
 
         const formData = new FormData(event.currentTarget);
-        const updatedStudent: Student = {
-            ...studentToEdit,
-            id: formData.get('id') as string,
-            name: formData.get('name') as string,
-        };
         
-        await setStudents(students.map(s => (s.id === studentToEdit.id && s.classId === studentToEdit.classId) ? updatedStudent : s));
+        await setStudents(prev => prev.map(s => {
+            if (s._docId === studentToEdit._docId) {
+                return {
+                    ...s,
+                    id: formData.get('id') as string,
+                    name: formData.get('name') as string,
+                };
+            }
+            return s;
+        }));
+
         setIsEditStudentDialogOpen(false);
         toast({
             title: "學生資料已更新",
-            description: `${updatedStudent.name} 的資料已更新。`
         });
     };
 
     const handleDeleteStudent = async () => {
         if (!studentToDelete) return;
-        await setStudents(students.filter(s => !(s.id === studentToDelete.id && s.classId === studentToDelete.classId)));
+        await setStudents(students.filter(s => s._docId !== studentToDelete._docId));
         toast({
             title: "學生已刪除",
             description: `${studentToDelete.name} 已被從班級中移除。`,
@@ -329,8 +334,8 @@ export default function TeacherDashboardPage() {
         const formData = new FormData(event.currentTarget);
         const newPassword = formData.get('new-password') as string;
 
-        await setStudents(students.map(s => 
-            (s.id === studentToResetPassword.id && s.classId === studentToResetPassword.classId)
+        await setStudents(prev => prev.map(s => 
+            s._docId === studentToResetPassword._docId
             ? { ...s, password: newPassword }
             : s
         ));
@@ -370,7 +375,7 @@ export default function TeacherDashboardPage() {
         const existingStudentKeys = new Set(students.map(s => `${s.classId}-${s.id}`));
         const newStudents = parsedCsvData.filter(s => !existingStudentKeys.has(`${s.classId}-${s.id}`));
         
-        await setStudents([...students, ...newStudents]);
+        await setStudents(prev => [...prev, ...newStudents]);
 
         toast({
             title: `匯入完成`,
@@ -389,7 +394,7 @@ export default function TeacherDashboardPage() {
         const role = formData.get('role') as 'teacher' | 'admin' | 'subject_teacher';
         const classId = formData.get('classId') as string;
 
-        const newTeacher: Teacher = {
+        const newTeacher: Omit<Teacher, '_docId'> = {
             id: `teacher-${Date.now()}-${Math.random()}`,
             name,
             role,
@@ -398,8 +403,7 @@ export default function TeacherDashboardPage() {
             password: platformConfig?.teacherPassword || TEACHER_PASSWORD,
         };
 
-        const teacherRef = doc(db, 'teachers', newTeacher.id);
-        await setDoc(teacherRef, newTeacher);
+        await setTeachers(prev => [...prev, newTeacher as Teacher]);
         toast({ title: "教師已新增", description: `${name} 已被新增至系統中。` });
         setIsAddTeacherDialogOpen(false);
     };
@@ -413,23 +417,25 @@ export default function TeacherDashboardPage() {
         const newRole = editedTeacherRole as 'teacher' | 'admin' | 'subject_teacher';
         const classId = formData.get('classId') as string;
 
-        const updatedTeacher: Teacher = {
-            ...teacherToEdit,
-            name,
-            role: newRole,
-            classIds: newRole === 'teacher' && classId ? [classId] : (newRole === 'subject_teacher' ? (teacherToEdit.classIds || []) : []),
-        };
-
-        const teacherRef = doc(db, 'teachers', teacherToEdit.id);
-        await setDoc(teacherRef, updatedTeacher, { merge: true });
+        await setTeachers(prev => prev.map(t => {
+            if (t.id === teacherToEdit.id) {
+                return {
+                    ...t,
+                    name,
+                    role: newRole,
+                    classIds: newRole === 'teacher' && classId ? [classId] : (newRole === 'subject_teacher' ? (teacherToEdit.classIds || []) : []),
+                }
+            }
+            return t;
+        }));
+        
         toast({ title: "教師資料已更新" });
         setIsEditTeacherDialogOpen(false);
     };
 
     const handleDeleteTeacher = async () => {
         if (!teacherToDelete) return;
-        const teacherRef = doc(db, 'teachers', teacherToDelete.id);
-        await deleteDoc(teacherRef);
+        await setTeachers(prev => prev.filter(t => t.id !== teacherToDelete.id));
         toast({ title: "教師已刪除", variant: "destructive" });
         setTeacherToDelete(null);
     };
@@ -441,33 +447,27 @@ export default function TeacherDashboardPage() {
         const formData = new FormData(event.currentTarget);
         const amount = Number(formData.get('amount'));
         
-        try {
-            await runTransaction(async (transaction: Transaction) => {
-                const configRef = doc(db, 'config', 'main');
-                const teacherRef = doc(db, 'teachers', teacherToAllocate.id);
-                
-                const [configDoc, teacherDoc] = await Promise.all([
-                    transaction.get(configRef),
-                    transaction.get(teacherRef)
-                ]);
-                
-                const schoolFunds = (configDoc.data() as PlatformConfig)?.schoolFunds || 0;
-                const teacherBalance = (teacherDoc.data() as Teacher)?.pointBalance || 0;
-
-                if (schoolFunds < amount) {
-                    throw new Error("學校資金不足");
-                }
-                transaction.update(configRef, { schoolFunds: schoolFunds - amount });
-                transaction.update(teacherRef, { pointBalance: teacherBalance + amount });
-            });
+        await runTransaction(async (transaction: Transaction) => {
+            const configRef = doc(db, 'config', 'main');
+            const teacherRef = doc(db, 'teachers', teacherToAllocate.id);
             
-            toast({ title: "點數已撥款" });
-            setIsAllocatePointsDialogOpen(false);
+            const [configDoc, teacherDoc] = await Promise.all([
+                transaction.get(configRef),
+                transaction.get(teacherRef)
+            ]);
+            
+            const schoolFunds = (configDoc.data() as PlatformConfig)?.schoolFunds || 0;
+            const teacherBalance = (teacherDoc.data() as Teacher)?.pointBalance || 0;
 
-        } catch (error: any) {
-            console.error("Allocation transaction failed:", error);
-            toast({ title: "撥款失敗", description: error.message || "交易時發生錯誤。", variant: "destructive" });
-        }
+            if (schoolFunds < amount) {
+                throw new Error("學校資金不足");
+            }
+            transaction.update(configRef, { schoolFunds: schoolFunds - amount });
+            transaction.update(teacherRef, { pointBalance: teacherBalance + amount });
+        });
+        
+        toast({ title: "點數已撥款" });
+        setIsAllocatePointsDialogOpen(false);
     };
 
     const handleImpersonate = () => {
@@ -495,9 +495,8 @@ export default function TeacherDashboardPage() {
             return;
         }
 
-        const newClass: Class = { id, name, announcements: [] };
-        const classRef = doc(db, 'classes', newClass.id);
-        await setDoc(classRef, newClass);
+        const newClass: Omit<Class, '_docId'> = { id, name, announcements: [] };
+        await setClasses(prev => [...prev, newClass as Class]);
         (event.target as HTMLFormElement).reset();
     };
 
@@ -509,30 +508,23 @@ export default function TeacherDashboardPage() {
             setClassToDelete(null);
             return;
         }
+        
+        await setTeachers(prev => prev.map(t => {
+            if (t.role === 'subject_teacher' && (t.classIds || []).includes(classToDelete.id)) {
+                return { ...t, classIds: t.classIds.filter(id => id !== classToDelete.id) };
+            }
+            return t;
+        }));
+        
+        await setClasses(prev => prev.filter(c => c.id !== classToDelete.id));
 
-        try {
-            const batch = writeBatch(db);
-            teachers.forEach(t => {
-                if (t.role === 'subject_teacher' && (t.classIds || []).includes(classToDelete.id)) {
-                    const teacherRef = doc(db, 'teachers', t.id);
-                    batch.update(teacherRef, { classIds: t.classIds.filter(id => id !== classToDelete.id) });
-                }
-            });
-
-            const classRef = doc(db, 'classes', classToDelete.id);
-            batch.delete(classRef);
-            await batch.commit();
-            
-            toast({ title: "班級已刪除", variant: "destructive" });
-        } catch (e) {
-            toast({ title: "刪除失敗", variant: "destructive" });
-        } finally {
-            setConfirmDeleteInput("");
-            setClassToDelete(null);
-        }
+        toast({ title: "班級已刪除", variant: "destructive" });
+        
+        setConfirmDeleteInput("");
+        setClassToDelete(null);
     };
     
-    const performPointOperation = async (studentId: string, points: number, isBatch: boolean = false) => {
+    const performPointOperation = async (student: Student, points: number, isBatch: boolean = false) => {
         if (!teacherId || !teacherName) {
             toast({ title: "操作無效", description: "教師資訊不完整，請重新登入。", variant: "destructive" });
             return;
@@ -545,19 +537,19 @@ export default function TeacherDashboardPage() {
             return;
         }
         
-        if (role !== 'admin' && !currentOperator.classIds.includes(selectedClassId)) {
+        if (role !== 'admin' && !(currentOperator.classIds || []).includes(selectedClassId)) {
             toast({ title: "權限不足", description: "您沒有在此班級發放點數的權限。", variant: "destructive" });
             return;
         }
 
-        setIsProcessing(studentId);
+        setIsProcessing(student.id);
 
         try {
             await runTransaction(async (transaction) => {
                 const impersonatorId = localStorage.getItem('impersonator');
                 const isOperatingAsAdmin = role === 'admin' && !impersonatorId;
 
-                const studentRef = doc(db, 'students', `${selectedClassId}-${studentId}`);
+                const studentRef = doc(db, 'students', student._docId!);
                 const studentDoc = await transaction.get(studentRef);
                 if (!studentDoc.exists()) throw new Error("找不到學生資料。");
                 const studentData = studentDoc.data() as Student;
@@ -600,23 +592,23 @@ export default function TeacherDashboardPage() {
             });
 
         } catch (error: any) {
-            console.error(`Point operation failed for student ${studentId}:`, error);
+            console.error(`Point operation failed for student ${student.id}:`, error);
             throw error;
         } finally {
             if (!isBatch) {
                 setIsProcessing(null);
-                setPointInputs(prev => ({ ...prev, [studentId]: '' }));
+                setPointInputs(prev => ({ ...prev, [student.id]: '' }));
             }
         }
     };
     
-    const handleAwardPoints = async (studentId: string) => {
-        const pointsStr = pointInputs[studentId];
+    const handleAwardPoints = async (student: Student) => {
+        const pointsStr = pointInputs[student.id];
         if (!pointsStr) return;
         const points = parseInt(pointsStr, 10);
         
         try {
-            await performPointOperation(studentId, points, false);
+            await performPointOperation(student, points, false);
         } catch(error: any) {
              toast({ title: "操作失敗", description: error.message, variant: "destructive" });
              setIsProcessing(null);
@@ -663,7 +655,7 @@ export default function TeacherDashboardPage() {
         
         for (const student of studentsToUpdate) {
             try {
-                await performPointOperation(student.id, points, true);
+                await performPointOperation(student, points, true);
                 successfulOperations++;
             } catch (error: any) {
                 toast({ title: `為 ${student.name} 操作失敗`, description: error.message, variant: "destructive" });
@@ -679,16 +671,13 @@ export default function TeacherDashboardPage() {
     };
 
     const handleApproveRewardUse = async (student: Student, rewardItem: RedeemedRewardItem) => {
-        await runTransaction(async (transaction) => {
-            const studentRef = doc(db, 'students', `${student.classId}-${student.id}`);
-            const studentDoc = await transaction.get(studentRef);
-            if (!studentDoc.exists()) {
-                throw new Error("Student not found");
+        await setStudents(prev => prev.map(s => {
+            if (s._docId === student._docId) {
+                const updatedRewards = (s.redeemedRewards || []).filter(r => r.redemptionId !== rewardItem.redemptionId);
+                return { ...s, redeemedRewards: updatedRewards };
             }
-            const currentStudentData = studentDoc.data() as Student;
-            const updatedRewards = (currentStudentData.redeemedRewards || []).filter(r => r.redemptionId !== rewardItem.redemptionId);
-            transaction.update(studentRef, { redeemedRewards: updatedRewards });
-        });
+            return s;
+        }));
         toast({ title: "已同意使用", description: `已同意 ${student.name} 使用「${rewardItem.reward.name}」。`});
     };
     
@@ -698,7 +687,7 @@ export default function TeacherDashboardPage() {
 
         try {
             await runTransaction(async (transaction: Transaction) => {
-                const studentRef = doc(db, 'students', `${student.classId}-${student.id}`);
+                const studentRef = doc(db, 'students', student._docId!);
                 
                 if (status === 'active') {
                     let sourceRef, sourceFunds, sourceField;
@@ -758,7 +747,7 @@ export default function TeacherDashboardPage() {
         
         try {
             await runTransaction(async (transaction: Transaction) => {
-                const studentRef = doc(db, 'students', `${student.classId}-${student.id}`);
+                const studentRef = doc(db, 'students', student._docId!);
                 const studentDoc = await transaction.get(studentRef);
                 if (!studentDoc.exists()) throw new Error("Student not found");
                 const studentData = studentDoc.data() as Student;
@@ -804,12 +793,7 @@ export default function TeacherDashboardPage() {
         }
         setIsMaintenanceProcessing(true);
         try {
-            const batch = writeBatch(db);
-            students.forEach(student => {
-                const studentRef = doc(db, 'students', `${student.classId}-${student.id}`);
-                batch.update(studentRef, { redeemedRewards: [] });
-            });
-            await batch.commit();
+            await setStudents(prev => prev.map(student => ({ ...student, redeemedRewards: [] })));
             toast({ title: "操作成功", description: "所有學生的獎勵兌換紀錄都已被清除。" });
         } catch (error) {
             toast({ title: "操作失敗", description: "清除資料時發生錯誤。", variant: "destructive" });
@@ -927,14 +911,14 @@ export default function TeacherDashboardPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {studentsInClass.length > 0 ? studentsInClass.map(student => (
-                                        <TableRow key={student.id}>
+                                        <TableRow key={student._docId}>
                                             <TableCell>{student.id}</TableCell>
                                             <TableCell>{student.name}</TableCell>
                                             <TableCell>{student.points.toLocaleString()}</TableCell>
                                             <TableCell className="text-right">
                                                 <Button variant="ghost" size="icon" onClick={() => { setStudentToEdit(student); setIsEditStudentDialogOpen(true); }}><Edit className="h-4 w-4"/></Button>
                                                 <Button variant="ghost" size="icon" onClick={() => { setStudentToResetPassword(student); setIsResetPasswordDialogOpen(true); }}><KeyRound className="h-4 w-4"/></Button>
-                                                <AlertDialog open={!!studentToDelete && studentToDelete.id === student.id} onOpenChange={(open) => !open && setStudentToDelete(null)}>
+                                                <AlertDialog open={!!studentToDelete && studentToDelete._docId === student._docId} onOpenChange={(open) => !open && setStudentToDelete(null)}>
                                                     <AlertDialogTrigger asChild>
                                                         <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setStudentToDelete(student)}><Trash2 className="h-4 w-4"/></Button>
                                                     </AlertDialogTrigger>
@@ -1120,7 +1104,7 @@ export default function TeacherDashboardPage() {
                                 </TableHeader>
                                 <TableBody>
                                      {studentsInClass.length > 0 ? studentsInClass.map(student => (
-                                        <TableRow key={student.id}>
+                                        <TableRow key={student._docId}>
                                             <TableCell>{student.name}</TableCell>
                                             <TableCell>{student.points.toLocaleString()}</TableCell>
                                             <TableCell>
@@ -1132,7 +1116,7 @@ export default function TeacherDashboardPage() {
                                                         onChange={e => setPointInputs({...pointInputs, [student.id]: e.target.value})}
                                                         disabled={!!isProcessing}
                                                     />
-                                                     <Button onClick={() => handleAwardPoints(student.id)} disabled={isProcessing === student.id || !pointInputs[student.id]}>
+                                                     <Button onClick={() => handleAwardPoints(student)} disabled={isProcessing === student.id || !pointInputs[student.id]}>
                                                         {isProcessing === student.id ? <Loader2 className="h-4 w-4 animate-spin"/> : '執行'}
                                                      </Button>
                                                 </div>
@@ -1321,11 +1305,11 @@ export default function TeacherDashboardPage() {
                                                     {challengeApprovalRequests.map(({ student, challenge }) => {
                                                         const details = platformConfig?.challenges?.find(c => c.id === challenge.challengeId);
                                                         return (
-                                                            <TableRow key={`${student.id}-${challenge.challengeId}`}>
+                                                            <TableRow key={`${student._docId}-${challenge.challengeId}`}>
                                                                 <TableCell>{student.name}</TableCell>
                                                                 <TableCell>{details?.name}</TableCell>
                                                                 <TableCell className="text-right">
-                                                                    <AlertDialog open={!!challengeToApprove && challengeToApprove.student.id === student.id && challengeToApprove.challenge.challengeId === challenge.challengeId} onOpenChange={(open) => !open && setChallengeToApprove(null)}>
+                                                                    <AlertDialog open={!!challengeToApprove && challengeToApprove.student._docId === student._docId && challengeToApprove.challenge.challengeId === challenge.challengeId} onOpenChange={(open) => !open && setChallengeToApprove(null)}>
                                                                         <AlertDialogTrigger asChild>
                                                                             <Button size="sm" onClick={() => setChallengeToApprove({ student, challenge })} disabled={role === 'admin'}>
                                                                                 <Check className="mr-2" /> 批准 (+{details?.points.toLocaleString()}點)
@@ -1397,7 +1381,7 @@ export default function TeacherDashboardPage() {
                                                 <TableHeader><TableRow><TableHead>學生</TableHead><TableHead>獎勵名稱</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
                                                 <TableBody>
                                                     {rewardApprovalRequests.map(({student, rewardItem}) => (
-                                                        <TableRow key={`${student.id}-${rewardItem.redemptionId}`}>
+                                                        <TableRow key={`${student._docId}-${rewardItem.redemptionId}`}>
                                                             <TableCell>{student.name}</TableCell>
                                                             <TableCell>{rewardItem.reward.name}</TableCell>
                                                             <TableCell className="text-right">
@@ -1681,5 +1665,3 @@ export default function TeacherDashboardPage() {
         </div>
     )
 }
-
-    
