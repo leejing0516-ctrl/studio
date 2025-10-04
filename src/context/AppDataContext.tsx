@@ -4,7 +4,7 @@
 import { createContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import type { Student, Reward, Class, Teacher, Stock, PlatformConfig } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { collection, doc, runTransaction, Transaction, query, onSnapshot, Unsubscribe, setDoc } from 'firebase/firestore';
+import { collection, doc, runTransaction as firestoreRunTransaction, Transaction, query, onSnapshot, Unsubscribe, setDoc } from 'firebase/firestore';
 
 interface AppDataContextType {
   students: Student[];
@@ -68,7 +68,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   });
 
   const handleRunTransaction = useCallback(async (updateFunction: (transaction: Transaction) => Promise<any>) => {
-    return await runTransaction(db, updateFunction);
+    return firestoreRunTransaction(db, updateFunction);
   }, []);
   
   useEffect(() => {
