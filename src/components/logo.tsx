@@ -2,35 +2,42 @@
 import { useContext } from 'react';
 import Image from 'next/image';
 import { cn } from "@/lib/utils";
-import { LOGO_SVG } from "@/lib/config";
 import { AppDataContext } from '@/context/AppDataContext';
-
+import placeholderImages from '@/lib/placeholder-images.json';
 
 const Logo = ({ className }: { className?: string }) => {
   const { platformConfig } = useContext(AppDataContext);
 
-  if (platformConfig?.platformLogoUrl) {
-    return (
+  const logoUrl = platformConfig?.platformLogoUrl || placeholderImages.platformLogo.src;
+
+  if (logoUrl) {
+    // Check if the logoUrl is a Base64 string or a regular URL/path
+    if (logoUrl.startsWith('data:image')) {
+      return (
         <div className={cn("relative", className)}>
             <Image 
-                src={platformConfig.platformLogoUrl}
+                src={logoUrl}
                 alt="Platform Logo"
                 fill
                 sizes="100px"
                 className="object-contain"
             />
         </div>
-    )
-  }
-
-  // Fallback to default SVG
-  if (LOGO_SVG) {
+      )
+    }
+    // Handle regular URLs/paths
     return (
-        <div
-        className={cn("text-primary", className)}
-        dangerouslySetInnerHTML={{ __html: LOGO_SVG }}
-        />
-    );
+        <div className={cn("relative", className)}>
+            <Image 
+                src={logoUrl}
+                alt="Platform Logo"
+                fill
+                sizes="100px"
+                className="object-contain"
+                unoptimized // Add this if your static paths are not configured in next.config.js
+            />
+        </div>
+    )
   }
   
   return null;

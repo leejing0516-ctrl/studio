@@ -10,34 +10,20 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, ImageOff, X, Percent } from "lucide-react";
+import { Loader2, Percent } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
-
-const MAX_FILE_SIZE = 800 * 1024; // 800KB
-
-const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
+import placeholderImages from '@/lib/placeholder-images.json';
 
 export default function TeacherSettingsPage() {
     const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
     const { toast } = useToast();
     const router = useRouter();
 
-    const [platformLogoFile, setPlatformLogoFile] = useState<File | null>(null);
-    const [platformLogoPreview, setPlatformLogoPreview] = useState<string | null>(platformConfig?.platformLogoUrl || null);
-    const [sponsorLogoFiles, setSponsorLogoFiles] = useState<(File | null)[]>(Array(4).fill(null));
-    const [sponsorLogoPreviews, setSponsorLogoPreviews] = useState<(string | null)[]>(platformConfig?.sponsorLogoUrls || Array(4).fill(null));
     const [isSavingSettings, setIsSavingSettings] = useState(false);
     const [fixedDepositRate, setFixedDepositRate] = useState<number | string>('');
     const [loanInterestRate, setLoanInterestRate] = useState<number | string>('');
@@ -51,85 +37,19 @@ export default function TeacherSettingsPage() {
         }
 
         if (platformConfig) {
-            setPlatformLogoPreview(platformConfig.platformLogoUrl || null);
-            setSponsorLogoPreviews(platformConfig.sponsorLogoUrls || Array(4).fill(null));
             setFixedDepositRate((platformConfig.fixedDepositInterestRate || 0) * 100);
             setLoanInterestRate((platformConfig.loanInterestRate || 0) * 100);
         }
     }, [platformConfig, router, toast]);
 
-    const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            if (file.size > MAX_FILE_SIZE) {
-                toast({
-                    title: "圖片檔案太大",
-                    description: `請選擇小於 ${MAX_FILE_SIZE / 1024}KB 的圖片。`,
-                    variant: "destructive",
-                });
-                return;
-            }
-            setPlatformLogoFile(file);
-            setPlatformLogoPreview(URL.createObjectURL(file));
-        }
-    };
-
-    const handleSponsorLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            if (file.size > MAX_FILE_SIZE) {
-                toast({
-                    title: "圖片檔案太大",
-                    description: `請選擇小於 ${MAX_FILE_SIZE / 1024}KB 的圖片。`,
-                    variant: "destructive",
-                });
-                return;
-            }
-            setSponsorLogoFiles(prev => {
-                const newFiles = [...prev];
-                newFiles[index] = file;
-                return newFiles;
-            });
-            setSponsorLogoPreviews(prev => {
-                const newPreviews = [...prev];
-                newPreviews[index] = URL.createObjectURL(file);
-                return newPreviews;
-            });
-        }
-    };
-  
-    const handleRemoveSponsorLogo = (index: number) => {
-        setSponsorLogoFiles(prev => {
-            const newFiles = [...prev];
-            newFiles[index] = null;
-            return newFiles;
-        });
-        setSponsorLogoPreviews(prev => {
-            const newPreviews = [...prev];
-            newPreviews[index] = null;
-            return newPreviews;
-        });
-    }
 
     const handleSaveSettings = async () => {
         setIsSavingSettings(true);
         try {
-            let platformLogoUrl = platformLogoPreview;
-            if (platformLogoFile) {
-                platformLogoUrl = await fileToDataUrl(platformLogoFile);
-            }
-
-            const newSponsorUrls = [...sponsorLogoPreviews];
-            for(let i = 0; i < sponsorLogoFiles.length; i++) {
-                const file = sponsorLogoFiles[i];
-                if (file) {
-                    newSponsorUrls[i] = await fileToDataUrl(file);
-                }
-            }
-            
-            await setPlatformConfig({ 
-                platformLogoUrl, 
-                sponsorLogoUrls: newSponsorUrls,
+            await setPlatformConfig({
+                // We no longer save image data to firestore. They are static assets.
+                platformLogoUrl: placeholderImages.platformLogo.src,
+                sponsorLogoUrls: placeholderImages.sponsorLogos.map(logo => logo.src),
                 fixedDepositInterestRate: Number(fixedDepositRate) / 100,
                 loanInterestRate: Number(loanInterestRate) / 100
             });
@@ -140,8 +60,6 @@ export default function TeacherSettingsPage() {
             toast({ title: "儲存失敗", description: "儲存平台設定時發生錯誤。", variant: "destructive" });
         } finally {
             setIsSavingSettings(false);
-            setPlatformLogoFile(null);
-            setSponsorLogoFiles(Array(4).fill(null));
         }
     };
 
@@ -196,59 +114,32 @@ export default function TeacherSettingsPage() {
             </Card>
             <Card>
                 <CardHeader>
-                    <CardTitle>平台 Logo 設定</CardTitle>
-                    <CardDescription>上傳平台 Logo。此 Logo 將顯示在登入頁面和側邊欄中。建議使用透明背景的 PNG 檔案 (大小上限 800KB)。</CardDescription>
+                    <CardTitle>平台 Logo</CardTitle>
+                    <CardDescription>平台 Logo 目前為靜態資源，若要更換請在專案的 `src/lib/placeholder-images.json` 中修改路徑。</CardDescription>
                 </CardHeader>
                 <CardContent className="flex items-center gap-6">
                      <div className="w-32 h-32 bg-muted rounded-md flex items-center justify-center">
-                        {platformLogoPreview ? (
-                            <Image src={platformLogoPreview} alt="Logo Preview" width={128} height={128} className="object-contain rounded-md" />
-                        ) : (
-                            <span className="text-xs text-muted-foreground">預覽</span>
+                        {platformConfig?.platformLogoUrl && (
+                            <Image src={platformConfig.platformLogoUrl} alt="Logo Preview" width={128} height={128} className="object-contain rounded-md" />
                         )}
-                    </div>
-                    <div className="space-y-2">
-                        <Label>上傳 Logo (PNG)</Label>
-                        <div>
-                            <Input id="logo-upload" type="file" accept="image/png" onChange={handleLogoFileChange} className="sr-only" />
-                            <Label htmlFor="logo-upload" className={buttonVariants({ variant: 'outline' })}>
-                                選擇檔案
-                            </Label>
-                        </div>
                     </div>
                 </CardContent>
             </Card>
             <Card>
                 <CardHeader>
-                    <CardTitle>贊助商 Logo 設定</CardTitle>
-                    <CardDescription>上傳最多四個贊助商 Logo。這些 Logo 將顯示在頁面底部的頁尾区域。建議使用透明背景的 PNG 檔案 (大小上限 800KB)，並確保所有 Logo 寬度一致。</CardDescription>
+                    <CardTitle>贊助商 Logo</CardTitle>
+                    <CardDescription>贊助商 Logo 目前為靜態資源，若要更換請在專案的 `src/lib/placeholder-images.json` 中修改路徑。</CardDescription>
                 </CardHeader>
                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                    {Array.from({ length: 4 }).map((_, index) => (
+                    {(platformConfig?.sponsorLogoUrls || []).map((url, index) => (
                         <div key={index} className="flex items-center gap-4">
                             <div className="w-48 h-24 bg-muted rounded-md flex items-center justify-center relative group">
-                                {sponsorLogoPreviews[index] ? (
-                                    <>
-                                      <Image src={sponsorLogoPreviews[index]!} alt={`Sponsor Logo ${index + 1} Preview`} fill className="object-contain p-2" />
-                                      <Button variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleRemoveSponsorLogo(index)}>
-                                        <X className="h-4 w-4" />
-                                      </Button>
-                                    </>
-                                ) : (
-                                    <div className="flex flex-col items-center gap-1 text-muted-foreground">
-                                        <ImageOff className="h-6 w-6"/>
-                                        <span className="text-xs">位置 {index + 1}</span>
-                                    </div>
+                                {url && (
+                                    <Image src={url} alt={`Sponsor Logo ${index + 1} Preview`} fill className="object-contain p-2" />
                                 )}
                             </div>
                              <div className="space-y-2">
                                 <Label>Logo {index + 1}</Label>
-                                <div>
-                                    <Input id={`sponsor-logo-upload-${index}`} type="file" accept="image/png" onChange={(e) => handleSponsorLogoFileChange(e, index)} className="sr-only"/>
-                                    <Label htmlFor={`sponsor-logo-upload-${index}`} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
-                                        選擇檔案
-                                    </Label>
-                                </div>
                             </div>
                         </div>
                     ))}
