@@ -34,7 +34,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -42,7 +41,7 @@ import { AppDataContext } from "@/context/AppDataContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Papa from "papaparse";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
-import { doc, writeBatch, Transaction, setDoc, deleteDoc, collection, getDocs, query, where } from "firebase/firestore";
+import { doc, writeBatch, Transaction, setDoc, deleteDoc, collection, getDocs, query, where, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -99,9 +98,6 @@ export default function TeacherDashboardPage() {
 
     const [historySelectedTeacherId, setHistorySelectedTeacherId] = useState<string>('');
     const [historySelectedClassId, setHistorySelectedClassId] = useState<string>('');
-
-    const [isMaintenanceProcessing, setIsMaintenanceProcessing] = useState(false);
-    const [confirmMaintenanceDelete, setConfirmMaintenanceDelete] = useState('');
     
     const classOptions = useMemo(() => {
         if (role === 'admin') return classes;
@@ -818,45 +814,7 @@ export default function TeacherDashboardPage() {
              toast({ title: "批准失敗", description: error.message, variant: "destructive" });
         }
     };
-
-    const handleClearDuplicateStudents = async () => {
-        if (confirmMaintenanceDelete !== '我確定要刪除') {
-            toast({ title: "確認文字不符", description: "請輸入正確的確認文字。", variant: "destructive" });
-            return;
-        }
-        setIsMaintenanceProcessing(true);
-        try {
-            const studentsCollectionRef = collection(db, "students");
-            const studentsSnapshot = await getDocs(studentsCollectionRef);
-            const batch = writeBatch(db);
-            let deletedCount = 0;
-
-            studentsSnapshot.forEach(doc => {
-                // The signature of an erroneously created student is that its doc ID is `classId-studentId`
-                const docId = doc.id;
-                const studentData = doc.data() as Student;
-                if (docId === `${studentData.classId}-${studentData.id}`) {
-                    batch.delete(doc.ref);
-                    deletedCount++;
-                }
-            });
-
-            if (deletedCount > 0) {
-                await batch.commit();
-                toast({ title: "操作成功", description: `已成功清除 ${deletedCount} 筆重複的學生資料。` });
-            } else {
-                toast({ title: "無需操作", description: "未找到任何格式錯誤的重複學生資料。" });
-            }
-
-        } catch (error) {
-            toast({ title: "操作失敗", description: "清除資料時發生錯誤。", variant: "destructive" });
-            console.error("Failed to clear duplicate students:", error);
-        } finally {
-            setIsMaintenanceProcessing(false);
-            setConfirmMaintenanceDelete('');
-        }
-    };
-
+    
     const getDashboardTabs = () => {
         const tabs = [];
         if (role === 'admin' || role === 'teacher') {
@@ -876,9 +834,6 @@ export default function TeacherDashboardPage() {
             tabs.push(<TabsTrigger key="approvals" value="approvals">審核中心</TabsTrigger>);
         }
         
-        if (role === 'admin') {
-            tabs.push(<TabsTrigger key="maintenance" value="maintenance" className="text-destructive">資料維護</TabsTrigger>);
-        }
         return tabs;
     };
     
@@ -1458,64 +1413,6 @@ export default function TeacherDashboardPage() {
                         </Card>
                     </div>
                 </TabsContent>
-                )}
-
-                {role === 'admin' && (
-                    <TabsContent value="maintenance" className="mt-6">
-                        <Card className="border-destructive">
-                            <CardHeader>
-                                <CardTitle className="text-destructive flex items-center gap-2">
-                                    <ShieldAlert />
-                                    資料維護中心
-                                </CardTitle>
-                                <CardDescription>
-                                    此區域包含危險操作，僅在確定需要時使用。這些操作無法復原。
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <Card className="bg-destructive/5 p-4">
-                                    <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                                        <div>
-                                            <h4 className="font-semibold">清除前綴式重複學生資料</h4>
-                                            <p className="text-sm text-muted-foreground mt-1">
-                                                此操作將刪除所有因為舊的錯誤邏輯而產生的、ID 為 `班級-學號` 格式的重複學生資料。
-                                                <br />
-                                                **建議：** 在執行此操作前，請確保系統已更新至最新版，以防問題再次發生。
-                                            </p>
-                                        </div>
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button variant="destructive" className="mt-4 md:mt-0">開始清除</Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>極度危險操作！</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        您確定要清除所有格式錯誤的重複學生資料嗎？此操作會刪除資料庫中 ID 格式為 `班級-學號` 的學生文件。
-                                                        此操作無法復原。請輸入「<span className="font-bold text-destructive">我確定要刪除</span>」以確認。
-                                                    </AlertDialogDescription>
-                                                    <Input 
-                                                        value={confirmMaintenanceDelete}
-                                                        onChange={(e) => setConfirmMaintenanceDelete(e.target.value)}
-                                                    />
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel onClick={() => setConfirmMaintenanceDelete('')}>取消</AlertDialogCancel>
-                                                    <AlertDialogAction
-                                                        onClick={handleClearDuplicateStudents}
-                                                        disabled={confirmMaintenanceDelete !== '我確定要刪除' || isMaintenanceProcessing}
-                                                        className={buttonVariants({ variant: "destructive" })}
-                                                    >
-                                                        {isMaintenanceProcessing ? <Loader2 className="animate-spin" /> : "確認清除"}
-                                                    </AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </div>
-                                </Card>
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
                 )}
             </Tabs>
 
