@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
+import { themes, type Theme } from "@/lib/themes";
 
 const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
 
@@ -41,6 +42,7 @@ export default function TeacherSettingsPage() {
     const [loanInterestRate, setLoanInterestRate] = useState<number | string>('');
     
     const [sponsorPreviews, setSponsorPreviews] = useState<(string | null)[]>([]);
+    const [selectedTheme, setSelectedTheme] = useState<string>("default");
 
     useEffect(() => {
         const role = localStorage.getItem('teacherRole');
@@ -54,6 +56,7 @@ export default function TeacherSettingsPage() {
             setFixedDepositRate((platformConfig.fixedDepositInterestRate || 0) * 100);
             setLoanInterestRate((platformConfig.loanInterestRate || 0) * 100);
             setSponsorPreviews(platformConfig.sponsorLogoUrls || [null, null, null, null]);
+            setSelectedTheme(platformConfig.theme || "default");
         }
     }, [platformConfig, router, toast]);
 
@@ -105,6 +108,7 @@ export default function TeacherSettingsPage() {
                 fixedDepositInterestRate: Number(fixedDepositRate) / 100,
                 loanInterestRate: Number(loanInterestRate) / 100,
                 sponsorLogoUrls: sponsorPreviews,
+                theme: selectedTheme,
             });
 
             toast({ title: "設定已儲存", description: "平台設定已成功更新。" });
@@ -115,6 +119,15 @@ export default function TeacherSettingsPage() {
             setIsSavingSettings(false);
         }
     };
+    
+    const ThemeColorPreview = ({ theme }: { theme: Theme }) => (
+        <div className="flex items-center gap-2">
+            <div className="h-4 w-4 rounded-full" style={{ backgroundColor: `hsl(${theme.cssVars.dark.background})` }} />
+            <div className="h-4 w-4 rounded-full" style={{ backgroundColor: `hsl(${theme.cssVars.dark.primary})` }} />
+            <div className="h-4 w-4 rounded-full" style={{ backgroundColor: `hsl(${theme.cssVars.dark.secondary})` }} />
+            <div className="h-4 w-4 rounded-full" style={{ backgroundColor: `hsl(${theme.cssVars.dark.accent})` }} />
+        </div>
+    );
 
     return (
         <div className="space-y-6 animate-in fade-in-0 duration-500">
@@ -164,6 +177,58 @@ export default function TeacherSettingsPage() {
                     </div>
                 </CardContent>
             </Card>
+             <Card>
+                <CardHeader>
+                    <CardTitle>外觀設定</CardTitle>
+                    <CardDescription>自訂平台的視覺風格與顏色主題。</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="flex items-center justify-between rounded-lg border p-4">
+                        <div>
+                            <Label htmlFor="theme-select" className="font-semibold">顏色主題</Label>
+                            <p className="text-xs text-muted-foreground">
+                                選擇一個預設的顏色模板來改變整個應用的外觀。
+                            </p>
+                        </div>
+                        <div className="w-48">
+                            <select
+                                id="theme-select"
+                                className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                value={selectedTheme}
+                                onChange={(e) => setSelectedTheme(e.target.value)}
+                            >
+                                {themes.map((theme) => (
+                                    <option key={theme.name} value={theme.name}>
+                                        {theme.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                     <div>
+                        <Label>主題預覽</Label>
+                        <div className="p-4 rounded-lg border flex flex-wrap gap-4">
+                            {themes.map((theme) => (
+                                <div key={theme.name} className="flex items-center gap-3">
+                                    <input
+                                        type="radio"
+                                        id={`theme-${theme.name}`}
+                                        name="theme"
+                                        value={theme.name}
+                                        checked={selectedTheme === theme.name}
+                                        onChange={(e) => setSelectedTheme(e.target.value)}
+                                        className="h-4 w-4"
+                                    />
+                                    <label htmlFor={`theme-${theme.name}`} className="flex flex-col cursor-pointer">
+                                        <span className="text-sm font-medium">{theme.label}</span>
+                                        <ThemeColorPreview theme={theme} />
+                                    </label>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
             <Card>
                 <CardHeader>
                     <CardTitle>贊助商 Logo</CardTitle>
@@ -199,12 +264,10 @@ export default function TeacherSettingsPage() {
             </Card>
              <div className="flex justify-end">
                 <Button onClick={handleSaveSettings} disabled={isSavingSettings || !!uploadingKey}>
-                    {isSavingSettings && <Loader2 className="mr-2 animate-spin" />}
+                    {(isSavingSettings || !!uploadingKey) && <Loader2 className="mr-2 animate-spin" />}
                     儲存設定
                 </Button>
             </div>
         </div>
     );
 }
-
-    

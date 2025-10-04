@@ -1,5 +1,4 @@
 
-
 export type Donation = {
   studentId: string;
   studentName: string;
@@ -178,6 +177,7 @@ export type PlatformConfig = {
     homeTitle?: string;
     homeSubtitle?: string;
     homeIllustrationUrl?: string;
+    theme?: string;
 }
 
     

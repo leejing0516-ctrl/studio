@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { AppDataProvider } from "@/context/AppDataContext";
 import { StudentDataProvider } from "@/context/StudentDataContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 
 
 export const metadata: Metadata = {
@@ -28,10 +29,12 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <AppDataProvider>
-          <StudentDataProvider>
-              {children}
-              <Toaster />
-          </StudentDataProvider>
+          <ThemeProvider>
+            <StudentDataProvider>
+                {children}
+                <Toaster />
+            </StudentDataProvider>
+          </ThemeProvider>
         </AppDataProvider>
       </body>
     </html>
