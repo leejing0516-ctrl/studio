@@ -86,7 +86,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     return firestoreRunTransaction(db, updateFunction);
   }, []);
   
-  const createSetter = <T extends { id: string; _docId?: string; classId?: string; }>(
+  const createSetter = <T extends { id: string; _docId?: string; }>(
     collectionName: string,
     state: T[],
     setter: React.Dispatch<React.SetStateAction<T[]>>
@@ -98,36 +98,21 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     const existingDocIds = new Set(state.map(item => item._docId).filter(Boolean));
 
     for (const item of currentState) {
-      if (item._docId && existingDocIds.has(item._docId)) {
-        // This is an update
-        const { _docId, ...itemData } = item;
-        const itemRef = doc(db, collectionName, _docId);
-        batch.update(itemRef, itemData);
-      } else {
-        // This is a new item
-        let newDocId: string;
-        if (collectionName === 'students' && item.classId && item.id) {
-          newDocId = `${item.classId}-${item.id}`;
-        } else {
-          // Let firestore generate for others, or handle if new ID logic is needed
-          newDocId = doc(collection(db, collectionName)).id;
+        if (item._docId) { // Existing item
+            const { _docId, ...itemData } = item;
+            batch.update(doc(db, collectionName, _docId), itemData);
+        } else { // New item
+            const newDocRef = doc(collection(db, collectionName));
+            batch.set(newDocRef, item);
         }
-        
-        const { _docId, ...itemData } = item;
-        const newDocRef = doc(db, collectionName, newDocId);
-        batch.set(newDocRef, itemData);
-      }
     }
   
-    // Now handle deletions
     const currentStateDocIds = new Set(currentState.map(item => item._docId).filter(Boolean));
     for (const oldDocId of existingDocIds) {
-        if (!currentStateDocIds.has(oldDocId)) {
-            const docToDeleteRef = doc(db, collectionName, oldDocId);
-            batch.delete(docToDeleteRef);
+        if (!currentStateDocIds.has(oldDocId!)) {
+            batch.delete(doc(db, collectionName, oldDocId!));
         }
     }
-
 
     try {
       await batch.commit();
@@ -167,18 +152,18 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     ) => {
         const q = query(collection(db, collectionName));
         const unsubscribe = onSnapshot(q, async (querySnapshot) => {
-             // Emergency data restore for students
+            // EMERGENCY DATA RESTORE for students
             if (collectionName === 'students' && querySnapshot.empty && initialStudents.length > 0) {
-                console.log("EMERGENCY RESTORE: Student collection is empty. Restoring from placeholder data...");
+                console.warn("CRITICAL: Student collection is empty. Attempting emergency restore from placeholder data...");
                 try {
                     const batch = writeBatch(db);
                     initialStudents.forEach(student => {
-                        const docId = `${student.classId}-${student.id}`;
-                        const docRef = doc(db, 'students', docId);
-                        batch.set(docRef, student);
+                        // The placeholder data doesn't have a _docId, so we let Firestore generate one.
+                        const newStudentRef = doc(collection(db, "students"));
+                        batch.set(newStudentRef, student);
                     });
                     await batch.commit();
-                    console.log("EMERGENCY RESTORE: Successfully restored students from placeholder data.");
+                    console.log("EMERGENCY RESTORE: Successfully restored students from placeholder data. The page will now reflect the restored data.");
                     // Snapshot listener will be re-triggered with the new data, so we can just return here.
                     return;
                 } catch (error) {
@@ -188,9 +173,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
             const data: (T & { _docId: string })[] = [];
             querySnapshot.forEach(doc => {
-                const docData = doc.data() as T;
-                const id = collectionName === 'students' ? (docData as any).id : doc.id;
-                data.push({ ...docData, id, _docId: doc.id });
+                data.push({ ...doc.data() as T, _docId: doc.id });
             });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
