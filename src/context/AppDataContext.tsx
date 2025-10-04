@@ -4,21 +4,23 @@
 import { createContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import type { Student, Reward, Class, Teacher, Stock, PlatformConfig } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { collection, doc, runTransaction as firestoreRunTransaction, Transaction, query, onSnapshot, Unsubscribe, setDoc } from 'firebase/firestore';
+import { collection, doc, runTransaction as firestoreRunTransaction, Transaction, query, onSnapshot, Unsubscribe, setDoc, writeBatch } from 'firebase/firestore';
+
+type SetStateAction<S> = S | ((prevState: S) => S);
 
 interface AppDataContextType {
   students: Student[];
-  setStudents: (students: Student[]) => Promise<void>;
+  setStudents: (action: SetStateAction<Student[]>) => Promise<void>;
   rewards: Reward[];
-  setRewards: (rewards: Reward[]) => Promise<void>;
+  setRewards: (action: SetStateAction<Reward[]>) => Promise<void>;
   stocks: Stock[];
-  setStocks: (stocks: Stock[]) => Promise<void>;
+  setStocks: (action: SetStateAction<Stock[]>) => Promise<void>;
   classes: Class[];
-  setClasses: React.Dispatch<React.SetStateAction<Class[]>>;
+  setClasses: (action: SetStateAction<Class[]>) => Promise<void>;
   teachers: Teacher[];
-  setTeachers: (teachers: Teacher[]) => Promise<void>;
+  setTeachers: (action: SetStateAction<Teacher[]>) => Promise<void>;
   platformConfig: PlatformConfig | null;
-  setPlatformConfig: (config: Partial<PlatformConfig>) => Promise<void>;
+  setPlatformConfig: (action: SetStateAction<PlatformConfig | null>) => Promise<void>;
   isLoading: boolean;
   isMarketOpen: boolean;
   runTransaction: (updateFunction: (transaction: Transaction) => Promise<any>) => Promise<any>;
@@ -32,7 +34,7 @@ const defaultState: AppDataContextType = {
   stocks: [],
   setStocks: async () => {},
   classes: [],
-  setClasses: () => {},
+  setClasses: async () => {},
   teachers: [],
   setTeachers: async () => {},
   platformConfig: null,
@@ -83,51 +85,41 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     return firestoreRunTransaction(db, updateFunction);
   }, []);
 
-  const setStudents = async (students: Student[]) => {
-    const batch = firestoreRunTransaction(db, async (transaction) => {
-        students.forEach(student => {
-            const studentDocId = `${student.classId}-${student.id}`;
-            const studentRef = doc(db, 'students', studentDocId);
-            transaction.set(studentRef, student, { merge: true });
-        });
+  const createSetter = <T extends { id: string }>(
+    currentState: T[],
+    collectionName: string
+  ) => async (action: SetStateAction<T[]>) => {
+    const newState = typeof action === 'function' ? action(currentState) : action;
+    const batch = writeBatch(db);
+    newState.forEach(item => {
+        const itemRef = doc(db, collectionName, item.id);
+        batch.set(itemRef, item, { merge: true });
     });
-    await batch;
-  }
-  
-  const setRewards = async (rewards: Reward[]) => {
-    const batch = firestoreRunTransaction(db, async (transaction) => {
-        rewards.forEach(reward => {
-            const rewardRef = doc(db, 'rewards', reward.id);
-            transaction.set(rewardRef, reward, { merge: true });
-        });
+    // Handle deletions if any
+    const newStateIds = new Set(newState.map(s => s.id));
+    const itemsToDelete = currentState.filter(s => !newStateIds.has(s.id));
+    itemsToDelete.forEach(item => {
+        const itemRef = doc(db, collectionName, item.id);
+        batch.delete(itemRef);
     });
-    await batch;
+
+    await batch.commit();
+  };
+
+  const setStudents = createSetter(students, 'students');
+  const setTeachers = createSetter(teachers, 'teachers');
+  const setRewards = createSetter(rewards, 'rewards');
+  const setStocks = createSetter(stocks, 'stocks');
+  const setClasses = createSetter(classes, 'classes');
+
+  const setPlatformConfig = async (action: SetStateAction<PlatformConfig | null>) => {
+    const newConfig = typeof action === 'function' ? action(platformConfig) : action;
+    if (newConfig) {
+        const configRef = doc(db, 'config', 'main');
+        await setDoc(configRef, newConfig, { merge: true });
+    }
   }
-  
-  const setStocks = async (stocks: Stock[]) => {
-     const batch = firestoreRunTransaction(db, async (transaction) => {
-        stocks.forEach(stock => {
-            const stockRef = doc(db, 'stocks', stock.ticker);
-            transaction.set(stockRef, stock, { merge: true });
-        });
-    });
-    await batch;
-  }
-  
-  const setTeachers = async (teachers: Teacher[]) => {
-     const batch = firestoreRunTransaction(db, async (transaction) => {
-        teachers.forEach(teacher => {
-            const teacherRef = doc(db, 'teachers', teacher.id);
-            transaction.set(teacherRef, teacher, { merge: true });
-        });
-    });
-    await batch;
-  }
-  
-  const setPlatformConfig = async (config: Partial<PlatformConfig>) => {
-    const configRef = doc(db, 'config', 'main');
-    await setDoc(configRef, config, { merge: true });
-  }
+
 
   useEffect(() => {
     const allLoaded = Object.values(loadingStates).every(state => state === false);
@@ -137,16 +129,18 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const subscriptions: Unsubscribe[] = [];
 
-    const setupSubscription = <T extends {id: string}>(
+    const setupSubscription = <T extends {id?: string}>(
         collectionName: string, 
         setter: React.Dispatch<React.SetStateAction<T[]>>,
-        stateKey: keyof LoadingStates
+        stateKey: keyof LoadingStates,
+        idKey: string = 'id'
     ) => {
         const q = query(collection(db, collectionName));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const data: T[] = [];
             querySnapshot.forEach(doc => {
-              data.push({ ...doc.data(), id: doc.id } as T);
+              const docData = doc.data();
+              data.push({ ...docData, [idKey]: doc.id } as T);
             });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
@@ -176,12 +170,15 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         });
         return unsubscribe;
     };
-
-    subscriptions.push(setupSubscription<Student>('students', setStudentsState, 'students'));
+    
+    subscriptions.push(setupSubscription<Student>('students', (action) => {
+        const newStudents = typeof action === 'function' ? action(students) : action;
+        setStudentsState(newStudents.map(s => ({ ...s, id: `${s.classId}-${s.id}` })));
+    }, 'students'));
     subscriptions.push(setupSubscription<Teacher>('teachers', setTeachersState, 'teachers'));
     subscriptions.push(setupSubscription<Class>('classes', setClassesState, 'classes'));
     subscriptions.push(setupSubscription<Reward>('rewards', setRewardsState, 'rewards'));
-    subscriptions.push(setupSubscription<Stock>('stocks', setStocksState, 'stocks'));
+    subscriptions.push(setupSubscription<Stock>('stocks', setStocksState, 'stocks', 'ticker'));
     subscriptions.push(setupDocSubscription<PlatformConfig>(['config', 'main'], setPlatformConfigState, 'config'));
 
     const marketInterval = setInterval(() => {
@@ -203,7 +200,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         stocks,
         setStocks,
         classes, 
-        setClasses: setClassesState,
+        setClasses,
         teachers,
         setTeachers,
         platformConfig,
