@@ -1,14 +1,20 @@
-/**
- * This file contains configurable settings for the application.
- *
- * It is the ideal place to store values that you might want to change later,
- * such as the application's logo.
- */
 
-/**
- * The URL for the application's logo.
- * 
- * To change the logo, simply replace the content of this string
- * with the new image URL.
- */
-export const LOGO_URL = "https://i.imgur.com/7x202p7.png";
+import admin from 'firebase-admin';
+
+if (!admin.apps.length) {
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      }),
+      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    });
+  } catch (error) {
+    console.error('Firebase admin initialization error', error);
+  }
+}
+
+export const adminDb = admin.firestore();
+export const adminStorage = admin.storage();

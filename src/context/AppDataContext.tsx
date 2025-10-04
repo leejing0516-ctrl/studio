@@ -8,10 +8,15 @@ import { collection, doc, runTransaction as firestoreRunTransaction, Transaction
 
 interface AppDataContextType {
   students: Student[];
+  setStudents: (students: Student[]) => Promise<void>;
   rewards: Reward[];
+  setRewards: (rewards: Reward[]) => Promise<void>;
   stocks: Stock[];
+  setStocks: (stocks: Stock[]) => Promise<void>;
   classes: Class[];
+  setClasses: React.Dispatch<React.SetStateAction<Class[]>>;
   teachers: Teacher[];
+  setTeachers: (teachers: Teacher[]) => Promise<void>;
   platformConfig: PlatformConfig | null;
   isLoading: boolean;
   isMarketOpen: boolean;
@@ -20,10 +25,15 @@ interface AppDataContextType {
 
 const defaultState: AppDataContextType = {
   students: [],
+  setStudents: async () => {},
   rewards: [],
+  setRewards: async () => {},
   stocks: [],
+  setStocks: async () => {},
   classes: [],
+  setClasses: () => {},
   teachers: [],
+  setTeachers: async () => {},
   platformConfig: null,
   isLoading: true,
   isMarketOpen: false,
@@ -70,6 +80,48 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const handleRunTransaction = useCallback(async (updateFunction: (transaction: Transaction) => Promise<any>) => {
     return firestoreRunTransaction(db, updateFunction);
   }, []);
+
+  const setStudents = async (students: Student[]) => {
+    const batch = firestoreRunTransaction(db, async (transaction) => {
+        students.forEach(student => {
+            const studentDocId = `${student.classId}-${student.id}`;
+            const studentRef = doc(db, 'students', studentDocId);
+            transaction.set(studentRef, student, { merge: true });
+        });
+    });
+    await batch;
+  }
+  
+  const setRewards = async (rewards: Reward[]) => {
+    const batch = firestoreRunTransaction(db, async (transaction) => {
+        rewards.forEach(reward => {
+            const rewardRef = doc(db, 'rewards', reward.id);
+            transaction.set(rewardRef, reward, { merge: true });
+        });
+    });
+    await batch;
+  }
+  
+  const setStocks = async (stocks: Stock[]) => {
+     const batch = firestoreRunTransaction(db, async (transaction) => {
+        stocks.forEach(stock => {
+            const stockRef = doc(db, 'stocks', stock.ticker);
+            transaction.set(stockRef, stock, { merge: true });
+        });
+    });
+    await batch;
+  }
+  
+  const setTeachers = async (teachers: Teacher[]) => {
+     const batch = firestoreRunTransaction(db, async (transaction) => {
+        teachers.forEach(teacher => {
+            const teacherRef = doc(db, 'teachers', teacher.id);
+            transaction.set(teacherRef, teacher, { merge: true });
+        });
+    });
+    await batch;
+  }
+
 
   useEffect(() => {
     const allLoaded = Object.values(loadingStates).every(state => state === false);
@@ -139,10 +191,15 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AppDataContext.Provider value={{ 
         students, 
+        setStudents,
         rewards, 
+        setRewards,
         stocks,
+        setStocks,
         classes, 
+        setClasses: setClassesState,
         teachers,
+        setTeachers,
         platformConfig,
         isLoading,
         isMarketOpen,

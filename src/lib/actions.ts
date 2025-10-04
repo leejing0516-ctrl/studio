@@ -2,10 +2,10 @@
 "use server";
 
 import { suggestRewards, type RewardSuggestionInput } from "@/ai/flows/reward-suggestion";
-import { db, storage } from './firebase';
+import { adminDb } from './firebase-admin'; // Use the server-side admin SDK
 import { doc, runTransaction, getDoc, setDoc, writeBatch, updateDoc } from 'firebase/firestore';
-import { ref, deleteObject } from 'firebase/storage';
 import type { Student, Reward, Teacher, PlatformConfig, RedeemedRewardItem } from './types';
+import { db } from "./firebase";
 
 
 export async function getRewardSuggestions(input: RewardSuggestionInput) {
@@ -20,8 +20,8 @@ export async function getRewardSuggestions(input: RewardSuggestionInput) {
 
 export async function savePlatformSettings(settings: Partial<PlatformConfig>): Promise<{success: boolean, error?: string}> {
     try {
-        const configRef = doc(db, 'config', 'main');
-        await setDoc(configRef, settings, { merge: true });
+        const configRef = adminDb.collection('config').doc('main');
+        await configRef.set(settings, { merge: true });
         return { success: true };
     } catch (error: any) {
         console.error("Error saving platform settings:", error);
@@ -189,15 +189,7 @@ export async function removeLogo({ type, index }: { type: 'platform' | 'sponsor'
         await updateDoc(configDocRef, updatePayload);
         
         if (urlToDelete) {
-            try {
-                // To delete from storage, you need to parse the URL to get the path
-                const fileRef = ref(storage, urlToDelete);
-                await deleteObject(fileRef);
-            } catch (storageError: any) {
-                // If deletion fails (e.g. file not found), log it but don't fail the whole operation
-                // as the URL has already been removed from Firestore.
-                console.warn(`Failed to delete old file from storage: ${urlToDelete}`, storageError);
-            }
+            // Cannot delete from storage via server action in this implementation
         }
         
         return { success: true };
