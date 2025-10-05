@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useContext, useEffect, useMemo } from "react";
@@ -1000,7 +999,7 @@ export default function TeacherDashboardPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>編號</TableHead>
+                                        <TableHead>座號</TableHead>
                                         <TableHead>姓名</TableHead>
                                         <TableHead>持有總點數</TableHead>
                                         <TableHead className="text-right">操作</TableHead>
@@ -1717,5 +1716,4 @@ export default function TeacherDashboardPage() {
     )
 }
 
-    
     
