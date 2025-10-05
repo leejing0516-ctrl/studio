@@ -1,7 +1,7 @@
 
 "use client";
 
-import { createContext, useState, ReactNode, useEffect, useCallback } from 'react';
+import { createContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
 import type { Student, Reward, Class, Teacher, Stock, PlatformConfig } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { collection, doc, runTransaction as firestoreRunTransaction, Transaction, query, onSnapshot, Unsubscribe, setDoc, writeBatch, getDocs, addDoc, getCountFromServer, deleteDoc } from 'firebase/firestore';
@@ -80,21 +80,80 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       stocks: true,
       config: true,
   });
+  
+  const isSyncing = useRef(false);
 
   const handleRunTransaction = useCallback(async (updateFunction: (transaction: Transaction) => Promise<any>) => {
     return firestoreRunTransaction(db, updateFunction);
   }, []);
   
-  const setStudentsWithFunction = async (action: SetStateActionWithFunction<Student[]>) => {
-      const newState = typeof action === 'function' ? action(students) : action;
+  const createSetter = <T extends { _docId?: string; id?: string }>(
+      collectionName: string,
+      currentState: T[],
+      stateSetter: React.Dispatch<React.SetStateAction<T[]>>
+  ) => async (action: SetStateActionWithFunction<T[]>) => {
+      const oldState = currentState;
+      const newState = typeof action === 'function' ? action(oldState) : action;
+
+      // Prevent feedback loop from onSnapshot
+      if (isSyncing.current) {
+          stateSetter(newState);
+          return;
+      }
+      
+      if (JSON.stringify(oldState) === JSON.stringify(newState)) {
+          return;
+      }
+
+      stateSetter(newState);
+
+      const batch = writeBatch(db);
+      const oldDocsMap = new Map(oldState.map(item => [item._docId || item.id, item]));
+
+      for (const item of newState) {
+          const docId = item._docId || item.id;
+          if (docId) { // Existing item
+              const docRef = doc(db, collectionName, docId);
+              const { _docId, ...itemData } = item;
+              batch.set(docRef, itemData, { merge: true });
+              oldDocsMap.delete(docId);
+          } else { // New item without a client-side ID
+              const newDocRef = doc(collection(db, collectionName));
+              const { _docId, ...itemData } = item;
+              batch.set(newDocRef, itemData);
+          }
+      }
+
+      // Delete items that are no longer in the new state
+      for (const docId of oldDocsMap.keys()) {
+          if (docId) {
+              batch.delete(doc(db, collectionName, docId));
+          }
+      }
+      
+      await batch.commit();
+  };
+  
+    const setStudentsWithFunction = async (action: SetStateActionWithFunction<Student[]>) => {
       const oldState = students;
+      const newState = typeof action === 'function' ? action(oldState) : action;
+
+      if (isSyncing.current) {
+          setStudentsState(newState);
+          return;
+      }
+
+      if (JSON.stringify(oldState) === JSON.stringify(newState)) {
+          return;
+      }
+
       setStudentsState(newState);
 
       const batch = writeBatch(db);
       const oldStateMap = new Map(oldState.map(s => [s._docId, s]));
       
       for (const student of newState) {
-          const docId = student.classId && student.id ? `${student.classId}-${student.id}` : student._docId;
+          const docId = student._docId || `${student.classId}-${student.id}`;
           if (!docId) {
               console.error("Student has no docId or composite key", student);
               continue;
@@ -103,11 +162,9 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
           const studentRef = doc(db, 'students', docId);
           const { _docId, ...studentData } = student;
           
-          if (oldStateMap.has(docId)) { // It's an update
-              batch.set(studentRef, studentData, { merge: true });
-              oldStateMap.delete(docId);
-          } else { // It's a new student
-              batch.set(studentRef, studentData);
+          batch.set(studentRef, studentData, { merge: true });
+          if(oldStateMap.has(docId)) {
+             oldStateMap.delete(docId);
           }
       }
 
@@ -121,46 +178,26 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       await batch.commit();
   };
 
-  const createGenericSetter = <T extends { _docId?: string; id?: string }>(collectionName: string, state: T[], setter: React.Dispatch<React.SetStateAction<T[]>>) => 
-    async (action: SetStateActionWithFunction<T[]>) => {
-      const newState = typeof action === 'function' ? action(state) : action;
-      setter(newState);
-
-      const batch = writeBatch(db);
-      const oldDocsMap = new Map(state.map(item => [item._docId, item]));
-
-      for (const item of newState) {
-        const docId = item._docId || item.id;
-        if (docId) { // Existing item
-          const docRef = doc(db, collectionName, docId);
-          const {_docId, ...itemData} = item;
-          batch.set(docRef, itemData, { merge: true });
-          oldDocsMap.delete(docId);
-        } else { // New item
-          const newDocRef = doc(collection(db, collectionName));
-          const {_docId, ...itemData} = item;
-          batch.set(newDocRef, itemData);
-        }
-      }
-
-      // Delete items that are no longer in the new state
-      for (const docId of oldDocsMap.keys()) {
-        if(docId) {
-            batch.delete(doc(db, collectionName, docId));
-        }
-      }
-      
-      await batch.commit();
-  };
-
-  const setTeachers = createGenericSetter('teachers', teachers, setTeachersState);
-  const setRewards = createGenericSetter('rewards', rewards, setRewardsState);
-  const setStocks = createGenericSetter('stocks', stocks, setStocksState);
-  const setClasses = createGenericSetter('classes', classes, setClassesState);
+  const setTeachers = createSetter('teachers', teachers, setTeachersState);
+  const setRewards = createSetter('rewards', rewards, setRewardsState);
+  const setStocks = createSetter('stocks', stocks, setStocksState);
+  const setClasses = createSetter('classes', classes, setClassesState);
 
   const setPlatformConfigWithFunction = async (action: SetStateActionWithFunction<PlatformConfig | null>) => {
+    const oldConfig = platformConfig;
     const newConfig = typeof action === 'function' ? action(platformConfig) : { ...platformConfig, ...action };
+    
+    if (isSyncing.current) {
+        setPlatformConfigState(newConfig);
+        return;
+    }
+    
+    if (JSON.stringify(oldConfig) === JSON.stringify(newConfig)) {
+        return;
+    }
+    
     setPlatformConfigState(newConfig);
+
     if (newConfig) {
         const { id, ...configData } = newConfig;
         const configRef = doc(db, 'config', 'main');
@@ -182,13 +219,15 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         stateKey: keyof LoadingStates,
     ) => {
         const q = query(collection(db, collectionName));
-        const unsubscribe = onSnapshot(q, async (querySnapshot) => {
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            isSyncing.current = true;
             const data: (T & { _docId: string })[] = [];
             querySnapshot.forEach(doc => {
                 data.push({ ...doc.data() as T, _docId: doc.id });
             });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
+            isSyncing.current = false;
         }, (error) => {
             console.error(`Error fetching real-time ${collectionName}:`, error);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
@@ -203,12 +242,14 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     ) => {
         const docRef = doc(db, ...docPath);
         const unsubscribe = onSnapshot(docRef, (docSnap) => {
+            isSyncing.current = true;
             if (docSnap.exists()) {
                 setter({ ...docSnap.data(), id: docSnap.id } as T);
             } else {
                 setter(null);
             }
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
+            isSyncing.current = false;
         }, (error) => {
             console.error(`Error fetching real-time doc ${docPath.join('/')}:`, error);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
