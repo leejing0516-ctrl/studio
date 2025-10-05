@@ -116,10 +116,11 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       await batch.commit();
   };
 
-  const createGenericSetter = <T extends { _docId?: string; id?: string }>(
+  const genericSetter = <T extends { _docId?: string; id?: any }>(
       collectionName: string,
       currentState: T[],
-      stateSetter: React.Dispatch<React.SetStateAction<T[]>>
+      stateSetter: React.Dispatch<React.SetStateAction<T[]>>,
+      useDefinedIdAsDocId: boolean = false
   ) => async (action: SetStateActionWithFunction<T[]>) => {
       const oldState = currentState;
       const newState = typeof action === 'function' ? action(oldState) : action;
@@ -128,18 +129,20 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
       const batch = writeBatch(db);
       const oldDocsMap = new Map(oldState.map(item => [item._docId, item]));
-      
+
       for (const item of newState) {
-          const docId = item._docId; 
-          if (docId) {
-              const docRef = doc(db, collectionName, docId);
-              const { _docId, ...itemData } = item;
+          const { _docId, ...itemData } = item;
+          if (_docId) {
+              const docRef = doc(db, collectionName, _docId);
               batch.set(docRef, itemData, { merge: true });
-              oldDocsMap.delete(docId);
-          } else if (item.id) {
-              // Handle new items that might not have _docId yet but have a defined id.
-              const newDocRef = doc(db, collectionName, item.id);
-               const { _docId, ...itemData } = item;
+              oldDocsMap.delete(_docId);
+          } else {
+              let newDocRef;
+              if (useDefinedIdAsDocId && item.id) {
+                newDocRef = doc(db, collectionName, item.id);
+              } else {
+                newDocRef = doc(collection(db, collectionName));
+              }
               batch.set(newDocRef, itemData);
           }
       }
@@ -153,10 +156,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       await batch.commit();
   };
   
-  const setTeachers = createGenericSetter('teachers', teachers, setTeachersState);
-  const setRewards = createGenericSetter('rewards', rewards, setRewardsState);
-  const setStocks = createGenericSetter('stocks', stocks, setStocksState);
-  const setClasses = createGenericSetter('classes', classes, setClassesState);
+  const setTeachers = genericSetter('teachers', teachers, setTeachersState);
+  const setRewards = genericSetter('rewards', rewards, setRewardsState);
+  const setStocks = genericSetter('stocks', stocks, setStocksState);
+  const setClasses = genericSetter('classes', classes, setClassesState, true);
 
   const setPlatformConfigWithFunction = async (action: SetStateActionWithFunction<PlatformConfig | null>) => {
     
@@ -192,11 +195,12 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 const docData = doc.data() as T;
                 const id = doc.id;
                 
-                if (collectionName === 'students' || collectionName === 'classes' || collectionName === 'teachers') {
-                    // For these collections, the Firestore doc.id IS the business ID. We need to preserve the original `id` from the document data.
+                if (collectionName === 'students' || collectionName === 'teachers' || collectionName === 'classes') {
+                    // For these collections, we MUST preserve the business logic ID from the document data.
+                    // The Firestore doc.id is stored in _docId.
                     data.push({ ...docData, _docId: id });
                 } else {
-                    // For other collections (rewards, stocks), the document ID is the primary identifier.
+                    // For other collections (rewards, stocks), the document ID is the primary business identifier.
                     data.push({ ...docData, id: id, _docId: id });
                 }
             });
