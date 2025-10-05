@@ -9,7 +9,8 @@ import { TEACHER_MANUAL_CONTENT } from "@/lib/manual-content";
 import { POINTS_TEMPLATE_CONTENT } from "@/lib/manual-content";
 import { STATEMENT_CONTENT } from "@/lib/manual-content";
 import { RESTORE_MANUAL_CONTENT } from "@/lib/manual-content";
-import { AlertTriangle } from "lucide-react";
+import { CHANGELOG_CONTENT } from "@/lib/manual-content";
+import { AlertTriangle, Book, History } from "lucide-react";
 
 // A simple markdown-like renderer
 const SimpleRenderer = ({ content }: { content: string }) => {
@@ -81,8 +82,11 @@ export default function ManualPage() {
                     <CardDescription>您可以在這裡找到所有關於平台操作的說明文件與相關範本。</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Tabs defaultValue="restore_manual">
-                        <TabsList className="grid w-full grid-cols-3 md:grid-cols-5">
+                    <Tabs defaultValue="changelog">
+                        <TabsList className="grid w-full grid-cols-3 md:grid-cols-6">
+                            <TabsTrigger value="changelog" className="text-primary font-bold flex items-center gap-2">
+                                <History className="h-4 w-4" />系統日誌
+                            </TabsTrigger>
                             <TabsTrigger value="restore_manual" className="text-destructive font-bold flex items-center gap-2">
                                 <AlertTriangle className="h-4 w-4" />資料救援
                             </TabsTrigger>
@@ -92,6 +96,9 @@ export default function ManualPage() {
                             <TabsTrigger value="statement">系統聲明</TabsTrigger>
                         </TabsList>
                         <ScrollArea className="h-[65vh] mt-4 border rounded-md p-6">
+                             <TabsContent value="changelog">
+                                <SimpleRenderer content={CHANGELOG_CONTENT} />
+                            </TabsContent>
                             <TabsContent value="restore_manual">
                                 <SimpleRenderer content={RESTORE_MANUAL_CONTENT} />
                             </TabsContent>
