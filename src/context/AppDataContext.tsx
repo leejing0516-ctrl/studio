@@ -196,9 +196,9 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 const docData = doc.data() as T;
                 const id = doc.id;
                 
+                // For these collections, we MUST preserve the business logic ID from the document data.
+                // The Firestore doc.id is stored in _docId.
                 if (collectionName === 'students' || collectionName === 'teachers' || collectionName === 'classes') {
-                    // For these collections, we MUST preserve the business logic ID from the document data.
-                    // The Firestore doc.id is stored in _docId.
                     data.push({ ...docData, _docId: id });
                 } else {
                     // For other collections (rewards, stocks), the document ID is the primary business identifier.
