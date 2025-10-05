@@ -954,7 +954,31 @@ export default function TeacherDashboardPage() {
                                 <CardTitle>學生名單</CardTitle>
                                 <CardDescription>管理班級中的學生、重設密碼或進行批次匯入。</CardDescription>
                             </div>
-                            <div className="flex gap-2">
+                             <div className="flex items-center gap-2">
+                                {role === 'admin' && selectedStudents.length > 0 && (
+                                     <AlertDialog open={isBatchDeleteConfirmOpen} onOpenChange={setIsBatchDeleteConfirmOpen}>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="destructive">
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                批次刪除 ({selectedStudents.length})
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>確定要批次刪除嗎？</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    您即將永久刪除 {selectedStudents.length} 位學生。此操作無法復原。
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>取消</AlertDialogCancel>
+                                                <AlertDialogAction onClick={handleBatchDelete} className={buttonVariants({ variant: "destructive" })}>
+                                                    確定刪除
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                )}
                                 <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}><Upload className="mr-2"/>批次匯入</Button>
                                 <Button onClick={() => setIsAddStudentDialogOpen(true)}><PlusCircle className="mr-2"/>新增學生</Button>
                             </div>
@@ -1207,6 +1231,7 @@ export default function TeacherDashboardPage() {
                                                 aria-label="Select all"
                                             />
                                         </TableHead>
+                                        <TableHead>座號</TableHead>
                                         <TableHead>姓名</TableHead>
                                         <TableHead>目前點數</TableHead>
                                         <TableHead className="w-[250px]">個別操作</TableHead>
@@ -1222,6 +1247,7 @@ export default function TeacherDashboardPage() {
                                                     aria-label={`Select student ${student.name}`}
                                                 />
                                             </TableCell>
+                                            <TableCell>{student.id}</TableCell>
                                             <TableCell>{student.name}</TableCell>
                                             <TableCell>{student.points.toLocaleString()}</TableCell>
                                             <TableCell>
@@ -1241,7 +1267,7 @@ export default function TeacherDashboardPage() {
                                         </TableRow>
                                     )) : (
                                         <TableRow>
-                                            <TableCell colSpan={4} className="h-24 text-center">請先選擇班級。</TableCell>
+                                            <TableCell colSpan={5} className="h-24 text-center">請先選擇班級。</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
@@ -1743,5 +1769,7 @@ export default function TeacherDashboardPage() {
     
 
 
+
+    
 
     
