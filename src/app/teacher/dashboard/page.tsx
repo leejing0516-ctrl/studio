@@ -50,6 +50,17 @@ import { format, parseISO, subDays, isAfter } from "date-fns";
 
 const CONFIRM_DELETE_TEXT = "我確定要刪除";
 
+const classNameMapping: { [key: string]: string } = {
+    "六年甲班": "6A",
+    "六年乙班": "6B",
+    "五年甲班": "5A",
+    "五年乙班": "5B",
+    "四年甲班": "4A",
+    "四年乙班": "4B",
+    "三年甲班": "3A",
+    "三年乙班": "3B",
+};
+
 export default function TeacherDashboardPage() {
     const { 
         students, setStudents,
@@ -104,6 +115,59 @@ export default function TeacherDashboardPage() {
         if (role === 'admin') return classes;
         return classes.filter(c => teacherClassIds.includes(c.id));
     }, [role, classes, teacherClassIds]);
+
+    const handleEmergencyFixClassIds = async () => {
+        setIsProcessing('emergency_fix');
+        try {
+            const batch = writeBatch(db);
+            const classesQuerySnapshot = await getDocs(collection(db, 'classes'));
+            
+            classesQuerySnapshot.forEach(docSnap => {
+                const data = docSnap.data() as Omit<Class, 'id'>;
+                const correctId = classNameMapping[data.name];
+                if (correctId && docSnap.id !== correctId) {
+                    // This scenario is tricky. The document ID is immutable.
+                    // The "right" way is to delete and re-add.
+                    // Let's first log what we found.
+                    console.warn(`Mismatched ID for class ${data.name}. DB ID: ${docSnap.id}, Correct ID: ${correctId}`);
+                    
+                    // For now, we'll try to update the `id` field within the document.
+                    const docRef = doc(db, 'classes', docSnap.id);
+                    batch.update(docRef, { id: correctId });
+                } else if (!correctId) {
+                     console.error(`No correct ID mapping found for class name: ${data.name}`);
+                }
+            });
+
+            await batch.commit();
+
+            // As a second, more forceful step, let's just write the correct data.
+            const forceBatch = writeBatch(db);
+            const classData = [
+                { id: "6A", name: "六年甲班", announcements: [] },
+                { id: "6B", name: "六年乙班", announcements: [] },
+                { id: "5A", name: "五年甲班", announcements: [] },
+                { id: "5B", name: "五年乙班", announcements: [] },
+                { id: "4A", name: "四年甲班", announcements: [] },
+                { id: "4B", "name": "四年乙班", announcements: [] },
+                { id: "3A", "name": "三年甲班", announcements: [] },
+                { id: "3B", "name": "三年乙班", announcements: [] },
+            ];
+            classData.forEach(classObj => {
+                const docRef = doc(db, 'classes', classObj.id);
+                forceBatch.set(docRef, classObj);
+            });
+            await forceBatch.commit();
+
+
+            toast({ title: "修復完成", description: "已嘗試強制修正班級ID。請重新整理頁面以查看結果。" });
+        } catch (error: any) {
+            console.error("Emergency fix failed:", error);
+            toast({ title: "修復失敗", description: error.message, variant: "destructive" });
+        } finally {
+            setIsProcessing(null);
+        }
+    };
 
     useEffect(() => {
         const storedRole = localStorage.getItem('teacherRole');
@@ -777,7 +841,7 @@ export default function TeacherDashboardPage() {
         const points = challengeDetails.points;
         
         try {
-            await runTransaction(async (transaction: Transaction) => {
+            await runTransaction(async (transaction) => {
                 const studentRef = doc(db, 'students', student._docId!);
                 const studentDoc = await transaction.get(studentRef);
                 if (!studentDoc.exists()) throw new Error("Student not found");
@@ -853,6 +917,41 @@ export default function TeacherDashboardPage() {
     
     return (
         <div className="space-y-6 animate-in fade-in-0 duration-500">
+             {role === 'admin' && (
+                <Card className="border-red-500 bg-red-500/5">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-red-600">
+                            <ShieldAlert />
+                            緊急資料救援
+                        </CardTitle>
+                        <CardDescription className="text-red-500">
+                            如果班級資料或學生登入出現嚴重問題，請點擊此按鈕。此操作將會強制修正所有班級的 ID，可能解決因 ID 錯亂導致的問題。
+                        </CardDescription>
+                    </CardHeader>
+                    <CardFooter>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive">
+                                    {isProcessing === 'emergency_fix' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                                    執行緊急修復
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>確定要執行緊急修復嗎？</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        此操作將會覆寫所有班級的ID以符合系統預設值，用於解決嚴重的資料同步問題。請只在技術人員的指導下執行此操作。
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>取消</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleEmergencyFixClassIds}>我了解風險，確定執行</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </CardFooter>
+                </Card>
+            )}
             <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h2 className="text-2xl font-bold">
@@ -1632,4 +1731,5 @@ export default function TeacherDashboardPage() {
     )
 }
 
+    
     
