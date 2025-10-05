@@ -94,23 +94,21 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       setStudentsState(newState);
 
       const batch = writeBatch(db);
-      const oldStateMap = new Map(oldState.map(s => s._docId));
+      const oldDocIds = new Set(oldState.map(s => s._docId).filter(Boolean));
 
       for (const student of newState) {
           const docId = student._docId || `${student.classId}-${student.id}`;
           const studentRef = doc(db, 'students', docId);
           const { _docId, ...studentData } = student;
           
-          batch.set(studentRef, studentData, { merge: true });
-          if(oldStateMap.has(docId)) {
-             oldStateMap.delete(docId);
+          batch.set(studentRef, { ...studentData, _docId: docId }, { merge: true });
+          if(oldDocIds.has(docId)) {
+             oldDocIds.delete(docId);
           }
       }
 
-      for (const docId of oldStateMap.keys()) {
-          if(docId) {
-             batch.delete(doc(db, 'students', docId));
-          }
+      for (const docId of oldDocIds) {
+          batch.delete(doc(db, 'students', docId));
       }
 
       await batch.commit();
@@ -128,22 +126,24 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       stateSetter(newState);
 
       const batch = writeBatch(db);
-      const oldDocsMap = new Map(oldState.map(item => item._docId ? [item._docId, item] : [item.id, item]));
+      const oldDocsMap = new Map(oldState.map(item => [item._docId || item.id, item]));
 
       for (const item of newState) {
           const { _docId, ...itemData } = item;
+          let docRef;
+
           if (_docId) {
-              const docRef = doc(db, collectionName, _docId);
+              docRef = doc(db, collectionName, _docId);
               batch.set(docRef, itemData, { merge: true });
               oldDocsMap.delete(_docId);
           } else {
-              let newDocRef;
               if (useDefinedIdAsDocId && item.id) {
-                newDocRef = doc(db, collectionName, item.id);
-                 batch.set(newDocRef, itemData);
+                docRef = doc(db, collectionName, item.id);
+                batch.set(docRef, itemData);
+                oldDocsMap.delete(item.id);
               } else {
-                newDocRef = doc(collection(db, collectionName));
-                batch.set(newDocRef, itemData);
+                docRef = doc(collection(db, collectionName));
+                batch.set(docRef, itemData);
               }
           }
       }
@@ -196,9 +196,9 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 const docData = doc.data() as T;
                 const id = doc.id;
                 
-                // For these collections, we MUST preserve the business logic ID from the document data.
-                // The Firestore doc.id is stored in _docId.
-                if (collectionName === 'students' || collectionName === 'teachers' || collectionName === 'classes') {
+                // For students, classes, and teachers, the 'id' field from the document data is the business logic ID.
+                // The Firestore document ID is stored in _docId.
+                if (['students', 'classes', 'teachers'].includes(collectionName)) {
                     data.push({ ...docData, _docId: id });
                 } else {
                     // For other collections (rewards, stocks), the document ID is the primary business identifier.
@@ -273,5 +273,3 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     </AppDataContext.Provider>
   );
 };
-
-    
