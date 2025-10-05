@@ -82,7 +82,7 @@ const Marquee = ({ messages }: { messages: string[] }) => {
                     isVisible ? "opacity-100" : "opacity-0"
                 )}>
                     <Zap className="h-5 w-5 shrink-0" />
-                    <span className="text-sm font-semibold">{validMessages[currentIndex]}</span>
+                    <span className="text-base font-semibold">{validMessages[currentIndex]}</span>
                 </div>
             </div>
         </div>
@@ -479,5 +479,3 @@ export default function StocksPage() {
     </>
   );
 }
-
-    
