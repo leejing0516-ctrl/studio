@@ -77,8 +77,8 @@ export default function HomePage() {
     if (foundStudent && foundStudent.password === studentPassword) {
         toast({ title: "登入成功！", description: `歡迎回來，${foundStudent.name}！`});
         localStorage.setItem('userRole', 'student');
-        // The docId is now guaranteed to be correct from the context
-        localStorage.setItem('studentDocId', foundStudent._docId!);
+        localStorage.setItem('studentClassId', foundStudent.classId);
+        localStorage.setItem('studentId', foundStudent.id);
         localStorage.setItem('studentPassword', studentPassword);
         router.push('/dashboard');
     } else {

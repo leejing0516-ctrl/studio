@@ -79,7 +79,8 @@ export default function StudentLayout({
 
   const handleLogout = useCallback(() => {
     setStudentData({ student: null });
-    localStorage.removeItem('studentDocId');
+    localStorage.removeItem('studentClassId');
+    localStorage.removeItem('studentId');
     localStorage.removeItem('studentPassword');
     localStorage.removeItem('userRole');
     router.push('/');
@@ -89,16 +90,16 @@ export default function StudentLayout({
     if (isLoading) return;
 
     const userRole = localStorage.getItem('userRole');
-    const storedDocId = localStorage.getItem('studentDocId');
+    const storedClassId = localStorage.getItem('studentClassId');
+    const storedStudentId = localStorage.getItem('studentId');
     const storedPassword = localStorage.getItem('studentPassword');
 
-    if (userRole !== 'student' || !storedDocId || !storedPassword) {
+    if (userRole !== 'student' || !storedClassId || !storedStudentId || !storedPassword) {
       handleLogout();
       return;
     }
     
-    // The student's _docId is the composite key `classId-id`
-    const foundStudent = students.find(s => s._docId === storedDocId);
+    const foundStudent = students.find(s => s.classId === storedClassId && s.id === storedStudentId);
     
     if (foundStudent && foundStudent.password === storedPassword) {
         if (JSON.stringify(foundStudent) !== JSON.stringify(studentData.student)) {
@@ -127,7 +128,7 @@ export default function StudentLayout({
         return;
     }
     
-    const studentToUpdate = students.find(s => s._docId === student._docId);
+    const studentToUpdate = students.find(s => s.id === student.id && s.classId === student.classId);
 
     if (studentToUpdate?.password !== currentPassword) {
         toast({ title: "密碼錯誤", description: "您輸入的目前密碼不正確。", variant: "destructive" });
@@ -137,7 +138,7 @@ export default function StudentLayout({
 
     try {
         await setStudents(currentStudents => currentStudents.map(s => {
-            if (s._docId === student._docId) {
+            if (s.id === student.id && s.classId === student.classId) {
                 return { ...s, password: newPassword };
             }
             return s;
