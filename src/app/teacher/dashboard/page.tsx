@@ -194,7 +194,7 @@ export default function TeacherDashboardPage() {
 
     const studentsInClass = useMemo(() => {
         if (!selectedClassId) return [];
-        return students.filter(s => s.classId === selectedClassId && s._docId === `${s.classId}-${s.id}`);
+        return students.filter(s => s.classId === selectedClassId);
     }, [students, selectedClassId]);
 
     const availableClassesForNewTeacher = useMemo(() => {
