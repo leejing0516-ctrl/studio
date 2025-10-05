@@ -107,6 +107,10 @@ export default function TeacherDashboardPage() {
         return classes.filter(c => teacherClassIds.includes(c.id));
     }, [role, classes, teacherClassIds]);
 
+    const sortedTeachers = useMemo(() => {
+        return [...teachers].sort((a, b) => (a.id || '').localeCompare(b.id || ''));
+    }, [teachers]);
+
     useEffect(() => {
         const storedRole = localStorage.getItem('teacherRole');
         const storedTeacherId = localStorage.getItem('teacherId');
@@ -438,9 +442,10 @@ export default function TeacherDashboardPage() {
         const name = formData.get('name') as string;
         const role = formData.get('role') as 'teacher' | 'admin' | 'subject_teacher';
         const classId = formData.get('classId') as string;
+        const id = formData.get('id') as string;
 
         const newTeacher: Omit<Teacher, '_docId'> = {
-            id: `teacher-${Date.now()}-${Math.random()}`,
+            id: id,
             name,
             role,
             classIds: role === 'teacher' && classId ? [classId] : (role === 'subject_teacher' ? [] : []),
@@ -592,7 +597,9 @@ export default function TeacherDashboardPage() {
             return;
         }
 
-        setIsProcessing(student._docId);
+        if (!isBatch) {
+            setIsProcessing(student._docId);
+        }
 
         try {
             await runTransaction(async (transaction) => {
@@ -666,26 +673,36 @@ export default function TeacherDashboardPage() {
         }
     };
 
-    const handleBatchOperation = async () => {
+    const handleBatchOperation = async (isForSelected: boolean) => {
         if (batchPoints === '' || batchPoints === 0) return;
         
         setIsBatchProcessing(true);
         const points = Number(batchPoints);
 
-        const studentsToUpdate = studentsInClass.filter(student => {
-            if (points < 0 && student.points < Math.abs(points)) return false;
-            return true;
-        });
+        const studentsToUpdate = isForSelected 
+            ? studentsInClass.filter(student => selectedStudents.includes(student._docId!))
+            : studentsInClass;
 
-        if (studentsToUpdate.length < studentsInClass.length && points < 0) {
+        if (studentsToUpdate.length === 0) {
+            toast({ title: "無操作對象", description: "請先選擇學生或確認班級有學生。", variant: "destructive" });
+            setIsBatchProcessing(false);
+            return;
+        }
+
+        const studentsWithInsufficientPoints = studentsToUpdate.filter(student => points < 0 && student.points < Math.abs(points));
+        
+        if (studentsWithInsufficientPoints.length > 0) {
              toast({
                 title: "部分操作未執行",
-                description: "部分學生的點數不足以進行批次扣除。",
+                description: `${studentsWithInsufficientPoints.map(s => s.name).join(', ')} 的點數不足以進行批次扣除。`,
                 variant: "default",
             });
         }
-        if (studentsToUpdate.length === 0) {
-            toast({ title: "批次操作失敗", description: (points < 0 ? "所有學生的點數都不足以進行扣除。" : "此班級沒有學生可供操作。"), variant: "destructive" });
+        
+        const validStudentsToUpdate = studentsToUpdate.filter(student => !(points < 0 && student.points < Math.abs(points)));
+
+        if (validStudentsToUpdate.length === 0) {
+            toast({ title: "批次操作失敗", description: (points < 0 ? "所有學生的點數都不足以進行扣除。" : "沒有可操作的學生。"), variant: "destructive" });
             setIsBatchProcessing(false);
             return;
         }
@@ -693,18 +710,18 @@ export default function TeacherDashboardPage() {
         const impersonatorId = localStorage.getItem('impersonator');
         const isOperatingAsAdmin = role === 'admin' && !impersonatorId;
 
-        const totalPointChange = points * studentsToUpdate.length;
+        const totalPointChange = points * validStudentsToUpdate.length;
         const sourceBalance = isOperatingAsAdmin ? (platformConfig?.schoolFunds || 0) : (teacher?.pointBalance || 0);
 
         if (points > 0 && sourceBalance < totalPointChange) {
-            toast({ title: "批次操作失敗", description: "您的點數餘額不足以完成對所有學生的操作。", variant: "destructive" });
+            toast({ title: "批次操作失敗", description: `您的點數餘額不足以完成對 ${validStudentsToUpdate.length} 位學生的操作。`, variant: "destructive" });
             setIsBatchProcessing(false);
             return;
         }
 
         let successfulOperations = 0;
         
-        for (const student of studentsToUpdate) {
+        for (const student of validStudentsToUpdate) {
             try {
                 await performPointOperation(student, points, true);
                 successfulOperations++;
@@ -719,6 +736,7 @@ export default function TeacherDashboardPage() {
         
         setIsBatchProcessing(false);
         setBatchPoints('');
+        setSelectedStudents([]);
     };
 
     const handleApproveRewardUse = async (student: Student, rewardItem: RedeemedRewardItem) => {
@@ -957,43 +975,10 @@ export default function TeacherDashboardPage() {
                                     </div>
                                 ) : <div/>}
 
-                                {selectedStudents.length > 0 && role === 'admin' && (
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm text-muted-foreground">{selectedStudents.length} 位學生已選取</span>
-                                        <AlertDialog open={isBatchDeleteConfirmOpen} onOpenChange={setIsBatchDeleteConfirmOpen}>
-                                            <AlertDialogTrigger asChild>
-                                                <Button variant="destructive" size="sm">
-                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                    批次刪除
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>您確定要批次刪除嗎？</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        您確定要永久刪除 {selectedStudents.length} 位學生嗎？此操作無法復原。
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>取消</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={handleBatchDelete} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </div>
-                                )}
                             </div>
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="w-[50px]">
-                                            <Checkbox
-                                                checked={studentsInClass.length > 0 && selectedStudents.length === studentsInClass.length}
-                                                onCheckedChange={(checked) => handleSelectAll(Boolean(checked))}
-                                                aria-label="Select all"
-                                                disabled={role !== 'admin'}
-                                            />
-                                        </TableHead>
                                         <TableHead>座號</TableHead>
                                         <TableHead>姓名</TableHead>
                                         <TableHead>持有總點數</TableHead>
@@ -1002,15 +987,7 @@ export default function TeacherDashboardPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {studentsInClass.length > 0 ? studentsInClass.map(student => (
-                                        <TableRow key={student._docId} data-state={selectedStudents.includes(student._docId!) ? "selected" : ""}>
-                                            <TableCell>
-                                                 <Checkbox
-                                                    checked={selectedStudents.includes(student._docId!)}
-                                                    onCheckedChange={(checked) => handleSelectStudent(student._docId!, Boolean(checked))}
-                                                    aria-label={`Select student ${student.name}`}
-                                                    disabled={role !== 'admin'}
-                                                />
-                                            </TableCell>
+                                        <TableRow key={student._docId}>
                                             <TableCell>{student.id}</TableCell>
                                             <TableCell>{student.name}</TableCell>
                                             <TableCell>{student.points.toLocaleString()}</TableCell>
@@ -1072,7 +1049,7 @@ export default function TeacherDashboardPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {teachers.map(t => (
+                                        {sortedTeachers.map(t => (
                                             <TableRow key={t.id}>
                                                 <TableCell>{t.id}</TableCell>
                                                 <TableCell>{t.name}</TableCell>
@@ -1184,33 +1161,67 @@ export default function TeacherDashboardPage() {
                                     </Select>
                                 </div>
                                 <div className="flex gap-2 items-end">
-                                    <div className="space-y-1">
-                                        <Label htmlFor="batch-points">全班批次操作</Label>
-                                        <Input
-                                            id="batch-points"
-                                            type="number"
-                                            placeholder="點數 (正/負)"
-                                            value={batchPoints}
-                                            onChange={e => setBatchPoints(e.target.value === '' ? '' : Number(e.target.value))}
-                                            disabled={isBatchProcessing}
-                                        />
-                                    </div>
-                                    <Button onClick={handleBatchOperation} disabled={!selectedClassId || isBatchProcessing}>
-                                        {isBatchProcessing ? <Loader2 className="animate-spin" /> : '執行'}
-                                    </Button>
+                                     {selectedStudents.length > 0 ? (
+                                        <div className="flex gap-2 items-center p-2 rounded-md bg-muted">
+                                            <span className="text-sm font-medium">{selectedStudents.length} 位已選</span>
+                                            <Input
+                                                id="batch-points-selected"
+                                                type="number"
+                                                placeholder="點數"
+                                                className="w-24 h-9"
+                                                value={batchPoints}
+                                                onChange={e => setBatchPoints(e.target.value === '' ? '' : Number(e.target.value))}
+                                                disabled={isBatchProcessing}
+                                            />
+                                            <Button size="sm" onClick={() => handleBatchOperation(true)} disabled={!selectedClassId || isBatchProcessing}>
+                                                {isBatchProcessing ? <Loader2 className="animate-spin" /> : '執行'}
+                                            </Button>
+                                        </div>
+                                     ) : (
+                                        <div className="flex gap-2 items-end">
+                                            <div className="space-y-1">
+                                                <Label htmlFor="batch-points">全班批次操作</Label>
+                                                <Input
+                                                    id="batch-points"
+                                                    type="number"
+                                                    placeholder="點數 (正/負)"
+                                                    value={batchPoints}
+                                                    onChange={e => setBatchPoints(e.target.value === '' ? '' : Number(e.target.value))}
+                                                    disabled={isBatchProcessing}
+                                                />
+                                            </div>
+                                            <Button onClick={() => handleBatchOperation(false)} disabled={!selectedClassId || isBatchProcessing}>
+                                                {isBatchProcessing ? <Loader2 className="animate-spin" /> : '執行'}
+                                            </Button>
+                                        </div>
+                                     )}
                                 </div>
                             </div>
                             <Table>
                                 <TableHeader>
                                     <TableRow>
+                                        <TableHead className="w-[50px]">
+                                            <Checkbox
+                                                checked={studentsInClass.length > 0 && selectedStudents.length === studentsInClass.length}
+                                                onCheckedChange={(checked) => handleSelectAll(Boolean(checked))}
+                                                aria-label="Select all"
+                                            />
+                                        </TableHead>
                                         <TableHead>姓名</TableHead>
                                         <TableHead>目前點數</TableHead>
-                                        <TableHead className="w-[250px]">操作</TableHead>
+                                        <TableHead className="w-[250px]">個別操作</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                      {studentsInClass.length > 0 ? studentsInClass.map(student => (
-                                        <TableRow key={student._docId}>
+                                        <TableRow key={student._docId} data-state={selectedStudents.includes(student._docId!) ? "selected" : ""}>
+                                            <TableCell>
+                                                 <Checkbox
+                                                    checked={selectedStudents.includes(student._docId!)}
+                                                    onCheckedChange={(checked) => handleSelectStudent(student._docId!, Boolean(checked))}
+                                                    aria-label={`Select student ${student.name}`}
+                                                />
+                                            </TableCell>
                                             <TableCell>{student.name}</TableCell>
                                             <TableCell>{student.points.toLocaleString()}</TableCell>
                                             <TableCell>
@@ -1230,7 +1241,7 @@ export default function TeacherDashboardPage() {
                                         </TableRow>
                                     )) : (
                                         <TableRow>
-                                            <TableCell colSpan={3} className="h-24 text-center">請先選擇班級。</TableCell>
+                                            <TableCell colSpan={4} className="h-24 text-center">請先選擇班級。</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
@@ -1256,7 +1267,7 @@ export default function TeacherDashboardPage() {
                                                 <SelectValue placeholder="請選擇老師" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {teachers.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                                                {sortedTeachers.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -1620,6 +1631,10 @@ export default function TeacherDashboardPage() {
                         <DialogHeader><DialogTitle>新增教師</DialogTitle></DialogHeader>
                         <div className="py-4 space-y-4">
                             <div className="space-y-2">
+                                <Label htmlFor="teacher-id">教師 ID</Label>
+                                <Input id="teacher-id" name="id" required/>
+                            </div>
+                            <div className="space-y-2">
                                 <Label htmlFor="teacher-name">姓名</Label>
                                 <Input id="teacher-name" name="name" required/>
                             </div>
@@ -1727,3 +1742,6 @@ export default function TeacherDashboardPage() {
 
     
 
+
+
+    
