@@ -317,9 +317,7 @@ export default function TeacherDashboardPage() {
             pointHistory: [],
         };
 
-        const studentRef = doc(db, 'students', newStudent._docId);
-        const { _docId, ...studentData } = newStudent;
-        await setDoc(studentRef, studentData);
+        await setStudents(prev => [...prev, newStudent]);
         
         setIsAddStudentDialogOpen(false);
         toast({
@@ -460,6 +458,7 @@ export default function TeacherDashboardPage() {
         if (!teacherToEdit) return;
 
         const formData = new FormData(event.currentTarget);
+        const id = formData.get('id') as string;
         const name = formData.get('name') as string;
         const newRole = editedTeacherRole as 'teacher' | 'admin' | 'subject_teacher';
         const classId = formData.get('classId') as string;
@@ -468,6 +467,7 @@ export default function TeacherDashboardPage() {
             if (t.id === teacherToEdit.id) {
                 return {
                     ...t,
+                    id,
                     name,
                     role: newRole,
                     classIds: newRole === 'teacher' && classId ? [classId] : (newRole === 'subject_teacher' ? (teacherToEdit.classIds || []) : []),
@@ -1652,6 +1652,10 @@ export default function TeacherDashboardPage() {
                     <form onSubmit={handleUpdateTeacher}>
                         <DialogHeader><DialogTitle>編輯 {teacherToEdit?.name} 的資料</DialogTitle></DialogHeader>
                         <div className="py-4 space-y-4">
+                             <div className="space-y-2">
+                                <Label htmlFor="edit-teacher-id">教師 ID</Label>
+                                <Input id="edit-teacher-id" name="id" defaultValue={teacherToEdit?.id} required/>
+                            </div>
                             <div className="space-y-2">
                                 <Label htmlFor="edit-teacher-name">姓名</Label>
                                 <Input id="edit-teacher-name" name="name" defaultValue={teacherToEdit?.name} required/>
@@ -1716,3 +1720,5 @@ export default function TeacherDashboardPage() {
         </div>
     )
 }
+
+    
