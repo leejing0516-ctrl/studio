@@ -92,39 +92,34 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       currentState: T[],
       stateSetter: React.Dispatch<React.SetStateAction<T[]>>
   ) => async (action: SetStateActionWithFunction<T[]>) => {
+      if (isSyncing.current) return;
+
       const oldState = currentState;
       const newState = typeof action === 'function' ? action(oldState) : action;
 
-      // Prevent feedback loop from onSnapshot
-      if (isSyncing.current) {
-          stateSetter(newState);
-          return;
-      }
+      stateSetter(newState);
       
       if (JSON.stringify(oldState) === JSON.stringify(newState)) {
           return;
       }
 
-      stateSetter(newState);
-
       const batch = writeBatch(db);
-      const oldDocsMap = new Map(oldState.map(item => [item._docId || item.id, item]));
-
+      const oldDocsMap = new Map(oldState.map(item => [(item._docId || item.id), item]));
+      
       for (const item of newState) {
           const docId = item._docId || item.id;
-          if (docId) { // Existing item
+          if (docId) { 
               const docRef = doc(db, collectionName, docId);
               const { _docId, ...itemData } = item;
               batch.set(docRef, itemData, { merge: true });
               oldDocsMap.delete(docId);
-          } else { // New item without a client-side ID
+          } else {
               const newDocRef = doc(collection(db, collectionName));
               const { _docId, ...itemData } = item;
               batch.set(newDocRef, itemData);
           }
       }
 
-      // Delete items that are no longer in the new state
       for (const docId of oldDocsMap.keys()) {
           if (docId) {
               batch.delete(doc(db, collectionName, docId));
@@ -135,19 +130,16 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   };
   
     const setStudentsWithFunction = async (action: SetStateActionWithFunction<Student[]>) => {
+      if (isSyncing.current) return;
+      
       const oldState = students;
       const newState = typeof action === 'function' ? action(oldState) : action;
 
-      if (isSyncing.current) {
-          setStudentsState(newState);
-          return;
-      }
+      setStudentsState(newState);
 
       if (JSON.stringify(oldState) === JSON.stringify(newState)) {
           return;
       }
-
-      setStudentsState(newState);
 
       const batch = writeBatch(db);
       const oldStateMap = new Map(oldState.map(s => [s._docId, s]));
@@ -168,7 +160,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
           }
       }
 
-      // Any students left in oldStateMap have been deleted
       for (const docId of oldStateMap.keys()) {
           if(docId) {
              batch.delete(doc(db, 'students', docId));
@@ -184,19 +175,16 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const setClasses = createSetter('classes', classes, setClassesState);
 
   const setPlatformConfigWithFunction = async (action: SetStateActionWithFunction<PlatformConfig | null>) => {
+    if (isSyncing.current) return;
+    
     const oldConfig = platformConfig;
     const newConfig = typeof action === 'function' ? action(platformConfig) : { ...platformConfig, ...action };
     
-    if (isSyncing.current) {
-        setPlatformConfigState(newConfig);
-        return;
-    }
-    
+    setPlatformConfigState(newConfig);
+
     if (JSON.stringify(oldConfig) === JSON.stringify(newConfig)) {
         return;
     }
-    
-    setPlatformConfigState(newConfig);
 
     if (newConfig) {
         const { id, ...configData } = newConfig;
@@ -223,11 +211,14 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             isSyncing.current = true;
             const data: (T & { _docId: string })[] = [];
             querySnapshot.forEach(doc => {
-                data.push({ ...doc.data() as T, _docId: doc.id });
+                const docData = doc.data() as T;
+                const id = collectionName === 'students' ? `${docData.classId}-${docData.id}` : doc.id;
+                data.push({ ...docData, _docId: id });
             });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
-            isSyncing.current = false;
+            // Use a timeout to ensure React has processed the state update before unlocking
+            setTimeout(() => { isSyncing.current = false; }, 0);
         }, (error) => {
             console.error(`Error fetching real-time ${collectionName}:`, error);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
@@ -249,7 +240,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 setter(null);
             }
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
-            isSyncing.current = false;
+            setTimeout(() => { isSyncing.current = false; }, 0);
         }, (error) => {
             console.error(`Error fetching real-time doc ${docPath.join('/')}:`, error);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
