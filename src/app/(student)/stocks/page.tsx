@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext, useMemo } from "react";
+import { useState, useContext, useMemo, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -54,23 +54,39 @@ const chartConfig: ChartConfig = {
 } satisfies ChartConfig;
 
 const Marquee = ({ messages }: { messages: string[] }) => {
-    const allMessages = messages.filter(m => m.trim() !== '').join('     ');
-    if (!allMessages) return null;
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [isVisible, setIsVisible] = useState(true);
+    const validMessages = useMemo(() => messages.filter(m => m.trim() !== ''), [messages]);
+
+    useEffect(() => {
+        if (validMessages.length <= 1) return;
+
+        const interval = setInterval(() => {
+            setIsVisible(false);
+            setTimeout(() => {
+                setCurrentIndex((prevIndex) => (prevIndex + 1) % validMessages.length);
+                setIsVisible(true);
+            }, 500); // Wait for fade out
+        }, 4000); // 2s display + 2s pause/transition
+
+        return () => clearInterval(interval);
+    }, [validMessages.length]);
+
+    if (validMessages.length === 0) return null;
 
     return (
         <div className="flex justify-center">
-            <div className="relative flex w-full max-w-2xl overflow-x-hidden rounded-md border border-primary/20 bg-primary/10 py-2 text-primary">
-                <div className="flex animate-marquee items-center whitespace-nowrap">
-                    <Zap className="mx-4 h-5 w-5 shrink-0" />
-                    <span className="text-sm font-semibold">{allMessages}</span>
-                </div>
-                <div className="absolute top-0 flex animate-marquee2 items-center whitespace-nowrap">
-                    <Zap className="mx-4 h-5 w-5 shrink-0" />
-                    <span className="text-sm font-semibold">{allMessages}</span>
+            <div className="relative flex w-full max-w-2xl h-10 items-center justify-center overflow-hidden rounded-md border border-primary/20 bg-primary/10 py-2 text-primary">
+                <div className={cn(
+                    "flex items-center gap-2 transition-opacity duration-500",
+                    isVisible ? "opacity-100" : "opacity-0"
+                )}>
+                    <Zap className="h-5 w-5 shrink-0" />
+                    <span className="text-sm font-semibold">{validMessages[currentIndex]}</span>
                 </div>
             </div>
         </div>
-    )
+    );
 }
 
 export default function StocksPage() {
@@ -463,5 +479,3 @@ export default function StocksPage() {
     </>
   );
 }
-
-    
