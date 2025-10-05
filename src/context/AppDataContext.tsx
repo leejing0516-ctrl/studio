@@ -89,17 +89,17 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   
   const setStudentsWithFunction = async (action: SetStateActionWithFunction<Student[]>) => {
       if (isSyncing.current) return;
-      
-      const newState = typeof action === 'function' ? action(students) : action;
 
-      if (JSON.stringify(students) === JSON.stringify(newState)) return;
-      
+      const oldState = students;
+      const newState = typeof action === 'function' ? action(oldState) : action;
+
+      if (JSON.stringify(oldState) === JSON.stringify(newState)) return;
+
       setStudentsState(newState);
 
       const batch = writeBatch(db);
-      
-      const oldStateMap = new Map(students.map(s => s._docId));
-      
+      const oldStateMap = new Map(oldState.map(s => s._docId));
+
       for (const student of newState) {
           const docId = student._docId || `${student.classId}-${student.id}`;
           const studentRef = doc(db, 'students', docId);
@@ -205,8 +205,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 const id = doc.id;
                 
                 if (collectionName === 'students') {
+                     // Correctly assign _docId without overwriting the student's actual 'id' (seat number)
                      data.push({ ...docData, _docId: id });
                 } else {
+                     // For other collections, the document ID is the primary identifier.
                      data.push({ ...docData, id: id, _docId: id });
                 }
             });

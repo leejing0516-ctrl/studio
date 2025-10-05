@@ -346,6 +346,7 @@ export default function TeacherDashboardPage() {
 
         const newStudent: Student = {
             id: studentId,
+            _docId: `${selectedClassId}-${studentId}`,
             name: formData.get('name') as string,
             classId: selectedClassId,
             points: 0,
@@ -427,13 +428,14 @@ export default function TeacherDashboardPage() {
                     const [classId, id, name, password] = row;
                     return {
                         id, name, classId, password,
+                        _docId: `${classId}-${id}`,
                         points: 0,
                         avatar: `https://picsum.photos/seed/${id}/100`,
                         portfolio: [],
                         pointHistory: []
                     };
                 }).filter(s => s.id && s.name && s.classId && s.password);
-                setParsedCsvData(studentData);
+                setParsedCsvData(studentData as Student[]);
             }
         });
     };
@@ -1715,5 +1717,3 @@ export default function TeacherDashboardPage() {
         </div>
     )
 }
-
-    
