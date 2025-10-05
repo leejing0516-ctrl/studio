@@ -206,9 +206,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             querySnapshot.forEach(doc => {
                 const docData = doc.data() as T;
                 const id = doc.id;
+                
                 if (collectionName === 'students') {
                      // For students, the doc.id is the composite key (e.g., '6A-1').
-                     // We only add _docId and keep the original 'id' from the document data.
+                     // We only add _docId and keep the original 'id' (seat number) from the document data.
                      data.push({ ...docData, _docId: id });
                 } else {
                      // For all other collections, the doc.id is the primary identifier.
