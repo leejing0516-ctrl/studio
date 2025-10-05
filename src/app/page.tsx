@@ -69,6 +69,7 @@ export default function HomePage() {
         return;
     }
     
+    // Find student based on classId and studentId (seat number)
     const foundStudent = students.find(
       (s: Student) => s.classId === classId && s.id === studentIdInput
     );
@@ -76,6 +77,7 @@ export default function HomePage() {
     if (foundStudent && foundStudent.password === studentPassword) {
         toast({ title: "登入成功！", description: `歡迎回來，${foundStudent.name}！`});
         localStorage.setItem('userRole', 'student');
+        // The docId is now guaranteed to be correct from the context
         localStorage.setItem('studentDocId', foundStudent._docId!);
         localStorage.setItem('studentPassword', studentPassword);
         router.push('/dashboard');
@@ -174,10 +176,10 @@ export default function HomePage() {
                     </Select>
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="student-id">學生編號</Label>
+                    <Label htmlFor="student-id">學生座號</Label>
                     <Input 
                     id="student-id" 
-                    placeholder="請輸入您的編號" 
+                    placeholder="請輸入您的座號" 
                     required 
                     value={studentIdInput}
                     onChange={(e) => setStudentIdInput(e.target.value)}
@@ -281,3 +283,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    

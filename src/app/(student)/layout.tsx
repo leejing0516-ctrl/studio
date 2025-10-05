@@ -97,6 +97,7 @@ export default function StudentLayout({
       return;
     }
     
+    // The student's _docId is the composite key `classId-id`
     const foundStudent = students.find(s => s._docId === storedDocId);
     
     if (foundStudent && foundStudent.password === storedPassword) {
@@ -342,3 +343,5 @@ export default function StudentLayout({
     </>
   );
 }
+
+    
