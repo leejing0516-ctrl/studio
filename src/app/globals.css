@@ -24,7 +24,7 @@ body {
     --accent-foreground: hsl(var(--accent-foreground-hsl));
     --destructive: 140 70% 35%;
     --destructive-foreground: 0 0% 98%;
-    --success: 0 70% 45%;
+    --success: 100 60% 45%;
     --success-foreground: 0 0% 98%;
     --border: hsl(var(--border-hsl));
     --input: hsl(var(--input-hsl));
@@ -91,3 +91,5 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+    
