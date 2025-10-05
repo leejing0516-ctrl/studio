@@ -88,12 +88,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   }, []);
   
   const setStudentsWithFunction = async (action: SetStateActionWithFunction<Student[]>) => {
-      if (isSyncing.current) return;
-
       const oldState = students;
       const newState = typeof action === 'function' ? action(oldState) : action;
-
-      if (JSON.stringify(oldState) === JSON.stringify(newState)) return;
 
       setStudentsState(newState);
 
@@ -125,12 +121,9 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       currentState: T[],
       stateSetter: React.Dispatch<React.SetStateAction<T[]>>
   ) => async (action: SetStateActionWithFunction<T[]>) => {
-      if (isSyncing.current) return;
       const oldState = currentState;
       const newState = typeof action === 'function' ? action(oldState) : action;
 
-      if (JSON.stringify(oldState) === JSON.stringify(newState)) return;
-      
       stateSetter(newState);
 
       const batch = writeBatch(db);
@@ -143,9 +136,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
               const { _docId, ...itemData } = item;
               batch.set(docRef, itemData, { merge: true });
               oldDocsMap.delete(docId);
-          } else {
-              const newDocRef = doc(collection(db, collectionName));
-              const { _docId, ...itemData } = item;
+          } else if (item.id) {
+              // Handle new items that might not have _docId yet but have a defined id.
+              const newDocRef = doc(db, collectionName, item.id);
+               const { _docId, ...itemData } = item;
               batch.set(newDocRef, itemData);
           }
       }
@@ -165,14 +159,9 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const setClasses = createGenericSetter('classes', classes, setClassesState);
 
   const setPlatformConfigWithFunction = async (action: SetStateActionWithFunction<PlatformConfig | null>) => {
-    if (isSyncing.current) return;
     
     const oldConfig = platformConfig;
     const newConfig = typeof action === 'function' ? action(platformConfig) : { ...platformConfig, ...action };
-    
-    if (JSON.stringify(oldConfig) === JSON.stringify(newConfig)) {
-        return;
-    }
     
     setPlatformConfigState(newConfig);
 
@@ -198,23 +187,22 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     ) => {
         const q = query(collection(db, collectionName));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            isSyncing.current = true;
             const data: (T & { _docId: string })[] = [];
             querySnapshot.forEach(doc => {
                 const docData = doc.data() as T;
                 const id = doc.id;
                 
-                if (collectionName === 'students') {
-                     // Correctly assign _docId without overwriting the student's actual 'id' (seat number)
+                 if (collectionName === 'students') {
+                     // For students, the Firestore doc.id IS the composite key `classId-id`
+                     // We preserve the original `id` (seat number) from the document data.
                      data.push({ ...docData, _docId: id });
-                } else {
+                 } else {
                      // For other collections, the document ID is the primary identifier.
                      data.push({ ...docData, id: id, _docId: id });
-                }
+                 }
             });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
-            setTimeout(() => { isSyncing.current = false; }, 100);
         }, (error) => {
             console.error(`Error fetching real-time ${collectionName}:`, error);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
@@ -229,14 +217,12 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     ) => {
         const docRef = doc(db, ...docPath);
         const unsubscribe = onSnapshot(docRef, (docSnap) => {
-            isSyncing.current = true;
             if (docSnap.exists()) {
                 setter({ ...docSnap.data(), id: docSnap.id } as T);
             } else {
                 setter(null);
             }
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
-            setTimeout(() => { isSyncing.current = false; }, 100);
         }, (error) => {
             console.error(`Error fetching real-time doc ${docPath.join('/')}:`, error);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));

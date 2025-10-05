@@ -49,17 +49,6 @@ import { format, parseISO, subDays, isAfter } from "date-fns";
 
 const CONFIRM_DELETE_TEXT = "我確定要刪除";
 
-const classNameMapping: { [key: string]: string } = {
-    "六年甲班": "6A",
-    "六年乙班": "6B",
-    "五年甲班": "5A",
-    "五年乙班": "5B",
-    "四年甲班": "4A",
-    "四年乙班": "4B",
-    "三年甲班": "3A",
-    "三年乙班": "3B",
-};
-
 export default function TeacherDashboardPage() {
     const { 
         students, setStudents,
@@ -114,42 +103,6 @@ export default function TeacherDashboardPage() {
         if (role === 'admin') return classes;
         return classes.filter(c => teacherClassIds.includes(c.id));
     }, [role, classes, teacherClassIds]);
-
-    const handleEmergencyFixClassIds = async () => {
-        setIsProcessing('emergency_fix');
-        try {
-            const batch = writeBatch(db);
-            const classData = [
-                { id: "6A", name: "六年甲班", announcements: [] },
-                { id: "6B", name: "六年乙班", announcements: [] },
-                { id: "5A", name: "五年甲班", announcements: [] },
-                { id: "5B", name: "五年乙班", announcements: [] },
-                { id: "4A", name: "四年甲班", announcements: [] },
-                { id: "4B", name: "四年乙班", announcements: [] },
-                { id: "3A", name: "三年甲班", announcements: [] },
-                { id: "3B", name: "三年乙班", announcements: [] },
-            ];
-            classData.forEach(classObj => {
-                const docRef = doc(db, 'classes', classObj.id);
-                // Check if announcements exist to preserve them
-                const existingClass = classes.find(c => c.id === classObj.id);
-                const dataToSet = {
-                    ...classObj,
-                    announcements: existingClass?.announcements || []
-                };
-                batch.set(docRef, dataToSet);
-            });
-            await batch.commit();
-
-
-            toast({ title: "修復完成", description: "已強制修正班級ID。請重新整理頁面以查看結果。" });
-        } catch (error: any) {
-            console.error("Emergency fix failed:", error);
-            toast({ title: "修復失敗", description: error.message, variant: "destructive" });
-        } finally {
-            setIsProcessing(null);
-        }
-    };
 
     useEffect(() => {
         const storedRole = localStorage.getItem('teacherRole');
@@ -355,7 +308,11 @@ export default function TeacherDashboardPage() {
             portfolio: [],
             pointHistory: [],
         };
-        await setStudents([...students, newStudent]);
+
+        const studentRef = doc(db, 'students', newStudent._docId);
+        const { _docId, ...studentData } = newStudent;
+        await setDoc(studentRef, studentData);
+        
         setIsAddStudentDialogOpen(false);
         toast({
             title: "學生已新增",
@@ -904,41 +861,6 @@ export default function TeacherDashboardPage() {
     
     return (
         <div className="space-y-6 animate-in fade-in-0 duration-500">
-             {role === 'admin' && (
-                <Card className="border-red-500 bg-red-500/5">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-red-600">
-                            <ShieldAlert />
-                            緊急資料救援
-                        </CardTitle>
-                        <CardDescription className="text-red-500">
-                            如果班級資料或學生登入出現嚴重問題，請點擊此按鈕。此操作將會強制修正所有班級的 ID，可能解決因 ID 錯亂導致的問題。
-                        </CardDescription>
-                    </CardHeader>
-                    <CardFooter>
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="destructive">
-                                    {isProcessing === 'emergency_fix' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                                    執行緊急修復
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>確定要執行緊急修復嗎？</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        此操作將會覆寫所有班級的ID以符合系統預設值，用於解決嚴重的資料同步問題。請只在技術人員的指導下執行此操作。
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>取消</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleEmergencyFixClassIds}>我了解風險，確定執行</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    </CardFooter>
-                </Card>
-            )}
             <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h2 className="text-2xl font-bold">
