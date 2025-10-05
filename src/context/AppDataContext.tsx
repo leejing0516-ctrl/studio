@@ -98,7 +98,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       setStudentsState(newState);
 
       const batch = writeBatch(db);
-      const oldStateMap = new Map(oldState.map(s => [s._docId || `${s.classId}-${s.id}`, s]));
+      const oldStateMap = new Map(oldState.map(s => s._docId || `${s.classId}-${s.id}`));
       
       for (const student of newState) {
           const docId = student._docId || `${student.classId}-${student.id}`;
@@ -120,8 +120,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       await batch.commit();
   };
 
-  // Generic setter for collections using Firestore-generated IDs
-  const createSetter = <T extends { _docId?: string; id?: string }>(
+  const createGenericSetter = <T extends { _docId?: string; id?: string }>(
       collectionName: string,
       currentState: T[],
       stateSetter: React.Dispatch<React.SetStateAction<T[]>>
@@ -135,23 +134,25 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       stateSetter(newState);
 
       const batch = writeBatch(db);
-      const oldDocsMap = new Map(oldState.map(item => [item._docId || item.id, item]));
+      const oldDocsMap = new Map(oldState.map(item => [item._docId, item]));
       
       for (const item of newState) {
-          const docId = item._docId; // Must rely on _docId for existing docs
+          const docId = item._docId; 
           if (docId) {
+              // Existing document
               const docRef = doc(db, collectionName, docId);
               const { _docId, ...itemData } = item;
               batch.set(docRef, itemData, { merge: true });
               oldDocsMap.delete(docId);
           } else {
-              // This is a new item, add it to the collection
+              // New document
               const newDocRef = doc(collection(db, collectionName));
               const { _docId, ...itemData } = item;
               batch.set(newDocRef, itemData);
           }
       }
 
+      // Delete items that are no longer in the new state
       for (const docId of oldDocsMap.keys()) {
           if (docId) {
               batch.delete(doc(db, collectionName, docId));
@@ -160,11 +161,11 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       
       await batch.commit();
   };
-
-  const setTeachers = createSetter('teachers', teachers, setTeachersState);
-  const setRewards = createSetter('rewards', rewards, setRewardsState);
-  const setStocks = createSetter('stocks', stocks, setStocksState);
-  const setClasses = createSetter('classes', classes, setClassesState);
+  
+  const setTeachers = createGenericSetter('teachers', teachers, setTeachersState);
+  const setRewards = createGenericSetter('rewards', rewards, setRewardsState);
+  const setStocks = createGenericSetter('stocks', stocks, setStocksState);
+  const setClasses = createGenericSetter('classes', classes, setClassesState);
 
   const setPlatformConfigWithFunction = async (action: SetStateActionWithFunction<PlatformConfig | null>) => {
     if (isSyncing.current) return;
@@ -205,11 +206,15 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             querySnapshot.forEach(doc => {
                 const docData = doc.data() as T;
                 const id = doc.id;
-                 if (collectionName === 'students') {
+                if (collectionName === 'students') {
+                     // For students, the doc.id is the composite key (e.g., '6A-1').
+                     // We only add _docId and keep the original 'id' from the document data.
                      data.push({ ...docData, _docId: id });
-                 } else {
+                } else {
+                     // For all other collections, the doc.id is the primary identifier.
+                     // We set both 'id' and '_docId' to this value for consistency.
                      data.push({ ...docData, id: id, _docId: id });
-                 }
+                }
             });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
