@@ -67,7 +67,7 @@ const Marquee = ({ messages }: { messages: string[] }) => {
                 setCurrentIndex((prevIndex) => (prevIndex + 1) % validMessages.length);
                 setIsVisible(true);
             }, 500); // Wait for fade out
-        }, 4000); // 3.5s display + 0.5s transition
+        }, 6000); // 5.5s display + 0.5s transition
 
         return () => clearInterval(interval);
     }, [validMessages.length]);
