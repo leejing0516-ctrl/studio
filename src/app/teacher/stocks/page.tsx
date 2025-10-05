@@ -19,8 +19,8 @@ import {
 } from "@/components/ui/table";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { Stock } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, Loader2 } from "lucide-react";
+import type { Stock, Announcement } from "@/lib/types";
+import { PlusCircle, Edit, Trash2, Loader2, Megaphone } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -31,25 +31,28 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
+import { Textarea } from "@/components/ui/textarea";
+import { format } from "date-fns";
 
 
 export default function TeacherStocksPage() {
   const { 
     stocks, setStocks,
     students, setStudents,
-    isLoading
+    isLoading, platformConfig, setPlatformConfig
   } = useContext(AppDataContext);
 
   const { toast } = useToast();
   const router = useRouter();
 
   const [role, setRole] = useState<string | null>(null);
+  const [teacherId, setTeacherId] = useState<string>('');
+  const [teacherName, setTeacherName] = useState<string>('');
 
   // States for Stock Management
   const [isAddStockDialogOpen, setIsAddStockDialogOpen] = useState(false);
@@ -57,14 +60,25 @@ export default function TeacherStocksPage() {
   const [stockToEdit, setStockToEdit] = useState<Stock | null>(null);
   const [stockToDelete, setStockToDelete] = useState<Stock | null>(null);
 
+  // States for News Management
+  const [isAddNewsDialogOpen, setIsAddNewsDialogOpen] = useState(false);
+  const [isEditNewsDialogOpen, setIsEditNewsDialogOpen] = useState(false);
+  const [newsToEdit, setNewsToEdit] = useState<Announcement | null>(null);
+  const [newsToDelete, setNewsToDelete] = useState<Announcement | null>(null);
+
+
   useEffect(() => {
     const storedRole = localStorage.getItem('teacherRole');
+    const storedTeacherId = localStorage.getItem('teacherId');
+    const storedTeacherName = localStorage.getItem('teacherName');
     if (storedRole !== 'admin') {
       toast({ title: "權限不足", description: "只有校長才能存取此頁面。", variant: "destructive" });
       router.push('/teacher/dashboard');
       return;
     }
     setRole(storedRole);
+    setTeacherId(storedTeacherId || '');
+    setTeacherName(storedTeacherName || '');
   }, [router, toast]);
 
   const handleAddStock = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -79,6 +93,7 @@ export default function TeacherStocksPage() {
 
     const newStock: Stock = {
         ticker,
+        id: ticker,
         name: formData.get("name") as string,
         price: Number(formData.get("price")),
         marketCap: formData.get("marketCap") as string,
@@ -121,9 +136,7 @@ export default function TeacherStocksPage() {
   const handleConfirmDeleteStock = async () => {
     if (!stockToDelete) return;
 
-    // Use a single transaction to ensure atomicity
     try {
-        // Also need to remove this stock from all student portfolios
         await setStudents(currentStudents => currentStudents.map(student => ({
             ...student,
             portfolio: (student.portfolio || []).filter(p => p.ticker !== stockToDelete.ticker)
@@ -138,6 +151,60 @@ export default function TeacherStocksPage() {
     }
 
     setStockToDelete(null);
+  }
+
+  const handleAddNews = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const title = formData.get("title") as string;
+    const content = formData.get("content") as string;
+    
+    const newNews: Announcement = {
+        id: `news-${Date.now()}`,
+        title,
+        content,
+        date: new Date().toISOString(),
+        teacherId,
+        teacherName,
+    };
+
+    setPlatformConfig({ stockMarketNews: [...(platformConfig?.stockMarketNews || []), newNews]});
+    toast({ title: "股市新聞已發布" });
+    setIsAddNewsDialogOpen(false);
+  }
+
+  const handleEditNewsClick = (news: Announcement) => {
+    setNewsToEdit(news);
+    setIsEditNewsDialogOpen(true);
+  }
+
+  const handleUpdateNews = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!newsToEdit) return;
+
+    const formData = new FormData(event.currentTarget);
+    const updatedNews: Announcement = {
+        ...newsToEdit,
+        title: formData.get("title") as string,
+        content: formData.get("content") as string,
+    };
+
+    const updatedNewsList = (platformConfig?.stockMarketNews || []).map(n => n.id === updatedNews.id ? updatedNews : n);
+    setPlatformConfig({ stockMarketNews: updatedNewsList });
+    toast({ title: "股市新聞已更新" });
+    setIsEditNewsDialogOpen(false);
+  }
+  
+  const handleDeleteNewsClick = (news: Announcement) => {
+    setNewsToDelete(news);
+  }
+
+  const handleConfirmDeleteNews = () => {
+    if (!newsToDelete) return;
+    const updatedNewsList = (platformConfig?.stockMarketNews || []).filter(n => n.id !== newsToDelete.id);
+    setPlatformConfig({ stockMarketNews: updatedNewsList });
+    toast({ title: "新聞已刪除", variant: "destructive" });
+    setNewsToDelete(null);
   }
   
   if (isLoading || role !== 'admin') {
@@ -210,6 +277,68 @@ export default function TeacherStocksPage() {
             </CardContent>
         </Card>
 
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                    <CardTitle className="flex items-center gap-2"><Megaphone />股市新聞管理</CardTitle>
+                    <CardDescription>發布可能影響市場的重大消息。</CardDescription>
+                </div>
+                <Button onClick={() => setIsAddNewsDialogOpen(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    發布新消息
+                </Button>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-[150px]">發布日期</TableHead>
+                            <TableHead>標題</TableHead>
+                            <TableHead>內容</TableHead>
+                            <TableHead className="text-right w-[120px]">操作</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {(platformConfig?.stockMarketNews || []).length > 0 ? (platformConfig?.stockMarketNews || []).map((news) => (
+                        <TableRow key={news.id}>
+                            <TableCell>{format(new Date(news.date), "yyyy-MM-dd HH:mm")}</TableCell>
+                            <TableCell>{news.title}</TableCell>
+                            <TableCell className="max-w-sm truncate">{news.content}</TableCell>
+                            <TableCell className="text-right">
+                                <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleEditNewsClick(news)}>
+                                    <Edit className="h-4 w-4" />
+                                </Button>
+                                <AlertDialog open={!!newsToDelete && newsToDelete.id === news.id} onOpenChange={(open) => !open && setNewsToDelete(null)}>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteNewsClick(news)}>
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                您確定要刪除新聞「{news.title}」嗎？此操作無法復原。
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>取消</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => handleConfirmDeleteNews()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </TableCell>
+                        </TableRow>
+                        )) : (
+                            <TableRow>
+                                <TableCell colSpan={4} className="h-24 text-center">目前沒有股市新聞。</TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+
         {/* Dialog for Add Stock */}
         <Dialog open={isAddStockDialogOpen} onOpenChange={setIsAddStockDialogOpen}>
             <DialogContent className="sm:max-w-[425px]">
@@ -268,6 +397,57 @@ export default function TeacherStocksPage() {
                         <div className="space-y-2">
                             <Label htmlFor="edit-stock-marketCap">市值</Label>
                             <Input id="edit-stock-marketCap" name="marketCap" defaultValue={stockToEdit?.marketCap} required />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
+                        <Button type="submit">儲存變更</Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+
+        {/* Dialog for Add News */}
+        <Dialog open={isAddNewsDialogOpen} onOpenChange={setIsAddNewsDialogOpen}>
+            <DialogContent className="sm:max-w-lg">
+                <form onSubmit={handleAddNews}>
+                    <DialogHeader>
+                        <DialogTitle>發布新的股市新聞</DialogTitle>
+                        <DialogDescription>發布一則將會顯示在學生股票市場頁面的新聞。</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="news-title">標題</Label>
+                            <Input id="news-title" name="title" required />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="news-content">內容</Label>
+                            <Textarea id="news-content" name="content" required rows={5} />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button type="button" variant="secondary">取消</Button></DialogClose>
+                        <Button type="submit">發布新聞</Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+        {/* Dialog for Edit News */}
+        <Dialog open={isEditNewsDialogOpen} onOpenChange={(open) => {if (!open) {setNewsToEdit(null)}}}>
+            <DialogContent className="sm:max-w-lg">
+                <form onSubmit={handleUpdateNews}>
+                    <DialogHeader>
+                        <DialogTitle>編輯新聞</DialogTitle>
+                        <DialogDescription>修改「{newsToEdit?.title}」的詳細內容。</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-news-title">標題</Label>
+                            <Input id="edit-news-title" name="title" defaultValue={newsToEdit?.title} required />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-news-content">內容</Label>
+                            <Textarea id="edit-news-content" name="content" defaultValue={newsToEdit?.content} required rows={5} />
                         </div>
                     </div>
                     <DialogFooter>

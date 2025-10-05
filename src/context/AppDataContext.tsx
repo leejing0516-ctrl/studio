@@ -20,7 +20,7 @@ interface AppDataContextType {
   teachers: Teacher[];
   setTeachers: (action: SetStateActionWithFunction<Teacher[]>) => Promise<void>;
   platformConfig: PlatformConfig | null;
-  setPlatformConfig: (action: SetStateActionWithFunction<PlatformConfig | null>) => Promise<void>;
+  setPlatformConfig: (dataToUpdate: Partial<PlatformConfig>) => Promise<void>;
   isLoading: boolean;
   isMarketOpen: boolean;
   runTransaction: (updateFunction: (transaction: Transaction) => Promise<any>) => Promise<any>;
@@ -46,11 +46,13 @@ const defaultState: AppDataContextType = {
 
 export const AppDataContext = createContext<AppDataContextType>(defaultState);
 
-const checkMarketOpen = () => {
+const checkMarketOpen = (config: PlatformConfig | null) => {
     const now = new Date();
     const day = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
     const hour = now.getHours();
-    return day >= 1 && day <= 5 && hour >= 9 && hour < 14;
+    const openHour = config?.marketOpenHour ?? 9;
+    const closeHour = config?.marketCloseHour ?? 14;
+    return day >= 1 && day <= 5 && hour >= openHour && hour < closeHour;
 };
 
 type LoadingStates = {
@@ -62,6 +64,53 @@ type LoadingStates = {
     config: boolean;
 }
 
+const createSetterWithFirestoreSync = <T extends { _docId?: string, id?: any }>(
+  collectionName: string,
+  useIdAsDocId: boolean = false
+) => {
+  return async (action: SetStateActionWithFunction<T[]>) => {
+    // This is a simplified version. In a real app, you'd get the current state from a reliable source.
+    // For this context, we'll assume we need to fetch it first to properly apply the function form of the action.
+    const currentDocsQuery = await getDocs(query(collection(db, collectionName)));
+    const currentState = currentDocsQuery.docs.map(d => ({ ...d.data(), _docId: d.id })) as T[];
+    
+    const newState = typeof action === 'function' ? action(currentState) : action;
+
+    try {
+      const batch = writeBatch(db);
+      const newDocIds = new Set(newState.map(item => useIdAsDocId ? item.id : item._docId).filter(Boolean));
+
+      // Update or add new items
+      for (const item of newState) {
+        const docId = useIdAsDocId ? item.id : (item._docId || null);
+        const { _docId, ...itemData } = item;
+
+        let docRef;
+        if (docId) {
+            docRef = doc(db, collectionName, docId);
+        } else {
+            // For brand new items without any ID, create a new doc ref
+            docRef = doc(collection(db, collectionName));
+        }
+        batch.set(docRef, itemData, { merge: true });
+      }
+      
+      // Delete items that are no longer in the new state
+      const oldDocIds = new Set(currentState.map(item => useIdAsDocId ? item.id : item._docId).filter(Boolean));
+      for (const oldId of oldDocIds) {
+        if (!newDocIds.has(oldId)) {
+          batch.delete(doc(db, collectionName, oldId));
+        }
+      }
+
+      await batch.commit();
+    } catch (error) {
+      console.error(`Error syncing ${collectionName}:`, error);
+      throw error;
+    }
+  };
+};
+
 export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [students, setStudentsState] = useState<Student[]>([]);
   const [rewards, setRewardsState] = useState<Reward[]>([]);
@@ -70,7 +119,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [classes, setClassesState] = useState<Class[]>([]);
   const [platformConfig, setPlatformConfigState] = useState<PlatformConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isMarketOpen, setIsMarketOpen] = useState(checkMarketOpen());
+  const [isMarketOpen, setIsMarketOpen] = useState(false);
 
   const [loadingStates, setLoadingStates] = useState<LoadingStates>({
       students: true,
@@ -84,60 +133,25 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const handleRunTransaction = useCallback(async (updateFunction: (transaction: Transaction) => Promise<any>) => {
     return firestoreRunTransaction(db, updateFunction);
   }, []);
-  
-  const createSetter = useCallback(<T extends { _docId?: string; id?: any }>(
-    collectionName: string,
-    currentState: T[],
-    useIdAsDocId: boolean = false
-  ) => async (action: SetStateActionWithFunction<T[]>) => {
-      const newState = typeof action === 'function' ? action(currentState) : action;
 
-      try {
-          const batch = writeBatch(db);
-          const currentDocsQuery = await getDocs(query(collection(db, collectionName)));
-          const currentDocIds = new Set(currentDocsQuery.docs.map(d => d.id));
-          
-          for (const item of newState) {
-              const docId = useIdAsDocId ? item.id : (item._docId || null);
-              const { _docId, ...itemData } = item;
+  useEffect(() => {
+    setIsMarketOpen(checkMarketOpen(platformConfig));
+    const marketInterval = setInterval(() => {
+      setIsMarketOpen(checkMarketOpen(platformConfig));
+    }, 60000);
 
-              if (docId) {
-                  const docRef = doc(db, collectionName, docId);
-                  batch.set(docRef, itemData, { merge: true });
-                  currentDocIds.delete(docId);
-              } else {
-                  // This is a new item, add it to a new document
-                  const newDocRef = doc(collection(db, collectionName));
-                  batch.set(newDocRef, itemData);
-              }
-          }
+    return () => clearInterval(marketInterval);
+  }, [platformConfig]);
 
-          // Delete documents that are no longer in the new state
-          for (const docId of currentDocIds) {
-              batch.delete(doc(db, collectionName, docId));
-          }
+  const setStudents = createSetterWithFirestoreSync<Student>('students');
+  const setTeachers = createSetterWithFirestoreSync<Teacher>('teachers');
+  const setRewards = createSetterWithFirestoreSync<Reward>('rewards');
+  const setStocks = createSetterWithFirestoreSync<Stock>('stocks');
+  const setClasses = createSetterWithFirestoreSync<Class>('classes', true);
 
-          await batch.commit();
-      } catch (error) {
-          console.error(`Error syncing ${collectionName}:`, error);
-          throw error; // Re-throw to be caught by the caller
-      }
-  }, []);
-
-  const setStudents = createSetter('students', students);
-  const setTeachers = createSetter('teachers', teachers);
-  const setRewards = createSetter('rewards', rewards);
-  const setStocks = createSetter('stocks', stocks);
-  const setClasses = createSetter('classes', classes, true);
-
-  const setPlatformConfigWithFunction = async (action: SetStateActionWithFunction<PlatformConfig | null>) => {
-      const newConfig = typeof action === 'function' ? action(platformConfig) : { ...platformConfig, ...action };
-
-      if (newConfig) {
-          const { id, ...configData } = newConfig;
-          const configRef = doc(db, 'config', 'main');
-          await setDoc(configRef, configData, { merge: true });
-      }
+  const setPlatformConfig = async (dataToUpdate: Partial<PlatformConfig>) => {
+      const configRef = doc(db, 'config', 'main');
+      await setDoc(configRef, dataToUpdate, { merge: true });
   };
 
   useEffect(() => {
@@ -159,7 +173,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             const data: (T & { _docId: string })[] = [];
             querySnapshot.forEach(docSnap => {
                 const docData = docSnap.data() as T;
-                const docId = docSnap.id;
+                const docId = useIdAsDocId ? docData.id! : docSnap.id;
                 data.push({ ...docData, _docId: docId });
             });
             setter(data);
@@ -198,13 +212,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     subscriptions.push(setupSubscription<Stock>('stocks', setStocksState, 'stocks'));
     subscriptions.push(setupDocSubscription<PlatformConfig>(['config', 'main'], setPlatformConfigState, 'config'));
 
-    const marketInterval = setInterval(() => {
-      setIsMarketOpen(checkMarketOpen());
-    }, 60000);
-
     return () => {
       subscriptions.forEach(unsub => unsub());
-      clearInterval(marketInterval);
     };
   }, []);
 
@@ -221,7 +230,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         teachers,
         setTeachers,
         platformConfig,
-        setPlatformConfig: setPlatformConfigWithFunction,
+        setPlatformConfig,
         isLoading,
         isMarketOpen,
         runTransaction: handleRunTransaction,

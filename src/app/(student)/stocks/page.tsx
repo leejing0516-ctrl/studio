@@ -21,8 +21,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Stock, PortfolioItem, Student, PlatformConfig } from "@/lib/types";
-import { ArrowUp, ArrowDown, Briefcase } from "lucide-react";
+import type { Stock, PortfolioItem, Student, PlatformConfig, Announcement } from "@/lib/types";
+import { ArrowUp, ArrowDown, Briefcase, Megaphone } from "lucide-react";
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Area, AreaChart, XAxis, YAxis } from "recharts"
 import { cn } from "@/lib/utils";
@@ -39,10 +39,12 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
-import { subMonths, format, isSameDay, startOfDay } from "date-fns";
+import { subMonths, format, isSameDay, startOfDay, formatDistanceToNow } from "date-fns";
+import { zhTW } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 
 const chartConfig: ChartConfig = {
@@ -59,11 +61,15 @@ export default function StocksPage() {
   const [tradeShares, setTradeShares] = useState(0);
   const { toast } = useToast();
   const { studentData } = useContext(StudentDataContext);
-  const { stocks: marketStocks, isMarketOpen, runTransaction, setStudents } = useContext(AppDataContext);
+  const { stocks: marketStocks, isMarketOpen, runTransaction, setStudents, platformConfig } = useContext(AppDataContext);
   
   const currentStudent = studentData.student;
   
   const studentHolding = selectedStock ? currentStudent?.portfolio.find(item => item.ticker === selectedStock.ticker) : null;
+  
+  const stockMarketNews = useMemo(() => {
+    return (platformConfig?.stockMarketNews || []).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [platformConfig]);
 
   const portfolioHistory = useMemo(() => {
     if (!currentStudent) return [];
@@ -222,146 +228,173 @@ export default function StocksPage() {
     return { ...item, currentPrice, currentValue, totalGain, totalGainPercent };
   });
 
+  const NewsItem = ({ news }: { news: Announcement }) => {
+    return (
+      <Alert>
+        <Megaphone className="h-4 w-4" />
+        <AlertTitle className="flex justify-between items-center">
+            {news.title}
+            <span className="text-xs font-normal text-muted-foreground">
+                {formatDistanceToNow(new Date(news.date), { addSuffix: true, locale: zhTW })}
+            </span>
+        </AlertTitle>
+        <AlertDescription className="whitespace-pre-wrap">{news.content}</AlertDescription>
+      </Alert>
+    )
+  }
+
   return (
     <>
-      <Tabs defaultValue="market" className="grid gap-6 animate-in fade-in-0 duration-500">
-        <div className="flex justify-between items-center">
-            <TabsList>
-            <TabsTrigger value="market">市場</TabsTrigger>
-            <TabsTrigger value="portfolio">我的投資組合</TabsTrigger>
-            </TabsList>
-             <Badge variant={isMarketOpen ? "default" : "destructive"} className="transition-all">
-                {isMarketOpen ? "股市開盤中" : "股市已收盤"}
-            </Badge>
-        </div>
-        <TabsContent value="market">
+      <div className="space-y-4">
+        {stockMarketNews.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>虛擬股票市場</CardTitle>
-              <CardDescription>
-                用您的積分投資我們的模擬市場。開盤時間為週一至週五，早上 9:00 至下午 2:00。
-              </CardDescription>
+              <CardTitle className="flex items-center gap-2"><Megaphone />股市重大消息</CardTitle>
             </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>公司</TableHead>
-                    <TableHead className="text-right">價格</TableHead>
-                    <TableHead className="text-right">變動</TableHead>
-                    <TableHead className="text-right">市值</TableHead>
-                    <TableHead className="text-right w-[200px]">操作</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {marketStocks.map((stock) => (
-                    <TableRow key={stock.ticker}>
-                      <TableCell>
-                        <div className="font-medium">{stock.ticker}</div>
-                        <div className="text-sm text-muted-foreground">{stock.name}</div>
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        ${stock.price.toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                          <span className={cn(
-                            "flex items-center justify-end gap-1",
-                            stock.change < 0 ? "text-destructive" : "text-success",
-                          )}>
-                              {stock.change < 0 ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />}
-                              {Math.abs(stock.change).toFixed(2)} ({Math.abs(stock.changePercent).toFixed(2)}%)
-                          </span>
-                      </TableCell>
-                      <TableCell className="text-right">{stock.marketCap}</TableCell>
-                      <TableCell className="text-right">
-                        <Button size="sm" className="mr-2" onClick={() => handleTradeClick(stock, "buy")} disabled={!isMarketOpen}>買入</Button>
-                        <Button size="sm" variant="outline" onClick={() => handleTradeClick(stock, "sell")} disabled={!isMarketOpen}>賣出</Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <CardContent className="space-y-3">
+              {stockMarketNews.slice(0,2).map(news => <NewsItem key={news.id} news={news} />)}
             </CardContent>
           </Card>
-        </TabsContent>
-        <TabsContent value="portfolio">
-          <div className="grid md:grid-cols-3 gap-6">
-              <div className="md:col-span-2">
-                  <Card>
-                      <CardHeader>
-                          <CardTitle className="flex items-center gap-2"><Briefcase />我的投資組合</CardTitle>
-                          <CardDescription>您目前的持股。您有 {Math.round(currentStudent?.points || 0).toLocaleString()} 點數可用。</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                          <Table>
-                              <TableHeader>
-                                  <TableRow>
-                                      <TableHead>股票</TableHead>
-                                      <TableHead className="text-right">股數</TableHead>
-                                      <TableHead className="text-right">平均成本</TableHead>
-                                      <TableHead className="text-right">目前價格</TableHead>
-                                      <TableHead className="text-right">目前價值</TableHead>
-                                      <TableHead className="text-right">總損益</TableHead>
-                                  </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                  {portfolioWithValue.length > 0 ? portfolioWithValue.map((item) => (
-                                      <TableRow key={item.ticker}>
-                                          <TableCell>
-                                              <div className="font-medium">{item.ticker}</div>
-                                              <div className="text-sm text-muted-foreground">{item.name}</div>
-                                          </TableCell>
-                                          <TableCell className="text-right">{item.shares}</TableCell>
-                                          <TableCell className="text-right">${item.avgCost.toFixed(2)}</TableCell>
-                                          <TableCell className="text-right">${item.currentPrice.toFixed(2)}</TableCell>
-                                          <TableCell className="text-right">${item.currentValue.toFixed(2)}</TableCell>
-                                          <TableCell className="text-right">
-                                              <span className={cn(
-                                                "flex items-center justify-end gap-1",
-                                                item.totalGain < 0 ? "text-destructive" : "text-success",
-                                              )}>
-                                                  {item.totalGain < 0 ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />}
-                                                  ${Math.abs(item.totalGain).toFixed(2)} ({item.totalGainPercent.toFixed(2)}%)
-                                              </span>
-                                          </TableCell>
-                                      </TableRow>
-                                  )) : (
+        )}
+        <Tabs defaultValue="market" className="grid gap-6 animate-in fade-in-0 duration-500">
+            <div className="flex justify-between items-center">
+                <TabsList>
+                <TabsTrigger value="market">市場</TabsTrigger>
+                <TabsTrigger value="portfolio">我的投資組合</TabsTrigger>
+                </TabsList>
+                <Badge variant={isMarketOpen ? "default" : "destructive"} className="transition-all">
+                    {isMarketOpen ? `開盤中 (至 ${platformConfig?.marketCloseHour || 14}:00)` : "股市已收盤"}
+                </Badge>
+            </div>
+            <TabsContent value="market">
+            <Card>
+                <CardHeader>
+                <CardTitle>虛擬股票市場</CardTitle>
+                <CardDescription>
+                    用您的積分投資我們的模擬市場。開盤時間為週一至週五，早上 {platformConfig?.marketOpenHour || 9}:00 至下午 {platformConfig?.marketCloseHour || 14}:00。
+                </CardDescription>
+                </CardHeader>
+                <CardContent>
+                <Table>
+                    <TableHeader>
+                    <TableRow>
+                        <TableHead>公司</TableHead>
+                        <TableHead className="text-right">價格</TableHead>
+                        <TableHead className="text-right">變動</TableHead>
+                        <TableHead className="text-right">市值</TableHead>
+                        <TableHead className="text-right w-[200px]">操作</TableHead>
+                    </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                    {marketStocks.map((stock) => (
+                        <TableRow key={stock.ticker}>
+                        <TableCell>
+                            <div className="font-medium">{stock.ticker}</div>
+                            <div className="text-sm text-muted-foreground">{stock.name}</div>
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                            ${stock.price.toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                            <span className={cn(
+                                "flex items-center justify-end gap-1",
+                                stock.change < 0 ? "text-destructive" : "text-success",
+                            )}>
+                                {stock.change < 0 ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />}
+                                {Math.abs(stock.change).toFixed(2)} ({Math.abs(stock.changePercent).toFixed(2)}%)
+                            </span>
+                        </TableCell>
+                        <TableCell className="text-right">{stock.marketCap}</TableCell>
+                        <TableCell className="text-right">
+                            <Button size="sm" className="mr-2" onClick={() => handleTradeClick(stock, "buy")} disabled={!isMarketOpen}>買入</Button>
+                            <Button size="sm" variant="outline" onClick={() => handleTradeClick(stock, "sell")} disabled={!isMarketOpen}>賣出</Button>
+                        </TableCell>
+                        </TableRow>
+                    ))}
+                    </TableBody>
+                </Table>
+                </CardContent>
+            </Card>
+            </TabsContent>
+            <TabsContent value="portfolio">
+            <div className="grid md:grid-cols-3 gap-6">
+                <div className="md:col-span-2">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2"><Briefcase />我的投資組合</CardTitle>
+                            <CardDescription>您目前的持股。您有 {Math.round(currentStudent?.points || 0).toLocaleString()} 點數可用。</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
                                     <TableRow>
-                                        <TableCell colSpan={6} className="text-center h-24">您目前沒有任何持股。</TableCell>
+                                        <TableHead>股票</TableHead>
+                                        <TableHead className="text-right">股數</TableHead>
+                                        <TableHead className="text-right">平均成本</TableHead>
+                                        <TableHead className="text-right">目前價格</TableHead>
+                                        <TableHead className="text-right">目前價值</TableHead>
+                                        <TableHead className="text-right">總損益</TableHead>
                                     </TableRow>
-                                  )}
-                              </TableBody>
-                          </Table>
-                      </CardContent>
-                  </Card>
-              </div>
-              <div className="md:col-span-1">
-                  <Card>
-                      <CardHeader>
-                          <CardTitle>投資組合歷史</CardTitle>
-                          <CardDescription>過去 6 個月的總價值。</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                          <ChartContainer config={chartConfig} className="h-[300px] w-full">
-                              <AreaChart accessibilityLayer data={portfolioHistory} margin={{ left: -20, right: 10, top:10, bottom: 0}}>
-                                  <defs>
-                                      <linearGradient id="fillValue" x1="0" y1="0" x2="0" y2="1">
-                                          <stop offset="5%" stopColor="var(--color-value)" stopOpacity={0.8} />
-                                          <stop offset="95%" stopColor="var(--color-value)" stopOpacity={0.1} />
-                                      </linearGradient>
-                                  </defs>
-                                  <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => new Date(value).toLocaleDateString('zh-TW', { month: 'short' })} />
-                                  <YAxis tickLine={false} axisLine={false} tickMargin={8} domain={['dataMin - 100', 'dataMax + 100']} hide />
-                                  <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
-                                  <Area type="monotone" dataKey="value" stroke="var(--color-value)" fill="url(#fillValue)" strokeWidth={2} />
-                              </AreaChart>
-                          </ChartContainer>
-                      </CardContent>
-                  </Card>
-              </div>
-          </div>
-        </TabsContent>
-      </Tabs>
+                                </TableHeader>
+                                <TableBody>
+                                    {portfolioWithValue.length > 0 ? portfolioWithValue.map((item) => (
+                                        <TableRow key={item.ticker}>
+                                            <TableCell>
+                                                <div className="font-medium">{item.ticker}</div>
+                                                <div className="text-sm text-muted-foreground">{item.name}</div>
+                                            </TableCell>
+                                            <TableCell className="text-right">{item.shares}</TableCell>
+                                            <TableCell className="text-right">${item.avgCost.toFixed(2)}</TableCell>
+                                            <TableCell className="text-right">${item.currentPrice.toFixed(2)}</TableCell>
+                                            <TableCell className="text-right">${item.currentValue.toFixed(2)}</TableCell>
+                                            <TableCell className="text-right">
+                                                <span className={cn(
+                                                    "flex items-center justify-end gap-1",
+                                                    item.totalGain < 0 ? "text-destructive" : "text-success",
+                                                )}>
+                                                    {item.totalGain < 0 ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />}
+                                                    ${Math.abs(item.totalGain).toFixed(2)} ({item.totalGainPercent.toFixed(2)}%)
+                                                </span>
+                                            </TableCell>
+                                        </TableRow>
+                                    )) : (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="text-center h-24">您目前沒有任何持股。</TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                </div>
+                <div className="md:col-span-1">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>投資組合歷史</CardTitle>
+                            <CardDescription>過去 6 個月的總價值。</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                                <AreaChart accessibilityLayer data={portfolioHistory} margin={{ left: -20, right: 10, top:10, bottom: 0}}>
+                                    <defs>
+                                        <linearGradient id="fillValue" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="var(--color-value)" stopOpacity={0.8} />
+                                            <stop offset="95%" stopColor="var(--color-value)" stopOpacity={0.1} />
+                                        </linearGradient>
+                                    </defs>
+                                    <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => new Date(value).toLocaleDateString('zh-TW', { month: 'short' })} />
+                                    <YAxis tickLine={false} axisLine={false} tickMargin={8} domain={['dataMin - 100', 'dataMax + 100']} hide />
+                                    <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+                                    <Area type="monotone" dataKey="value" stroke="var(--color-value)" fill="url(#fillValue)" strokeWidth={2} />
+                                </AreaChart>
+                            </ChartContainer>
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+            </TabsContent>
+        </Tabs>
+      </div>
 
       <Dialog open={isTradeDialogOpen} onOpenChange={setIsTradeDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">

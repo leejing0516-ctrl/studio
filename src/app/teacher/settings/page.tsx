@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Percent, ImageOff, UploadCloud, Trash2 } from "lucide-react";
+import { Loader2, Percent, ImageOff, UploadCloud, Trash2, Clock } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
@@ -40,6 +40,8 @@ export default function TeacherSettingsPage() {
 
     const [fixedDepositRate, setFixedDepositRate] = useState<number | string>('');
     const [loanInterestRate, setLoanInterestRate] = useState<number | string>('');
+    const [marketOpenHour, setMarketOpenHour] = useState<number | string>('');
+    const [marketCloseHour, setMarketCloseHour] = useState<number | string>('');
     
     const [sponsorPreviews, setSponsorPreviews] = useState<(string | null)[]>([]);
     const [selectedTheme, setSelectedTheme] = useState<string>("default");
@@ -55,6 +57,8 @@ export default function TeacherSettingsPage() {
         if (platformConfig) {
             setFixedDepositRate((platformConfig.fixedDepositInterestRate || 0) * 100);
             setLoanInterestRate((platformConfig.loanInterestRate || 0) * 100);
+            setMarketOpenHour(platformConfig.marketOpenHour ?? 9);
+            setMarketCloseHour(platformConfig.marketCloseHour ?? 14);
             setSponsorPreviews(platformConfig.sponsorLogoUrls || [null, null, null, null]);
             setSelectedTheme(platformConfig.theme || "default");
         }
@@ -107,6 +111,8 @@ export default function TeacherSettingsPage() {
             await setPlatformConfig({
                 fixedDepositInterestRate: Number(fixedDepositRate) / 100,
                 loanInterestRate: Number(loanInterestRate) / 100,
+                marketOpenHour: Number(marketOpenHour),
+                marketCloseHour: Number(marketCloseHour),
                 sponsorLogoUrls: sponsorPreviews,
                 theme: selectedTheme,
             });
@@ -134,9 +140,9 @@ export default function TeacherSettingsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>一般設定</CardTitle>
-                    <CardDescription>管理平台的核心參數。</CardDescription>
+                    <CardDescription>管理平台的核心金融與市場參數。</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="grid md:grid-cols-2 gap-6">
                     <div className="flex items-center justify-between rounded-lg border p-4">
                         <div>
                             <Label htmlFor="fixed-deposit-rate" className="font-semibold">定存日利率</Label>
@@ -173,6 +179,38 @@ export default function TeacherSettingsPage() {
                                 step="0.01"
                             />
                             <Percent className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                    </div>
+                     <div className="flex items-center justify-between rounded-lg border p-4 md:col-span-2">
+                        <div>
+                            <Label htmlFor="market-open-hour" className="font-semibold flex items-center gap-2"><Clock />股市交易時間</Label>
+                            <p className="text-xs text-muted-foreground">
+                                設定虛擬股票市場的開盤與收盤時間 (24 小時制)。
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                                <Input 
+                                    id="market-open-hour" 
+                                    type="number" 
+                                    value={marketOpenHour}
+                                    onChange={(e) => setMarketOpenHour(e.target.value === '' ? '' : Number(e.target.value))}
+                                    className="w-20"
+                                    min="0" max="23"
+                                />
+                                <span className="text-muted-foreground">點 (開盤)</span>
+                            </div>
+                             <div className="flex items-center gap-2">
+                                <Input 
+                                    id="market-close-hour" 
+                                    type="number" 
+                                    value={marketCloseHour}
+                                    onChange={(e) => setMarketCloseHour(e.target.value === '' ? '' : Number(e.target.value))}
+                                    className="w-20"
+                                    min="0" max="23"
+                                />
+                                <span className="text-muted-foreground">點 (收盤)</span>
+                            </div>
                         </div>
                     </div>
                 </CardContent>

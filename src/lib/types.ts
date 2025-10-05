@@ -125,6 +125,14 @@ export type Challenge = {
   providerId: string; // 'school_admin' or teacher's id
 };
 
+export type PortfolioItem = {
+    ticker: string;
+    name: string;
+    shares: number;
+    avgCost: number;
+    lastPurchaseDate?: string; // ISO date string
+}
+
 export type Stock = {
   id: string; // Ticker is the ID
   _docId?: string;
@@ -178,4 +186,7 @@ export type PlatformConfig = {
     homeSubtitle?: string;
     homeIllustrationUrl?: string;
     theme?: string;
+    marketOpenHour?: number;
+    marketCloseHour?: number;
+    stockMarketNews?: Announcement[];
 }
