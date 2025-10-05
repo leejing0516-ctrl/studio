@@ -96,12 +96,12 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
       const oldState = currentState;
       const newState = typeof action === 'function' ? action(oldState) : action;
-
-      stateSetter(newState);
       
       if (JSON.stringify(oldState) === JSON.stringify(newState)) {
           return;
       }
+      
+      stateSetter(newState);
 
       const batch = writeBatch(db);
       const oldDocsMap = new Map(oldState.map(item => [(item._docId || item.id), item]));
@@ -135,11 +135,11 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       const oldState = students;
       const newState = typeof action === 'function' ? action(oldState) : action;
 
-      setStudentsState(newState);
-
       if (JSON.stringify(oldState) === JSON.stringify(newState)) {
           return;
       }
+
+      setStudentsState(newState);
 
       const batch = writeBatch(db);
       const oldStateMap = new Map(oldState.map(s => [s._docId, s]));
@@ -180,11 +180,11 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     const oldConfig = platformConfig;
     const newConfig = typeof action === 'function' ? action(platformConfig) : { ...platformConfig, ...action };
     
-    setPlatformConfigState(newConfig);
-
     if (JSON.stringify(oldConfig) === JSON.stringify(newConfig)) {
         return;
     }
+    
+    setPlatformConfigState(newConfig);
 
     if (newConfig) {
         const { id, ...configData } = newConfig;
@@ -212,12 +212,11 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             const data: (T & { _docId: string })[] = [];
             querySnapshot.forEach(doc => {
                 const docData = doc.data() as T;
-                const id = collectionName === 'students' ? `${docData.classId}-${docData.id}` : doc.id;
+                const id = doc.id;
                 data.push({ ...docData, _docId: id });
             });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
-            // Use a timeout to ensure React has processed the state update before unlocking
             setTimeout(() => { isSyncing.current = false; }, 0);
         }, (error) => {
             console.error(`Error fetching real-time ${collectionName}:`, error);
