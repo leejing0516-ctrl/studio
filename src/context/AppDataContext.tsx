@@ -192,14 +192,13 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 const docData = doc.data() as T;
                 const id = doc.id;
                 
-                 if (collectionName === 'students') {
-                     // For students, the Firestore doc.id IS the composite key `classId-id`
-                     // We preserve the original `id` (seat number) from the document data.
-                     data.push({ ...docData, _docId: id });
-                 } else {
-                     // For other collections, the document ID is the primary identifier.
-                     data.push({ ...docData, id: id, _docId: id });
-                 }
+                if (collectionName === 'students' || collectionName === 'classes' || collectionName === 'teachers') {
+                    // For these collections, the Firestore doc.id IS the business ID. We need to preserve the original `id` from the document data.
+                    data.push({ ...docData, _docId: id });
+                } else {
+                    // For other collections (rewards, stocks), the document ID is the primary identifier.
+                    data.push({ ...docData, id: id, _docId: id });
+                }
             });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
