@@ -87,18 +87,18 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     return firestoreRunTransaction(db, updateFunction);
   }, []);
   
-  // Specialized setter for Students, which uses a composite key for _docId
   const setStudentsWithFunction = async (action: SetStateActionWithFunction<Student[]>) => {
       if (isSyncing.current) return;
-      const oldState = students;
-      const newState = typeof action === 'function' ? action(oldState) : action;
+      
+      const newState = typeof action === 'function' ? action(students) : action;
 
-      if (JSON.stringify(oldState) === JSON.stringify(newState)) return;
+      if (JSON.stringify(students) === JSON.stringify(newState)) return;
       
       setStudentsState(newState);
 
       const batch = writeBatch(db);
-      const oldStateMap = new Map(oldState.map(s => s._docId || `${s.classId}-${s.id}`));
+      
+      const oldStateMap = new Map(students.map(s => s._docId));
       
       for (const student of newState) {
           const docId = student._docId || `${student.classId}-${student.id}`;
@@ -139,20 +139,17 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       for (const item of newState) {
           const docId = item._docId; 
           if (docId) {
-              // Existing document
               const docRef = doc(db, collectionName, docId);
               const { _docId, ...itemData } = item;
               batch.set(docRef, itemData, { merge: true });
               oldDocsMap.delete(docId);
           } else {
-              // New document
               const newDocRef = doc(collection(db, collectionName));
               const { _docId, ...itemData } = item;
               batch.set(newDocRef, itemData);
           }
       }
 
-      // Delete items that are no longer in the new state
       for (const docId of oldDocsMap.keys()) {
           if (docId) {
               batch.delete(doc(db, collectionName, docId));
@@ -208,12 +205,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 const id = doc.id;
                 
                 if (collectionName === 'students') {
-                     // For students, the doc.id is the composite key (e.g., '6A-1').
-                     // We only add _docId and keep the original 'id' (seat number) from the document data.
                      data.push({ ...docData, _docId: id });
                 } else {
-                     // For all other collections, the doc.id is the primary identifier.
-                     // We set both 'id' and '_docId' to this value for consistency.
                      data.push({ ...docData, id: id, _docId: id });
                 }
             });

@@ -40,27 +40,6 @@ export const students: Student[] = [
   { id: "S004", name: "黛安娜·普林斯", classId: "6B", points: 2500, avatar: "https://picsum.photos/seed/S004/100", password: "001", portfolio: [], pointHistory: [], redeemedRewards: [] },
    // Class 5A
   { id: "S005", name: "伊森·韓特", classId: "5A", points: 950, avatar: "https://picsum.photos/seed/S005/100", password: "001", portfolio: [], pointHistory: [], redeemedRewards: [] },
-   // Class 4A
-  { id: "1", name: "同學1", classId: "4A", points: 100, avatar: "https://picsum.photos/seed/4A-1/100", password: "001", portfolio: [], pointHistory: [], redeemedRewards: [] },
-  { id: "2", name: "同學2", classId: "4A", points: 100, avatar: "https://picsum.photos/seed/4A-2/100", password: "001", portfolio: [], pointHistory: [], redeemedRewards: [] },
-  { id: "3", name: "同學3", classId: "4A", points: 100, avatar: "https://picsum.photos/seed/4A-3/100", password: "001", portfolio: [], pointHistory: [], redeemedRewards: [] },
-  { id: "4", name: "同學4", classId: "4A", points: 100, avatar: "https://picsum.photos/seed/4A-4/100", password: "001", portfolio: [], pointHistory: [], redeemedRewards: [] },
-  { id: "5", name: "同學5", classId: "4A", points: 100, avatar: "https://picsum.photos/seed/4A-5/100", password: "001", portfolio: [], pointHistory: [], redeemedRewards: [] },
-  { id: "6", name: "同學6", classId: "4A", points: 100, avatar: "https://picsum.photos/seed/4A-6/100", password: "001", portfolio: [], pointHistory: [], redeemedRewards: [] },
-  { id: "7", name: "同學7", classId: "4A", points: 96, avatar: "https://picsum.photos/seed/4A-7/100", password: "001", portfolio: [], pointHistory: [], redeemedRewards: [] },
-  { id: "8", name: "同學8", classId: "4A", points: 100, avatar: "https://picsum.photos/seed/4A-8/100", password: "001", portfolio: [], pointHistory: [], redeemedRewards: [] },
-  { id: "9", name: "同學9", classId: "4A", points: 100, avatar: "https://picsum.photos/seed/4A-9/100", password: "001", portfolio: [], pointHistory: [], redeemedRewards: [] },
-  { id: "10", name: "同學10", classId: "4A", points: 100, avatar: "https://picsum.photos/seed/4A-10/100", password: "001", portfolio: [], pointHistory: [], redeemedRewards: [] },
-  { id: "11", name: "同學11", classId: "4A", points: 100, avatar: "https://picsum.photos/seed/4A-11/100", password: "001", portfolio: [], pointHistory: [], redeemedRewards: [] },
-  { id: "12", name: "同學12", classId: "4A", points: 100, avatar: "https://picsum.photos/seed/4A-12/100", password: "001", portfolio: [], pointHistory: [], redeemedRewards: [] },
-  { id: "13", name: "同學13", classId: "4A", points: 100, avatar: "https://picsum.photos/seed/4A-13/100", password: "001", portfolio: [], pointHistory: [], redeemedRewards: [] },
-  { id: "14", name: "同學14", classId: "4A", points: 100, avatar: "https://picsum.photos/seed/4A-14/100", password: "001", portfolio: [], pointHistory: [], redeemedRewards: [] },
-  { id: "15", name: "同學15", classId: "4A", points: 100, avatar: "https://picsum.photos/seed/4A-15/100", password: "001", portfolio: [], pointHistory: [], redeemedRewards: [] },
-  { id: "16", name: "同學16", classId: "4A", points: 96, avatar: "https://picsum.photos/seed/4A-16/100", password: "001", portfolio: [], pointHistory: [], redeemedRewards: [] },
-  { id: "17", name: "同學17", classId: "4A", points: 100, avatar: "https://picsum.photos/seed/4A-17/100", password: "001", portfolio: [], pointHistory: [], redeemedRewards: [] },
-  { id: "18", name: "同學18", classId: "4A", points: 100, avatar: "https://picsum.photos/seed/4A-18/100", password: "001", portfolio: [], pointHistory: [], redeemedRewards: [] },
-  { id: "19", name: "同學19", classId: "4A", points: 100, avatar: "https://picsum.photos/seed/4A-19/100", password: "001", portfolio: [], pointHistory: [], redeemedRewards: [] },
-  { id: "20", name: "同學20", classId: "4A", points: 100, avatar: "https://picsum.photos/seed/4A-20/100", password: "001", portfolio: [], pointHistory: [], redeemedRewards: [] },
 ];
 
 export const rewards: Reward[] = [];
