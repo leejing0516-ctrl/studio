@@ -22,9 +22,9 @@ body {
     --muted-foreground: hsl(var(--muted-foreground-hsl));
     --accent: hsl(var(--accent-hsl));
     --accent-foreground: hsl(var(--accent-foreground-hsl));
-    --destructive: hsl(var(--destructive-hsl));
-    --destructive-foreground: hsl(var(--destructive-foreground-hsl));
-    --success: 140 70% 35%;
+    --destructive: 140 70% 35%;
+    --destructive-foreground: 0 0% 98%;
+    --success: 0 70% 45%;
     --success-foreground: 0 0% 98%;
     --border: hsl(var(--border-hsl));
     --input: hsl(var(--input-hsl));
