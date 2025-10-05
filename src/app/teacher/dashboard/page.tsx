@@ -586,15 +586,26 @@ export default function TeacherDashboardPage() {
         }
         if (points === 0 || !student._docId) return;
 
-        const currentOperator = teachers.find(t => t.id === teacherId);
+        const impersonatorId = localStorage.getItem('impersonator');
+        const currentOperatorId = impersonatorId || teacherId;
+        const currentOperator = teachers.find(t => t.id === currentOperatorId);
+
         if (!currentOperator || !currentOperator._docId) {
             toast({ title: "操作無效", description: "找不到您的教師資料。", variant: "destructive" });
             return;
         }
         
-        if (role !== 'admin' && !(currentOperator.classIds || []).includes(selectedClassId)) {
+        if (currentOperator.role !== 'admin' && !(currentOperator.classIds || []).includes(selectedClassId)) {
             toast({ title: "權限不足", description: "您沒有在此班級發放點數的權限。", variant: "destructive" });
             return;
+        }
+
+        if (points > 0) {
+            const isOperatingAsAdmin = currentOperator.role === 'admin';
+            const sourceBalance = isOperatingAsAdmin ? (platformConfig?.schoolFunds || 0) : (currentOperator?.pointBalance || 0);
+            if (sourceBalance < points) {
+                 throw new Error(`您的點數餘額不足。`);
+            }
         }
 
         if (!isBatch) {
@@ -603,8 +614,7 @@ export default function TeacherDashboardPage() {
 
         try {
             await runTransaction(async (transaction) => {
-                const impersonatorId = localStorage.getItem('impersonator');
-                const isOperatingAsAdmin = role === 'admin' && !impersonatorId;
+                const isOperatingAsAdmin = currentOperator.role === 'admin';
 
                 const studentRef = doc(db, 'students', student._docId!);
                 const studentDoc = await transaction.get(studentRef);
@@ -708,10 +718,12 @@ export default function TeacherDashboardPage() {
         }
         
         const impersonatorId = localStorage.getItem('impersonator');
-        const isOperatingAsAdmin = role === 'admin' && !impersonatorId;
+        const currentOperatorId = impersonatorId || teacherId;
+        const currentOperator = teachers.find(t => t.id === currentOperatorId);
 
         const totalPointChange = points * validStudentsToUpdate.length;
-        const sourceBalance = isOperatingAsAdmin ? (platformConfig?.schoolFunds || 0) : (teacher?.pointBalance || 0);
+        const isOperatingAsAdmin = currentOperator?.role === 'admin';
+        const sourceBalance = isOperatingAsAdmin ? (platformConfig?.schoolFunds || 0) : (currentOperator?.pointBalance || 0);
 
         if (points > 0 && sourceBalance < totalPointChange) {
             toast({ title: "批次操作失敗", description: `您的點數餘額不足以完成對 ${validStudentsToUpdate.length} 位學生的操作。`, variant: "destructive" });
