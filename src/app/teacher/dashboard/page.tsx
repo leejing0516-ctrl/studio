@@ -526,7 +526,7 @@ export default function TeacherDashboardPage() {
             return;
         }
 
-        const newClass: Omit<Class, '_docId'> = { id, name, announcements: [] };
+        const newClass: Class = { id, name, announcements: [] };
         await setClasses(prev => [...prev, newClass as Class]);
         (event.target as HTMLFormElement).reset();
     };
@@ -1441,7 +1441,7 @@ export default function TeacherDashboardPage() {
                         </DialogHeader>
                         <div className="py-4 space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="student-id-input">學生座號</Label>
+                                <Label htmlFor="student-id-input">學生座號 (例如: S001)</Label>
                                 <Input id="student-id-input" name="id" required/>
                             </div>
                              <div className="space-y-2">
@@ -1639,3 +1639,5 @@ export default function TeacherDashboardPage() {
         </div>
     )
 }
+
+    

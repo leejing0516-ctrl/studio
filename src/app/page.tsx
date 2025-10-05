@@ -179,7 +179,7 @@ export default function HomePage() {
                     <Label htmlFor="student-id">學生座號</Label>
                     <Input 
                     id="student-id" 
-                    placeholder="請輸入您的座號" 
+                    placeholder="請輸入您的座號 (例如: S001)" 
                     required 
                     value={studentIdInput}
                     onChange={(e) => setStudentIdInput(e.target.value)}

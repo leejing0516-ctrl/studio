@@ -4,6 +4,7 @@ import type { Student, Reward, Stock, Class, Teacher, Challenge, RedeemedRewardI
 export const TEACHER_PASSWORD = "001"; // Shared password for all teachers for simplicity
 
 export const classes: Class[] = [
+    { id: "1B", name: "一年乙班", announcements: [] },
     { id: "6A", name: "六年甲班", announcements: [] },
     { id: "6B", name: "六年乙班", announcements: [] },
     { id: "5A", name: "五年甲班", announcements: [] },
@@ -16,7 +17,8 @@ export const classes: Class[] = [
 
 export const teachers: Teacher[] = [
     { id: "principal", name: "李志軒校長", role: "admin", classIds: [], password: TEACHER_PASSWORD, pointBalance: 0, sortOrder: 1 },
-    { id: "uu", name: "黃雅娟護士", role: "subject_teacher", classIds: ["6A", "6B", "5A", "5B", "4A", "4B", "3A", "3B"], password: TEACHER_PASSWORD, pointBalance: 15000, sortOrder: 2 },
+    { id: "uu", name: "黃雅娟護士", role: "subject_teacher", classIds: ["6A", "6B", "5A", "5B", "4A", "4B", "3A", "3B", "1B"], password: TEACHER_PASSWORD, pointBalance: 15000, sortOrder: 2 },
+    { id: "teacher1B", name: "導師1B", role: "teacher", classIds: ["1B"], password: TEACHER_PASSWORD, pointBalance: 10000 },
     { id: "teacher6A", name: "高老師", role: "teacher", classIds: ["6A"], password: TEACHER_PASSWORD, pointBalance: 10000 },
     { id: "teacher6B", name: "李老師", role: "teacher", classIds: ["6B"], password: TEACHER_PASSWORD, pointBalance: 10000 },
     { id: "teacher5A", name: "王老師", role: "teacher", classIds: ["5A"], password: TEACHER_PASSWORD, pointBalance: 8000 },
@@ -27,16 +29,22 @@ export const teachers: Teacher[] = [
 ];
 
 export const students: Student[] = [
-  // Class 6A
-  { id: "S001", name: "陳囿嘉", classId: "6A", points: 1250, avatar: "https://picsum.photos/seed/S001/100", password: "001", portfolio: [
-      { ticker: "EDU", name: "學習公司", shares: 10, avgCost: 140.00, lastPurchaseDate: "2023-10-26T10:00:00Z" },
-      { ticker: "SCI", name: "科學解決方案", shares: 5, avgCost: 220.00, lastPurchaseDate: "2023-10-27T10:00:00Z" },
-  ], pointHistory: [], redeemedRewards: [] },
-  { id: "S002", name: "鮑伯·威廉斯", classId: "6A", points: 800, avatar: "https://picsum.photos/seed/S002/100", password: "001", portfolio: [
-      { ticker: "TECH", name: "創新有限責任公司", shares: 2, avgCost: 560.00, lastPurchaseDate: "2023-10-28T10:00:00Z" },
-  ], pointHistory: [], redeemedRewards: [] },
-  // Class 6B
-  { id: "S003", name: "查理·布朗", classId: "6B", points: 1500, avatar: "https://picsum.photos/seed/S003/100", password: "001", portfolio: [], pointHistory: [], redeemedRewards: [] },
+  // Class 1B
+  { id: "S001", name: "陳容德", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S001/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [] },
+  { id: "S002", name: "方崇恩", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S002/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [] },
+  { id: "S003", name: "林桐佑", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S003/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [] },
+  { id: "S004", name: "盧宥宇", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S004/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [] },
+  { id: "S005", name: "吳義塏", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S005/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [] },
+  { id: "S006", name: "蘇品祐", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S006/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [] },
+  { id: "S007", name: "阮經言", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S007/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [] },
+  { id: "S008", name: "王楨之", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S008/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [] },
+  { id: "S009", name: "李瑄然", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S009/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [] },
+  { id: "S010", name: "張荷曼", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S010/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [] },
+  { id: "S011", name: "楊亘昀", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S011/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [] },
+  { id: "S012", name: "顏瑋珺", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S012/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [] },
+  { id: "S013", name: "李宇蕎", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S013/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [] },
+  { id: "S014", name: "徐偌晨", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S014/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [] },
+  { id: "S015", name: "羅羿晴", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S015/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [] },
 ];
 
 export const rewards: Reward[] = [];
@@ -50,3 +58,5 @@ export const stocks: Stock[] = [
 ];
 
 export const challenges: Challenge[] = [];
+
+    

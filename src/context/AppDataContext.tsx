@@ -116,7 +116,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       await batch.commit();
   };
 
-  const genericSetter = <T extends { _docId?: string; id?: any }>(
+  const createSetter = <T extends { _docId?: string; id?: any }>(
       collectionName: string,
       currentState: T[],
       stateSetter: React.Dispatch<React.SetStateAction<T[]>>,
@@ -128,7 +128,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       stateSetter(newState);
 
       const batch = writeBatch(db);
-      const oldDocsMap = new Map(oldState.map(item => [item._docId, item]));
+      const oldDocsMap = new Map(oldState.map(item => item._docId ? [item._docId, item] : [item.id, item]));
 
       for (const item of newState) {
           const { _docId, ...itemData } = item;
@@ -140,10 +140,11 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
               let newDocRef;
               if (useDefinedIdAsDocId && item.id) {
                 newDocRef = doc(db, collectionName, item.id);
+                 batch.set(newDocRef, itemData);
               } else {
                 newDocRef = doc(collection(db, collectionName));
+                batch.set(newDocRef, itemData);
               }
-              batch.set(newDocRef, itemData);
           }
       }
 
@@ -156,10 +157,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       await batch.commit();
   };
   
-  const setTeachers = genericSetter('teachers', teachers, setTeachersState);
-  const setRewards = genericSetter('rewards', rewards, setRewardsState);
-  const setStocks = genericSetter('stocks', stocks, setStocksState);
-  const setClasses = genericSetter('classes', classes, setClassesState, true);
+  const setTeachers = createSetter('teachers', teachers, setTeachersState);
+  const setRewards = createSetter('rewards', rewards, setRewardsState);
+  const setStocks = createSetter('stocks', stocks, setStocksState);
+  const setClasses = createSetter('classes', classes, setClassesState, true);
 
   const setPlatformConfigWithFunction = async (action: SetStateActionWithFunction<PlatformConfig | null>) => {
     
@@ -272,3 +273,5 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     </AppDataContext.Provider>
   );
 };
+
+    
