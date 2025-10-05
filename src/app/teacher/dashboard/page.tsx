@@ -120,47 +120,30 @@ export default function TeacherDashboardPage() {
         setIsProcessing('emergency_fix');
         try {
             const batch = writeBatch(db);
-            const classesQuerySnapshot = await getDocs(collection(db, 'classes'));
-            
-            classesQuerySnapshot.forEach(docSnap => {
-                const data = docSnap.data() as Omit<Class, 'id'>;
-                const correctId = classNameMapping[data.name];
-                if (correctId && docSnap.id !== correctId) {
-                    // This scenario is tricky. The document ID is immutable.
-                    // The "right" way is to delete and re-add.
-                    // Let's first log what we found.
-                    console.warn(`Mismatched ID for class ${data.name}. DB ID: ${docSnap.id}, Correct ID: ${correctId}`);
-                    
-                    // For now, we'll try to update the `id` field within the document.
-                    const docRef = doc(db, 'classes', docSnap.id);
-                    batch.update(docRef, { id: correctId });
-                } else if (!correctId) {
-                     console.error(`No correct ID mapping found for class name: ${data.name}`);
-                }
-            });
-
-            await batch.commit();
-
-            // As a second, more forceful step, let's just write the correct data.
-            const forceBatch = writeBatch(db);
             const classData = [
                 { id: "6A", name: "六年甲班", announcements: [] },
                 { id: "6B", name: "六年乙班", announcements: [] },
                 { id: "5A", name: "五年甲班", announcements: [] },
                 { id: "5B", name: "五年乙班", announcements: [] },
                 { id: "4A", name: "四年甲班", announcements: [] },
-                { id: "4B", "name": "四年乙班", announcements: [] },
-                { id: "3A", "name": "三年甲班", announcements: [] },
-                { id: "3B", "name": "三年乙班", announcements: [] },
+                { id: "4B", name: "四年乙班", announcements: [] },
+                { id: "3A", name: "三年甲班", announcements: [] },
+                { id: "3B", name: "三年乙班", announcements: [] },
             ];
             classData.forEach(classObj => {
                 const docRef = doc(db, 'classes', classObj.id);
-                forceBatch.set(docRef, classObj);
+                // Check if announcements exist to preserve them
+                const existingClass = classes.find(c => c.id === classObj.id);
+                const dataToSet = {
+                    ...classObj,
+                    announcements: existingClass?.announcements || []
+                };
+                batch.set(docRef, dataToSet);
             });
-            await forceBatch.commit();
+            await batch.commit();
 
 
-            toast({ title: "修復完成", description: "已嘗試強制修正班級ID。請重新整理頁面以查看結果。" });
+            toast({ title: "修復完成", description: "已強制修正班級ID。請重新整理頁面以查看結果。" });
         } catch (error: any) {
             console.error("Emergency fix failed:", error);
             toast({ title: "修復失敗", description: error.message, variant: "destructive" });
@@ -211,7 +194,7 @@ export default function TeacherDashboardPage() {
 
     const studentsInClass = useMemo(() => {
         if (!selectedClassId) return [];
-        return students.filter(s => s.classId === selectedClassId);
+        return students.filter(s => s.classId === selectedClassId && s._docId === `${s.classId}-${s.id}`);
     }, [students, selectedClassId]);
 
     const availableClassesForNewTeacher = useMemo(() => {
@@ -305,8 +288,11 @@ export default function TeacherDashboardPage() {
         } else if ((role === 'teacher' || role === 'subject_teacher') && teacherId && teacherClassIds.length > 0) {
             studentsToList = students.filter(s => teacherClassIds.includes(s.classId));
         }
+
+        const validStudentIds = new Set(studentsToList.map(s => s._docId));
     
-        studentsToList.forEach(student => {
+        students.forEach(student => {
+             if (!validStudentIds.has(student._docId)) return;
             (student.redeemedRewards || []).forEach(r => {
                 if (r.status === 'pending_use') {
                     rewardReqs.push({ student, rewardItem: r });
@@ -1532,7 +1518,7 @@ export default function TeacherDashboardPage() {
                         </DialogHeader>
                         <div className="py-4 space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="student-id-input">學生編號</Label>
+                                <Label htmlFor="student-id-input">學生座號</Label>
                                 <Input id="student-id-input" name="id" required/>
                             </div>
                              <div className="space-y-2">
@@ -1559,7 +1545,7 @@ export default function TeacherDashboardPage() {
                         </DialogHeader>
                         <div className="py-4 space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="edit-student-id">學生編號</Label>
+                                <Label htmlFor="edit-student-id">學生座號</Label>
                                 <Input id="edit-student-id" name="id" defaultValue={studentToEdit?.id} required/>
                             </div>
                              <div className="space-y-2">
