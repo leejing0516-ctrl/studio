@@ -104,7 +104,10 @@ export default function TeacherDashboardPage() {
     
     const classOptions = useMemo(() => {
         if (role === 'admin') return classes;
-        return classes.filter(c => teacherClassIds.includes(c.id));
+        if ((role === 'teacher' || role === 'subject_teacher') && teacherClassIds.length > 0) {
+            return classes.filter(c => teacherClassIds.includes(c.id));
+        }
+        return [];
     }, [role, classes, teacherClassIds]);
 
     const sortedTeachers = useMemo(() => {
@@ -722,14 +725,18 @@ export default function TeacherDashboardPage() {
         const currentOperator = teachers.find(t => t.id === currentOperatorId);
 
         const totalPointChange = points * validStudentsToUpdate.length;
-        const isOperatingAsAdmin = currentOperator?.role === 'admin';
-        const sourceBalance = isOperatingAsAdmin ? (platformConfig?.schoolFunds || 0) : (currentOperator?.pointBalance || 0);
+        
+        if (points > 0) {
+            const isOperatingAsAdmin = currentOperator?.role === 'admin';
+            const sourceBalance = isOperatingAsAdmin ? (platformConfig?.schoolFunds || 0) : (currentOperator?.pointBalance || 0);
 
-        if (points > 0 && sourceBalance < totalPointChange) {
-            toast({ title: "批次操作失敗", description: `您的點數餘額不足以完成對 ${validStudentsToUpdate.length} 位學生的操作。`, variant: "destructive" });
-            setIsBatchProcessing(false);
-            return;
+            if (sourceBalance < totalPointChange) {
+                toast({ title: "批次操作失敗", description: `您的點數餘額不足以完成對 ${validStudentsToUpdate.length} 位學生的操作。`, variant: "destructive" });
+                setIsBatchProcessing(false);
+                return;
+            }
         }
+
 
         let successfulOperations = 0;
         
@@ -967,50 +974,23 @@ export default function TeacherDashboardPage() {
                                 <CardDescription>管理班級中的學生、重設密碼或進行批次匯入。</CardDescription>
                             </div>
                              <div className="flex items-center gap-2">
-                                {role === 'admin' && selectedStudents.length > 0 && (
-                                     <AlertDialog open={isBatchDeleteConfirmOpen} onOpenChange={setIsBatchDeleteConfirmOpen}>
-                                        <AlertDialogTrigger asChild>
-                                            <Button variant="destructive">
-                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                批次刪除 ({selectedStudents.length})
-                                            </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>確定要批次刪除嗎？</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                    您即將永久刪除 {selectedStudents.length} 位學生。此操作無法復原。
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel>取消</AlertDialogCancel>
-                                                <AlertDialogAction onClick={handleBatchDelete} className={buttonVariants({ variant: "destructive" })}>
-                                                    確定刪除
-                                                </AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                )}
                                 <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}><Upload className="mr-2"/>批次匯入</Button>
                                 <Button onClick={() => setIsAddStudentDialogOpen(true)}><PlusCircle className="mr-2"/>新增學生</Button>
                             </div>
                         </CardHeader>
                         <CardContent>
                             <div className="flex items-center justify-between mb-4">
-                                {role === 'admin' ? (
-                                    <div className="flex-1">
-                                        <Label htmlFor="class-select-students" className="sr-only">選擇班級以管理</Label>
-                                        <Select onValueChange={setSelectedClassId} value={selectedClassId}>
-                                            <SelectTrigger id="class-select-students" className="w-full md:w-[280px]">
-                                                <SelectValue placeholder="請選擇班級" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                ) : <div/>}
-
+                                <div className="flex-1">
+                                    <Label htmlFor="class-select-students" className="sr-only">選擇班級以管理</Label>
+                                    <Select onValueChange={setSelectedClassId} value={selectedClassId}>
+                                        <SelectTrigger id="class-select-students" className="w-full md:w-[280px]">
+                                            <SelectValue placeholder="請選擇班級" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {classOptions.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                             <Table>
                                 <TableHeader>
@@ -1777,11 +1757,3 @@ export default function TeacherDashboardPage() {
         </div>
     )
 }
-
-    
-
-
-
-    
-
-    

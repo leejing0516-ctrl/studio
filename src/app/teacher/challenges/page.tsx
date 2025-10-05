@@ -42,6 +42,7 @@ import { Badge } from "@/components/ui/badge";
 
 export default function TeacherChallengesPage() {
     const { 
+        classes,
         isLoading, platformConfig, setPlatformConfig, teachers
     } = useContext(AppDataContext);
 
@@ -62,7 +63,7 @@ export default function TeacherChallengesPage() {
         const storedTeacherId = localStorage.getItem('teacherId');
         setRole(storedRole);
         setTeacherId(storedTeacherId);
-        if (storedRole === 'teacher') {
+        if (storedRole === 'teacher' || storedRole === 'subject_teacher') {
             setChallengeScope('class');
         }
     }, []);
@@ -70,7 +71,7 @@ export default function TeacherChallengesPage() {
     const allChallenges = useMemo(() => platformConfig?.challenges || [], [platformConfig]);
 
     const teacherChallenges = useMemo(() => {
-        if (role !== 'teacher' || !teacherId) return [];
+        if (role !== 'teacher' && role !== 'subject_teacher' || !teacherId) return [];
         return allChallenges.filter(c => c.providerId === teacherId);
     }, [allChallenges, role, teacherId]);
 
@@ -102,8 +103,7 @@ export default function TeacherChallengesPage() {
             providerId: challengeScope === 'school' ? 'school_admin' : teacherId!,
         };
 
-        const currentChallenges = platformConfig?.challenges || [];
-        setPlatformConfig({ challenges: [...currentChallenges, newChallenge] });
+        setPlatformConfig({ challenges: [...(platformConfig?.challenges || []), newChallenge] });
         
         toast({ title: "已新增挑戰", description: `已成功新增挑戰「${name}」。` });
         setIsAddChallengeDialogOpen(false);
@@ -131,11 +131,9 @@ export default function TeacherChallengesPage() {
             points,
         };
         
-        // No need for setPlatformConfig here, onSnapshot will handle it.
-        // Let the transaction in parent/context handle the update.
-        const currentChallenges = platformConfig?.challenges || [];
-        const finalChallenges = currentChallenges.map(c => c.id === updatedChallenge.id ? updatedChallenge : c);
-        setPlatformConfig({ challenges: finalChallenges });
+        setPlatformConfig({ 
+            challenges: (platformConfig?.challenges || []).map(c => c.id === updatedChallenge.id ? updatedChallenge : c) 
+        });
 
 
         toast({ title: "已更新挑戰", description: `已成功更新挑戰「${name}」。` });
@@ -150,8 +148,7 @@ export default function TeacherChallengesPage() {
     const handleConfirmDeleteChallenge = () => {
         if (!challengeToDelete) return;
         
-        const currentChallenges = platformConfig?.challenges || [];
-        setPlatformConfig({ challenges: currentChallenges.filter(c => c.id !== challengeToDelete.id) });
+        setPlatformConfig({ challenges: (platformConfig?.challenges || []).filter(c => c.id !== challengeToDelete.id) });
 
         toast({ title: "已刪除挑戰", description: `已成功刪除挑戰「${challengeToDelete.name}」。`, variant: "destructive" });
         setChallengeToDelete(null);
@@ -172,7 +169,7 @@ export default function TeacherChallengesPage() {
                     <TableHead>挑戰名稱</TableHead>
                     <TableHead>描述</TableHead>
                     <TableHead>獎勵點數</TableHead>
-                    {isReadOnly && <TableHead>提供者</TableHead>}
+                    {!isReadOnly && <TableHead>提供者</TableHead>}
                     <TableHead className="text-right">操作</TableHead>
                 </TableRow>
             </TableHeader>
@@ -269,6 +266,7 @@ export default function TeacherChallengesPage() {
                                     <TableBody>
                                         {allClassChallenges.length > 0 ? allClassChallenges.map((challenge) => {
                                             const provider = teachers.find(t => t.id === challenge.providerId);
+                                            const providerClasses = provider?.classIds?.map(id => classes.find(c => c.id === id)?.name).join(', ') || 'N/A';
                                             return (
                                                 <TableRow key={challenge.id}>
                                                     <TableCell className="font-medium">{challenge.name}</TableCell>
@@ -280,7 +278,7 @@ export default function TeacherChallengesPage() {
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>{provider?.name || '未知老師'}</TableCell>
-                                                     <TableCell>{(provider?.classIds || []).map(id => teachers.find(t => t.classIds?.includes(id))?.name || id ).join(', ')}</TableCell>
+                                                     <TableCell>{providerClasses}</TableCell>
                                                 </TableRow>
                                             )
                                         }) : (
