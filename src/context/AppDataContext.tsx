@@ -80,88 +80,65 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       stocks: true,
       config: true,
   });
-  
-  const isSyncing = useRef(false);
-  const syncTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const handleRunTransaction = useCallback(async (updateFunction: (transaction: Transaction) => Promise<any>) => {
     return firestoreRunTransaction(db, updateFunction);
   }, []);
   
-  const setWithFirestoreSync = useCallback(<T extends { _docId?: string; id?: any }>(
+  const createSetter = useCallback(<T extends { _docId?: string; id?: any }>(
     collectionName: string,
-    stateSetter: React.Dispatch<React.SetStateAction<T[]>>,
-    useDefinedIdAsDocId: boolean = false
+    currentState: T[],
+    useIdAsDocId: boolean = false
   ) => async (action: SetStateActionWithFunction<T[]>) => {
-    isSyncing.current = true;
-    if (syncTimeout.current) clearTimeout(syncTimeout.current);
+      const newState = typeof action === 'function' ? action(currentState) : action;
 
-    const newState = await new Promise<T[]>((resolve) => {
-        stateSetter(prevState => {
-            const updated = typeof action === 'function' ? action(prevState) : action;
-            resolve(updated);
-            return updated;
-        });
-    });
+      try {
+          const batch = writeBatch(db);
+          const currentDocsQuery = await getDocs(query(collection(db, collectionName)));
+          const currentDocIds = new Set(currentDocsQuery.docs.map(d => d.id));
+          
+          for (const item of newState) {
+              const docId = useIdAsDocId ? item.id : (item._docId || null);
+              const { _docId, ...itemData } = item;
 
-    try {
-        const batch = writeBatch(db);
-        const newDocsMap = new Map(newState.map(item => [item._docId || item.id, item]));
-        const oldDocsQuery = await getDocs(query(collection(db, collectionName)));
-        const oldDocIds = new Set(oldDocsQuery.docs.map(d => d.id));
+              if (docId) {
+                  const docRef = doc(db, collectionName, docId);
+                  batch.set(docRef, itemData, { merge: true });
+                  currentDocIds.delete(docId);
+              } else {
+                  // This is a new item, add it to a new document
+                  const newDocRef = doc(collection(db, collectionName));
+                  batch.set(newDocRef, itemData);
+              }
+          }
 
-        for (const item of newState) {
-            const docId = useDefinedIdAsDocId ? item.id : (item._docId || null);
-            const { _docId, ...itemData } = item;
+          // Delete documents that are no longer in the new state
+          for (const docId of currentDocIds) {
+              batch.delete(doc(db, collectionName, docId));
+          }
 
-            if (docId) {
-                const docRef = doc(db, collectionName, docId);
-                batch.set(docRef, itemData, { merge: true });
-                oldDocIds.delete(docId);
-            } else {
-                 const docRef = doc(collection(db, collectionName));
-                 batch.set(docRef, itemData);
-            }
-        }
-        
-        for (const docId of oldDocIds) {
-            batch.delete(doc(db, collectionName, docId));
-        }
-
-        await batch.commit();
-    } catch (error) {
-        console.error(`Error syncing ${collectionName}:`, error);
-    } finally {
-       syncTimeout.current = setTimeout(() => {
-         isSyncing.current = false;
-       }, 1000);
-    }
+          await batch.commit();
+      } catch (error) {
+          console.error(`Error syncing ${collectionName}:`, error);
+          throw error; // Re-throw to be caught by the caller
+      }
   }, []);
 
-  const setStudents = setWithFirestoreSync('students', setStudentsState);
-  const setTeachers = setWithFirestoreSync('teachers', setTeachersState);
-  const setRewards = setWithFirestoreSync('rewards', setRewardsState);
-  const setStocks = setWithFirestoreSync('stocks', setStocksState);
-  const setClasses = setWithFirestoreSync('classes', setClassesState, true);
+  const setStudents = createSetter('students', students);
+  const setTeachers = createSetter('teachers', teachers);
+  const setRewards = createSetter('rewards', rewards);
+  const setStocks = createSetter('stocks', stocks);
+  const setClasses = createSetter('classes', classes, true);
 
   const setPlatformConfigWithFunction = async (action: SetStateActionWithFunction<PlatformConfig | null>) => {
-    isSyncing.current = true;
-    if (syncTimeout.current) clearTimeout(syncTimeout.current);
-    
-    const newConfig = typeof action === 'function' ? action(platformConfig) : { ...platformConfig, ...action };
-    
-    setPlatformConfigState(newConfig);
+      const newConfig = typeof action === 'function' ? action(platformConfig) : { ...platformConfig, ...action };
 
-    if (newConfig) {
-        const { id, ...configData } = newConfig;
-        const configRef = doc(db, 'config', 'main');
-        await setDoc(configRef, configData, { merge: true });
-    }
-
-    syncTimeout.current = setTimeout(() => {
-        isSyncing.current = false;
-    }, 1000);
-  }
+      if (newConfig) {
+          const { id, ...configData } = newConfig;
+          const configRef = doc(db, 'config', 'main');
+          await setDoc(configRef, configData, { merge: true });
+      }
+  };
 
   useEffect(() => {
     const allLoaded = Object.values(loadingStates).every(state => state === false);
@@ -175,18 +152,15 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         collectionName: string, 
         setter: React.Dispatch<React.SetStateAction<any[]>>,
         stateKey: keyof LoadingStates,
+        useIdAsDocId: boolean = false
     ) => {
         const q = query(collection(db, collectionName));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
-             if (isSyncing.current) {
-                console.log(`Syncing in progress, skipping snapshot for ${collectionName}`);
-                return;
-            }
             const data: (T & { _docId: string })[] = [];
-            querySnapshot.forEach(doc => {
-                const docData = doc.data() as T;
-                const id = doc.id;
-                data.push({ ...docData, _docId: id });
+            querySnapshot.forEach(docSnap => {
+                const docData = docSnap.data() as T;
+                const docId = docSnap.id;
+                data.push({ ...docData, _docId: docId });
             });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
@@ -204,10 +178,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     ) => {
         const docRef = doc(db, ...docPath);
         const unsubscribe = onSnapshot(docRef, (docSnap) => {
-             if (isSyncing.current) {
-                console.log(`Syncing in progress, skipping snapshot for ${docPath.join('/')}`);
-                return;
-            }
             if (docSnap.exists()) {
                 setter({ ...docSnap.data(), id: docSnap.id } as T);
             } else {
@@ -223,7 +193,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     
     subscriptions.push(setupSubscription<Student>('students', setStudentsState, 'students'));
     subscriptions.push(setupSubscription<Teacher>('teachers', setTeachersState, 'teachers'));
-    subscriptions.push(setupSubscription<Class>('classes', setClassesState, 'classes'));
+    subscriptions.push(setupSubscription<Class>('classes', setClassesState, 'classes', true));
     subscriptions.push(setupSubscription<Reward>('rewards', setRewardsState, 'rewards'));
     subscriptions.push(setupSubscription<Stock>('stocks', setStocksState, 'stocks'));
     subscriptions.push(setupDocSubscription<PlatformConfig>(['config', 'main'], setPlatformConfigState, 'config'));
@@ -235,7 +205,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       subscriptions.forEach(unsub => unsub());
       clearInterval(marketInterval);
-      if (syncTimeout.current) clearTimeout(syncTimeout.current);
     };
   }, []);
 
