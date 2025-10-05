@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useContext, useMemo } from "react";
@@ -55,7 +54,7 @@ const chartConfig: ChartConfig = {
 } satisfies ChartConfig;
 
 const Marquee = ({ messages }: { messages: string[] }) => {
-    const allMessages = messages.filter(m => m.trim() !== '').join(' ✦ ');
+    const allMessages = messages.filter(m => m.trim() !== '').join('     ');
     if (!allMessages) return null;
 
     return (
@@ -462,3 +461,5 @@ export default function StocksPage() {
     </>
   );
 }
+
+    
