@@ -49,6 +49,7 @@ import { Separator } from "@/components/ui/separator";
 import { format, parseISO, subDays, isAfter } from "date-fns";
 
 const CONFIRM_DELETE_TEXT = "我確定要刪除";
+const CONFIRM_RESTORE_TEXT = "我確定要覆蓋";
 
 export default function TeacherDashboardPage() {
     const { 
@@ -99,6 +100,11 @@ export default function TeacherDashboardPage() {
 
     const [historySelectedTeacherId, setHistorySelectedTeacherId] = useState<string>('');
     const [historySelectedClassId, setHistorySelectedClassId] = useState<string>('');
+
+    const [restoreCollectionName, setRestoreCollectionName] = useState('');
+    const [isRestoreConfirmOpen, setIsRestoreConfirmOpen] = useState(false);
+    const [confirmRestoreInput, setConfirmRestoreInput] = useState("");
+    const [isRestoring, setIsRestoring] = useState(false);
     
     const classOptions = useMemo(() => {
         if (role === 'admin') return classes;
@@ -818,6 +824,54 @@ export default function TeacherDashboardPage() {
              toast({ title: "批准失敗", description: error.message, variant: "destructive" });
         }
     };
+
+    const handleRestoreData = async () => {
+        if (!restoreCollectionName) {
+            toast({ title: "請輸入來源集合名稱", variant: "destructive" });
+            return;
+        }
+        setIsRestoring(true);
+
+        try {
+            const sourceCollectionRef = collection(db, restoreCollectionName);
+            const targetCollectionRef = collection(db, "students");
+
+            // 1. Get all documents from the source collection
+            const sourceSnapshot = await getDocs(sourceCollectionRef);
+            if (sourceSnapshot.empty) {
+                throw new Error(`來源集合 "${restoreCollectionName}" 不存在或為空。`);
+            }
+            const sourceDocs = sourceSnapshot.docs.map(d => ({...d.data(), _docId: d.id }));
+
+            // 2. Delete all documents in the target collection
+            const targetSnapshot = await getDocs(targetCollectionRef);
+            const deleteBatch = writeBatch(db);
+            targetSnapshot.forEach(d => deleteBatch.delete(d.ref));
+            await deleteBatch.commit();
+            
+            // 3. Write all source documents to the target collection
+            const writeBatch = writeBatch(db);
+            sourceDocs.forEach(docData => {
+                const { _docId, ...data } = docData;
+                const newDocRef = doc(targetCollectionRef, _docId);
+                writeBatch.set(newDocRef, data);
+            });
+            await writeBatch.commit();
+            
+            // 4. (Optional) Delete the source collection - for simplicity, we'll let the user do this manually.
+            toast({ title: "資料覆蓋成功！", description: `已成功將 ${sourceDocs.length} 筆資料從 "${restoreCollectionName}" 複製到 "students" 集合。`, duration: 10000 });
+
+            setRestoreCollectionName('');
+            setIsRestoreConfirmOpen(false);
+
+        } catch (error: any) {
+            console.error("Data restore failed:", error);
+            toast({ title: "資料還原失敗", description: error.message, variant: "destructive" });
+        } finally {
+            setIsRestoring(false);
+            setConfirmRestoreInput("");
+        }
+    };
     
     const getDashboardTabs = () => {
         const tabs = [];
@@ -853,6 +907,34 @@ export default function TeacherDashboardPage() {
     
     return (
         <div className="space-y-6 animate-in fade-in-0 duration-500">
+             {role === 'admin' && (
+                <Card className="border-red-500 bg-red-500/5">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-red-600">
+                            <ShieldAlert />
+                            緊急資料救援
+                        </CardTitle>
+                        <CardDescription className="text-red-500/80">
+                            此為高風險操作，僅在確認資料已從 Firebase 控制台成功還原到一個新的臨時集合後使用。此操作將會**永久覆蓋**現有的學生資料。
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex items-end gap-2">
+                        <div className="flex-1 space-y-1">
+                            <Label htmlFor="restore-collection-name">已還原的集合名稱</Label>
+                            <Input 
+                                id="restore-collection-name" 
+                                placeholder="例如: restored_students"
+                                value={restoreCollectionName}
+                                onChange={(e) => setRestoreCollectionName(e.target.value)}
+                            />
+                        </div>
+                         <Button variant="destructive" onClick={() => setIsRestoreConfirmOpen(true)} disabled={!restoreCollectionName}>
+                            開始覆蓋資料
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
+
             <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h2 className="text-2xl font-bold">
@@ -1424,6 +1506,33 @@ export default function TeacherDashboardPage() {
                 </TabsContent>
                 )}
             </Tabs>
+
+            <AlertDialog open={isRestoreConfirmOpen} onOpenChange={setIsRestoreConfirmOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>⚠️ 確定要覆蓋所有學生資料嗎？</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            這是一個極度危險的操作，將會用「<span className="font-bold text-destructive">{restoreCollectionName}</span>」集合中的資料，**永久性地、不可逆地覆蓋**目前的所有學生資料。
+                            <br/><br/>
+                            請輸入「<span className="font-bold text-destructive">{CONFIRM_RESTORE_TEXT}</span>」以確認執行。
+                        </AlertDialogDescription>
+                        <Input 
+                            value={confirmRestoreInput} 
+                            onChange={(e) => setConfirmRestoreInput(e.target.value)} 
+                        />
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setConfirmRestoreInput('')}>取消</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleRestoreData}
+                            disabled={confirmRestoreInput !== CONFIRM_RESTORE_TEXT || isRestoring}
+                            className={buttonVariants({ variant: "destructive" })}
+                        >
+                            {isRestoring ? <Loader2 className="animate-spin" /> : "我了解風險，確定覆蓋"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             <Dialog open={isAddStudentDialogOpen} onOpenChange={setIsAddStudentDialogOpen}>
                  <DialogContent>
