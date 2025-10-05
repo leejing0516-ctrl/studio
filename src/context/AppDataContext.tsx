@@ -87,70 +87,21 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     return firestoreRunTransaction(db, updateFunction);
   }, []);
   
-  const createSetter = <T extends { _docId?: string; id?: string }>(
-      collectionName: string,
-      currentState: T[],
-      stateSetter: React.Dispatch<React.SetStateAction<T[]>>
-  ) => async (action: SetStateActionWithFunction<T[]>) => {
+  // Specialized setter for Students, which uses a composite key for _docId
+  const setStudentsWithFunction = async (action: SetStateActionWithFunction<Student[]>) => {
       if (isSyncing.current) return;
-
-      const oldState = currentState;
-      const newState = typeof action === 'function' ? action(oldState) : action;
-      
-      if (JSON.stringify(oldState) === JSON.stringify(newState)) {
-          return;
-      }
-      
-      stateSetter(newState);
-
-      const batch = writeBatch(db);
-      const oldDocsMap = new Map(oldState.map(item => [(item._docId || item.id), item]));
-      
-      for (const item of newState) {
-          const docId = item._docId || item.id;
-          if (docId) { 
-              const docRef = doc(db, collectionName, docId);
-              const { _docId, ...itemData } = item;
-              batch.set(docRef, itemData, { merge: true });
-              oldDocsMap.delete(docId);
-          } else {
-              const newDocRef = doc(collection(db, collectionName));
-              const { _docId, ...itemData } = item;
-              batch.set(newDocRef, itemData);
-          }
-      }
-
-      for (const docId of oldDocsMap.keys()) {
-          if (docId) {
-              batch.delete(doc(db, collectionName, docId));
-          }
-      }
-      
-      await batch.commit();
-  };
-  
-    const setStudentsWithFunction = async (action: SetStateActionWithFunction<Student[]>) => {
-      if (isSyncing.current) return;
-      
       const oldState = students;
       const newState = typeof action === 'function' ? action(oldState) : action;
 
-      if (JSON.stringify(oldState) === JSON.stringify(newState)) {
-          return;
-      }
-
+      if (JSON.stringify(oldState) === JSON.stringify(newState)) return;
+      
       setStudentsState(newState);
 
       const batch = writeBatch(db);
-      const oldStateMap = new Map(oldState.map(s => [s._docId, s]));
+      const oldStateMap = new Map(oldState.map(s => [s._docId || `${s.classId}-${s.id}`, s]));
       
       for (const student of newState) {
           const docId = student._docId || `${student.classId}-${student.id}`;
-          if (!docId) {
-              console.error("Student has no docId or composite key", student);
-              continue;
-          }
-
           const studentRef = doc(db, 'students', docId);
           const { _docId, ...studentData } = student;
           
@@ -166,6 +117,47 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
           }
       }
 
+      await batch.commit();
+  };
+
+  // Generic setter for collections using Firestore-generated IDs
+  const createSetter = <T extends { _docId?: string; id?: string }>(
+      collectionName: string,
+      currentState: T[],
+      stateSetter: React.Dispatch<React.SetStateAction<T[]>>
+  ) => async (action: SetStateActionWithFunction<T[]>) => {
+      if (isSyncing.current) return;
+      const oldState = currentState;
+      const newState = typeof action === 'function' ? action(oldState) : action;
+
+      if (JSON.stringify(oldState) === JSON.stringify(newState)) return;
+      
+      stateSetter(newState);
+
+      const batch = writeBatch(db);
+      const oldDocsMap = new Map(oldState.map(item => [item._docId || item.id, item]));
+      
+      for (const item of newState) {
+          const docId = item._docId; // Must rely on _docId for existing docs
+          if (docId) {
+              const docRef = doc(db, collectionName, docId);
+              const { _docId, ...itemData } = item;
+              batch.set(docRef, itemData, { merge: true });
+              oldDocsMap.delete(docId);
+          } else {
+              // This is a new item, add it to the collection
+              const newDocRef = doc(collection(db, collectionName));
+              const { _docId, ...itemData } = item;
+              batch.set(newDocRef, itemData);
+          }
+      }
+
+      for (const docId of oldDocsMap.keys()) {
+          if (docId) {
+              batch.delete(doc(db, collectionName, docId));
+          }
+      }
+      
       await batch.commit();
   };
 
@@ -213,11 +205,15 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             querySnapshot.forEach(doc => {
                 const docData = doc.data() as T;
                 const id = doc.id;
-                data.push({ ...docData, _docId: id });
+                 if (collectionName === 'students') {
+                     data.push({ ...docData, _docId: id });
+                 } else {
+                     data.push({ ...docData, id: id, _docId: id });
+                 }
             });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
-            setTimeout(() => { isSyncing.current = false; }, 0);
+            setTimeout(() => { isSyncing.current = false; }, 100);
         }, (error) => {
             console.error(`Error fetching real-time ${collectionName}:`, error);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
@@ -239,7 +235,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 setter(null);
             }
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
-            setTimeout(() => { isSyncing.current = false; }, 0);
+            setTimeout(() => { isSyncing.current = false; }, 100);
         }, (error) => {
             console.error(`Error fetching real-time doc ${docPath.join('/')}:`, error);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
