@@ -30,19 +30,7 @@ export default function HomePage() {
   const sortedTeachers = useMemo(() => {
     if (!allTeachers) return [];
     return [...allTeachers].sort((a, b) => {
-        const orderA = a.sortOrder;
-        const orderB = b.sortOrder;
-
-        if (orderA !== undefined && orderB !== undefined) {
-            if (orderA !== orderB) {
-                return orderA - orderB;
-            }
-        } else if (orderA !== undefined) {
-            return -1;
-        } else if (orderB !== undefined) {
-            return 1;
-        }
-        return (a.name || '').localeCompare(b.name || '');
+        return (a.id || '').localeCompare(b.id || '');
     });
   }, [allTeachers]);
 
@@ -283,5 +271,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    
