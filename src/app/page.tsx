@@ -69,8 +69,9 @@ export default function HomePage() {
         return;
     }
     
+    const compositeId = `${classId}-${studentIdInput}`;
     const foundStudent = students.find(
-      (s: Student) => s.classId === classId && s.id === studentIdInput
+      (s: Student) => s._docId === compositeId
     );
 
     if (foundStudent && foundStudent.password === studentPassword) {

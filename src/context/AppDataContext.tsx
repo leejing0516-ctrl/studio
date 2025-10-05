@@ -94,7 +94,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       const oldStateMap = new Map(oldState.map(s => [s._docId, s]));
       
       for (const student of newState) {
-          const docId = student.classId ? `${student.classId}-${student.id}` : student._docId;
+          const docId = student.classId && student.id ? `${student.classId}-${student.id}` : student._docId;
           if (!docId) {
               console.error("Student has no docId or composite key", student);
               continue;
@@ -121,21 +121,25 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       await batch.commit();
   };
 
-  const createGenericSetter = <T extends { _docId?: string }>(collectionName: string, state: T[], setter: React.Dispatch<React.SetStateAction<T[]>>) => 
+  const createGenericSetter = <T extends { _docId?: string; id?: string }>(collectionName: string, state: T[], setter: React.Dispatch<React.SetStateAction<T[]>>) => 
     async (action: SetStateActionWithFunction<T[]>) => {
       const newState = typeof action === 'function' ? action(state) : action;
       setter(newState);
 
       const batch = writeBatch(db);
-      const oldDocsMap = new Map(state.map(item => item._docId ? [item._docId, item] : [null, null]));
+      const oldDocsMap = new Map(state.map(item => [item._docId, item]));
 
       for (const item of newState) {
-        if (item._docId) { // Existing item
-          batch.set(doc(db, collectionName, item._docId), item, { merge: true });
-          oldDocsMap.delete(item._docId);
+        const docId = item._docId || item.id;
+        if (docId) { // Existing item
+          const docRef = doc(db, collectionName, docId);
+          const {_docId, ...itemData} = item;
+          batch.set(docRef, itemData, { merge: true });
+          oldDocsMap.delete(docId);
         } else { // New item
           const newDocRef = doc(collection(db, collectionName));
-          batch.set(newDocRef, item);
+          const {_docId, ...itemData} = item;
+          batch.set(newDocRef, itemData);
         }
       }
 
@@ -181,9 +185,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         const unsubscribe = onSnapshot(q, async (querySnapshot) => {
             const data: (T & { _docId: string })[] = [];
             querySnapshot.forEach(doc => {
-                const docData = doc.data() as T;
-                const docId = collectionName === 'students' ? doc.id : (docData.id || doc.id);
-                data.push({ ...docData, id: docId, _docId: doc.id });
+                data.push({ ...doc.data() as T, _docId: doc.id });
             });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
