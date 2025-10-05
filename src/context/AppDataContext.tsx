@@ -82,89 +82,72 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   });
   
   const isSyncing = useRef(false);
+  const syncTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const handleRunTransaction = useCallback(async (updateFunction: (transaction: Transaction) => Promise<any>) => {
     return firestoreRunTransaction(db, updateFunction);
   }, []);
   
-  const setStudentsWithFunction = async (action: SetStateActionWithFunction<Student[]>) => {
-      const oldState = students;
-      const newState = typeof action === 'function' ? action(oldState) : action;
-
-      setStudentsState(newState);
-
-      const batch = writeBatch(db);
-      const oldDocIds = new Set(oldState.map(s => s._docId).filter(Boolean));
-
-      for (const student of newState) {
-          const docId = student._docId || `${student.classId}-${student.id}`;
-          const studentRef = doc(db, 'students', docId);
-          const { _docId, ...studentData } = student;
-          
-          batch.set(studentRef, { ...studentData, _docId: docId }, { merge: true });
-          if(oldDocIds.has(docId)) {
-             oldDocIds.delete(docId);
-          }
-      }
-
-      for (const docId of oldDocIds) {
-          batch.delete(doc(db, 'students', docId));
-      }
-
-      await batch.commit();
-  };
-
-  const createSetter = <T extends { _docId?: string; id?: any }>(
-      collectionName: string,
-      currentState: T[],
-      stateSetter: React.Dispatch<React.SetStateAction<T[]>>,
-      useDefinedIdAsDocId: boolean = false
+  const setWithFirestoreSync = useCallback(<T extends { _docId?: string; id?: any }>(
+    collectionName: string,
+    stateSetter: React.Dispatch<React.SetStateAction<T[]>>,
+    useDefinedIdAsDocId: boolean = false
   ) => async (action: SetStateActionWithFunction<T[]>) => {
-      const oldState = currentState;
-      const newState = typeof action === 'function' ? action(oldState) : action;
+    isSyncing.current = true;
+    if (syncTimeout.current) clearTimeout(syncTimeout.current);
 
-      stateSetter(newState);
+    const newState = await new Promise<T[]>((resolve) => {
+        stateSetter(prevState => {
+            const updated = typeof action === 'function' ? action(prevState) : action;
+            resolve(updated);
+            return updated;
+        });
+    });
 
-      const batch = writeBatch(db);
-      const oldDocsMap = new Map(oldState.map(item => [item._docId || item.id, item]));
+    try {
+        const batch = writeBatch(db);
+        const newDocsMap = new Map(newState.map(item => [item._docId || item.id, item]));
+        const oldDocsQuery = await getDocs(query(collection(db, collectionName)));
+        const oldDocIds = new Set(oldDocsQuery.docs.map(d => d.id));
 
-      for (const item of newState) {
-          const { _docId, ...itemData } = item;
-          let docRef;
+        for (const item of newState) {
+            const docId = useDefinedIdAsDocId ? item.id : (item._docId || null);
+            const { _docId, ...itemData } = item;
 
-          if (_docId) {
-              docRef = doc(db, collectionName, _docId);
-              batch.set(docRef, itemData, { merge: true });
-              oldDocsMap.delete(_docId);
-          } else {
-              if (useDefinedIdAsDocId && item.id) {
-                docRef = doc(db, collectionName, item.id);
-                batch.set(docRef, itemData);
-                oldDocsMap.delete(item.id);
-              } else {
-                docRef = doc(collection(db, collectionName));
-                batch.set(docRef, itemData);
-              }
-          }
-      }
+            if (docId) {
+                const docRef = doc(db, collectionName, docId);
+                batch.set(docRef, itemData, { merge: true });
+                oldDocIds.delete(docId);
+            } else {
+                 const docRef = doc(collection(db, collectionName));
+                 batch.set(docRef, itemData);
+            }
+        }
+        
+        for (const docId of oldDocIds) {
+            batch.delete(doc(db, collectionName, docId));
+        }
 
-      for (const docId of oldDocsMap.keys()) {
-          if (docId) {
-              batch.delete(doc(db, collectionName, docId));
-          }
-      }
-      
-      await batch.commit();
-  };
-  
-  const setTeachers = createSetter('teachers', teachers, setTeachersState);
-  const setRewards = createSetter('rewards', rewards, setRewardsState);
-  const setStocks = createSetter('stocks', stocks, setStocksState);
-  const setClasses = createSetter('classes', classes, setClassesState, true);
+        await batch.commit();
+    } catch (error) {
+        console.error(`Error syncing ${collectionName}:`, error);
+    } finally {
+       syncTimeout.current = setTimeout(() => {
+         isSyncing.current = false;
+       }, 1000);
+    }
+  }, []);
+
+  const setStudents = setWithFirestoreSync('students', setStudentsState);
+  const setTeachers = setWithFirestoreSync('teachers', setTeachersState);
+  const setRewards = setWithFirestoreSync('rewards', setRewardsState);
+  const setStocks = setWithFirestoreSync('stocks', setStocksState);
+  const setClasses = setWithFirestoreSync('classes', setClassesState, true);
 
   const setPlatformConfigWithFunction = async (action: SetStateActionWithFunction<PlatformConfig | null>) => {
+    isSyncing.current = true;
+    if (syncTimeout.current) clearTimeout(syncTimeout.current);
     
-    const oldConfig = platformConfig;
     const newConfig = typeof action === 'function' ? action(platformConfig) : { ...platformConfig, ...action };
     
     setPlatformConfigState(newConfig);
@@ -174,6 +157,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         const configRef = doc(db, 'config', 'main');
         await setDoc(configRef, configData, { merge: true });
     }
+
+    syncTimeout.current = setTimeout(() => {
+        isSyncing.current = false;
+    }, 1000);
   }
 
   useEffect(() => {
@@ -191,19 +178,15 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     ) => {
         const q = query(collection(db, collectionName));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
+             if (isSyncing.current) {
+                console.log(`Syncing in progress, skipping snapshot for ${collectionName}`);
+                return;
+            }
             const data: (T & { _docId: string })[] = [];
             querySnapshot.forEach(doc => {
                 const docData = doc.data() as T;
                 const id = doc.id;
-                
-                // For students, classes, and teachers, the 'id' field from the document data is the business logic ID.
-                // The Firestore document ID is stored in _docId.
-                if (['students', 'classes', 'teachers'].includes(collectionName)) {
-                    data.push({ ...docData, _docId: id });
-                } else {
-                    // For other collections (rewards, stocks), the document ID is the primary business identifier.
-                    data.push({ ...docData, id: id, _docId: id });
-                }
+                data.push({ ...docData, _docId: id });
             });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
@@ -221,6 +204,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     ) => {
         const docRef = doc(db, ...docPath);
         const unsubscribe = onSnapshot(docRef, (docSnap) => {
+             if (isSyncing.current) {
+                console.log(`Syncing in progress, skipping snapshot for ${docPath.join('/')}`);
+                return;
+            }
             if (docSnap.exists()) {
                 setter({ ...docSnap.data(), id: docSnap.id } as T);
             } else {
@@ -248,13 +235,14 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       subscriptions.forEach(unsub => unsub());
       clearInterval(marketInterval);
+      if (syncTimeout.current) clearTimeout(syncTimeout.current);
     };
   }, []);
 
   return (
     <AppDataContext.Provider value={{ 
         students, 
-        setStudents: setStudentsWithFunction,
+        setStudents,
         rewards, 
         setRewards,
         stocks,
