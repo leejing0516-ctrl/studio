@@ -5,7 +5,6 @@ import { createContext, useState, ReactNode, useEffect, useCallback } from 'reac
 import type { Student, Reward, Class, Teacher, Stock, PlatformConfig } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { collection, doc, runTransaction as firestoreRunTransaction, Transaction, query, onSnapshot, Unsubscribe, setDoc, writeBatch, getDocs, addDoc, getCountFromServer, deleteDoc } from 'firebase/firestore';
-import { students as initialStudents } from '@/lib/placeholder-data';
 
 type SetStateActionWithFunction<S> = S | ((prevState: S) => S);
 
