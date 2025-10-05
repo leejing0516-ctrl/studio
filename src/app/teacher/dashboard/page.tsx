@@ -46,6 +46,7 @@ import { db } from "@/lib/firebase";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { format, parseISO, subDays, isAfter } from "date-fns";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const CONFIRM_DELETE_TEXT = "我確定要刪除";
 
@@ -75,6 +76,7 @@ export default function TeacherDashboardPage() {
     const [isEditTeacherDialogOpen, setIsEditTeacherDialogOpen] = useState(false);
     const [isAllocatePointsDialogOpen, setIsAllocatePointsDialogOpen] = useState(false);
     const [isImpersonateDialogOpen, setIsImpersonateDialogOpen] = useState(false);
+    const [isBatchDeleteConfirmOpen, setIsBatchDeleteConfirmOpen] = useState(false);
 
     const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
     const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
@@ -89,6 +91,7 @@ export default function TeacherDashboardPage() {
     const [confirmDeleteInput, setConfirmDeleteInput] = useState("");
     const [classToDelete, setClassToDelete] = useState<Class | null>(null);
     const [editedTeacherRole, setEditedTeacherRole] = useState<string | undefined>(undefined);
+    const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
 
     const [batchPoints, setBatchPoints] = useState<number | ''>('');
     const [isBatchProcessing, setIsBatchProcessing] = useState(false);
@@ -148,6 +151,11 @@ export default function TeacherDashboardPage() {
         if (!selectedClassId) return [];
         return students.filter(s => s.classId === selectedClassId);
     }, [students, selectedClassId]);
+
+    // Clear selection when class changes
+    useEffect(() => {
+        setSelectedStudents([]);
+    }, [selectedClassId]);
 
     const availableClassesForNewTeacher = useMemo(() => {
         const assignedClassIds = new Set(
@@ -352,6 +360,17 @@ export default function TeacherDashboardPage() {
             variant: "destructive"
         });
         setStudentToDelete(null);
+    };
+
+    const handleBatchDelete = async () => {
+        if (selectedStudents.length === 0) return;
+        await setStudents(students.filter(s => !selectedStudents.includes(s._docId!)));
+        toast({
+            title: `已批次刪除 ${selectedStudents.length} 位學生`,
+            variant: "destructive"
+        });
+        setSelectedStudents([]);
+        setIsBatchDeleteConfirmOpen(false);
     };
 
     const handleResetPassword = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -848,6 +867,22 @@ export default function TeacherDashboardPage() {
         
         return tabs;
     };
+
+    const handleSelectStudent = (studentId: string, isSelected: boolean) => {
+        if (isSelected) {
+            setSelectedStudents(prev => [...prev, studentId]);
+        } else {
+            setSelectedStudents(prev => prev.filter(id => id !== studentId));
+        }
+    };
+
+    const handleSelectAll = (isAllSelected: boolean) => {
+        if (isAllSelected) {
+            setSelectedStudents(studentsInClass.map(s => s._docId!));
+        } else {
+            setSelectedStudents([]);
+        }
+    };
     
     if (isLoading) {
         return (
@@ -907,22 +942,57 @@ export default function TeacherDashboardPage() {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            {role === 'admin' && (
-                                <div className="mb-4">
-                                    <Label htmlFor="class-select-students">選擇班級以管理</Label>
-                                    <Select onValueChange={setSelectedClassId} value={selectedClassId}>
-                                        <SelectTrigger id="class-select-students" className="w-full md:w-[280px]">
-                                            <SelectValue placeholder="請選擇班級" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            )}
+                            <div className="flex items-center justify-between mb-4">
+                                {role === 'admin' ? (
+                                    <div className="flex-1">
+                                        <Label htmlFor="class-select-students" className="sr-only">選擇班級以管理</Label>
+                                        <Select onValueChange={setSelectedClassId} value={selectedClassId}>
+                                            <SelectTrigger id="class-select-students" className="w-full md:w-[280px]">
+                                                <SelectValue placeholder="請選擇班級" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                ) : <div/>}
+
+                                {selectedStudents.length > 0 && (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm text-muted-foreground">{selectedStudents.length} 位學生已選取</span>
+                                        <AlertDialog open={isBatchDeleteConfirmOpen} onOpenChange={setIsBatchDeleteConfirmOpen}>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="destructive" size="sm">
+                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                    批次刪除
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>您確定要批次刪除嗎？</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        您確定要永久刪除 {selectedStudents.length} 位學生嗎？此操作無法復原。
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>取消</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={handleBatchDelete} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    </div>
+                                )}
+                            </div>
                             <Table>
                                 <TableHeader>
                                     <TableRow>
+                                        <TableHead className="w-[50px]">
+                                            <Checkbox
+                                                checked={studentsInClass.length > 0 && selectedStudents.length === studentsInClass.length}
+                                                onCheckedChange={(checked) => handleSelectAll(Boolean(checked))}
+                                                aria-label="Select all"
+                                            />
+                                        </TableHead>
                                         <TableHead>座號</TableHead>
                                         <TableHead>姓名</TableHead>
                                         <TableHead>持有總點數</TableHead>
@@ -931,7 +1001,14 @@ export default function TeacherDashboardPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {studentsInClass.length > 0 ? studentsInClass.map(student => (
-                                        <TableRow key={student._docId}>
+                                        <TableRow key={student._docId} data-state={selectedStudents.includes(student._docId!) ? "selected" : ""}>
+                                            <TableCell>
+                                                 <Checkbox
+                                                    checked={selectedStudents.includes(student._docId!)}
+                                                    onCheckedChange={(checked) => handleSelectStudent(student._docId!, Boolean(checked))}
+                                                    aria-label={`Select student ${student.name}`}
+                                                />
+                                            </TableCell>
                                             <TableCell>{student.id}</TableCell>
                                             <TableCell>{student.name}</TableCell>
                                             <TableCell>{student.points.toLocaleString()}</TableCell>
@@ -959,7 +1036,7 @@ export default function TeacherDashboardPage() {
                                         </TableRow>
                                     )) : (
                                         <TableRow>
-                                            <TableCell colSpan={4} className="h-24 text-center">請先選擇班級，或此班級無學生。</TableCell>
+                                            <TableCell colSpan={5} className="h-24 text-center">請先選擇班級，或此班級無學生。</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
@@ -1639,5 +1716,3 @@ export default function TeacherDashboardPage() {
         </div>
     )
 }
-
-    
