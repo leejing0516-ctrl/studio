@@ -5,17 +5,14 @@ import { db } from "./firebase";
 import type { Student, Reward } from "./types";
 
 export const redeemRewardTransaction = async ({
-  studentId,
-  classId,
+  studentDocId,
   rewardId,
 }: {
-  studentId: string;
-  classId: string;
+  studentDocId: string;
   rewardId: string;
 }) => {
   try {
     await runTransaction(db, async (transaction) => {
-      const studentDocId = `${classId}-${studentId}`;
       const studentRef = doc(db, "students", studentDocId);
       const rewardRef = doc(db, "rewards", rewardId);
 

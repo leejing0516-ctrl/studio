@@ -4,7 +4,7 @@
 import { createContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import type { Student, Reward, Class, Teacher, Stock, PlatformConfig } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { collection, doc, runTransaction as firestoreRunTransaction, Transaction, query, onSnapshot, Unsubscribe, setDoc, writeBatch, getDocs, addDoc, getCountFromServer } from 'firebase/firestore';
+import { collection, doc, runTransaction as firestoreRunTransaction, Transaction, query, onSnapshot, Unsubscribe, setDoc, writeBatch, getDocs, addDoc, getCountFromServer, deleteDoc } from 'firebase/firestore';
 import { students as initialStudents } from '@/lib/placeholder-data';
 
 type SetStateActionWithFunction<S> = S | ((prevState: S) => S);
@@ -86,47 +86,75 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     return firestoreRunTransaction(db, updateFunction);
   }, []);
   
-  const createSetter = <T extends { id: string; _docId?: string; }>(
-    collectionName: string,
-    state: T[],
-    setter: React.Dispatch<React.SetStateAction<T[]>>
-  ) => async (action: SetStateActionWithFunction<T[]>) => {
-    const currentState = typeof action === 'function' ? action(state) : action;
-    setter(currentState);
+  const setStudentsWithFunction = async (action: SetStateActionWithFunction<Student[]>) => {
+      const newState = typeof action === 'function' ? action(students) : action;
+      const oldState = students;
+      setStudentsState(newState);
 
-    const batch = writeBatch(db);
-    const existingDocIds = new Set(state.map(item => item._docId).filter(Boolean));
+      const batch = writeBatch(db);
+      const oldStateMap = new Map(oldState.map(s => [s._docId, s]));
+      
+      for (const student of newState) {
+          const docId = student.classId ? `${student.classId}-${student.id}` : student._docId;
+          if (!docId) {
+              console.error("Student has no docId or composite key", student);
+              continue;
+          }
 
-    for (const item of currentState) {
-        if (item._docId) { // Existing item
-            const { _docId, ...itemData } = item;
-            batch.update(doc(db, collectionName, _docId), itemData);
-        } else { // New item - now uses a random doc ID
-            const newDocRef = doc(collection(db, collectionName));
-            batch.set(newDocRef, item);
-        }
-    }
-  
-    const currentStateDocIds = new Set(currentState.map(item => item._docId).filter(Boolean));
-    for (const oldDocId of existingDocIds) {
-        if (!currentStateDocIds.has(oldDocId!)) {
-            batch.delete(doc(db, collectionName, oldDocId!));
-        }
-    }
+          const studentRef = doc(db, 'students', docId);
+          const { _docId, ...studentData } = student;
+          
+          if (oldStateMap.has(docId)) { // It's an update
+              batch.set(studentRef, studentData, { merge: true });
+              oldStateMap.delete(docId);
+          } else { // It's a new student
+              batch.set(studentRef, studentData);
+          }
+      }
 
-    try {
+      // Any students left in oldStateMap have been deleted
+      for (const docId of oldStateMap.keys()) {
+          if(docId) {
+             batch.delete(doc(db, 'students', docId));
+          }
+      }
+
       await batch.commit();
-    } catch (error) {
-      console.error(`Batch write for ${collectionName} failed:`, error);
-    }
   };
 
-  const setStudents = createSetter<Student>('students', students, setStudentsState);
-  const setTeachers = createSetter<Teacher>('teachers', teachers, setTeachersState);
-  const setRewards = createSetter<Reward>('rewards', rewards, setRewardsState);
-  const setStocks = createSetter<Stock>('stocks', stocks, setStocksState);
-  const setClasses = createSetter<Class>('classes', classes, setClassesState);
-  
+  const createGenericSetter = <T extends { _docId?: string }>(collectionName: string, state: T[], setter: React.Dispatch<React.SetStateAction<T[]>>) => 
+    async (action: SetStateActionWithFunction<T[]>) => {
+      const newState = typeof action === 'function' ? action(state) : action;
+      setter(newState);
+
+      const batch = writeBatch(db);
+      const oldDocsMap = new Map(state.map(item => item._docId ? [item._docId, item] : [null, null]));
+
+      for (const item of newState) {
+        if (item._docId) { // Existing item
+          batch.set(doc(db, collectionName, item._docId), item, { merge: true });
+          oldDocsMap.delete(item._docId);
+        } else { // New item
+          const newDocRef = doc(collection(db, collectionName));
+          batch.set(newDocRef, item);
+        }
+      }
+
+      // Delete items that are no longer in the new state
+      for (const docId of oldDocsMap.keys()) {
+        if(docId) {
+            batch.delete(doc(db, collectionName, docId));
+        }
+      }
+      
+      await batch.commit();
+  };
+
+  const setTeachers = createGenericSetter('teachers', teachers, setTeachersState);
+  const setRewards = createGenericSetter('rewards', rewards, setRewardsState);
+  const setStocks = createGenericSetter('stocks', stocks, setStocksState);
+  const setClasses = createGenericSetter('classes', classes, setClassesState);
+
   const setPlatformConfigWithFunction = async (action: SetStateActionWithFunction<PlatformConfig | null>) => {
     const newConfig = typeof action === 'function' ? action(platformConfig) : { ...platformConfig, ...action };
     setPlatformConfigState(newConfig);
@@ -152,32 +180,11 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     ) => {
         const q = query(collection(db, collectionName));
         const unsubscribe = onSnapshot(q, async (querySnapshot) => {
-            // EMERGENCY DATA RESTORE for students
-            if (collectionName === 'students' && querySnapshot.empty && initialStudents.length > 0) {
-                const hasRestored = sessionStorage.getItem('emergency_restored_students');
-                if (!hasRestored) {
-                    console.warn("CRITICAL: Student collection is empty. Attempting emergency restore from placeholder data...");
-                    try {
-                        const batch = writeBatch(db);
-                        initialStudents.forEach(student => {
-                            const { _docId, ...studentData } = student as any;
-                            const newStudentRef = doc(collection(db, "students")); // Let Firestore generate ID
-                            batch.set(newStudentRef, studentData);
-                        });
-                        await batch.commit();
-                        sessionStorage.setItem('emergency_restored_students', 'true');
-                        console.log("EMERGENCY RESTORE: Successfully restored students from placeholder data. The page will now reflect the restored data.");
-                        // Snapshot listener will be re-triggered with the new data, so we can just return here.
-                        return;
-                    } catch (error) {
-                        console.error("EMERGENCY RESTORE: Failed to restore student data:", error);
-                    }
-                }
-            }
-            
             const data: (T & { _docId: string })[] = [];
             querySnapshot.forEach(doc => {
-                data.push({ ...doc.data() as T, _docId: doc.id });
+                const docData = doc.data() as T;
+                const docId = collectionName === 'students' ? doc.id : (docData.id || doc.id);
+                data.push({ ...docData, id: docId, _docId: doc.id });
             });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
@@ -228,7 +235,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AppDataContext.Provider value={{ 
         students, 
-        setStudents,
+        setStudents: setStudentsWithFunction,
         rewards, 
         setRewards,
         stocks,
