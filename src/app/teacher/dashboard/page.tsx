@@ -957,7 +957,7 @@ export default function TeacherDashboardPage() {
                                     </div>
                                 ) : <div/>}
 
-                                {selectedStudents.length > 0 && (
+                                {selectedStudents.length > 0 && role === 'admin' && (
                                     <div className="flex items-center gap-2">
                                         <span className="text-sm text-muted-foreground">{selectedStudents.length} 位學生已選取</span>
                                         <AlertDialog open={isBatchDeleteConfirmOpen} onOpenChange={setIsBatchDeleteConfirmOpen}>
@@ -991,6 +991,7 @@ export default function TeacherDashboardPage() {
                                                 checked={studentsInClass.length > 0 && selectedStudents.length === studentsInClass.length}
                                                 onCheckedChange={(checked) => handleSelectAll(Boolean(checked))}
                                                 aria-label="Select all"
+                                                disabled={role !== 'admin'}
                                             />
                                         </TableHead>
                                         <TableHead>座號</TableHead>
@@ -1007,6 +1008,7 @@ export default function TeacherDashboardPage() {
                                                     checked={selectedStudents.includes(student._docId!)}
                                                     onCheckedChange={(checked) => handleSelectStudent(student._docId!, Boolean(checked))}
                                                     aria-label={`Select student ${student.name}`}
+                                                    disabled={role !== 'admin'}
                                                 />
                                             </TableCell>
                                             <TableCell>{student.id}</TableCell>
@@ -1061,6 +1063,7 @@ export default function TeacherDashboardPage() {
                                  <Table>
                                     <TableHeader>
                                         <TableRow>
+                                            <TableHead>ID</TableHead>
                                             <TableHead>姓名</TableHead>
                                             <TableHead>角色</TableHead>
                                             <TableHead>任教班級</TableHead>
@@ -1071,6 +1074,7 @@ export default function TeacherDashboardPage() {
                                     <TableBody>
                                         {teachers.map(t => (
                                             <TableRow key={t.id}>
+                                                <TableCell>{t.id}</TableCell>
                                                 <TableCell>{t.name}</TableCell>
                                                 <TableCell>{t.role === 'admin' ? '校長' : t.role === 'teacher' ? '班級導師' : '科任教師'}</TableCell>
                                                 <TableCell>{(t.classIds || []).map(id => classes.find(c => c.id === id)?.name).join(', ') || '-'}</TableCell>
@@ -1722,3 +1726,4 @@ export default function TeacherDashboardPage() {
 }
 
     
+
