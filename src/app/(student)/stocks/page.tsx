@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Stock, PortfolioItem, Student, PlatformConfig, Announcement } from "@/lib/types";
-import { ArrowUp, ArrowDown, Briefcase, Megaphone } from "lucide-react";
+import { ArrowUp, ArrowDown, Briefcase, Megaphone, Zap } from "lucide-react";
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Area, AreaChart, XAxis, YAxis } from "recharts"
 import { cn } from "@/lib/utils";
@@ -53,6 +53,24 @@ const chartConfig: ChartConfig = {
     color: "hsl(var(--primary))",
   },
 } satisfies ChartConfig;
+
+const Marquee = ({ messages }: { messages: string[] }) => {
+    const allMessages = messages.filter(m => m.trim() !== '').join(' ✦ ');
+    if (!allMessages) return null;
+
+    return (
+        <div className="relative flex overflow-x-hidden bg-primary/10 text-primary py-2 rounded-md border border-primary/20">
+            <div className="flex items-center animate-marquee whitespace-nowrap">
+                <Zap className="h-5 w-5 mx-4 shrink-0" />
+                <span className="text-sm font-semibold">{allMessages}</span>
+            </div>
+            <div className="absolute top-0 flex items-center animate-marquee2 whitespace-nowrap">
+                <Zap className="h-5 w-5 mx-4 shrink-0" />
+                <span className="text-sm font-semibold">{allMessages}</span>
+            </div>
+        </div>
+    )
+}
 
 export default function StocksPage() {
   const [isTradeDialogOpen, setIsTradeDialogOpen] = useState(false);
@@ -246,6 +264,7 @@ export default function StocksPage() {
   return (
     <>
       <div className="space-y-4">
+        <Marquee messages={platformConfig?.stockMarqueeMessages || []} />
         {stockMarketNews.length > 0 && (
           <Card>
             <CardHeader>

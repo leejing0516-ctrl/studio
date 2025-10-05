@@ -66,6 +66,10 @@ export default function TeacherStocksPage() {
   const [isEditNewsDialogOpen, setIsEditNewsDialogOpen] = useState(false);
   const [newsToEdit, setNewsToEdit] = useState<Announcement | null>(null);
   const [newsToDelete, setNewsToDelete] = useState<Announcement | null>(null);
+  
+  // States for Marquee Management
+  const [marqueeMessages, setMarqueeMessages] = useState<string[]>(Array(10).fill(''));
+  const [isSavingMarquee, setIsSavingMarquee] = useState(false);
 
 
   useEffect(() => {
@@ -80,7 +84,17 @@ export default function TeacherStocksPage() {
     setRole(storedRole);
     setTeacherId(storedTeacherId || '');
     setTeacherName(storedTeacherName || '');
-  }, [router, toast]);
+
+    if (platformConfig?.stockMarqueeMessages) {
+        const existingMessages = platformConfig.stockMarqueeMessages;
+        const newMessages = Array(10).fill('');
+        for (let i = 0; i < Math.min(existingMessages.length, 10); i++) {
+            newMessages[i] = existingMessages[i];
+        }
+        setMarqueeMessages(newMessages);
+    }
+
+  }, [router, toast, platformConfig]);
 
   const handleAddStock = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -207,6 +221,24 @@ export default function TeacherStocksPage() {
     toast({ title: "新聞已刪除", variant: "destructive" });
     setNewsToDelete(null);
   }
+
+  const handleMarqueeMessageChange = (index: number, value: string) => {
+    const newMessages = [...marqueeMessages];
+    newMessages[index] = value;
+    setMarqueeMessages(newMessages);
+  };
+
+  const handleSaveMarquee = async () => {
+    setIsSavingMarquee(true);
+    try {
+        await setPlatformConfig({ stockMarqueeMessages: marqueeMessages });
+        toast({ title: "跑馬燈訊息已儲存" });
+    } catch(e) {
+        toast({ title: "儲存失敗", variant: "destructive" });
+    } finally {
+        setIsSavingMarquee(false);
+    }
+  };
   
   if (isLoading || role !== 'admin') {
       return (
@@ -337,6 +369,34 @@ export default function TeacherStocksPage() {
                         )}
                     </TableBody>
                 </Table>
+            </CardContent>
+        </Card>
+        
+        <Card>
+            <CardHeader>
+                <CardTitle>跑馬燈訊息管理</CardTitle>
+                <CardDescription>在此輸入最多10條您想在股票市場頁面輪播的訊息。</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {marqueeMessages.map((msg, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                            <Label htmlFor={`marquee-${index}`} className="w-12 text-right">{index + 1}.</Label>
+                            <Input
+                                id={`marquee-${index}`}
+                                value={msg}
+                                onChange={(e) => handleMarqueeMessageChange(index, e.target.value)}
+                                placeholder={`訊息 #${index + 1}`}
+                            />
+                        </div>
+                    ))}
+                </div>
+                <div className="flex justify-end">
+                    <Button onClick={handleSaveMarquee} disabled={isSavingMarquee}>
+                        {isSavingMarquee && <Loader2 className="mr-2 animate-spin" />}
+                        儲存跑馬燈訊息
+                    </Button>
+                </div>
             </CardContent>
         </Card>
 

@@ -189,4 +189,5 @@ export type PlatformConfig = {
     marketOpenHour?: number;
     marketCloseHour?: number;
     stockMarketNews?: Announcement[];
+    stockMarqueeMessages?: string[];
 }
