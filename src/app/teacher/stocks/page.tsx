@@ -277,7 +277,7 @@ export default function TeacherStocksPage() {
                             <TableRow key={stock.ticker}>
                                 <TableCell>{stock.ticker}</TableCell>
                                 <TableCell>{stock.name}</TableCell>
-                                <TableCell>{stock.price.toLocaleString()}</TableCell>
+                                <TableCell>{Math.round(stock.price).toLocaleString()}</TableCell>
                                 <TableCell>{stock.marketCap}</TableCell>
                                 <TableCell className="text-right">
                                     <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleEditStockClick(stock)}>

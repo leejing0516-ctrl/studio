@@ -951,7 +951,7 @@ export default function TeacherDashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                             {(role === 'admin' ? (platformConfig?.schoolFunds || 0) : (teacher?.pointBalance || 0))?.toLocaleString()}
+                             {(role === 'admin' ? Math.round(platformConfig?.schoolFunds || 0) : Math.round(teacher?.pointBalance || 0))?.toLocaleString()}
                         </div>
                         <p className="text-xs text-muted-foreground">
                            {role === 'admin' ? '可用於撥款給老師或作為活動獎勵' : '可用於發放給學生'}
@@ -1006,7 +1006,7 @@ export default function TeacherDashboardPage() {
                                         <TableRow key={student._docId}>
                                             <TableCell>{student.id}</TableCell>
                                             <TableCell>{student.name}</TableCell>
-                                            <TableCell>{student.points.toLocaleString()}</TableCell>
+                                            <TableCell>{Math.round(student.points).toLocaleString()}</TableCell>
                                             <TableCell className="text-right">
                                                 <Button variant="ghost" size="icon" onClick={() => { setStudentToEdit(student); setIsEditStudentDialogOpen(true); }}><Edit className="h-4 w-4"/></Button>
                                                 <Button variant="ghost" size="icon" onClick={() => { setStudentToResetPassword(student); setIsResetPasswordDialogOpen(true); }}><KeyRound className="h-4 w-4"/></Button>
@@ -1071,7 +1071,7 @@ export default function TeacherDashboardPage() {
                                                 <TableCell>{t.name}</TableCell>
                                                 <TableCell>{t.role === 'admin' ? '校長' : t.role === 'teacher' ? '班級導師' : '科任教師'}</TableCell>
                                                 <TableCell>{(t.classIds || []).map(id => classes.find(c => c.id === id)?.name).join(', ') || '-'}</TableCell>
-                                                <TableCell>{(t.pointBalance || 0).toLocaleString()}</TableCell>
+                                                <TableCell>{Math.round(t.pointBalance || 0).toLocaleString()}</TableCell>
                                                 <TableCell className="text-right">
                                                     <Button variant="ghost" size="icon" onClick={() => {setTeacherToAllocate(t); setIsAllocatePointsDialogOpen(true);}} disabled={t.role === 'admin'}><Coins className="h-4 w-4"/></Button>
                                                     <Button variant="ghost" size="icon" onClick={() => {setTeacherToEdit(t); setEditedTeacherRole(t.role); setIsEditTeacherDialogOpen(true);}}><Edit className="h-4 w-4"/></Button>
@@ -1241,7 +1241,7 @@ export default function TeacherDashboardPage() {
                                             </TableCell>
                                             <TableCell>{student.id}</TableCell>
                                             <TableCell>{student.name}</TableCell>
-                                            <TableCell>{student.points.toLocaleString()}</TableCell>
+                                            <TableCell>{Math.round(student.points).toLocaleString()}</TableCell>
                                             <TableCell>
                                                 <div className="flex gap-2">
                                                     <Input 
@@ -1332,10 +1332,10 @@ export default function TeacherDashboardPage() {
                                                         {pointHistoryForTeacherAndClass.classSummary.length > 0 ? pointHistoryForTeacherAndClass.classSummary.map((summary) => (
                                                             <TableRow key={summary.studentId}>
                                                                 <TableCell>{summary.studentName}</TableCell>
-                                                                <TableCell className="text-right text-green-600 font-medium">+{summary.awarded.toLocaleString()}</TableCell>
-                                                                <TableCell className="text-right text-red-600 font-medium">{summary.deducted.toLocaleString()}</TableCell>
+                                                                <TableCell className="text-right text-green-600 font-medium">+{Math.round(summary.awarded).toLocaleString()}</TableCell>
+                                                                <TableCell className="text-right text-red-600 font-medium">{Math.round(summary.deducted).toLocaleString()}</TableCell>
                                                                 <TableCell className={`text-right font-bold ${summary.net > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                                    {summary.net > 0 ? '+' : ''}{summary.net.toLocaleString()}
+                                                                    {summary.net > 0 ? '+' : ''}{Math.round(summary.net).toLocaleString()}
                                                                 </TableCell>
                                                             </TableRow>
                                                         )) : (
@@ -1365,7 +1365,7 @@ export default function TeacherDashboardPage() {
                                                             <TableRow key={studentId}>
                                                                 <TableCell>{data.name}</TableCell>
                                                                 <TableCell className={`text-right font-medium ${data.total > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                                    {data.total > 0 ? '+' : ''}{data.total.toLocaleString()}
+                                                                    {data.total > 0 ? '+' : ''}{Math.round(data.total).toLocaleString()}
                                                                 </TableCell>
                                                             </TableRow>
                                                         )) : (
@@ -1394,7 +1394,7 @@ export default function TeacherDashboardPage() {
                                                                 <TableCell>{format(parseISO(record.date), 'yyyy-MM-dd HH:mm')}</TableCell>
                                                                 <TableCell>{record.studentName}</TableCell>
                                                                 <TableCell className={`text-right font-medium ${record.points > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                                    {record.points > 0 ? '+' : ''}{record.points.toLocaleString()}
+                                                                    {record.points > 0 ? '+' : ''}{Math.round(record.points).toLocaleString()}
                                                                 </TableCell>
                                                             </TableRow>
                                                         )) : (
@@ -1732,7 +1732,7 @@ export default function TeacherDashboardPage() {
                     <form onSubmit={handleAllocatePoints}>
                         <DialogHeader><DialogTitle>撥款給 {teacherToAllocate?.name}</DialogTitle></DialogHeader>
                         <div className="py-4">
-                            <Label htmlFor="allocation-amount">撥款點數 (學校總資金剩餘: {platformConfig?.schoolFunds?.toLocaleString() || 0} 點)</Label>
+                            <Label htmlFor="allocation-amount">撥款點數 (學校總資金剩餘: {Math.round(platformConfig?.schoolFunds || 0).toLocaleString()} 點)</Label>
                             <Input id="allocation-amount" name="amount" type="number" required />
                         </div>
                         <DialogFooter>

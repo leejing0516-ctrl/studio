@@ -61,7 +61,7 @@ export default function StudentDashboardPage() {
     const chartData = Object.keys(dailyPoints)
         .map(dateKey => ({
             date: format(parseISO(dateKey), "M/d"),
-            points: dailyPoints[dateKey]
+            points: Math.round(dailyPoints[dateKey])
         }))
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         
@@ -132,7 +132,7 @@ export default function StudentDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {totalPoints.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              {totalPoints.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">可用於交易或兌換獎勵</p>
           </CardContent>
@@ -143,7 +143,7 @@ export default function StudentDashboardPage() {
             <BarChartIcon className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${portfolioValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+            <div className="text-2xl font-bold">${Math.round(portfolioValue).toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">本月 +5.2%</p>
           </CardContent>
         </Card>
@@ -153,19 +153,19 @@ export default function StudentDashboardPage() {
             <Wallet className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalAssets.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+            <div className="text-2xl font-bold">${Math.round(totalAssets).toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">投資組合 + 點數</p>
           </CardContent>
         </Card>
          {totalLoanAmount > 0 && (
-          <Card className="border-red-500">
+          <Card className="border-destructive">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">目前貸款</CardTitle>
-              <Landmark className="h-4 w-4 text-red-500" />
+              <Landmark className="h-4 w-4 text-destructive" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-500">
-                {totalLoanAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              <div className="text-2xl font-bold text-destructive">
+                {Math.round(totalLoanAmount).toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground">需在期限內償還</p>
             </CardContent>

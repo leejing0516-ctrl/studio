@@ -145,9 +145,9 @@ export default function LoansPage() {
         const totalRepayment = Math.ceil(activeLoan.amount + activeLoan.interest);
         const isOverdue = activeLoan.status === 'overdue';
       return (
-        <Card className={cn("overflow-hidden", isOverdue && "border-red-500 bg-red-500/5")}>
+        <Card className={cn("overflow-hidden", isOverdue && "border-destructive bg-destructive/5")}>
           <CardHeader>
-            <CardTitle className={cn("flex items-center gap-2", isOverdue && "text-red-500")}>
+            <CardTitle className={cn("flex items-center gap-2", isOverdue && "text-destructive")}>
               <Landmark/>
               進行中的貸款
             </CardTitle>
@@ -160,7 +160,7 @@ export default function LoansPage() {
                   <div><p className="text-muted-foreground">貸款金額</p><p className="font-bold text-lg">{activeLoan.amount.toLocaleString()} 點</p></div>
                   <div><p className="text-muted-foreground">累積利息 ({(activeLoan.interestRate * 100).toFixed(2)}%日利率)</p><p className="font-bold text-lg">{Math.floor(activeLoan.interest).toLocaleString()} 點</p></div>
                   <div><p className="text.muted-foreground">批准日期</p><p>{activeLoan.approvalDate ? format(new Date(activeLoan.approvalDate), 'yyyy-MM-dd') : 'N/A'}</p></div>
-                  <div><p className="text.muted-foreground">還款期限</p><p className={cn(isOverdue && "font-bold text-red-500")}>{format(new Date(activeLoan.repaymentDate), 'yyyy-MM-dd')}</p></div>
+                  <div><p className="text.muted-foreground">還款期限</p><p className={cn(isOverdue && "font-bold text-destructive")}>{format(new Date(activeLoan.repaymentDate), 'yyyy-MM-dd')}</p></div>
               </div>
               <CardFooter className="p-0 pt-4">
                    <div className="w-full bg-muted/80 p-4 rounded-lg text-center">
@@ -169,7 +169,7 @@ export default function LoansPage() {
                    </div>
               </CardFooter>
                {isOverdue && (
-                  <div className="flex items-center text-sm text-red-500 gap-2">
+                  <div className="flex items-center text-sm text-destructive gap-2">
                     <AlertTriangle className="h-4 w-4" />
                     <span>您的貸款已逾期！將會影響您的信用。</span>
                   </div>

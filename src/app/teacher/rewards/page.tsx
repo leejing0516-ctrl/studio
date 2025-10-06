@@ -241,7 +241,7 @@ export default function TeacherRewardsPage() {
                         <TableCell>
                             <div className="flex items-center gap-1 font-semibold text-primary">
                                 <Coins className="h-4 w-4" />
-                                {reward.cost.toLocaleString()}
+                                {Math.round(reward.cost).toLocaleString()}
                             </div>
                         </TableCell>
                         <TableCell>{reward.stock}</TableCell>
