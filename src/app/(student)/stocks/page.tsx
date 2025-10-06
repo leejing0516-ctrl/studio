@@ -329,7 +329,7 @@ export default function StocksPage() {
                             <div className="text-sm text-muted-foreground">{stock.name}</div>
                         </TableCell>
                         <TableCell className="text-right font-medium">
-                            ${stock.price.toFixed(2)}
+                            ${Math.round(stock.price).toLocaleString()}
                         </TableCell>
                         <TableCell className="text-right">
                             <span className={cn(
@@ -380,16 +380,16 @@ export default function StocksPage() {
                                                 <div className="text-sm text-muted-foreground">{item.name}</div>
                                             </TableCell>
                                             <TableCell className="text-right">{item.shares}</TableCell>
-                                            <TableCell className="text-right">${item.avgCost.toFixed(2)}</TableCell>
-                                            <TableCell className="text-right">${item.currentPrice.toFixed(2)}</TableCell>
-                                            <TableCell className="text-right">${item.currentValue.toFixed(2)}</TableCell>
+                                            <TableCell className="text-right">${Math.round(item.avgCost).toLocaleString()}</TableCell>
+                                            <TableCell className="text-right">${Math.round(item.currentPrice).toLocaleString()}</TableCell>
+                                            <TableCell className="text-right">${Math.round(item.currentValue).toLocaleString()}</TableCell>
                                             <TableCell className="text-right">
                                                 <span className={cn(
                                                     "flex items-center justify-end gap-1",
                                                     item.totalGain >= 0 ? "text-destructive" : "text-success",
                                                 )}>
                                                     {item.totalGain < 0 ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />}
-                                                    ${Math.abs(item.totalGain).toFixed(2)} ({item.totalGainPercent.toFixed(2)}%)
+                                                    ${Math.round(Math.abs(item.totalGain)).toLocaleString()} ({item.totalGainPercent.toFixed(2)}%)
                                                 </span>
                                             </TableCell>
                                         </TableRow>
@@ -461,7 +461,7 @@ export default function StocksPage() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
                 <p className="text-right col-span-1">價格</p>
-                <p className="col-span-3">${selectedStock?.price.toFixed(2)}</p>
+                <p className="col-span-3">${Math.round(selectedStock?.price || 0).toLocaleString()}</p>
             </div>
              <div className="grid grid-cols-4 items-center gap-4">
                 <p className="text-right font-bold col-span-1">總計</p>
