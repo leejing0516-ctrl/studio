@@ -3,7 +3,7 @@
 
 import { useContext, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Coins, Trophy, Wallet, BarChart as BarChartIcon, Landmark } from "lucide-react";
+import { Coins, Trophy, Wallet, BarChart as BarChartIcon, Landmark, Users } from "lucide-react";
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Bar, BarChart, XAxis, YAxis } from "recharts"
 import RewardSuggestion from "@/components/reward-suggestion";
@@ -25,7 +25,7 @@ const chartConfig: ChartConfig = {
 
 export default function StudentDashboardPage() {
   const { studentData } = useContext(StudentDataContext);
-  const { students, stocks: marketStocks } = useContext(AppDataContext);
+  const { students, stocks: marketStocks, classes, teachers } = useContext(AppDataContext);
   
   const currentStudent = studentData.student;
 
@@ -110,6 +110,28 @@ export default function StudentDashboardPage() {
     return { rank: studentRank, percentile: studentPercentile };
   }, [students, currentStudent, marketStocks]);
 
+  const studentGroups = useMemo(() => {
+    if (!currentStudent?.groupId) return [];
+    
+    const currentClass = classes.find(c => c.id === currentStudent.classId);
+    if (!currentClass || !currentClass.groups) return [];
+
+    const groups: { teacherName: string, groupName: string }[] = [];
+
+    for (const teacherId in currentClass.groups) {
+        const groupList = currentClass.groups[teacherId] || [];
+        const foundGroup = groupList.find(g => g.id === currentStudent.groupId);
+        if (foundGroup) {
+            const teacher = teachers.find(t => t.id === teacherId);
+            groups.push({
+                teacherName: teacher?.name || '未知老師',
+                groupName: foundGroup.name
+            });
+        }
+    }
+    return groups;
+  }, [currentStudent, classes, teachers]);
+
 
   const totalAssets = portfolioValue + totalPoints;
   const stockPerformance = "上週透過投資科技股獲利 5%。";
@@ -132,7 +154,7 @@ export default function StudentDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {totalPoints.toLocaleString()}
+              {Math.round(totalPoints).toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">可用於交易或兌換獎勵</p>
           </CardContent>
@@ -179,6 +201,25 @@ export default function StudentDashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold">#{rank}</div>
             <p className="text-xs text-muted-foreground">班級前 {100 - Math.floor(percentile)}%</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">我的分組</CardTitle>
+            <Users className="h-4 w-4 text-accent" />
+          </CardHeader>
+          <CardContent>
+             {studentGroups.length > 0 ? (
+                <div className="space-y-1">
+                    {studentGroups.map((group, index) => (
+                        <p key={index} className="text-xs">
+                            在 {group.teacherName} 的課堂中，您是 <span className="font-bold text-primary">{group.groupName}</span> 的成員。
+                        </p>
+                    ))}
+                </div>
+            ) : (
+                <p className="text-xs text-muted-foreground">您尚未被分派到任何小組。</p>
+            )}
           </CardContent>
         </Card>
       </div>
