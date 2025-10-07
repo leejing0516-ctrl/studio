@@ -3,7 +3,7 @@
 
 import { useContext, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Coins, Trophy, Wallet, BarChart as BarChartIcon, Landmark, Users, Globe, PiggyBank } from "lucide-react";
+import { Coins, Trophy, Wallet, BarChart as BarChartIcon, Landmark, Users, Globe, PiggyBank, Bone } from "lucide-react";
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Bar, BarChart, XAxis, YAxis } from "recharts"
 import RewardSuggestion from "@/components/reward-suggestion";
@@ -11,6 +11,7 @@ import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
 import { cn } from "@/lib/utils";
 import { subDays, format, parseISO, startOfDay, isWithinInterval } from "date-fns";
+import StudentPet from "@/components/student-pet";
 
 const chartConfig: ChartConfig = {
   points: {
@@ -27,7 +28,9 @@ export default function StudentDashboardPage() {
   const { studentData } = useContext(StudentDataContext);
   const { students, stocks: marketStocks, classes, teachers } = useContext(AppDataContext);
   
-  const currentStudent = studentData.student;
+  const currentStudent = useMemo(() => 
+    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId)
+  , [students, studentData.student]);
 
   const totalPoints = Math.round(currentStudent?.points || 0);
 
@@ -189,7 +192,7 @@ export default function StudentDashboardPage() {
         <h1 className="text-2xl font-bold tracking-tight">你好, {currentStudent.name}!</h1>
         <p className="text-muted-foreground">歡迎回到您的儀表板。這是您今天的財務狀況概覽。</p>
       </div>
-      <div className={cn("grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6", totalLoanAmount > 0 ? "xl:grid-cols-5" : "xl:grid-cols-4")}>
+      <div className={cn("grid md:grid-cols-2 lg:grid-cols-4 gap-6")}>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">總點數</CardTitle>
@@ -290,6 +293,15 @@ export default function StudentDashboardPage() {
       </div>
 
       <div className="grid md:grid-cols-5 gap-6">
+        <Card className="md:col-span-2">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Bone /> 我的寵物</CardTitle>
+                <CardDescription>您的點數越多，牠就會越強大！</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <StudentPet points={totalPoints} />
+            </CardContent>
+        </Card>
         <Card className="md:col-span-3">
           <CardHeader>
             <CardTitle>最近七日點數趨勢</CardTitle>
@@ -306,7 +318,7 @@ export default function StudentDashboardPage() {
             </ChartContainer>
           </CardContent>
         </Card>
-        <Card className="md:col-span-2 flex flex-col">
+        <Card className="md:col-span-5 flex flex-col">
           <CardHeader>
             <CardTitle>AI 獎勵顧問</CardTitle>
             <CardDescription>根據您的活動獲得個人化的獎勵建議。</CardDescription>
