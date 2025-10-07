@@ -19,22 +19,15 @@ import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
 import { themes, type Theme } from "@/lib/themes";
+import { useFirebaseStorage } from "@/hooks/use-firebase-storage";
 
 const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
-
-const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
 
 export default function TeacherSettingsPage() {
     const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
     const { toast } = useToast();
     const router = useRouter();
+    const { uploadFile, isUploading } = useFirebaseStorage();
 
     const [isSavingSettings, setIsSavingSettings] = useState(false);
     const [uploadingKey, setUploadingKey] = useState<string | null>(null);
@@ -44,7 +37,7 @@ export default function TeacherSettingsPage() {
     const [marketOpenHour, setMarketOpenHour] = useState<number | string>('');
     const [marketCloseHour, setMarketCloseHour] = useState<number | string>('');
     
-    const [sponsorPreviews, setSponsorPreviews] = useState<(string | null)[]>([]);
+    const [sponsorLogoUrls, setSponsorLogoUrls] = useState<(string | null)[]>([]);
     const [selectedTheme, setSelectedTheme] = useState<string>("default");
 
     useEffect(() => {
@@ -60,16 +53,12 @@ export default function TeacherSettingsPage() {
             setLoanInterestRate((platformConfig.loanInterestRate || 0) * 100);
             setMarketOpenHour(platformConfig.marketOpenHour ?? 9);
             setMarketCloseHour(platformConfig.marketCloseHour ?? 14);
-            setSponsorPreviews(platformConfig.sponsorLogoUrls || [null, null, null, null]);
+            setSponsorLogoUrls(platformConfig.sponsorLogoUrls || [null, null, null, null]);
             setSelectedTheme(platformConfig.theme || "default");
         }
     }, [platformConfig, router, toast]);
 
-    const handleImageUpload = async (
-        e: React.ChangeEvent<HTMLInputElement>, 
-        type: 'sponsor', 
-        index?: number
-    ) => {
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -81,28 +70,25 @@ export default function TeacherSettingsPage() {
         const uploadKey = `sponsor_${index}`;
         setUploadingKey(uploadKey);
         
-        try {
-            const dataUrl = await fileToDataUrl(file);
-            if (index !== undefined) {
-                const newPreviews = [...sponsorPreviews];
-                newPreviews[index] = dataUrl;
-                setSponsorPreviews(newPreviews);
-            }
-            toast({ title: "圖片已預覽", description: "請記得點擊下方的「儲存設定」以保存變更。" });
-        } catch (error) {
-            toast({ title: "圖片讀取失敗", variant: "destructive" });
-        } finally {
-            setUploadingKey(null);
+        const filePath = `config/sponsors/${Date.now()}-logo${index + 1}-${file.name}`;
+        const url = await uploadFile(file, filePath);
+
+        if (url) {
+            const newUrls = [...sponsorLogoUrls];
+            newUrls[index] = url;
+            setSponsorLogoUrls(newUrls);
+            toast({ title: "圖片已上傳", description: "請記得點擊下方的「儲存設定」以保存變更。" });
+        } else {
+             toast({ title: "圖片上傳失敗", variant: "destructive" });
         }
+        setUploadingKey(null);
     };
 
-    const handleRemoveLogo = async (type: 'sponsor', index?: number) => {
-       if (index !== undefined) {
-            const newPreviews = [...sponsorPreviews];
-            newPreviews[index] = null;
-            setSponsorPreviews(newPreviews);
-        }
-        toast({ title: "預覽已移除", description: "請儲存設定以讓變更生效。" });
+    const handleRemoveLogo = async (index: number) => {
+       const newUrls = [...sponsorLogoUrls];
+       newUrls[index] = null;
+       setSponsorLogoUrls(newUrls);
+       toast({ title: "圖片已移除", description: "請儲存設定以讓變更生效。" });
     }
 
     const handleSaveSettings = async () => {
@@ -110,13 +96,13 @@ export default function TeacherSettingsPage() {
         
         try {
             await setPlatformConfig({
+                ...platformConfig,
                 fixedDepositInterestRate: Number(fixedDepositRate) / 100,
                 loanInterestRate: Number(loanInterestRate) / 100,
                 marketOpenHour: Number(marketOpenHour),
                 marketCloseHour: Number(marketCloseHour),
-                sponsorLogoUrls: sponsorPreviews,
+                sponsorLogoUrls: sponsorLogoUrls,
                 theme: selectedTheme,
-                petStages: platformConfig?.petStages || [], // Ensure petStages is preserved
             });
 
             toast({ title: "設定已儲存", description: "平台設定已成功更新。" });
@@ -278,21 +264,21 @@ export default function TeacherSettingsPage() {
                     {Array.from({ length: 4 }).map((_, index) => (
                         <div key={index} className="flex items-center gap-4">
                             <div className="w-48 h-24 bg-muted rounded-md flex items-center justify-center relative group">
-                                {sponsorPreviews[index] ? (
-                                    <Image src={sponsorPreviews[index]!} alt={`Sponsor Logo ${index + 1} Preview`} fill className="object-contain p-2" />
+                                {sponsorLogoUrls[index] ? (
+                                    <Image src={sponsorLogoUrls[index]!} alt={`Sponsor Logo ${index + 1} Preview`} fill className="object-contain p-2" />
                                 ) : (
                                     <ImageOff className="h-10 w-10 text-muted-foreground"/>
                                 )}
                             </div>
                              <div className="space-y-2">
                                 <Label>Logo {index + 1}</Label>
-                                <Input id={`sponsor-upload-${index}`} type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'sponsor', index)} className="hidden" disabled={!!uploadingKey} />
-                                <Label htmlFor={`sponsor-upload-${index}`} className={buttonVariants({ variant: "outline", size: "sm", disabled: !!uploadingKey })}>
+                                <Input id={`sponsor-upload-${index}`} type="file" accept="image/*" onChange={(e) => handleImageUpload(e, index)} className="hidden" disabled={!!uploadingKey} />
+                                <Label htmlFor={`sponsor-upload-${index}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
                                      {uploadingKey === `sponsor_${index}` ? <Loader2 className="mr-2 animate-spin"/> : <UploadCloud className="mr-2"/>}
                                      上傳
                                 </Label>
-                                {sponsorPreviews[index] && (
-                                    <Button variant="link" size="sm" className="text-destructive h-auto p-0 flex items-center gap-1" onClick={() => handleRemoveLogo('sponsor', index)} disabled={!!uploadingKey}>
+                                {sponsorLogoUrls[index] && (
+                                    <Button variant="link" size="sm" className="text-destructive h-auto p-0 flex items-center gap-1" onClick={() => handleRemoveLogo(index)} disabled={!!uploadingKey}>
                                         <Trash2 className="h-4 w-4" />
                                         移除
                                     </Button>

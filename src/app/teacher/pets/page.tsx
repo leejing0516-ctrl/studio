@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useContext, useEffect } from "react";
@@ -20,17 +21,9 @@ import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
 import type { PetStage } from "@/lib/types";
+import { useFirebaseStorage } from "@/hooks/use-firebase-storage";
 
 const MAX_FILE_SIZE = 800 * 1024; // 800KB
-
-const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
 
 const defaultPetStages: PetStage[] = [
   {
@@ -63,6 +56,7 @@ export default function TeacherPetsPage() {
     const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
     const { toast } = useToast();
     const router = useRouter();
+    const { uploadFile, isUploading } = useFirebaseStorage();
     
     const [isSaving, setIsSaving] = useState(false);
     const [uploadingKey, setUploadingKey] = useState<string | null>(null);
@@ -99,15 +93,16 @@ export default function TeacherPetsPage() {
         }
 
         setUploadingKey(`stage_${index}`);
-        try {
-            const dataUrl = await fileToDataUrl(file);
-            handleStageChange(index, 'image', dataUrl);
-            toast({ title: "圖片已預覽", description: "請記得點擊下方的「儲存設定」以保存變更。" });
-        } catch (error) {
-            toast({ title: "圖片讀取失敗", variant: "destructive" });
-        } finally {
-            setUploadingKey(null);
+        const filePath = `pets/${Date.now()}-stage${index + 1}-${file.name}`;
+        const url = await uploadFile(file, filePath);
+
+        if (url) {
+            handleStageChange(index, 'image', url);
+            toast({ title: "圖片已上傳", description: "請記得點擊下方的「儲存設定」以保存變更。" });
+        } else {
+            toast({ title: "圖片上傳失敗", variant: "destructive" });
         }
+        setUploadingKey(null);
     };
     
     const handleRemoveImage = (index: number) => {
@@ -174,7 +169,7 @@ export default function TeacherPetsPage() {
                                             </div>
                                             <div className="flex flex-col gap-2">
                                                 <Input id={`image-upload-${index}`} type="file" accept="image/*" onChange={(e) => handleImageUpload(e, index)} className="hidden" disabled={!!uploadingKey} />
-                                                <Label htmlFor={`image-upload-${index}`} className={buttonVariants({ variant: "outline", size: "sm", disabled: !!uploadingKey })}>
+                                                <Label htmlFor={`image-upload-${index}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
                                                     {uploadingKey === `stage_${index}` ? <Loader2 className="mr-2 animate-spin"/> : <UploadCloud className="mr-2"/>}
                                                     上傳
                                                 </Label>

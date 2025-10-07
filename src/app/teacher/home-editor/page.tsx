@@ -19,29 +19,21 @@ import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
 import { Textarea } from "@/components/ui/textarea";
+import { useFirebaseStorage } from "@/hooks/use-firebase-storage";
 
 const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
-
-const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
 
 export default function TeacherHomeEditorPage() {
     const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
     const { toast } = useToast();
     const router = useRouter();
+    const { uploadFile, isUploading } = useFirebaseStorage();
     
     const [isSavingSettings, setIsSavingSettings] = useState(false);
-    const [isUploading, setIsUploading] = useState(false);
 
     const [homeTitle, setHomeTitle] = useState<string>('');
     const [homeSubtitle, setHomeSubtitle] = useState<string>('');
-    const [illustrationPreview, setIllustrationPreview] = useState<string | null>(null);
+    const [illustrationUrl, setIllustrationUrl] = useState<string | null>(null);
 
     useEffect(() => {
         const role = localStorage.getItem('teacherRole');
@@ -54,7 +46,7 @@ export default function TeacherHomeEditorPage() {
         if (platformConfig) {
             setHomeTitle(platformConfig.homeTitle || '歡迎來到南梓實小虛擬銀行');
             setHomeSubtitle(platformConfig.homeSubtitle || '您通往金融素養的門戶，在這裡學習金錢知識既有回報又充滿樂趣！');
-            setIllustrationPreview(platformConfig.homeIllustrationUrl || null);
+            setIllustrationUrl(platformConfig.homeIllustrationUrl || null);
         }
     }, [platformConfig, router, toast]);
 
@@ -67,20 +59,19 @@ export default function TeacherHomeEditorPage() {
             return;
         }
 
-        setIsUploading(true);
-        try {
-            const dataUrl = await fileToDataUrl(file);
-            setIllustrationPreview(dataUrl);
-            toast({ title: "圖片已預覽", description: "請記得點擊下方的「儲存設定」以保存變更。" });
-        } catch (error) {
-            toast({ title: "圖片讀取失敗", variant: "destructive" });
-        } finally {
-            setIsUploading(false);
+        const filePath = `config/home-illustration/${Date.now()}-${file.name}`;
+        const url = await uploadFile(file, filePath);
+        
+        if (url) {
+            setIllustrationUrl(url);
+            toast({ title: "圖片已上傳", description: "請記得點擊下方的「儲存設定」以保存變更。" });
+        } else {
+            toast({ title: "圖片上傳失敗", variant: "destructive" });
         }
     };
 
     const handleRemoveImage = () => {
-        setIllustrationPreview(null);
+        setIllustrationUrl(null);
         toast({ title: "預覽已移除", description: "請儲存設定以讓變更生效。" });
     };
 
@@ -91,7 +82,7 @@ export default function TeacherHomeEditorPage() {
             await setPlatformConfig({
                 homeTitle: homeTitle,
                 homeSubtitle: homeSubtitle,
-                homeIllustrationUrl: illustrationPreview || '',
+                homeIllustrationUrl: illustrationUrl || '',
             });
 
             toast({ title: "設定已儲存", description: "首頁內容已成功更新。" });
@@ -132,8 +123,8 @@ export default function TeacherHomeEditorPage() {
                         <Label>插圖</Label>
                         <Card className="p-4 flex flex-col items-center gap-4 text-center">
                              <div className="w-full h-48 bg-muted rounded-md flex items-center justify-center relative group">
-                                {illustrationPreview ? (
-                                    <Image src={illustrationPreview} alt="首頁插圖預覽" fill className="object-contain p-2" />
+                                {illustrationUrl ? (
+                                    <Image src={illustrationUrl} alt="首頁插圖預覽" fill className="object-contain p-2" />
                                 ) : (
                                     <div className="text-muted-foreground">
                                         <ImageOff className="h-10 w-10 mx-auto mb-2"/>
@@ -143,11 +134,11 @@ export default function TeacherHomeEditorPage() {
                             </div>
                             <div className="flex items-center gap-2">
                                 <Input id="illustration-upload" type="file" accept="image/*" onChange={handleImageUpload} className="hidden" disabled={isUploading} />
-                                <Label htmlFor="illustration-upload" className={buttonVariants({ variant: "outline", size: "sm", disabled: isUploading })}>
+                                <Label htmlFor="illustration-upload" className={buttonVariants({ variant: "outline", size: "sm" })}>
                                      {isUploading ? <Loader2 className="mr-2 animate-spin"/> : <UploadCloud className="mr-2"/>}
                                      上傳圖片
                                 </Label>
-                                {illustrationPreview && (
+                                {illustrationUrl && (
                                     <Button variant="link" size="sm" className="text-destructive h-auto p-0 flex items-center gap-1" onClick={handleRemoveImage} disabled={isUploading}>
                                         <Trash2 className="h-4 w-4" />
                                         移除圖片
@@ -168,5 +159,3 @@ export default function TeacherHomeEditorPage() {
         </div>
     );
 }
-
-    
