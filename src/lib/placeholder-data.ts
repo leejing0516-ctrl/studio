@@ -47,6 +47,7 @@ export const students: Student[] = [
   { id: "S015", name: "羅羿晴", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S015/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [] },
 ];
 
+
 export const rewards: Reward[] = [];
 
 export const stocks: Stock[] = [
