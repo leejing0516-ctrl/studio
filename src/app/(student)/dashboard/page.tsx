@@ -299,7 +299,7 @@ export default function StudentDashboardPage() {
                 <CardDescription>您的點數越多，牠就會越強大！</CardDescription>
             </CardHeader>
             <CardContent>
-                <StudentPet points={totalPoints} />
+                <StudentPet student={currentStudent} />
             </CardContent>
         </Card>
         <Card className="md:col-span-3">
