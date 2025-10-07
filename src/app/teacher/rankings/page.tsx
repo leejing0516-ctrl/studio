@@ -74,7 +74,7 @@ export default function TeacherRankingsPage() {
                         </TableHeader>
                         <TableBody>
                             {rankedStudents.map((student, index) => (
-                                <TableRow key={student._docId}>
+                                <TableRow key={student._docId || student.id}>
                                     <TableCell className="font-bold text-lg">{index + 1}</TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-3">
