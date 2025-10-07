@@ -52,12 +52,12 @@ const StudentPet = ({ student }: { student: Student }) => {
   }, [platformConfig]);
 
   const currentStage = useMemo(() => {
-    let stage = petStages[0];
+    let stage: PetStage = petStages[0];
     for (let i = petStages.length - 1; i >= 0; i--) {
-      if (student.points >= petStages[i].pointsRequired) {
-        stage = petStages[i];
-        break;
-      }
+        if (student.points >= petStages[i].pointsRequired) {
+            stage = petStages[i];
+            break;
+        }
     }
     return stage;
   }, [student.points, petStages]);
@@ -67,7 +67,7 @@ const StudentPet = ({ student }: { student: Student }) => {
   const canEvolve = useMemo(() => {
     if (!nextStage || !student) return false;
     return student.points >= nextStage.pointsRequired && student.petLevel === currentStage.level;
-  }, [nextStage, student.points, student.petLevel, currentStage]);
+  }, [nextStage, student, currentStage]);
 
   const progress = useMemo(() => {
     if (!nextStage) return 100;
@@ -86,7 +86,7 @@ const StudentPet = ({ student }: { student: Student }) => {
         const result = await evolvePet({ 
             studentId: student.id,
             currentPetImage: student.petImage || currentStage.image,
-            evolutionPrompt: nextStage.aiHint,
+            evolutionAiHint: nextStage.aiHint,
         });
 
         if (result.imageUrl) {

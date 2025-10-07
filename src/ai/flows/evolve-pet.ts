@@ -9,11 +9,13 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { geminiProVision } from '@genkit-ai/googleai';
+
 
 const EvolvePetInputSchema = z.object({
   studentId: z.string().describe('The ID of the student, used as a seed for randomization.'),
   currentPetImage: z.string().describe('The data URI of the current pet image.'),
-  evolutionPrompt: z.string().describe('A prompt describing the desired evolution, e.g., "cute baby dragon" or "majestic dragon".'),
+  evolutionAiHint: z.string().describe('A prompt describing the desired evolution, e.g., "cute baby dragon" or "majestic dragon".'),
 });
 export type EvolvePetInput = z.infer<typeof EvolvePetInputSchema>;
 
@@ -26,19 +28,6 @@ export async function evolvePet(input: EvolvePetInput): Promise<EvolvePetOutput>
   return evolvePetFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'evolvePetPrompt',
-  input: {schema: EvolvePetInputSchema},
-  output: {schema: EvolvePetOutputSchema},
-  prompt: `You are an expert creature designer. Your task is to evolve the given creature based on the provided prompt, ensuring the result is unique by using the student's ID as a seed.
-
-Student ID (Seed for uniqueness): {{{studentId}}}
-Current Creature: {{media url=currentPetImage}}
-Evolution Goal: {{{evolutionPrompt}}}
-
-Based on the current creature and the evolution goal, generate a new image of the evolved creature. The new creature should be a clear and logical evolution of the current one, incorporating the essence of the evolution prompt. Ensure the generated image has a transparent background.
-`,
-});
 
 const evolvePetFlow = ai.defineFlow(
   {
@@ -46,8 +35,22 @@ const evolvePetFlow = ai.defineFlow(
     inputSchema: EvolvePetInputSchema,
     outputSchema: EvolvePetOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
+  async (input) => {
+    const { output } = await ai.generate({
+        model: geminiProVision,
+        prompt: `You are an expert creature designer. Your task is to evolve the given creature based on the provided prompt, ensuring the result is unique by using the student's ID as a seed.
+
+Student ID (Seed for uniqueness): ${input.studentId}
+Evolution Goal: ${input.evolutionAiHint}
+
+Based on the current creature, generate a new image of the evolved creature. The new creature should be a clear and logical evolution of the current one, incorporating the essence of the evolution prompt. Ensure the generated image has a transparent background.
+`,
+        input: [ { media: { url: input.currentPetImage } } ],
+        output: {
+            schema: EvolvePetOutputSchema,
+        }
+    });
+
     return output!;
   }
 );
