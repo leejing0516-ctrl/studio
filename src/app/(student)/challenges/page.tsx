@@ -16,10 +16,13 @@ import { zhTW } from "date-fns/locale";
 
 export default function ChallengesPage() {
     const { studentData } = useContext(StudentDataContext);
-    const { setStudents, platformConfig, teachers } = useContext(AppDataContext);
+    const { students, setStudents, platformConfig, teachers } = useContext(AppDataContext);
     const { toast } = useToast();
 
-    const currentStudent = studentData.student;
+    const currentStudent = useMemo(() => 
+        students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId)
+    , [students, studentData.student]);
+
 
     const { availableClassChallenges, availableSchoolChallenges, myChallenges } = useMemo(() => {
         if (!currentStudent) return { availableClassChallenges: [], availableSchoolChallenges: [], myChallenges: [] };
@@ -82,7 +85,7 @@ export default function ChallengesPage() {
             if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
                 return {
                     ...s,
-                    challenges: s.challenges.map(c => c.challengeId === challengeId ? { ...c, status: 'pending_approval' } : c)
+                    challenges: (s.challenges || []).map(c => c.challengeId === challengeId ? { ...c, status: 'pending_approval' } : c)
                 };
             }
             return s;
@@ -222,3 +225,5 @@ export default function ChallengesPage() {
         </div>
     )
 }
+
+    

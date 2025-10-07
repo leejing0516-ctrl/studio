@@ -64,34 +64,4 @@ export const redeemRewardTransaction = async ({
   }
 };
 
-export const useRewardTransaction = async ({
-    studentDocId,
-    redemptionId,
-}: {
-    studentDocId: string;
-    redemptionId: string;
-}) => {
-    try {
-        await runTransaction(db, async (transaction) => {
-            const studentRef = doc(db, "students", studentDocId);
-            const studentDoc = await transaction.get(studentRef);
-
-            if (!studentDoc.exists()) {
-                throw new Error("找不到學生資料。");
-            }
-
-            const student = studentDoc.data() as Student;
-            const updatedRewards = (student.redeemedRewards || []).map(r =>
-                r.redemptionId === redemptionId
-                    ? { ...r, status: 'pending_use' as const }
-                    : r
-            );
-
-            transaction.update(studentRef, { redeemedRewards: updatedRewards });
-        });
-        return { success: true };
-    } catch (e: any) {
-        console.error("Use Reward Transaction failed: ", e);
-        return { success: false, error: e.message };
-    }
-};
+    

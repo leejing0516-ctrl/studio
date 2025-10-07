@@ -96,9 +96,11 @@ export default function StocksPage() {
   const [tradeShares, setTradeShares] = useState(0);
   const { toast } = useToast();
   const { studentData } = useContext(StudentDataContext);
-  const { stocks: marketStocks, isMarketOpen, runTransaction, setStudents, platformConfig } = useContext(AppDataContext);
+  const { students, stocks: marketStocks, isMarketOpen, runTransaction, setStudents, platformConfig } = useContext(AppDataContext);
   
-  const currentStudent = studentData.student;
+  const currentStudent = useMemo(() => 
+    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId)
+  , [students, studentData.student]);
   
   const studentHolding = selectedStock ? currentStudent?.portfolio.find(item => item.ticker === selectedStock.ticker) : null;
   
@@ -179,7 +181,7 @@ export default function StocksPage() {
     try {
         await setStudents(prevStudents => {
              return prevStudents.map(student => {
-                if (student.id === currentStudent.id) {
+                if (student.id === currentStudent.id && student.classId === currentStudent.classId) {
                      if (tradeType === "buy") {
                         if (student.points < totalCost) {
                             throw new Error(`您的點數不足。需要 ${totalCost.toLocaleString()} 點。`);
@@ -479,3 +481,5 @@ export default function StocksPage() {
     </>
   );
 }
+
+    

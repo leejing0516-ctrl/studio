@@ -10,41 +10,50 @@ import { Button } from "@/components/ui/button";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useToast } from "@/hooks/use-toast";
 import type { RedeemedRewardItem, Student } from "@/lib/types";
-import { useRewardTransaction } from "@/lib/actions";
 
 
 export default function MyCollectionPage() {
   const { studentData } = useContext(StudentDataContext);
   const { toast } = useToast();
   const [isUsing, setIsUsing] = useState<string | null>(null);
-  const { setStudents } = useContext(AppDataContext);
+  const { students, setStudents } = useContext(AppDataContext);
   
-  const currentStudent = studentData.student;
+  const currentStudent = useMemo(() => 
+    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId)
+  , [students, studentData.student]);
 
   const handleUseReward = async (redemption: RedeemedRewardItem) => {
     if (!currentStudent?._docId) return;
     
     setIsUsing(redemption.redemptionId);
     
-    const result = await useRewardTransaction({
-        studentDocId: currentStudent._docId,
-        redemptionId: redemption.redemptionId,
-    });
-
-    if (result.success) {
+    try {
+        await setStudents(prev => prev.map(s => {
+            if (s._docId === currentStudent._docId) {
+                return {
+                    ...s,
+                    redeemedRewards: (s.redeemedRewards || []).map(r => 
+                        r.redemptionId === redemption.redemptionId 
+                        ? { ...r, status: 'pending_use' as const } 
+                        : r
+                    )
+                };
+            }
+            return s;
+        }));
          toast({
             title: "已提出使用請求",
             description: `您已請求使用「${redemption.reward.name}」。請等待老師同意。`
         });
-    } else {
+    } catch(e: any) {
         toast({
             title: "請求失敗",
-            description: result.error || "更新您的收藏品狀態時發生錯誤，請稍後再試。",
+            description: e.message || "更新您的收藏品狀態時發生錯誤，請稍後再試。",
             variant: "destructive"
         });
+    } finally {
+        setIsUsing(null);
     }
-    
-    setIsUsing(null);
   };
 
   const redeemedRewards = useMemo(() => {
@@ -138,3 +147,5 @@ export default function MyCollectionPage() {
     </div>
   );
 }
+
+    
