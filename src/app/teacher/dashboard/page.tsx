@@ -1075,7 +1075,6 @@ export default function TeacherDashboardPage() {
                                         </TableHead>
                                         <TableHead>座號</TableHead>
                                         <TableHead>姓名</TableHead>
-                                        <TableHead>分組</TableHead>
                                         <TableHead>持有總點數</TableHead>
                                         <TableHead className="text-right">操作</TableHead>
                                     </TableRow>
@@ -1092,7 +1091,6 @@ export default function TeacherDashboardPage() {
                                             </TableCell>
                                             <TableCell>{student.id}</TableCell>
                                             <TableCell>{student.name}</TableCell>
-                                            <TableCell>{currentTeacherGroups?.find(g => g.id === student.groupId)?.name || '未分組'}</TableCell>
                                             <TableCell>{Math.round(student.points).toLocaleString()}</TableCell>
                                             <TableCell className="text-right">
                                                 {role !== 'subject_teacher' && (
@@ -1122,7 +1120,7 @@ export default function TeacherDashboardPage() {
                                         </TableRow>
                                     )) : (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="h-24 text-center">請先選擇班級，或此班級無學生。</TableCell>
+                                            <TableCell colSpan={5} className="h-24 text-center">請先選擇班級，或此班級無學生。</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
