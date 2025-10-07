@@ -3,7 +3,7 @@
 
 import { useContext, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Coins, Trophy, Wallet, BarChart as BarChartIcon, Landmark, Users } from "lucide-react";
+import { Coins, Trophy, Wallet, BarChart as BarChartIcon, Landmark, Users, Globe } from "lucide-react";
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Bar, BarChart, XAxis, YAxis } from "recharts"
 import RewardSuggestion from "@/components/reward-suggestion";
@@ -86,11 +86,11 @@ export default function StudentDashboardPage() {
         .reduce((acc, loan) => acc + loan.amount, 0);
   }, [currentStudent]);
 
-  const { rank, percentile } = useMemo(() => {
-    if (!currentStudent) return { rank: 0, percentile: 0 };
+  const { classRank, classPercentile } = useMemo(() => {
+    if (!currentStudent) return { classRank: 0, classPercentile: 0 };
     
-    // Filter students in the same class
     const studentsInClass = students.filter(s => s.classId === currentStudent.classId);
+    if (studentsInClass.length === 0) return { classRank: 0, classPercentile: 0 };
 
     const studentsWithAssets = studentsInClass.map(student => {
       const studentPortfolioValue = (student.portfolio || []).reduce((acc, item) => {
@@ -107,8 +107,30 @@ export default function StudentDashboardPage() {
     const studentRank = studentsWithAssets.findIndex(s => s.id === currentStudent.id) + 1;
     const studentPercentile = studentsInClass.length > 1 ? ((studentsInClass.length - studentRank) / (studentsInClass.length - 1) ) * 100 : 100;
     
-    return { rank: studentRank, percentile: studentPercentile };
+    return { classRank: studentRank, classPercentile: studentPercentile };
   }, [students, currentStudent, marketStocks]);
+
+  const { schoolRank, schoolPercentile } = useMemo(() => {
+    if (!currentStudent || students.length === 0) return { schoolRank: 0, schoolPercentile: 0 };
+    
+    const studentsWithAssets = students.map(student => {
+      const studentPortfolioValue = (student.portfolio || []).reduce((acc, item) => {
+        const marketInfo = marketStocks.find(s => s.ticker === item.ticker);
+        const currentValue = marketInfo ? marketInfo.price * item.shares : 0;
+        return acc + currentValue;
+      }, 0);
+      const totalAssets = student.points + studentPortfolioValue;
+      return { ...student, totalAssets };
+    });
+
+    studentsWithAssets.sort((a, b) => b.totalAssets - a.totalAssets);
+
+    const studentRank = studentsWithAssets.findIndex(s => s.id === currentStudent.id && s.classId === currentStudent.classId) + 1;
+    const studentPercentile = students.length > 1 ? ((students.length - studentRank) / (students.length - 1) ) * 100 : 100;
+    
+    return { schoolRank: studentRank, schoolPercentile: studentPercentile };
+  }, [students, currentStudent, marketStocks]);
+
 
   const studentGroups = useMemo(() => {
     if (!currentStudent?.groupId) return [];
@@ -146,7 +168,7 @@ export default function StudentDashboardPage() {
         <h1 className="text-2xl font-bold tracking-tight">你好, {currentStudent.name}!</h1>
         <p className="text-muted-foreground">歡迎回到您的儀表板。這是您今天的財務狀況概覽。</p>
       </div>
-      <div className={cn("grid md:grid-cols-2 gap-6", totalLoanAmount > 0 ? "lg:grid-cols-5" : "lg:grid-cols-4")}>
+      <div className={cn("grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6", totalLoanAmount > 0 && "lg:grid-cols-3 xl:grid-cols-4")}>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">總點數</CardTitle>
@@ -199,8 +221,18 @@ export default function StudentDashboardPage() {
             <Trophy className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">#{rank}</div>
-            <p className="text-xs text-muted-foreground">班級前 {100 - Math.floor(percentile)}%</p>
+            <div className="text-2xl font-bold">#{classRank}</div>
+            <p className="text-xs text-muted-foreground">班級前 {100 - Math.floor(classPercentile)}%</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">全校排名</CardTitle>
+            <Globe className="h-4 w-4 text-accent" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">#{schoolRank}</div>
+            <p className="text-xs text-muted-foreground">全校前 {100 - Math.floor(schoolPercentile)}%</p>
           </CardContent>
         </Card>
         <Card>

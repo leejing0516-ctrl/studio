@@ -35,6 +35,7 @@ import {
   Mail,
   HeartHandshake,
   Repeat,
+  Globe
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
