@@ -26,12 +26,11 @@ export default function TeacherRankingsPage() {
     const { students, stocks, classes } = useContext(AppDataContext);
 
     const rankedStudents = useMemo(() => {
-        if (students.length === 0) return [];
-
-        // Deduplicate students based on _docId to prevent ranking errors
+        // This is a robust way to ensure each student is unique, even if the source array has duplicates.
+        // It uses a Map to overwrite any older student data with the latest entry for the same _docId.
         const uniqueStudentsMap = new Map<string, Student>();
         students.forEach(student => {
-            if (student._docId && !uniqueStudentsMap.has(student._docId)) {
+            if (student._docId) {
                 uniqueStudentsMap.set(student._docId, student);
             }
         });
