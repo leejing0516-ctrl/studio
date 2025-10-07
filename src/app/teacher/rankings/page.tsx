@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useContext, useMemo, useState } from "react";
@@ -34,11 +33,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { Student } from "@/lib/types";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function TeacherRankingsPage() {
     const { students, stocks, classes, setStudents } = useContext(AppDataContext);
     const { toast } = useToast();
     const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+    const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
 
     const listedStudents = useMemo(() => {
         // Use a Map to ensure each student is unique based on _docId, taking the last entry.
@@ -79,6 +80,32 @@ export default function TeacherRankingsPage() {
         });
         setStudentToDelete(null);
     };
+    
+    const handleSelectStudent = (studentDocId: string, isSelected: boolean) => {
+        if (isSelected) {
+            setSelectedStudents(prev => [...prev, studentDocId]);
+        } else {
+            setSelectedStudents(prev => prev.filter(id => id !== studentDocId));
+        }
+    };
+
+    const handleSelectAll = (isAllSelected: boolean) => {
+        if (isAllSelected) {
+            setSelectedStudents(listedStudents.map(s => s._docId!));
+        } else {
+            setSelectedStudents([]);
+        }
+    };
+    
+    const handleBatchDelete = async () => {
+        if (selectedStudents.length === 0) return;
+        await setStudents(currentStudents => currentStudents.filter(s => !selectedStudents.includes(s._docId!)));
+        toast({
+            title: `已批次刪除 ${selectedStudents.length} 位學生`,
+            variant: "destructive"
+        });
+        setSelectedStudents([]);
+    };
 
     return (
         <div className="animate-in fade-in-0 duration-500">
@@ -91,11 +118,42 @@ export default function TeacherRankingsPage() {
                     <CardDescription>
                         列出所有學生的總資產（點數 + 投資組合價值），按班級及座號排序。您可以直接在此刪除異常或重複的資料。
                     </CardDescription>
+                     <div className="flex justify-end">
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive" disabled={selectedStudents.length === 0}>
+                                    <Trash2 className="mr-2" />
+                                    批次刪除 ({selectedStudents.length})
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>確定要批次刪除嗎？</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        您即將永久刪除 {selectedStudents.length} 位學生。此操作無法復原。
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>取消</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleBatchDelete} className={buttonVariants({ variant: "destructive" })}>
+                                        確定刪除
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                <TableHead className="w-[50px]">
+                                    <Checkbox
+                                        checked={selectedStudents.length > 0 && selectedStudents.length === listedStudents.length}
+                                        onCheckedChange={(checked) => handleSelectAll(Boolean(checked))}
+                                        aria-label="全選"
+                                    />
+                                </TableHead>
                                 <TableHead>班級</TableHead>
                                 <TableHead>座號</TableHead>
                                 <TableHead>學生</TableHead>
@@ -107,7 +165,14 @@ export default function TeacherRankingsPage() {
                         </TableHeader>
                         <TableBody>
                             {listedStudents.map((student) => (
-                                <TableRow key={student._docId || student.id}>
+                                <TableRow key={student._docId || student.id} data-state={selectedStudents.includes(student._docId!) ? 'selected' : ''}>
+                                    <TableCell>
+                                        <Checkbox
+                                            checked={selectedStudents.includes(student._docId!)}
+                                            onCheckedChange={(checked) => handleSelectStudent(student._docId!, Boolean(checked))}
+                                            aria-label={`選擇 ${student.name}`}
+                                        />
+                                    </TableCell>
                                     <TableCell>
                                         {classes.find(c => c.id === student.classId)?.name || student.classId}
                                     </TableCell>
