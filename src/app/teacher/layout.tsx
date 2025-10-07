@@ -34,6 +34,7 @@ import {
   Home,
   DatabaseZap,
   Trophy,
+  Bone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -218,6 +219,7 @@ export default function TeacherLayout({
     { href: "/teacher/rewards", label: "獎勵管理", icon: Gift, roles: ['admin', 'teacher'] },
     { href: "/teacher/challenges", label: "挑戰管理", icon: Flag, roles: ['admin', 'teacher', 'subject_teacher'] },
     { href: "/teacher/habits", label: "習慣審核", icon: Repeat, roles: ['admin', 'teacher'] },
+    { href: "/teacher/pets", label: "寵物管理", icon: Bone, roles: ['admin'] },
     { href: "/teacher/stocks", label: "股票管理", icon: LineChart, roles: ['admin'] },
     { href: "/teacher/fundraising", label: "募資管理", icon: HeartHandshake, roles: ['admin'] },
     { href: "/teacher/home-editor", label: "首頁編輯", icon: Home, roles: ['admin'] },

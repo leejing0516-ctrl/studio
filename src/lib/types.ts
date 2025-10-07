@@ -118,7 +118,7 @@ export type Reward = {
 };
 
 export type Challenge = {
-  id: string;
+  id:string;
   _docId?: string;
   name:string;
   description: string;
@@ -179,6 +179,15 @@ export type Announcement = {
     teacherName: string;
 };
 
+export type PetStage = {
+  level: number;
+  name: string;
+  image: string;
+  description: string;
+  pointsRequired: number;
+  aiHint: string;
+};
+
 export type PlatformConfig = {
     id: 'main';
     schoolFunds?: number;
@@ -198,4 +207,5 @@ export type PlatformConfig = {
     marketCloseHour?: number;
     stockMarketNews?: Announcement[];
     stockMarqueeMessages?: string[];
+    petStages?: PetStage[];
 }

@@ -1,11 +1,13 @@
 
 "use client";
 
-import { useMemo } from 'react';
+import { useMemo, useContext } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
+import { AppDataContext } from '@/context/AppDataContext';
+import type { PetStage } from '@/lib/types';
 
-const petStages = [
+const defaultPetStages: PetStage[] = [
   {
     level: 1,
     name: "點點蛋",
@@ -32,7 +34,16 @@ const petStages = [
   },
 ];
 
+
 const StudentPet = ({ points }: { points: number }) => {
+  const { platformConfig } = useContext(AppDataContext);
+  
+  const petStages = useMemo(() => {
+    return platformConfig?.petStages && platformConfig.petStages.length > 0 
+      ? platformConfig.petStages 
+      : defaultPetStages;
+  }, [platformConfig]);
+
   const currentStage = useMemo(() => {
     let stage = petStages[0];
     for (let i = petStages.length - 1; i >= 0; i--) {
@@ -42,7 +53,7 @@ const StudentPet = ({ points }: { points: number }) => {
       }
     }
     return stage;
-  }, [points]);
+  }, [points, petStages]);
   
   const nextStage = petStages.find(s => s.level === currentStage.level + 1);
 
@@ -50,6 +61,7 @@ const StudentPet = ({ points }: { points: number }) => {
     if (!nextStage) return 100;
     const pointsInCurrentStage = points - currentStage.pointsRequired;
     const pointsForNextStage = nextStage.pointsRequired - currentStage.pointsRequired;
+    if (pointsForNextStage <= 0) return 100;
     return Math.min((pointsInCurrentStage / pointsForNextStage) * 100, 100);
   }, [points, currentStage, nextStage]);
 
