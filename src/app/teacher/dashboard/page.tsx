@@ -949,7 +949,6 @@ export default function TeacherDashboardPage() {
             await runTransaction(async (transaction) => {
                 const classRef = doc(db, 'classes', currentClass.id);
                 
-                // Firestore doesn't allow nested fields with dots in keys.
                 const groupsUpdatePath = `groups.${teacherId}`;
                 transaction.update(classRef, { [groupsUpdatePath]: groups });
 
@@ -958,7 +957,6 @@ export default function TeacherDashboardPage() {
                     if (assignment.groupId) {
                         transaction.update(studentRef, { groupId: assignment.groupId });
                     } else {
-                        // To remove a field, use `deleteField()`
                         transaction.update(studentRef, { groupId: deleteField() });
                     }
                 }
@@ -2029,3 +2027,4 @@ const GroupManagementDialog = ({
 
 
     
+
