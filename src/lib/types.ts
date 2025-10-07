@@ -102,8 +102,6 @@ export type Student = {
   challenges?: StudentChallenge[];
   fixedDeposits?: FixedDeposit[];
   habits?: StudentHabit[];
-  petLevel: number;
-  petImage?: string;
 };
 
 export type Reward = {
