@@ -31,6 +31,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogHeader,
+  AlertDialogFooter,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
@@ -1239,11 +1240,12 @@ export default function TeacherDashboardPage() {
                                 {role === 'admin' ? (
                                     Object.entries(currentClass?.groups || {}).map(([tId, groupList]) => {
                                         const groups = Array.isArray(groupList) ? groupList : [];
+                                        if (groups.length === 0) return null;
                                         return (
                                             <div key={tId}>
                                                 <h3 className="font-semibold mb-2">由 {teachers.find(t => t.id === tId)?.name || '未知老師'} 建立的分組</h3>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                                    {groups.length > 0 ? groups.map(group => (
+                                                    {groups.map(group => (
                                                         <Card key={group.id}>
                                                             <CardHeader><CardTitle>{group.name}</CardTitle></CardHeader>
                                                             <CardContent>
@@ -1252,9 +1254,7 @@ export default function TeacherDashboardPage() {
                                                                 </ul>
                                                             </CardContent>
                                                         </Card>
-                                                    )) : (
-                                                        <p className="text-muted-foreground col-span-full text-center py-4">此老師尚未建立任何分組。</p>
-                                                    )}
+                                                    ))}
                                                 </div>
                                             </div>
                                         )
@@ -2024,13 +2024,5 @@ const GroupManagementDialog = ({
         </DialogContent>
     );
 };
-
-    
-
-
-
-    
-
-
 
     
