@@ -30,7 +30,6 @@ import {
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
-  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
@@ -1238,24 +1237,28 @@ export default function TeacherDashboardPage() {
                             </div>
                              <div className="space-y-6">
                                 {role === 'admin' ? (
-                                    Object.entries(currentClass?.groups || {}).map(([tId, groupList]) => (
-                                        <div key={tId}>
-                                            <h3 className="font-semibold mb-2">由 {teachers.find(t => t.id === tId)?.name || '未知老師'} 建立的分組</h3>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                                {(groupList || []).map(group => (
-                                                    <Card key={group.id}>
-                                                        <CardHeader><CardTitle>{group.name}</CardTitle></CardHeader>
-                                                        <CardContent>
-                                                            <ul className="space-y-2 text-sm">
-                                                                {studentsInClass.filter(s => s.groupId === group.id).map(s => <li key={s.id}>{s.name}</li>)}
-                                                            </ul>
-                                                        </CardContent>
-                                                    </Card>
-                                                ))}
-                                                {(groupList || []).length === 0 && <p className="text-muted-foreground col-span-full text-center py-4">此老師尚未建立任何分組。</p>}
+                                    Object.entries(currentClass?.groups || {}).map(([tId, groupList]) => {
+                                        const groups = Array.isArray(groupList) ? groupList : [];
+                                        return (
+                                            <div key={tId}>
+                                                <h3 className="font-semibold mb-2">由 {teachers.find(t => t.id === tId)?.name || '未知老師'} 建立的分組</h3>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                    {groups.length > 0 ? groups.map(group => (
+                                                        <Card key={group.id}>
+                                                            <CardHeader><CardTitle>{group.name}</CardTitle></CardHeader>
+                                                            <CardContent>
+                                                                <ul className="space-y-2 text-sm">
+                                                                    {studentsInClass.filter(s => s.groupId === group.id).map(s => <li key={s.id}>{s.name}</li>)}
+                                                                </ul>
+                                                            </CardContent>
+                                                        </Card>
+                                                    )) : (
+                                                        <p className="text-muted-foreground col-span-full text-center py-4">此老師尚未建立任何分組。</p>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))
+                                        )
+                                    })
                                 ) : (
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                         {currentTeacherGroups.map(group => (
@@ -1284,7 +1287,7 @@ export default function TeacherDashboardPage() {
                             <CardDescription>獎勵或扣除學生的點數。輸入正數為發送，負數為扣除。</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                             <div className="mb-4 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="class-select-points">選擇班級</Label>
                                     <Select onValueChange={setSelectedClassId} value={selectedClassId}>
@@ -1298,10 +1301,10 @@ export default function TeacherDashboardPage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="flex flex-wrap items-end gap-2 p-2 rounded-md bg-muted">
-                                    <Label htmlFor="batch-select" className="text-sm font-medium">批次操作</Label>
+                                <div className="flex items-center gap-2 p-2 rounded-md bg-muted">
+                                    <Label htmlFor="batch-select" className="text-sm font-medium whitespace-nowrap">批次操作:</Label>
                                     <Select onValueChange={setBatchTarget} value={batchTarget}>
-                                        <SelectTrigger id="batch-select" className="w-40 h-9">
+                                        <SelectTrigger id="batch-select" className="w-auto h-9">
                                             <SelectValue placeholder="選擇目標"/>
                                         </SelectTrigger>
                                         <SelectContent>
@@ -2028,3 +2031,6 @@ const GroupManagementDialog = ({
 
     
 
+
+
+    
