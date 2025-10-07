@@ -15,7 +15,7 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, ImageOff, UploadCloud, Trash2, Coins } from "lucide-react";
+import { Loader2, ImageOff, UploadCloud, Trash2, Coins, Wand2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
@@ -140,7 +140,7 @@ export default function TeacherPetsPage() {
         setIsSaving(true);
         try {
             await setPlatformConfig({ petStages: petStages });
-            toast({ title: "儲存成功", description: "寵物設定已更新。" });
+            toast({ title: "儲存成功", description: "寵物進化規則已更新。" });
         } catch (error: any) {
             toast({ title: "儲存失敗", description: error.message || "發生未知錯誤。", variant: "destructive" });
         } finally {
@@ -152,8 +152,11 @@ export default function TeacherPetsPage() {
         <div className="space-y-6 animate-in fade-in-0 duration-500">
             <Card>
                 <CardHeader>
-                    <CardTitle>寵物進化管理</CardTitle>
-                    <CardDescription>設定學生寵物的不同進化階段、圖片、名稱以及進化所需的點數。</CardDescription>
+                    <CardTitle>寵物進化規則管理</CardTitle>
+                    <CardDescription>
+                        您可以在此設定寵物進化的「規則」。AI 會根據您設定的「AI 提示詞」為每個學生生成獨一無二的寵物外觀。
+                        您主要負責定義：1. 進化所需的點數門檻。 2. 每個階段的主題（名稱與提示詞）。
+                    </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     {petStages.map((stage, index) => (
@@ -164,7 +167,7 @@ export default function TeacherPetsPage() {
                             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 p-2">
                                 <div className="space-y-4">
                                      <div className="space-y-2">
-                                        <Label>寵物圖片 (建議大小上限 2MB)</Label>
+                                        <Label>預設圖片 (僅作為初始或備用)</Label>
                                         <div className="flex items-center gap-4">
                                             <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
                                                 {stage.image ? (
@@ -189,7 +192,7 @@ export default function TeacherPetsPage() {
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor={`points-${index}`}>進化所需點數</Label>
+                                        <Label htmlFor={`points-${index}`}>進化所需點數門檻</Label>
                                         <div className="flex items-center gap-2">
                                             <Coins className="h-5 w-5 text-muted-foreground"/>
                                             <Input 
@@ -208,12 +211,16 @@ export default function TeacherPetsPage() {
                                         <Input id={`name-${index}`} value={stage.name} onChange={(e) => handleStageChange(index, 'name', e.target.value)} />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor={`desc-${index}`}>描述</Label>
+                                        <Label htmlFor={`desc-${index}`}>階段描述</Label>
                                         <Textarea id={`desc-${index}`} value={stage.description} onChange={(e) => handleStageChange(index, 'description', e.target.value)} />
                                     </div>
                                      <div className="space-y-2">
-                                        <Label htmlFor={`ai-hint-${index}`}>AI 圖片提示詞</Label>
-                                        <Input id={`ai-hint-${index}`} value={stage.aiHint} onChange={(e) => handleStageChange(index, 'aiHint', e.target.value)} placeholder="例如：cute dragon" />
+                                        <Label htmlFor={`ai-hint-${index}`} className="flex items-center gap-1.5">
+                                            <Wand2 className="h-4 w-4 text-primary" />
+                                            AI 進化提示詞 (AI Hint)
+                                        </Label>
+                                        <Input id={`ai-hint-${index}`} value={stage.aiHint} onChange={(e) => handleStageChange(index, 'aiHint', e.target.value)} placeholder="例如：cute baby dragon" />
+                                        <p className="text-xs text-muted-foreground">給 AI 畫家的靈感關鍵字，它會基於此主題生成獨特的寵物。</p>
                                     </div>
                                 </div>
                             </CardContent>
@@ -236,7 +243,7 @@ export default function TeacherPetsPage() {
                 <CardFooter className="flex justify-end">
                     <Button onClick={handleSave} disabled={isSaving || !!uploadingKey}>
                         {isSaving && <Loader2 className="mr-2 animate-spin" />}
-                        儲存寵物設定
+                        儲存進化規則
                     </Button>
                 </CardFooter>
             </Card>
