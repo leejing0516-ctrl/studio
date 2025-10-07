@@ -170,23 +170,37 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     ) => {
         const q = query(collection(db, collectionName));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const data: (T & { _docId: string })[] = [];
-            querySnapshot.forEach(docSnap => {
-                const docData = docSnap.data() as T;
-                const docId = useIdAsDocId ? docData.id! : docSnap.id;
-                data.push({ ...docData, _docId: docId });
-            });
-            
-            // Deduplicate data to prevent issues with duplicate entries
-            const uniqueDataMap = new Map<string, any>();
-            data.forEach(item => {
-                if (item._docId) {
-                    uniqueDataMap.set(item._docId, item);
-                }
-            });
-            const uniqueData = Array.from(uniqueDataMap.values());
+            setter(currentData => {
+                let updatedData = [...currentData];
+                
+                querySnapshot.docChanges().forEach((change) => {
+                    const docData = change.doc.data() as T;
+                    const docId = useIdAsDocId ? docData.id! : change.doc.id;
+                    const fullData = { ...docData, _docId: docId };
+                    const index = updatedData.findIndex(item => item._docId === docId);
 
-            setter(uniqueData);
+                    if (change.type === "added") {
+                        if (index === -1) {
+                           updatedData.push(fullData);
+                        } else {
+                           // This can happen on initial load, treat as modified
+                           updatedData[index] = fullData;
+                        }
+                    }
+                    if (change.type === "modified") {
+                        if (index !== -1) {
+                            updatedData[index] = fullData;
+                        }
+                    }
+                    if (change.type === "removed") {
+                        if (index !== -1) {
+                            updatedData.splice(index, 1);
+                        }
+                    }
+                });
+                return updatedData;
+            });
+
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
         }, (error) => {
             console.error(`Error fetching real-time ${collectionName}:`, error);
