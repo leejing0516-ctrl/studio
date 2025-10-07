@@ -1040,10 +1040,39 @@ export default function TeacherDashboardPage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
+                                <AlertDialog open={isBatchDeleteConfirmOpen} onOpenChange={setIsBatchDeleteConfirmOpen}>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="destructive" disabled={selectedStudents.length === 0}>
+                                            <Trash2 className="mr-2" />
+                                            批次刪除 ({selectedStudents.length})
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>確定要批次刪除嗎？</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                您即將永久刪除 {selectedStudents.length} 位學生。此操作無法復原。
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>取消</AlertDialogCancel>
+                                            <AlertDialogAction onClick={handleBatchDelete} className={buttonVariants({ variant: "destructive" })}>
+                                                確定刪除
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
                             </div>
                             <Table>
                                 <TableHeader>
                                     <TableRow>
+                                        <TableHead className="w-[50px]">
+                                            <Checkbox 
+                                                onCheckedChange={(checked) => handleSelectAll(Boolean(checked))}
+                                                checked={selectedStudents.length > 0 && selectedStudents.length === studentsInClass.length}
+                                                aria-label="全選"
+                                            />
+                                        </TableHead>
                                         <TableHead>座號</TableHead>
                                         <TableHead>姓名</TableHead>
                                         <TableHead>分組</TableHead>
@@ -1053,7 +1082,14 @@ export default function TeacherDashboardPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {studentsInClass.length > 0 ? studentsInClass.map(student => (
-                                        <TableRow key={student._docId}>
+                                        <TableRow key={student._docId} data-state={selectedStudents.includes(student._docId || '') ? 'selected' : ''}>
+                                            <TableCell>
+                                                <Checkbox
+                                                     checked={selectedStudents.includes(student._docId!)}
+                                                     onCheckedChange={(checked) => handleSelectStudent(student._docId!, Boolean(checked))}
+                                                     aria-label={`選擇 ${student.name}`}
+                                                />
+                                            </TableCell>
                                             <TableCell>{student.id}</TableCell>
                                             <TableCell>{student.name}</TableCell>
                                             <TableCell>{currentTeacherGroups?.find(g => g.id === student.groupId)?.name || '未分組'}</TableCell>
@@ -1086,7 +1122,7 @@ export default function TeacherDashboardPage() {
                                         </TableRow>
                                     )) : (
                                         <TableRow>
-                                            <TableCell colSpan={5} className="h-24 text-center">請先選擇班級，或此班級無學生。</TableCell>
+                                            <TableCell colSpan={6} className="h-24 text-center">請先選擇班級，或此班級無學生。</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
