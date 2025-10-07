@@ -176,7 +176,17 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 const docId = useIdAsDocId ? docData.id! : docSnap.id;
                 data.push({ ...docData, _docId: docId });
             });
-            setter(data);
+            
+            // Deduplicate data to prevent issues with duplicate entries
+            const uniqueDataMap = new Map<string, any>();
+            data.forEach(item => {
+                if (item._docId) {
+                    uniqueDataMap.set(item._docId, item);
+                }
+            });
+            const uniqueData = Array.from(uniqueDataMap.values());
+
+            setter(uniqueData);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
         }, (error) => {
             console.error(`Error fetching real-time ${collectionName}:`, error);
