@@ -170,37 +170,13 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     ) => {
         const q = query(collection(db, collectionName));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            setter(currentData => {
-                let updatedData = [...currentData];
-                
-                querySnapshot.docChanges().forEach((change) => {
-                    const docData = change.doc.data() as T;
-                    const docId = useIdAsDocId ? docData.id! : change.doc.id;
-                    const fullData = { ...docData, _docId: docId };
-                    const index = updatedData.findIndex(item => item._docId === docId);
-
-                    if (change.type === "added") {
-                        if (index === -1) {
-                           updatedData.push(fullData);
-                        } else {
-                           // This can happen on initial load, treat as modified
-                           updatedData[index] = fullData;
-                        }
-                    }
-                    if (change.type === "modified") {
-                        if (index !== -1) {
-                            updatedData[index] = fullData;
-                        }
-                    }
-                    if (change.type === "removed") {
-                        if (index !== -1) {
-                            updatedData.splice(index, 1);
-                        }
-                    }
-                });
-                return updatedData;
-            });
-
+            const data = querySnapshot.docs.map(doc => ({
+                ...doc.data(),
+                _docId: doc.id,
+                // For collections using a field as ID (like 'classes')
+                ...(useIdAsDocId && { id: doc.id })
+            })) as T[];
+            setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
         }, (error) => {
             console.error(`Error fetching real-time ${collectionName}:`, error);
