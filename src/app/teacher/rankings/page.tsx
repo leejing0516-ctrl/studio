@@ -60,14 +60,8 @@ export default function TeacherRankingsPage() {
             return { ...student, totalAssets, portfolioValue };
         });
 
-        // Sort by classId, then by student id
-        return studentsWithAssets.sort((a, b) => {
-            if (a.classId < b.classId) return -1;
-            if (a.classId > b.classId) return 1;
-            if (a.id < b.id) return -1;
-            if (a.id > b.id) return 1;
-            return 0;
-        });
+        // Sort by total assets descending
+        return studentsWithAssets.sort((a, b) => b.totalAssets - a.totalAssets);
     }, [students, stocks]);
 
     const handleDeleteStudent = async () => {
@@ -113,10 +107,10 @@ export default function TeacherRankingsPage() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Trophy />
-                        全校學生資產列表
+                        全校學生資產排名
                     </CardTitle>
                     <CardDescription>
-                        列出所有學生的總資產（點數 + 投資組合價值），按班級及座號排序。您可以直接在此刪除異常或重複的資料。
+                        列出所有學生的總資產（點數 + 投資組合價值），並依此排名。您可以直接在此刪除異常或重複的資料。
                     </CardDescription>
                      <div className="flex justify-end">
                         <AlertDialog>
@@ -154,9 +148,9 @@ export default function TeacherRankingsPage() {
                                         aria-label="全選"
                                     />
                                 </TableHead>
-                                <TableHead>班級</TableHead>
-                                <TableHead>座號</TableHead>
+                                <TableHead className="w-[80px]">排名</TableHead>
                                 <TableHead>學生</TableHead>
+                                <TableHead>班級</TableHead>
                                 <TableHead className="text-right">總資產</TableHead>
                                 <TableHead className="text-right">持有總點數</TableHead>
                                 <TableHead className="text-right">投資組合價值</TableHead>
@@ -164,7 +158,7 @@ export default function TeacherRankingsPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {listedStudents.map((student) => (
+                            {listedStudents.map((student, index) => (
                                 <TableRow key={student._docId || student.id} data-state={selectedStudents.includes(student._docId!) ? 'selected' : ''}>
                                     <TableCell>
                                         <Checkbox
@@ -173,10 +167,7 @@ export default function TeacherRankingsPage() {
                                             aria-label={`選擇 ${student.name}`}
                                         />
                                     </TableCell>
-                                    <TableCell>
-                                        {classes.find(c => c.id === student.classId)?.name || student.classId}
-                                    </TableCell>
-                                    <TableCell>{student.id}</TableCell>
+                                    <TableCell className="font-bold text-lg">{index + 1}</TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-3">
                                             <Avatar className="h-9 w-9">
@@ -185,6 +176,9 @@ export default function TeacherRankingsPage() {
                                             </Avatar>
                                             <span className="font-medium">{student.name}</span>
                                         </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        {classes.find(c => c.id === student.classId)?.name || student.classId}
                                     </TableCell>
                                     <TableCell className="text-right font-bold text-primary">
                                         ${Math.round(student.totalAssets).toLocaleString()}
