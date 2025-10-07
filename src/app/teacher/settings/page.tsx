@@ -19,15 +19,23 @@ import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
 import { themes, type Theme } from "@/lib/themes";
-import { useFirebaseStorage } from "@/hooks/use-firebase-storage";
 
-const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+
+const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
+
 
 export default function TeacherSettingsPage() {
     const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
     const { toast } = useToast();
     const router = useRouter();
-    const { uploadFile, isUploading } = useFirebaseStorage();
 
     const [isSavingSettings, setIsSavingSettings] = useState(false);
     const [uploadingKey, setUploadingKey] = useState<string | null>(null);
@@ -70,18 +78,17 @@ export default function TeacherSettingsPage() {
         const uploadKey = `sponsor_${index}`;
         setUploadingKey(uploadKey);
         
-        const filePath = `config/sponsors/${Date.now()}-logo${index + 1}-${file.name}`;
-        const url = await uploadFile(file, filePath);
-
-        if (url) {
+        try {
+            const dataUrl = await fileToDataUrl(file);
             const newUrls = [...sponsorLogoUrls];
-            newUrls[index] = url;
+            newUrls[index] = dataUrl;
             setSponsorLogoUrls(newUrls);
-            toast({ title: "圖片已上傳", description: "請記得點擊下方的「儲存設定」以保存變更。" });
-        } else {
-             toast({ title: "圖片上傳失敗", variant: "destructive" });
+            toast({ title: "圖片已預覽", description: "請記得點擊下方的「儲存設定」以保存變更。" });
+        } catch (error) {
+             toast({ title: "圖片處理失敗", variant: "destructive" });
+        } finally {
+            setUploadingKey(null);
         }
-        setUploadingKey(null);
     };
 
     const handleRemoveLogo = async (index: number) => {
@@ -258,7 +265,7 @@ export default function TeacherSettingsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>贊助商 Logo</CardTitle>
-                    <CardDescription>上傳最多四個贊助商 Logo，將會顯示在登入頁面。建議尺寸為 288x96 像素，每個檔案上限 1MB。</CardDescription>
+                    <CardDescription>上傳最多四個贊助商 Logo，將會顯示在登入頁面。每個檔案上限 2MB。</CardDescription>
                 </CardHeader>
                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                     {Array.from({ length: 4 }).map((_, index) => (

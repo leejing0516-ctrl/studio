@@ -49,7 +49,7 @@ import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
 
-const MAX_FILE_SIZE = 800 * 1024; // 800KB
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 
 const fileToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -100,7 +100,7 @@ export default function TeacherFundraisingPage() {
         if (file.size > MAX_FILE_SIZE) {
             toast({
                 title: "圖片檔案太大",
-                description: `請選擇小於 ${MAX_FILE_SIZE / 1024}KB 的圖片。`,
+                description: `請選擇小於 ${MAX_FILE_SIZE / 1024 / 1024}MB 的圖片。`,
                 variant: "destructive",
             });
             return;
@@ -324,7 +324,7 @@ export default function TeacherFundraisingPage() {
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="space-y-2">
-                            <Label>專案圖片 (建議大小上限 800KB)</Label>
+                            <Label>專案圖片 (建議大小上限 2MB)</Label>
                             <div className="flex items-center gap-4">
                                 <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
                                     {projectImagePreview ? (
@@ -405,7 +405,7 @@ export default function TeacherFundraisingPage() {
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                          <div className="space-y-2">
-                            <Label>專案圖片 (建議大小上限 800KB)</Label>
+                            <Label>專案圖片 (建議大小上限 2MB)</Label>
                             <div className="flex items-center gap-4">
                                 <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
                                     {projectImagePreview ? (
@@ -485,5 +485,3 @@ export default function TeacherFundraisingPage() {
     </div>
   );
 }
-
-    

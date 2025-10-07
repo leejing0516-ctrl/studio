@@ -19,17 +19,26 @@ import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
 import { Textarea } from "@/components/ui/textarea";
-import { useFirebaseStorage } from "@/hooks/use-firebase-storage";
 
-const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+
+const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
+
 
 export default function TeacherHomeEditorPage() {
     const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
     const { toast } = useToast();
     const router = useRouter();
-    const { uploadFile, isUploading } = useFirebaseStorage();
     
-    const [isSavingSettings, setIsSavingSettings] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
 
     const [homeTitle, setHomeTitle] = useState<string>('');
     const [homeSubtitle, setHomeSubtitle] = useState<string>('');
@@ -59,14 +68,15 @@ export default function TeacherHomeEditorPage() {
             return;
         }
 
-        const filePath = `config/home-illustration/${Date.now()}-${file.name}`;
-        const url = await uploadFile(file, filePath);
-        
-        if (url) {
-            setIllustrationUrl(url);
-            toast({ title: "圖片已上傳", description: "請記得點擊下方的「儲存設定」以保存變更。" });
-        } else {
-            toast({ title: "圖片上傳失敗", variant: "destructive" });
+        setIsUploading(true);
+        try {
+            const dataUrl = await fileToDataUrl(file);
+            setIllustrationUrl(dataUrl);
+            toast({ title: "圖片已預覽", description: "請記得點擊下方的「儲存設定」以保存變更。" });
+        } catch (error) {
+            toast({ title: "圖片處理失敗", variant: "destructive" });
+        } finally {
+            setIsUploading(false);
         }
     };
 
@@ -76,7 +86,7 @@ export default function TeacherHomeEditorPage() {
     };
 
     const handleSaveSettings = async () => {
-        setIsSavingSettings(true);
+        setIsSaving(true);
         
         try {
             await setPlatformConfig({
@@ -90,7 +100,7 @@ export default function TeacherHomeEditorPage() {
             console.error("Error saving settings:", error);
             toast({ title: "儲存失敗", description: error.message || "儲存首頁設定時發生錯誤。", variant: "destructive" });
         } finally {
-            setIsSavingSettings(false);
+            setIsSaving(false);
         }
     };
 
@@ -145,13 +155,13 @@ export default function TeacherHomeEditorPage() {
                                     </Button>
                                 )}
                             </div>
-                            <p className="text-xs text-muted-foreground">建議使用透明背景的 PNG 圖片，檔案上限 1MB。</p>
+                            <p className="text-xs text-muted-foreground">建議使用透明背景的 PNG 圖片，檔案上限 2MB。</p>
                         </Card>
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end">
-                    <Button onClick={handleSaveSettings} disabled={isSavingSettings || isUploading}>
-                        {(isSavingSettings || isUploading) && <Loader2 className="mr-2 animate-spin" />}
+                    <Button onClick={handleSaveSettings} disabled={isSaving || isUploading}>
+                        {(isSaving || isUploading) && <Loader2 className="mr-2 animate-spin" />}
                         儲存變更
                     </Button>
                 </CardFooter>

@@ -49,7 +49,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 
 const HABIT_DURATION = 21;
-const MAX_FILE_SIZE = 800 * 1024; // 800KB
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 
 const fileToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -129,7 +129,7 @@ export default function HabitsPage() {
         if (file.size > MAX_FILE_SIZE) {
             toast({
                 title: "圖片檔案太大",
-                description: `請選擇小於 ${MAX_FILE_SIZE / 1024}KB 的圖片。`,
+                description: `請選擇小於 ${MAX_FILE_SIZE / 1024 / 1024}MB 的圖片。`,
                 variant: "destructive",
             });
             return;
@@ -401,7 +401,7 @@ export default function HabitsPage() {
             </DialogHeader>
             <div className="py-4 space-y-4">
                  <div className="space-y-2">
-                    <Label>上傳證明照片（選填，上限 800KB）</Label>
+                    <Label>上傳證明照片（選填，上限 2MB）</Label>
                     <div className="flex items-center gap-4">
                         <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
                             {checkInImagePreview ? (
@@ -477,5 +477,3 @@ export default function HabitsPage() {
     </div>
   );
 }
-
-    

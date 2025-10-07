@@ -21,9 +21,17 @@ import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
 import type { PetStage } from "@/lib/types";
-import { useFirebaseStorage } from "@/hooks/use-firebase-storage";
 
-const MAX_FILE_SIZE = 800 * 1024; // 800KB
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+
+const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
 
 const defaultPetStages: PetStage[] = [
   {
@@ -56,7 +64,6 @@ export default function TeacherPetsPage() {
     const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
     const { toast } = useToast();
     const router = useRouter();
-    const { uploadFile, isUploading } = useFirebaseStorage();
     
     const [isSaving, setIsSaving] = useState(false);
     const [uploadingKey, setUploadingKey] = useState<string | null>(null);
@@ -88,21 +95,20 @@ export default function TeacherPetsPage() {
         if (!file) return;
 
         if (file.size > MAX_FILE_SIZE) {
-            toast({ title: "檔案太大", description: `請選擇小於 ${MAX_FILE_SIZE / 1024}KB 的圖片。`, variant: "destructive" });
+            toast({ title: "檔案太大", description: `請選擇小於 ${MAX_FILE_SIZE / 1024 / 1024}MB 的圖片。`, variant: "destructive" });
             return;
         }
 
         setUploadingKey(`stage_${index}`);
-        const filePath = `pets/${Date.now()}-stage${index + 1}-${file.name}`;
-        const url = await uploadFile(file, filePath);
-
-        if (url) {
-            handleStageChange(index, 'image', url);
-            toast({ title: "圖片已上傳", description: "請記得點擊下方的「儲存設定」以保存變更。" });
-        } else {
-            toast({ title: "圖片上傳失敗", variant: "destructive" });
+        try {
+            const dataUrl = await fileToDataUrl(file);
+            handleStageChange(index, 'image', dataUrl);
+            toast({ title: "圖片已預覽", description: "請記得點擊下方的「儲存設定」以保存變更。" });
+        } catch (error) {
+            toast({ title: "圖片處理失敗", variant: "destructive" });
+        } finally {
+            setUploadingKey(null);
         }
-        setUploadingKey(null);
     };
     
     const handleRemoveImage = (index: number) => {
@@ -158,7 +164,7 @@ export default function TeacherPetsPage() {
                             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 p-2">
                                 <div className="space-y-4">
                                      <div className="space-y-2">
-                                        <Label>寵物圖片</Label>
+                                        <Label>寵物圖片 (建議大小上限 2MB)</Label>
                                         <div className="flex items-center gap-4">
                                             <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
                                                 {stage.image ? (
