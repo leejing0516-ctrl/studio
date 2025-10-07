@@ -20,6 +20,7 @@ import {
 import { AppDataContext } from "@/context/AppDataContext";
 import { Coins, Trophy } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import type { Student } from "@/lib/types";
 
 export default function TeacherRankingsPage() {
     const { students, stocks, classes } = useContext(AppDataContext);
@@ -27,7 +28,16 @@ export default function TeacherRankingsPage() {
     const rankedStudents = useMemo(() => {
         if (students.length === 0) return [];
 
-        const studentsWithAssets = students.map(student => {
+        // Deduplicate students based on _docId to prevent ranking errors
+        const uniqueStudentsMap = new Map<string, Student>();
+        students.forEach(student => {
+            if (student._docId && !uniqueStudentsMap.has(student._docId)) {
+                uniqueStudentsMap.set(student._docId, student);
+            }
+        });
+        const uniqueStudents = Array.from(uniqueStudentsMap.values());
+
+        const studentsWithAssets = uniqueStudents.map(student => {
             const portfolioValue = (student.portfolio || []).reduce((acc, item) => {
                 const marketInfo = stocks.find(s => s.ticker === item.ticker);
                 return acc + (marketInfo ? marketInfo.price * item.shares : 0);
