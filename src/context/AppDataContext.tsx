@@ -5,6 +5,8 @@ import { createContext, useState, ReactNode, useEffect, useCallback, useRef } fr
 import type { Student, Reward, Class, Teacher, Stock, PlatformConfig } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { collection, doc, runTransaction as firestoreRunTransaction, Transaction, query, onSnapshot, Unsubscribe, setDoc, writeBatch, getDocs, addDoc, getCountFromServer, deleteDoc } from 'firebase/firestore';
+import { isAfter, startOfDay, differenceInDays } from 'date-fns';
+
 
 type SetStateActionWithFunction<S> = S | ((prevState: S) => S);
 
@@ -153,6 +155,114 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       const configRef = doc(db, 'config', 'main');
       await setDoc(configRef, dataToUpdate, { merge: true });
   };
+  
+  // Effect for daily financial processing (interest, loans, etc.)
+  useEffect(() => {
+    const processDailyFinance = async () => {
+        const lastRun = localStorage.getItem('lastFinanceRun');
+        const today = startOfDay(new Date()).toISOString().split('T')[0]; // YYYY-MM-DD
+
+        if (lastRun === today) {
+            // console.log("Daily finance has already been processed today.");
+            return;
+        }
+
+        if (isLoading || students.length === 0) return;
+
+        // console.log("Running daily finance processing...");
+        const batch = writeBatch(db);
+        let hasChanges = false;
+
+        students.forEach(student => {
+            if (!student._docId) return;
+
+            let studentPoints = student.points;
+            let needsUpdate = false;
+
+            // Process Fixed Deposits
+            const updatedDeposits = (student.fixedDeposits || []).map(deposit => {
+                if (deposit.status === 'active') {
+                    if (isAfter(new Date(), new Date(deposit.maturityDate))) {
+                        // Deposit has matured
+                        const totalReturn = deposit.amount + deposit.interestEarned;
+                        studentPoints += totalReturn;
+                        needsUpdate = true;
+                        return { ...deposit, status: 'matured' as const };
+                    } else {
+                         // Accrue interest
+                        const newInterest = deposit.interestEarned + (deposit.amount * deposit.interestRate);
+                        if (Math.floor(newInterest) > Math.floor(deposit.interestEarned)) {
+                            needsUpdate = true;
+                            return { ...deposit, interestEarned: newInterest };
+                        }
+                    }
+                }
+                return deposit;
+            });
+
+            // Process Loans
+            const updatedLoans = (student.loans || []).map(loan => {
+                if (loan.status === 'active') {
+                    const todayDate = startOfDay(new Date());
+                    if (isAfter(todayDate, new Date(loan.repaymentDate))) {
+                        // Loan is overdue
+                         needsUpdate = true;
+                        return { ...loan, status: 'overdue' as const };
+                    } else {
+                        // Accrue interest
+                        const lastAccrued = loan.lastInterestAccruedDate ? new Date(loan.lastInterestAccruedDate) : new Date(loan.approvalDate || loan.requestDate);
+                        const daysSinceLastAccrual = differenceInDays(todayDate, lastAccrued);
+                        
+                        if (daysSinceLastAccrual > 0) {
+                            const newInterest = loan.interest + (loan.amount * loan.interestRate * daysSinceLastAccrual);
+                            needsUpdate = true;
+                            return { ...loan, interest: newInterest, lastInterestAccruedDate: todayDate.toISOString() };
+                        }
+                    }
+                }
+                 if (loan.status === 'overdue') { // Continue accruing interest on overdue loans
+                    const lastAccrued = loan.lastInterestAccruedDate ? new Date(loan.lastInterestAccruedDate) : new Date(loan.repaymentDate);
+                    const daysSinceLastAccrual = differenceInDays(startOfDay(new Date()), lastAccrued);
+                    if (daysSinceLastAccrual > 0) {
+                        const newInterest = loan.interest + (loan.amount * loan.interestRate * daysSinceLastAccrual);
+                        needsUpdate = true;
+                        return { ...loan, interest: newInterest, lastInterestAccruedDate: new Date().toISOString() };
+                    }
+                }
+                return loan;
+            });
+
+            if (needsUpdate) {
+                hasChanges = true;
+                const studentRef = doc(db, 'students', student._docId);
+                batch.update(studentRef, { 
+                    points: studentPoints, 
+                    fixedDeposits: updatedDeposits,
+                    loans: updatedLoans
+                });
+            }
+        });
+
+        if (hasChanges) {
+            try {
+                await batch.commit();
+                // console.log("Daily finance processing successful.");
+                localStorage.setItem('lastFinanceRun', today);
+            } catch (error) {
+                console.error("Error committing daily finance batch:", error);
+            }
+        } else {
+            // console.log("No financial changes to process today.");
+            localStorage.setItem('lastFinanceRun', today); // Mark as run even if no changes
+        }
+    };
+    
+    // Run once a day, with a timeout to ensure data is loaded.
+    const timer = setTimeout(processDailyFinance, 5000); // Wait 5 seconds after initial load
+    return () => clearTimeout(timer);
+
+  }, [isLoading, students]);
+
 
   useEffect(() => {
     const allLoaded = Object.values(loadingStates).every(state => state === false);
