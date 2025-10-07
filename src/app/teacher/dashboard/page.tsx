@@ -1892,7 +1892,7 @@ const GroupManagementDialog = ({
     };
 
     const handleAssignStudent = (studentId: string, groupId: string) => {
-        setStudentAssignments({ ...studentAssignments, [studentId]: groupId });
+        setStudentAssignments({ ...studentAssignments, [studentId]: groupId === "unassigned" ? undefined : groupId });
     };
 
     const handleSaveChanges = () => {
@@ -1961,14 +1961,14 @@ const GroupManagementDialog = ({
                                                 <TableCell>{student.name}</TableCell>
                                                 <TableCell>
                                                     <Select
-                                                        value={studentAssignments[student._docId!] || ''}
+                                                        value={studentAssignments[student._docId!] || 'unassigned'}
                                                         onValueChange={(value) => handleAssignStudent(student._docId!, value)}
                                                     >
                                                         <SelectTrigger>
                                                             <SelectValue placeholder="未分組" />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            <SelectItem value="">未分組</SelectItem>
+                                                            <SelectItem value="unassigned">未分組</SelectItem>
                                                             {groups.map(g => (
                                                                 <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
                                                             ))}
@@ -1991,3 +1991,5 @@ const GroupManagementDialog = ({
         </DialogContent>
     );
 };
+
+    
