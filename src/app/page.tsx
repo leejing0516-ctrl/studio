@@ -115,7 +115,7 @@ export default function HomePage() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
       <header className="mb-8 text-center animate-in fade-in slide-in-from-top duration-700">
         {platformConfig?.homeIllustrationUrl && (
-            <div className="relative h-48 w-3/4 max-w-md mx-auto mb-4">
+            <div className="relative h-48 w-1/2 max-w-md mx-auto mb-4">
                 <Image 
                     src={platformConfig.homeIllustrationUrl}
                     alt="首頁插圖"
