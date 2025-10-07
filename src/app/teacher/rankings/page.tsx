@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useContext, useMemo } from "react";
@@ -17,7 +18,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { AppDataContext } from "@/context/AppDataContext";
-import { Coins, Trophy } from "lucide-react";
+import { Coins, Trophy, PiggyBank, Landmark } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { Student } from "@/lib/types";
 
@@ -39,8 +40,18 @@ export default function TeacherRankingsPage() {
                 const marketInfo = stocks.find(s => s.ticker === item.ticker);
                 return acc + (marketInfo ? marketInfo.price * item.shares : 0);
             }, 0);
-            const totalAssets = student.points + portfolioValue;
-            return { ...student, totalAssets, portfolioValue };
+
+            const totalFixedDeposits = (student.fixedDeposits || [])
+                .filter(d => d.status === 'active')
+                .reduce((acc, deposit) => acc + deposit.amount, 0);
+
+            const totalLoans = (student.loans || [])
+                .filter(l => l.status === 'active' || l.status === 'overdue')
+                .reduce((acc, loan) => acc + loan.amount, 0);
+
+            const totalAssets = student.points + portfolioValue + totalFixedDeposits - totalLoans;
+            
+            return { ...student, totalAssets, portfolioValue, totalFixedDeposits, totalLoans };
         });
 
         // Sort by total assets descending
@@ -56,7 +67,7 @@ export default function TeacherRankingsPage() {
                         全校學生資產排名
                     </CardTitle>
                     <CardDescription>
-                        列出所有學生的總資產（點數 + 投資組合價值），並依此排名。
+                        列出所有學生的總資產（點數 + 投資組合價值 + 定存總額 - 貸款總額），並依此排名。
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -69,6 +80,8 @@ export default function TeacherRankingsPage() {
                                 <TableHead className="text-right">總資產</TableHead>
                                 <TableHead className="text-right">持有總點數</TableHead>
                                 <TableHead className="text-right">投資組合價值</TableHead>
+                                <TableHead className="text-right">定存總額</TableHead>
+                                <TableHead className="text-right">貸款總額</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -98,6 +111,18 @@ export default function TeacherRankingsPage() {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         ${Math.round(student.portfolioValue).toLocaleString()}
+                                    </TableCell>
+                                     <TableCell className="text-right">
+                                        <div className="flex items-center justify-end gap-1">
+                                            <PiggyBank className="h-4 w-4 text-muted-foreground" />
+                                            {Math.round(student.totalFixedDeposits).toLocaleString()}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <div className="flex items-center justify-end gap-1 text-destructive">
+                                            <Landmark className="h-4 w-4" />
+                                            {Math.round(student.totalLoans).toLocaleString()}
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))}

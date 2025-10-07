@@ -3,7 +3,7 @@
 
 import { useContext, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Coins, Trophy, Wallet, BarChart as BarChartIcon, Landmark, Users, Globe } from "lucide-react";
+import { Coins, Trophy, Wallet, BarChart as BarChartIcon, Landmark, Users, Globe, PiggyBank } from "lucide-react";
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Bar, BarChart, XAxis, YAxis } from "recharts"
 import RewardSuggestion from "@/components/reward-suggestion";
@@ -85,6 +85,14 @@ export default function StudentDashboardPage() {
         .filter(l => l.status === 'active' || l.status === 'overdue')
         .reduce((acc, loan) => acc + loan.amount, 0);
   }, [currentStudent]);
+  
+  const totalDepositAmount = useMemo(() => {
+      if (!currentStudent || !currentStudent.fixedDeposits) return 0;
+      return currentStudent.fixedDeposits
+        .filter(d => d.status === 'active')
+        .reduce((acc, deposit) => acc + deposit.amount, 0);
+  }, [currentStudent]);
+
 
   const { classRank, classPercentile } = useMemo(() => {
     if (!currentStudent) return { classRank: 0, classPercentile: 0 };
@@ -98,7 +106,14 @@ export default function StudentDashboardPage() {
         const currentValue = marketInfo ? marketInfo.price * item.shares : 0;
         return acc + currentValue;
       }, 0);
-      const totalAssets = student.points + studentPortfolioValue;
+       const studentTotalDeposits = (student.fixedDeposits || [])
+        .filter(d => d.status === 'active')
+        .reduce((acc, d) => acc + d.amount, 0);
+      const studentTotalLoans = (student.loans || [])
+        .filter(l => l.status === 'active' || l.status === 'overdue')
+        .reduce((acc, l) => acc + l.amount, 0);
+        
+      const totalAssets = student.points + studentPortfolioValue + studentTotalDeposits - studentTotalLoans;
       return { ...student, totalAssets };
     });
 
@@ -119,7 +134,13 @@ export default function StudentDashboardPage() {
         const currentValue = marketInfo ? marketInfo.price * item.shares : 0;
         return acc + currentValue;
       }, 0);
-      const totalAssets = student.points + studentPortfolioValue;
+       const studentTotalDeposits = (student.fixedDeposits || [])
+        .filter(d => d.status === 'active')
+        .reduce((acc, d) => acc + d.amount, 0);
+      const studentTotalLoans = (student.loans || [])
+        .filter(l => l.status === 'active' || l.status === 'overdue')
+        .reduce((acc, l) => acc + l.amount, 0);
+      const totalAssets = student.points + studentPortfolioValue + studentTotalDeposits - studentTotalLoans;
       return { ...student, totalAssets };
     });
 
@@ -155,7 +176,7 @@ export default function StudentDashboardPage() {
   }, [currentStudent, classes, teachers]);
 
 
-  const totalAssets = portfolioValue + totalPoints;
+  const totalAssets = totalPoints + portfolioValue + totalDepositAmount - totalLoanAmount;
   const stockPerformance = "上週透過投資科技股獲利 5%。";
 
   if (!currentStudent) {
@@ -168,7 +189,7 @@ export default function StudentDashboardPage() {
         <h1 className="text-2xl font-bold tracking-tight">你好, {currentStudent.name}!</h1>
         <p className="text-muted-foreground">歡迎回到您的儀表板。這是您今天的財務狀況概覽。</p>
       </div>
-      <div className={cn("grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6", totalLoanAmount > 0 && "lg:grid-cols-3 xl:grid-cols-4")}>
+      <div className={cn("grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6", totalLoanAmount > 0 ? "xl:grid-cols-5" : "xl:grid-cols-4")}>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">總點數</CardTitle>
@@ -192,14 +213,16 @@ export default function StudentDashboardPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">總資產</CardTitle>
-            <Wallet className="h-4 w-4 text-accent" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${Math.round(totalAssets).toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">投資組合 + 點數</p>
-          </CardContent>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">定存總額</CardTitle>
+                <PiggyBank className="h-4 w-4 text-accent" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">
+                {Math.round(totalDepositAmount).toLocaleString()}
+                </div>
+                <p className="text-xs text-muted-foreground">目前進行中的定期存款</p>
+            </CardContent>
         </Card>
          {totalLoanAmount > 0 && (
           <Card className="border-destructive">
@@ -215,6 +238,16 @@ export default function StudentDashboardPage() {
             </CardContent>
           </Card>
         )}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">總資產</CardTitle>
+            <Wallet className="h-4 w-4 text-accent" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${Math.round(totalAssets).toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">點數 + 投資 + 定存 - 貸款</p>
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">班級排名</CardTitle>
