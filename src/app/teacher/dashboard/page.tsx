@@ -93,8 +93,8 @@ export default function TeacherDashboardPage() {
     const [classToDelete, setClassToDelete] = useState<Class | null>(null);
     const [editedTeacherRole, setEditedTeacherRole] = useState<string | undefined>(undefined);
     const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
-    const [groupToBatchOp, setGroupToBatchOp] = useState<string>('');
-
+    
+    const [batchTarget, setBatchTarget] = useState<string>('');
     const [batchPoints, setBatchPoints] = useState<number | ''>('');
     const [isBatchProcessing, setIsBatchProcessing] = useState(false);
     
@@ -166,6 +166,7 @@ export default function TeacherDashboardPage() {
     // Clear selection when class changes
     useEffect(() => {
         setSelectedStudents([]);
+        setBatchTarget('');
     }, [selectedClassId]);
 
     const availableClassesForNewTeacher = useMemo(() => {
@@ -690,19 +691,21 @@ export default function TeacherDashboardPage() {
         }
     };
 
-    const handleBatchOperation = async (isForSelected: boolean, isForGroup: boolean = false) => {
-        if (batchPoints === '' || batchPoints === 0) return;
+    const handleBatchOperation = async () => {
+        if (batchPoints === '' || batchPoints === 0 || !batchTarget) return;
         
         setIsBatchProcessing(true);
         const points = Number(batchPoints);
 
         let studentsToUpdate: Student[] = [];
-        if (isForGroup) {
-            studentsToUpdate = studentsInClass.filter(student => student.groupId === groupToBatchOp);
-        } else if (isForSelected) {
+        
+        if (batchTarget === 'all_class') {
+            studentsToUpdate = studentsInClass;
+        } else if (batchTarget === 'selected') {
             studentsToUpdate = studentsInClass.filter(student => selectedStudents.includes(student._docId!));
         } else {
-            studentsToUpdate = studentsInClass;
+            // It's a group ID
+            studentsToUpdate = studentsInClass.filter(student => student.groupId === batchTarget);
         }
         
         if (studentsToUpdate.length === 0) {
@@ -746,7 +749,6 @@ export default function TeacherDashboardPage() {
             }
         }
 
-
         let successfulOperations = 0;
         
         for (const student of validStudentsToUpdate) {
@@ -764,6 +766,7 @@ export default function TeacherDashboardPage() {
         
         setIsBatchProcessing(false);
         setBatchPoints('');
+        setBatchTarget('');
         setSelectedStudents([]);
     };
 
@@ -938,34 +941,32 @@ export default function TeacherDashboardPage() {
         if (!currentClass) return;
         
         try {
-            await setClasses(prevClasses => prevClasses.map(c => 
-                c.id === currentClass.id ? { ...c, groups: groups } : c
-            ));
-            
-            await setStudents(prevStudents => prevStudents.map(student => {
-                const assignment = updatedStudentAssignments.find(a => a.studentId === student._docId);
-                if (assignment) {
-                    const studentUpdate: Partial<Student> = {};
-                    if(assignment.groupId) {
-                        studentUpdate.groupId = assignment.groupId;
+            await runTransaction(async (transaction) => {
+                const classRef = doc(db, 'classes', currentClass.id);
+                transaction.update(classRef, { groups: groups });
+
+                for (const assignment of updatedStudentAssignments) {
+                    const studentRef = doc(db, 'students', assignment.studentId);
+                    if (assignment.groupId) {
+                        transaction.update(studentRef, { groupId: assignment.groupId });
                     } else {
-                        // This ensures we remove the field if it's undefined
-                        return { ...student, groupId: undefined };
+                        // In a transaction, to remove a field, you might need to fetch and re-set the document
+                        // without the field, but a better approach is to handle this logic in the function
+                        // that prepares the data for the transaction to avoid this complexity.
+                        // The simplified `setStudents` now handles this.
+                         transaction.update(studentRef, { groupId: deleteField() } as any);
                     }
-                    return { ...student, ...studentUpdate };
                 }
-                return student;
-            }));
-            
+            });
+
             toast({ title: "分組已儲存", description: "班級分組與學生指派已更新。" });
             setIsGroupManagementDialogOpen(false);
         } catch (error: any) {
             console.error("Error saving groups:", error);
-            // Firestore specific check for undefined values
-            if (error.message.includes("Unsupported field value: undefined")) {
-                toast({ title: "儲存失敗", description: "儲存時發生錯誤，似乎包含了無效的資料。請再試一次。", variant: "destructive" });
+            if (error.message.includes("undefined")) {
+                 toast({ title: "儲存失敗", description: "資料包含無效值，請再試一次。", variant: "destructive" });
             } else {
-                toast({ title: "儲存失敗", description: error.message || "發生未知錯誤", variant: "destructive" });
+                 toast({ title: "儲存失敗", description: error.message || "發生未知錯誤", variant: "destructive" });
             }
         }
     };
@@ -1263,7 +1264,7 @@ export default function TeacherDashboardPage() {
                             <CardDescription>獎勵或扣除學生的點數。輸入正數為發送，負數為扣除。</CardDescription>
                         </CardHeader>
                         <CardContent>
-                             <div className="mb-4 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                             <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="class-select-points">選擇班級</Label>
                                     <Select onValueChange={setSelectedClassId} value={selectedClassId}>
@@ -1277,29 +1278,22 @@ export default function TeacherDashboardPage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="flex flex-wrap gap-2 items-end">
-                                    <div className="flex gap-2 items-center p-2 rounded-md bg-muted">
-                                        <span className="text-sm font-medium">依分組</span>
-                                        <Select onValueChange={setGroupToBatchOp} value={groupToBatchOp} disabled={!currentClass?.groups || currentClass.groups.length === 0}>
-                                            <SelectTrigger className="w-32 h-9">
-                                                <SelectValue placeholder="選擇分組"/>
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                 {(currentClass?.groups || []).map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                        <Input type="number" placeholder="點數" className="w-24 h-9" value={batchPoints} onChange={e => setBatchPoints(e.target.value === '' ? '' : Number(e.target.value))} disabled={isBatchProcessing} />
-                                        <Button size="sm" onClick={() => handleBatchOperation(false, true)} disabled={!groupToBatchOp || isBatchProcessing}>
-                                            {isBatchProcessing ? <Loader2 className="animate-spin" /> : '執行'}
-                                        </Button>
-                                    </div>
-                                    <div className="flex gap-2 items-center p-2 rounded-md bg-muted">
-                                        <span className="text-sm font-medium">全班</span>
-                                        <Input type="number" placeholder="點數" className="w-24 h-9" value={batchPoints} onChange={e => setBatchPoints(e.target.value === '' ? '' : Number(e.target.value))} disabled={isBatchProcessing} />
-                                        <Button size="sm" onClick={() => handleBatchOperation(false)} disabled={!selectedClassId || isBatchProcessing}>
-                                            {isBatchProcessing ? <Loader2 className="animate-spin" /> : '執行'}
-                                        </Button>
-                                    </div>
+                                <div className="flex flex-wrap items-end gap-2 p-2 rounded-md bg-muted">
+                                    <Label htmlFor="batch-select" className="text-sm font-medium">批次操作</Label>
+                                    <Select onValueChange={setBatchTarget} value={batchTarget}>
+                                        <SelectTrigger id="batch-select" className="w-40 h-9">
+                                            <SelectValue placeholder="選擇目標"/>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all_class">全班</SelectItem>
+                                            {selectedStudents.length > 0 && <SelectItem value="selected">已選取的學生</SelectItem>}
+                                             {(currentClass?.groups || []).map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                    <Input type="number" placeholder="點數" className="w-24 h-9" value={batchPoints} onChange={e => setBatchPoints(e.target.value === '' ? '' : Number(e.target.value))} disabled={isBatchProcessing} />
+                                    <Button size="sm" onClick={handleBatchOperation} disabled={!batchTarget || batchPoints === '' || isBatchProcessing}>
+                                        {isBatchProcessing ? <Loader2 className="animate-spin" /> : '執行'}
+                                    </Button>
                                 </div>
                             </div>
                             <Table>
@@ -1909,13 +1903,10 @@ const GroupManagementDialog = ({
     };
 
     const handleSaveChanges = () => {
-         const assignmentsArray = Object.keys(studentAssignments).map(studentId => {
-            const assignment: { studentId: string, groupId?: string } = { studentId };
-            if (studentAssignments[studentId]) {
-                assignment.groupId = studentAssignments[studentId];
-            }
-            return assignment;
-        });
+         const assignmentsArray = Object.keys(studentAssignments).map(studentId => ({
+            studentId: studentId,
+            groupId: studentAssignments[studentId]
+        }));
         onSave(groups, assignmentsArray);
     };
 
@@ -2010,3 +2001,6 @@ const GroupManagementDialog = ({
 
     
 
+
+
+    
