@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useContext, useMemo } from "react";
+import { useContext, useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -17,13 +17,28 @@ import {
   TableBody,
   TableCell,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { AppDataContext } from "@/context/AppDataContext";
-import { Coins, Trophy } from "lucide-react";
+import { Coins, Trophy, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { Student } from "@/lib/types";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 export default function TeacherRankingsPage() {
-    const { students, stocks, classes } = useContext(AppDataContext);
+    const { students, stocks, classes, setStudents } = useContext(AppDataContext);
+    const { toast } = useToast();
+    const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
 
     const listedStudents = useMemo(() => {
         // Use a Map to ensure each student is unique based on _docId, taking the last entry.
@@ -54,6 +69,17 @@ export default function TeacherRankingsPage() {
         });
     }, [students, stocks]);
 
+    const handleDeleteStudent = async () => {
+        if (!studentToDelete || !studentToDelete._docId) return;
+        await setStudents(currentStudents => currentStudents.filter(s => s._docId !== studentToDelete._docId));
+        toast({
+            title: "學生已刪除",
+            description: `${studentToDelete.name} 的所有資料已被從系統中移除。`,
+            variant: "destructive"
+        });
+        setStudentToDelete(null);
+    };
+
     return (
         <div className="animate-in fade-in-0 duration-500">
             <Card>
@@ -63,7 +89,7 @@ export default function TeacherRankingsPage() {
                         全校學生資產列表
                     </CardTitle>
                     <CardDescription>
-                        列出所有學生的總資產（點數 + 投資組合價值），按班級及座號排序。
+                        列出所有學生的總資產（點數 + 投資組合價值），按班級及座號排序。您可以直接在此刪除異常或重複的資料。
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -76,6 +102,7 @@ export default function TeacherRankingsPage() {
                                 <TableHead className="text-right">總資產</TableHead>
                                 <TableHead className="text-right">持有總點數</TableHead>
                                 <TableHead className="text-right">投資組合價值</TableHead>
+                                <TableHead className="text-right w-[100px]">操作</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -105,6 +132,27 @@ export default function TeacherRankingsPage() {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         ${Math.round(student.portfolioValue).toLocaleString()}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                         <AlertDialog open={!!studentToDelete && studentToDelete._docId === student._docId} onOpenChange={(open) => !open && setStudentToDelete(null)}>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setStudentToDelete(student)}>
+                                                    <Trash2 className="h-4 w-4"/>
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>確定要刪除嗎？</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        您確定要永久刪除學生「{studentToDelete?.name}」的所有資料嗎？此操作無法復原。
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>取消</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={handleDeleteStudent} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
                                     </TableCell>
                                 </TableRow>
                             ))}
