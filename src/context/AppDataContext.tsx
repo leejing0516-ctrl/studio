@@ -272,7 +272,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const subscriptions: Unsubscribe[] = [];
 
-    const setupSubscription = <T extends { id?: string }>(
+    const setupSubscription = <T extends { id?: string, _docId?: string }>(
         collectionName: string, 
         setter: React.Dispatch<React.SetStateAction<any[]>>,
         stateKey: keyof LoadingStates,
@@ -280,12 +280,14 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     ) => {
         const q = query(collection(db, collectionName));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const data = querySnapshot.docs.map(doc => ({
-                ...doc.data(),
-                _docId: doc.id,
-                // For collections using a field as ID (like 'classes')
-                ...(useIdAsDocId && { id: doc.id })
-            })) as T[];
+            const data: any[] = [];
+            querySnapshot.forEach(doc => {
+                 data.push({
+                    ...doc.data(),
+                    _docId: doc.id,
+                    ...(useIdAsDocId && { id: doc.id })
+                });
+            });
             setter(data);
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
         }, (error) => {
