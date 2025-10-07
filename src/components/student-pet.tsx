@@ -66,10 +66,8 @@ const StudentPet = ({ student }: { student: Student }) => {
   
   const canEvolve = useMemo(() => {
     if (!nextStage || !student) return false;
-    // The student can evolve if their points meet the requirement AND their pet's current level
-    // matches the stage they are currently in (meaning they haven't evolved to the next level yet).
     return student.points >= nextStage.pointsRequired && student.petLevel === currentStage.level;
-  }, [nextStage, student, currentStage]);
+  }, [nextStage, student.points, student.petLevel, currentStage]);
 
   const progress = useMemo(() => {
     if (!nextStage) return 100;
@@ -147,7 +145,7 @@ const StudentPet = ({ student }: { student: Student }) => {
         {nextStage && !canEvolve && (
             <div className="w-full space-y-1.5">
                 <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Lv. {currentStage.level}</span>
+                    <span>Lv. {student.petLevel || 1}</span>
                     <span>下一階段: {nextStage.pointsRequired.toLocaleString()} 點</span>
                     <span>Lv. {nextStage.level}</span>
                 </div>
