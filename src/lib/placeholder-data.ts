@@ -30,7 +30,7 @@ export const teachers: Teacher[] = [
 
 export const students: Student[] = [
   // Class 1B
-  { id: "S001", name: "陳容德", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S001/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [] },
+  { id: "S001", name: "陳容德", classId: "1B", points: 600, avatar: "https://picsum.photos/seed/S001/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [] },
   { id: "S002", name: "方崇恩", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S002/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [] },
   { id: "S003", name: "林桐佑", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S003/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [] },
   { id: "S004", name: "盧宥宇", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S004/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [] },
