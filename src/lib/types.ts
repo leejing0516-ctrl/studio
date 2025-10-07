@@ -91,6 +91,7 @@ export type Student = {
   _docId?: string; // Firestore document ID
   name: string;
   classId: string; // Links to the Class object
+  groupId?: string; // Links to the group ID within the Class object
   points: number;
   avatar: string;
   password?: string;
@@ -144,11 +145,17 @@ export type Stock = {
   marketCap: string;
 };
 
+export type ClassGroup = {
+    id: string;
+    name: string;
+}
+
 export type Class = {
     id: string;
     _docId?: string;
     name: string;
     announcements: Announcement[];
+    groups?: ClassGroup[];
 }
 
 export type Teacher = {
