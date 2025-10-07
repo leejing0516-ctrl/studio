@@ -52,6 +52,7 @@ const StudentPet = ({ student }: { student: Student }) => {
   }, [platformConfig]);
 
   const currentStage = useMemo(() => {
+    // FIX: Iterate backwards to find the highest achieved stage
     let stage = petStages[0];
     for (let i = petStages.length - 1; i >= 0; i--) {
       if (student.points >= petStages[i].pointsRequired) {
@@ -66,7 +67,7 @@ const StudentPet = ({ student }: { student: Student }) => {
   
   const canEvolve = useMemo(() => {
     if (!nextStage || !student) return false;
-    return student.points >= nextStage.pointsRequired && student.petLevel !== nextStage.level;
+    return student.points >= nextStage.pointsRequired && student.petLevel < nextStage.level;
   }, [nextStage, student]);
 
   const progress = useMemo(() => {
