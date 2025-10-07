@@ -945,7 +945,11 @@ export default function TeacherDashboardPage() {
             await setStudents(prevStudents => prevStudents.map(student => {
                 const assignment = updatedStudentAssignments.find(a => a.studentId === student._docId);
                 if (assignment) {
-                    return { ...student, groupId: assignment.groupId };
+                    const studentUpdate: Partial<Student> = { groupId: assignment.groupId };
+                    if (studentUpdate.groupId === undefined) {
+                        delete studentUpdate.groupId;
+                    }
+                    return { ...student, ...studentUpdate };
                 }
                 return student;
             }));
