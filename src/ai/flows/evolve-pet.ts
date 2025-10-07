@@ -9,7 +9,6 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { geminiProVision } from '@genkit-ai/googleai';
 
 
 const EvolvePetInputSchema = z.object({
@@ -37,7 +36,7 @@ const evolvePetFlow = ai.defineFlow(
   },
   async (input) => {
     const { output } = await ai.generate({
-        model: geminiProVision,
+        model: 'googleai/gemini-pro-vision',
         prompt: `You are an expert creature designer. Your task is to evolve the given creature based on the provided prompt, ensuring the result is unique by using the student's ID as a seed.
 
 Student ID (Seed for uniqueness): ${input.studentId}
