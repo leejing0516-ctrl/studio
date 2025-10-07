@@ -37,19 +37,31 @@ const evolvePetFlow = ai.defineFlow(
   async (input) => {
     const { output } = await ai.generate({
         model: 'googleai/gemini-pro-vision',
-        prompt: `You are an expert creature designer. Your task is to evolve the given creature based on the provided prompt, ensuring the result is unique by using the student's ID as a seed.
+        prompt: [
+          { media: { url: input.currentPetImage } },
+          { text: `You are an expert creature designer. Your task is to evolve the given creature based on the provided prompt, ensuring the result is unique by using the student's ID as a seed.
 
 Student ID (Seed for uniqueness): ${input.studentId}
 Evolution Goal: ${input.evolutionAiHint}
 
-Based on the current creature, generate a new image of the evolved creature. The new creature should be a clear and logical evolution of the current one, incorporating the essence of the evolution prompt. Ensure the generated image has a transparent background.
-`,
-        input: [ { media: { url: input.currentPetImage } } ],
-        output: {
-            schema: EvolvePetOutputSchema,
-        }
+Based on the current creature, generate a new image of the evolved creature. The new creature should be a clear and logical evolution of the current one, incorporating the essence of the evolution prompt.
+Ensure the generated image has a transparent background.
+The output should only be the image of the new creature, no text or other content.`},
+        ],
     });
 
-    return output!;
+    if (!output || !output.message.content) {
+        throw new Error('AI did not return a valid response.');
+    }
+    
+    const imagePart = output.message.content.find(part => part.media);
+
+    if (!imagePart || !imagePart.media?.url) {
+        throw new Error('AI response did not contain an image.');
+    }
+
+    return {
+        imageUrl: imagePart.media.url
+    };
   }
 );
