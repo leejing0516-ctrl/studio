@@ -945,9 +945,12 @@ export default function TeacherDashboardPage() {
             await setStudents(prevStudents => prevStudents.map(student => {
                 const assignment = updatedStudentAssignments.find(a => a.studentId === student._docId);
                 if (assignment) {
-                    const studentUpdate: Partial<Student> = { groupId: assignment.groupId };
-                    if (studentUpdate.groupId === undefined) {
-                        delete studentUpdate.groupId;
+                    const studentUpdate: Partial<Student> = {};
+                    if(assignment.groupId) {
+                        studentUpdate.groupId = assignment.groupId;
+                    } else {
+                        // This ensures we remove the field if it's undefined
+                        return { ...student, groupId: undefined };
                     }
                     return { ...student, ...studentUpdate };
                 }
@@ -956,8 +959,14 @@ export default function TeacherDashboardPage() {
             
             toast({ title: "分組已儲存", description: "班級分組與學生指派已更新。" });
             setIsGroupManagementDialogOpen(false);
-        } catch (error) {
-            toast({ title: "儲存失敗", variant: "destructive" });
+        } catch (error: any) {
+            console.error("Error saving groups:", error);
+            // Firestore specific check for undefined values
+            if (error.message.includes("Unsupported field value: undefined")) {
+                toast({ title: "儲存失敗", description: "儲存時發生錯誤，似乎包含了無效的資料。請再試一次。", variant: "destructive" });
+            } else {
+                toast({ title: "儲存失敗", description: error.message || "發生未知錯誤", variant: "destructive" });
+            }
         }
     };
 
@@ -1255,7 +1264,7 @@ export default function TeacherDashboardPage() {
                         </CardHeader>
                         <CardContent>
                              <div className="mb-4 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-                                <div className="flex-1 min-w-[200px] space-y-2">
+                                <div className="space-y-2">
                                     <Label htmlFor="class-select-points">選擇班級</Label>
                                     <Select onValueChange={setSelectedClassId} value={selectedClassId}>
                                         <SelectTrigger id="class-select-points" className="w-full md:w-[280px]">
@@ -1268,7 +1277,7 @@ export default function TeacherDashboardPage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="flex flex-wrap gap-4 items-end">
+                                <div className="flex flex-wrap gap-2 items-end">
                                     <div className="flex gap-2 items-center p-2 rounded-md bg-muted">
                                         <span className="text-sm font-medium">依分組</span>
                                         <Select onValueChange={setGroupToBatchOp} value={groupToBatchOp} disabled={!currentClass?.groups || currentClass.groups.length === 0}>
@@ -1900,10 +1909,13 @@ const GroupManagementDialog = ({
     };
 
     const handleSaveChanges = () => {
-        const assignmentsArray = Object.keys(studentAssignments).map(studentId => ({
-            studentId,
-            groupId: studentAssignments[studentId],
-        }));
+         const assignmentsArray = Object.keys(studentAssignments).map(studentId => {
+            const assignment: { studentId: string, groupId?: string } = { studentId };
+            if (studentAssignments[studentId]) {
+                assignment.groupId = studentAssignments[studentId];
+            }
+            return assignment;
+        });
         onSave(groups, assignmentsArray);
     };
 
@@ -1997,3 +2009,4 @@ const GroupManagementDialog = ({
 };
 
     
+
