@@ -116,6 +116,7 @@ export default function TeacherSettingsPage() {
                 marketCloseHour: Number(marketCloseHour),
                 sponsorLogoUrls: sponsorPreviews,
                 theme: selectedTheme,
+                petStages: platformConfig?.petStages || [], // Ensure petStages is preserved
             });
 
             toast({ title: "設定已儲存", description: "平台設定已成功更新。" });
