@@ -19,6 +19,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Teacher, Class, Student, RedeemedRewardItem, Loan, StudentChallenge, PointRecord, PlatformConfig, StudentHabit, ClassGroup } from "@/lib/types";
@@ -78,7 +79,6 @@ export default function TeacherDashboardPage() {
     const [isGroupManagementDialogOpen, setIsGroupManagementDialogOpen] = useState(false);
 
     const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
-    const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
     const [studentToResetPassword, setStudentToResetPassword] = useState<Student | null>(null);
     const [parsedCsvData, setParsedCsvData] = useState<Student[]>([]);
     const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -362,7 +362,7 @@ export default function TeacherDashboardPage() {
         });
     };
 
-    const handleDeleteStudent = async () => {
+    const handleDeleteStudent = async (studentToDelete: Student) => {
         if (!studentToDelete || !studentToDelete._docId) return;
         await setStudents(students.filter(s => s._docId !== studentToDelete._docId));
         toast({
@@ -370,7 +370,6 @@ export default function TeacherDashboardPage() {
             description: `${studentToDelete.name} 已被從班級中移除。`,
             variant: "destructive"
         });
-        setStudentToDelete(null);
     };
 
     const handleResetPassword = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -1027,20 +1026,20 @@ export default function TeacherDashboardPage() {
                                                     <>
                                                         <Button variant="ghost" size="icon" onClick={() => { setStudentToEdit(student); setIsEditStudentDialogOpen(true); }}><Edit className="h-4 w-4"/></Button>
                                                         <Button variant="ghost" size="icon" onClick={() => { setStudentToResetPassword(student); setIsResetPasswordDialogOpen(true); }}><KeyRound className="h-4 w-4"/></Button>
-                                                        <AlertDialog open={!!studentToDelete && studentToDelete._docId === student._docId} onOpenChange={(open) => !open && setStudentToDelete(null)}>
+                                                        <AlertDialog>
                                                             <AlertDialogTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setStudentToDelete(student)}><Trash2 className="h-4 w-4"/></Button>
+                                                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4"/></Button>
                                                             </AlertDialogTrigger>
                                                             <AlertDialogContent>
                                                                 <AlertDialogHeader>
                                                                     <AlertDialogTitle>確定要刪除嗎？</AlertDialogTitle>
                                                                     <AlertDialogDescription>
-                                                                        您確定要從班級中移除 {studentToDelete?.name} 嗎？此操作無法復原。
+                                                                        您確定要從班級中移除 {student?.name} 嗎？此操作無法復原。
                                                                     </AlertDialogDescription>
                                                                 </AlertDialogHeader>
                                                                 <AlertDialogFooter>
                                                                     <AlertDialogCancel>取消</AlertDialogCancel>
-                                                                    <AlertDialogAction onClick={handleDeleteStudent} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                                                    <AlertDialogAction onClick={() => handleDeleteStudent(student)} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
                                                                 </AlertDialogFooter>
                                                             </AlertDialogContent>
                                                         </AlertDialog>
@@ -1973,6 +1972,3 @@ const GroupManagementDialog = ({
         </DialogContent>
     );
 };
-
-    
-

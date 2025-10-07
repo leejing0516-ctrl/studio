@@ -235,7 +235,8 @@ export default function LoansPage() {
   };
   
   const renderLoanHistory = () => {
-    const historicalLoans = currentStudent?.loans?.filter(l => l.status === 'repaid' || l.status === 'rejected') || [];
+    if (!currentStudent) return null;
+    const historicalLoans = currentStudent.loans?.filter(l => l.status === 'repaid' || l.status === 'rejected') || [];
     if (historicalLoans.length === 0) return null;
 
     return (
@@ -292,5 +293,3 @@ export default function LoansPage() {
     </div>
   );
 }
-
-    
