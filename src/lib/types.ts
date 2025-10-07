@@ -155,7 +155,7 @@ export type Class = {
     _docId?: string;
     name: string;
     announcements: Announcement[];
-    groups?: ClassGroup[];
+    groups?: { [teacherId: string]: ClassGroup[] };
 }
 
 export type Teacher = {

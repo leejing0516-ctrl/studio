@@ -41,7 +41,7 @@ import { AppDataContext } from "@/context/AppDataContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Papa from "papaparse";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
-import { doc, writeBatch, Transaction, setDoc, deleteDoc, collection, getDocs, query, where, addDoc } from "firebase/firestore";
+import { doc, writeBatch, Transaction, setDoc, deleteDoc, collection, getDocs, query, where, addDoc, updateDoc, deleteField } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -113,6 +113,11 @@ export default function TeacherDashboardPage() {
     }, [role, classes, teacherClassIds]);
 
     const currentClass = useMemo(() => classes.find(c => c.id === selectedClassId), [classes, selectedClassId]);
+
+    const currentTeacherGroups = useMemo(() => {
+        if (!currentClass || !teacherId) return [];
+        return currentClass.groups?.[teacherId] || [];
+    }, [currentClass, teacherId]);
 
     const sortedTeachers = useMemo(() => {
         return [...teachers].sort((a, b) => (a.id || '').localeCompare(b.id || ''));
@@ -558,7 +563,7 @@ export default function TeacherDashboardPage() {
             return;
         }
 
-        const newClass: Class = { id, name, announcements: [] };
+        const newClass: Class = { id, name, announcements: [], groups: {} };
         await setClasses(prev => [...prev, newClass as Class]);
         (event.target as HTMLFormElement).reset();
     };
@@ -897,14 +902,14 @@ export default function TeacherDashboardPage() {
     
     const getDashboardTabs = () => {
         const tabs = [];
-        if (role === 'admin' || role === 'teacher') {
+        if (role === 'admin' || role === 'teacher' || role === 'subject_teacher') {
             tabs.push(<TabsTrigger key="students" value="students">學生管理</TabsTrigger>);
         }
         if (role === 'admin') {
             tabs.push(<TabsTrigger key="teachers" value="teachers">教師管理</TabsTrigger>);
         }
         
-        if (role === 'admin' || role === 'teacher') {
+        if (role === 'admin' || role === 'teacher' || role === 'subject_teacher') {
             tabs.push(<TabsTrigger key="groups" value="groups">分組管理</TabsTrigger>);
         }
         
@@ -914,7 +919,7 @@ export default function TeacherDashboardPage() {
              tabs.push(<TabsTrigger key="history" value="history">點數歷史</TabsTrigger>);
         }
         
-        if (role === 'admin' || role === 'teacher') {
+        if (role === 'admin' || role === 'teacher' || role === 'subject_teacher') {
             tabs.push(<TabsTrigger key="approvals" value="approvals">審核中心</TabsTrigger>);
         }
         
@@ -938,23 +943,23 @@ export default function TeacherDashboardPage() {
     };
     
     const handleSaveGroups = async (groups: ClassGroup[], updatedStudentAssignments: { studentId: string; groupId?: string }[]) => {
-        if (!currentClass) return;
-        
+        if (!currentClass || !teacherId) return;
+
         try {
             await runTransaction(async (transaction) => {
                 const classRef = doc(db, 'classes', currentClass.id);
-                transaction.update(classRef, { groups: groups });
+                
+                // Firestore doesn't allow nested fields with dots in keys.
+                const groupsUpdatePath = `groups.${teacherId}`;
+                transaction.update(classRef, { [groupsUpdatePath]: groups });
 
                 for (const assignment of updatedStudentAssignments) {
                     const studentRef = doc(db, 'students', assignment.studentId);
                     if (assignment.groupId) {
                         transaction.update(studentRef, { groupId: assignment.groupId });
                     } else {
-                        // In a transaction, to remove a field, you might need to fetch and re-set the document
-                        // without the field, but a better approach is to handle this logic in the function
-                        // that prepares the data for the transaction to avoid this complexity.
-                        // The simplified `setStudents` now handles this.
-                         transaction.update(studentRef, { groupId: deleteField() } as any);
+                        // To remove a field, use `deleteField()`
+                        transaction.update(studentRef, { groupId: deleteField() });
                     }
                 }
             });
@@ -963,11 +968,7 @@ export default function TeacherDashboardPage() {
             setIsGroupManagementDialogOpen(false);
         } catch (error: any) {
             console.error("Error saving groups:", error);
-            if (error.message.includes("undefined")) {
-                 toast({ title: "儲存失敗", description: "資料包含無效值，請再試一次。", variant: "destructive" });
-            } else {
-                 toast({ title: "儲存失敗", description: error.message || "發生未知錯誤", variant: "destructive" });
-            }
+            toast({ title: "儲存失敗", description: error.message || "發生未知錯誤", variant: "destructive" });
         }
     };
 
@@ -979,7 +980,7 @@ export default function TeacherDashboardPage() {
         );
     }
     
-    const defaultTabValue = (role === 'teacher' || role === 'admin') ? 'students' : 'points';
+    const defaultTabValue = (role === 'teacher' || role === 'admin' || role === 'subject_teacher') ? 'students' : 'points';
     
     return (
         <div className="space-y-6 animate-in fade-in-0 duration-500">
@@ -1015,7 +1016,7 @@ export default function TeacherDashboardPage() {
                     {getDashboardTabs()}
                 </TabsList>
 
-                {(role === 'admin' || role === 'teacher') && (
+                {(role === 'admin' || role === 'teacher' || role === 'subject_teacher') && (
                 <TabsContent value="students" className="mt-6">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between">
@@ -1024,8 +1025,8 @@ export default function TeacherDashboardPage() {
                                 <CardDescription>管理班級中的學生、重設密碼或進行批次匯入。</CardDescription>
                             </div>
                              <div className="flex items-center gap-2">
-                                <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}><Upload className="mr-2"/>批次匯入</Button>
-                                <Button onClick={() => setIsAddStudentDialogOpen(true)}><PlusCircle className="mr-2"/>新增學生</Button>
+                                {role !== 'subject_teacher' && <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}><Upload className="mr-2"/>批次匯入</Button>}
+                                {role !== 'subject_teacher' && <Button onClick={() => setIsAddStudentDialogOpen(true)}><PlusCircle className="mr-2"/>新增學生</Button>}
                             </div>
                         </CardHeader>
                         <CardContent>
@@ -1057,28 +1058,32 @@ export default function TeacherDashboardPage() {
                                         <TableRow key={student._docId}>
                                             <TableCell>{student.id}</TableCell>
                                             <TableCell>{student.name}</TableCell>
-                                            <TableCell>{currentClass?.groups?.find(g => g.id === student.groupId)?.name || '未分組'}</TableCell>
+                                            <TableCell>{currentTeacherGroups?.find(g => g.id === student.groupId)?.name || '未分組'}</TableCell>
                                             <TableCell>{Math.round(student.points).toLocaleString()}</TableCell>
                                             <TableCell className="text-right">
-                                                <Button variant="ghost" size="icon" onClick={() => { setStudentToEdit(student); setIsEditStudentDialogOpen(true); }}><Edit className="h-4 w-4"/></Button>
-                                                <Button variant="ghost" size="icon" onClick={() => { setStudentToResetPassword(student); setIsResetPasswordDialogOpen(true); }}><KeyRound className="h-4 w-4"/></Button>
-                                                <AlertDialog open={!!studentToDelete && studentToDelete._docId === student._docId} onOpenChange={(open) => !open && setStudentToDelete(null)}>
-                                                    <AlertDialogTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setStudentToDelete(student)}><Trash2 className="h-4 w-4"/></Button>
-                                                    </AlertDialogTrigger>
-                                                     <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>確定要刪除嗎？</AlertDialogTitle>
-                                                            <AlertDialogDescription>
-                                                                您確定要從班級中移除 {studentToDelete?.name} 嗎？此操作無法復原。
-                                                            </AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel>取消</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={handleDeleteStudent} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
+                                                {role !== 'subject_teacher' && (
+                                                    <>
+                                                        <Button variant="ghost" size="icon" onClick={() => { setStudentToEdit(student); setIsEditStudentDialogOpen(true); }}><Edit className="h-4 w-4"/></Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => { setStudentToResetPassword(student); setIsResetPasswordDialogOpen(true); }}><KeyRound className="h-4 w-4"/></Button>
+                                                        <AlertDialog open={!!studentToDelete && studentToDelete._docId === student._docId} onOpenChange={(open) => !open && setStudentToDelete(null)}>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setStudentToDelete(student)}><Trash2 className="h-4 w-4"/></Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>確定要刪除嗎？</AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        您確定要從班級中移除 {studentToDelete?.name} 嗎？此操作無法復原。
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>取消</AlertDialogCancel>
+                                                                    <AlertDialogAction onClick={handleDeleteStudent} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    </>
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                     )) : (
@@ -1207,16 +1212,16 @@ export default function TeacherDashboardPage() {
                 </TabsContent>
                 )}
 
-                {(role === 'admin' || role === 'teacher') && (
+                {(role === 'admin' || role === 'teacher' || role === 'subject_teacher') && (
                 <TabsContent value="groups" className="mt-6">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between">
                             <div>
                                 <CardTitle>分組管理</CardTitle>
-                                <CardDescription>為目前選擇的班級建立小組，並將學生指派到各組。</CardDescription>
+                                <CardDescription>為目前選擇的班級建立您自己的小組，並將學生指派到各組。</CardDescription>
                             </div>
                              <Button onClick={() => setIsGroupManagementDialogOpen(true)} disabled={!selectedClassId}>
-                                <Users className="mr-2"/>管理分組
+                                <Users className="mr-2"/>管理我的分組
                             </Button>
                         </CardHeader>
                         <CardContent>
@@ -1233,24 +1238,41 @@ export default function TeacherDashboardPage() {
                                     </Select>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {(currentClass?.groups || []).map(group => (
-                                    <Card key={group.id}>
-                                        <CardHeader>
-                                            <CardTitle>{group.name}</CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <ul className="space-y-2 text-sm">
-                                                {studentsInClass.filter(s => s.groupId === group.id).map(s => (
-                                                    <li key={s.id}>{s.name}</li>
+                             <div className="space-y-6">
+                                {role === 'admin' ? (
+                                    Object.entries(currentClass?.groups || {}).map(([tId, groupList]) => (
+                                        <div key={tId}>
+                                            <h3 className="font-semibold mb-2">由 {teachers.find(t => t.id === tId)?.name || '未知老師'} 建立的分組</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                {(groupList || []).map(group => (
+                                                    <Card key={group.id}>
+                                                        <CardHeader><CardTitle>{group.name}</CardTitle></CardHeader>
+                                                        <CardContent>
+                                                            <ul className="space-y-2 text-sm">
+                                                                {studentsInClass.filter(s => s.groupId === group.id).map(s => <li key={s.id}>{s.name}</li>)}
+                                                            </ul>
+                                                        </CardContent>
+                                                    </Card>
                                                 ))}
-                                            </ul>
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                                {(!currentClass?.groups || currentClass.groups.length === 0) && (
-                                    <p className="text-muted-foreground col-span-full text-center py-8">此班級尚未建立任何分組。</p>
+                                                {(groupList || []).length === 0 && <p className="text-muted-foreground col-span-full text-center py-4">此老師尚未建立任何分組。</p>}
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {currentTeacherGroups.map(group => (
+                                            <Card key={group.id}>
+                                                <CardHeader><CardTitle>{group.name}</CardTitle></CardHeader>
+                                                <CardContent>
+                                                    <ul className="space-y-2 text-sm">
+                                                        {studentsInClass.filter(s => s.groupId === group.id).map(s => <li key={s.id}>{s.name}</li>)}
+                                                    </ul>
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                    </div>
                                 )}
+                                {role !== 'admin' && currentTeacherGroups.length === 0 && <p className="text-muted-foreground col-span-full text-center py-8">您尚未為此班級建立任何分組。</p>}
                             </div>
                         </CardContent>
                     </Card>
@@ -1264,7 +1286,7 @@ export default function TeacherDashboardPage() {
                             <CardDescription>獎勵或扣除學生的點數。輸入正數為發送，負數為扣除。</CardDescription>
                         </CardHeader>
                         <CardContent>
-                             <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                            <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="class-select-points">選擇班級</Label>
                                     <Select onValueChange={setSelectedClassId} value={selectedClassId}>
@@ -1287,7 +1309,7 @@ export default function TeacherDashboardPage() {
                                         <SelectContent>
                                             <SelectItem value="all_class">全班</SelectItem>
                                             {selectedStudents.length > 0 && <SelectItem value="selected">已選取的學生</SelectItem>}
-                                             {(currentClass?.groups || []).map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                                            {currentTeacherGroups.map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                     <Input type="number" placeholder="點數" className="w-24 h-9" value={batchPoints} onChange={e => setBatchPoints(e.target.value === '' ? '' : Number(e.target.value))} disabled={isBatchProcessing} />
@@ -1323,7 +1345,7 @@ export default function TeacherDashboardPage() {
                                                 />
                                             </TableCell>
                                             <TableCell>{student.name}</TableCell>
-                                            <TableCell>{currentClass?.groups?.find(g => g.id === student.groupId)?.name || '未分組'}</TableCell>
+                                            <TableCell>{currentTeacherGroups?.find(g => g.id === student.groupId)?.name || '未分組'}</TableCell>
                                             <TableCell>{Math.round(student.points).toLocaleString()}</TableCell>
                                             <TableCell>
                                                 <div className="flex gap-2">
@@ -1498,7 +1520,7 @@ export default function TeacherDashboardPage() {
                 </TabsContent>
                 )}
                 
-                {(role === 'admin' || role === 'teacher') && (
+                {(role === 'admin' || role === 'teacher' || role === 'subject_teacher') && (
                 <TabsContent value="approvals" className="mt-6">
                      <div className="grid gap-6">
                         <Card>
@@ -1629,6 +1651,7 @@ export default function TeacherDashboardPage() {
             <Dialog open={isGroupManagementDialogOpen} onOpenChange={setIsGroupManagementDialogOpen}>
                 <GroupManagementDialog 
                     classData={currentClass} 
+                    teacherId={teacherId || ''}
                     students={studentsInClass} 
                     onSave={handleSaveGroups}
                     onClose={() => setIsGroupManagementDialogOpen(false)}
@@ -1852,11 +1875,13 @@ export default function TeacherDashboardPage() {
 
 const GroupManagementDialog = ({ 
     classData, 
+    teacherId,
     students, 
     onSave,
     onClose,
 }: { 
     classData: Class | undefined, 
+    teacherId: string,
     students: Student[], 
     onSave: (groups: ClassGroup[], studentAssignments: { studentId: string; groupId?: string }[]) => void,
     onClose: () => void,
@@ -1866,15 +1891,15 @@ const GroupManagementDialog = ({
     const [newGroupName, setNewGroupName] = useState('');
 
     useEffect(() => {
-        if (classData) {
-            setGroups(classData.groups || []);
+        if (classData && teacherId) {
+            setGroups(classData.groups?.[teacherId] || []);
             const assignments: {[studentId: string]: string | undefined} = {};
             students.forEach(s => {
                 assignments[s._docId!] = s.groupId;
             });
             setStudentAssignments(assignments);
         }
-    }, [classData, students]);
+    }, [classData, students, teacherId]);
 
     const handleAddGroup = () => {
         if (newGroupName.trim() === '') return;
@@ -1913,8 +1938,8 @@ const GroupManagementDialog = ({
     return (
         <DialogContent className="max-w-4xl">
             <DialogHeader>
-                <DialogTitle>管理班級分組 - {classData?.name}</DialogTitle>
-                <DialogDescription>在此建立小組，並將學生拖曳或指派到對應的小組中。</DialogDescription>
+                <DialogTitle>管理我的分組 - {classData?.name}</DialogTitle>
+                <DialogDescription>在此建立您個人的小組，並將學生指派到對應的小組中。</DialogDescription>
             </DialogHeader>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-4 max-h-[60vh] overflow-y-auto">
                 <div className="md:col-span-1 space-y-4">
