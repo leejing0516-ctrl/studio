@@ -21,7 +21,7 @@ import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
 import type { PetStage } from "@/lib/types";
 import { resizeImage, fileToDataUrl } from "@/lib/image-utils";
-import { DragDropContext, Droppable, Draggable, type DropResult } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable, type DropResult, type DroppableProps } from 'react-beautiful-dnd';
 
 const defaultPetStages: PetStage[] = [
   {
@@ -49,6 +49,26 @@ const defaultPetStages: PetStage[] = [
     aiHint: "majestic dragon",
   },
 ];
+
+// Custom Droppable component to handle React 18 Strict Mode issue
+const StrictDroppable = ({ children, ...props }: DroppableProps) => {
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    const animation = requestAnimationFrame(() => setEnabled(true));
+    return () => {
+      cancelAnimationFrame(animation);
+      setEnabled(false);
+    };
+  }, []);
+
+  if (!enabled) {
+    return null;
+  }
+
+  return <Droppable {...props}>{children}</Droppable>;
+};
+
 
 export default function TeacherPetsPage() {
     const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
@@ -172,7 +192,7 @@ export default function TeacherPetsPage() {
                 </CardHeader>
                 <CardContent>
                     <DragDropContext onDragEnd={handleOnDragEnd}>
-                        <Droppable droppableId="petStages">
+                        <StrictDroppable droppableId="petStages">
                             {(provided) => (
                                 <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-6">
                                     {petStages.map((stage, index) => (
@@ -264,7 +284,7 @@ export default function TeacherPetsPage() {
                                     {provided.placeholder}
                                 </div>
                             )}
-                        </Droppable>
+                        </StrictDroppable>
                     </DragDropContext>
                     <div className="flex justify-start mt-6">
                         <Button variant="outline" onClick={addStage}>新增進化階段</Button>
