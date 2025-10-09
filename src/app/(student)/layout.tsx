@@ -270,7 +270,7 @@ export default function StudentLayout({
       </Sidebar>
       <SidebarInset>
         <div className="flex flex-col min-h-svh">
-            <header className="flex h-14 items-center justify-between border-b bg-background/50 backdrop-blur-sm px-4 md:px-6 sticky top-0 z-20">
+            <header className="flex h-14 items-center justify-between border-b bg-white/50 backdrop-blur-lg px-4 md:px-6 sticky top-0 z-20">
                 <div className="flex items-center gap-2">
                     <SidebarTrigger className="md:hidden" />
                     <h1 className="text-lg font-semibold md:text-xl capitalize">
@@ -305,7 +305,7 @@ export default function StudentLayout({
                   </Popover>
             </header>
             <main className="flex-1 p-4 md:p-6">{children}</main>
-             <footer className="text-center p-4 text-muted-foreground text-sm border-t">
+             <footer className="text-center p-4 text-muted-foreground text-sm border-t bg-white/50 backdrop-blur-lg">
                 <p>&copy; {new Date().getFullYear()} 南梓實小虛擬銀行. 版權所有。</p>
             </footer>
         </div>
