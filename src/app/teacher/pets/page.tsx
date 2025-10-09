@@ -50,6 +50,27 @@ const defaultPetStages: PetStage[] = [
   },
 ];
 
+
+const StrictDroppable = ({ children, ...props }: DroppableProps) => {
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    const animation = requestAnimationFrame(() => setEnabled(true));
+
+    return () => {
+      cancelAnimationFrame(animation);
+      setEnabled(false);
+    };
+  }, []);
+
+  if (!enabled) {
+    return null;
+  }
+
+  return <Droppable {...props}>{children}</Droppable>;
+};
+
+
 export default function TeacherPetsPage() {
     const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
     const { toast } = useToast();
@@ -163,7 +184,7 @@ export default function TeacherPetsPage() {
                 </CardHeader>
                 <CardContent>
                     <DragDropContext onDragEnd={handleOnDragEnd}>
-                        <Droppable droppableId="petStages">
+                        <StrictDroppable droppableId="petStages">
                             {(provided) => (
                                 <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-6">
                                     {petStages.map((stage, index) => (
@@ -255,7 +276,7 @@ export default function TeacherPetsPage() {
                                     {provided.placeholder}
                                 </div>
                             )}
-                        </Droppable>
+                        </StrictDroppable>
                     </DragDropContext>
                     <div className="flex justify-start mt-6">
                         <Button variant="outline" onClick={addStage}>新增進化階段</Button>
@@ -270,4 +291,5 @@ export default function TeacherPetsPage() {
             </Card>
         </div>
     );
-}
+
+    
