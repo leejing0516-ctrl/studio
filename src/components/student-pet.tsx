@@ -1,82 +1,57 @@
 
 "use client";
 
-import { useMemo } from 'react';
+import { useState, useMemo, useContext, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import type { Student, PetAttributes } from '@/lib/types';
-import {
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar,
-  ResponsiveContainer,
-} from 'recharts';
-import { Card, CardContent } from './ui/card';
+import type { Student, PetStage } from '@/lib/types';
+import { Button } from './ui/button';
+import { AppDataContext } from '@/context/AppDataContext';
+import { Wand2, Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { evolvePet } from '@/ai/flows/evolve-pet';
 
-const attributeMapping: { key: keyof PetAttributes; label: string }[] = [
-  { key: 'grit', label: '堅毅' },
-  { key: 'socialIntelligence', label: '社交' },
-  { key: 'gratitude', label: '感恩' },
-  { key: 'optimism', label: '樂觀' },
-  { key: 'curiosity', label: '好奇' },
-  { key: 'selfControl', label: '自制' },
-  { key: 'passion', label: '熱情' },
-];
 
 const StudentPet = ({ student }: { student: Student }) => {
-  const petData = useMemo(() => {
-    if (!student.petAttributes) return [];
-    
-    return attributeMapping.map(attr => ({
-      subject: attr.label,
-      value: student.petAttributes[attr.key] ?? 0,
-      fullMark: 100, // Assuming a max value of 100 for radar chart scaling
-    }));
-  }, [student.petAttributes]);
+    const { platformConfig, setStudents } = useContext(AppDataContext);
+    const { toast } = useToast();
+    const [isEvolving, setIsEvolving] = useState(false);
 
-  const highestAttribute = useMemo(() => {
-    if (!student.petAttributes) return null;
+    const petStages = useMemo(() => platformConfig?.petStages || [], [platformConfig]);
 
-    let maxVal = -1;
-    let maxAttr: string | null = null;
+    const currentStage = useMemo(() => {
+        if (!student || !petStages.length) return petStages[0] || null;
+        // Iterate backwards to find the highest stage the student qualifies for
+        for (let i = petStages.length - 1; i >= 0; i--) {
+            if (student.points >= petStages[i].pointsRequired) {
+                return petStages[i];
+            }
+        }
+        return petStages[0] || null;
+    }, [student, petStages]);
 
-    for (const attr of attributeMapping) {
-      const value = student.petAttributes[attr.key] ?? 0;
-      if (value > maxVal) {
-        maxVal = value;
-        maxAttr = attr.label;
-      }
-    }
-    
-    if (maxVal === 0) {
-      return "均衡發展中";
-    }
-
-    return maxAttr;
-  }, [student.petAttributes]);
-
-
-  return (
-    <div className="flex flex-col items-center gap-4 text-center">
-      <div className="w-full h-56">
-        <ResponsiveContainer width="100%" height="100%">
-          <RadarChart cx="50%" cy="50%" outerRadius="80%" data={petData}>
-            <PolarGrid />
-            <PolarAngleAxis dataKey="subject" tick={{ fill: 'hsl(var(--foreground))', fontSize: 14 }} />
-            <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-            <Radar name={student.name} dataKey="value" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.6} />
-          </RadarChart>
-        </ResponsiveContainer>
-      </div>
-      <div>
-        <h3 className="text-xl font-bold text-primary">寵物品格雷達</h3>
-        <p className="text-sm text-muted-foreground">
-          你最強的品格特質是：<span className="font-semibold">{highestAttribute}</span>
-        </p>
-      </div>
-    </div>
-  );
+    // This is a simplified version of the pet display.
+    // It will be replaced with the AI evolution logic.
+    return (
+        <div className="flex flex-col items-center gap-4 text-center">
+        {currentStage && (
+            <>
+            <div className="relative w-48 h-48">
+                <Image
+                    src={currentStage.image}
+                    alt={currentStage.name}
+                    fill
+                    className="object-contain"
+                    sizes="200px"
+                />
+            </div>
+            <div>
+                <h3 className="text-xl font-bold">{currentStage.name}</h3>
+                <p className="text-sm text-muted-foreground">{currentStage.description}</p>
+            </div>
+            </>
+        )}
+        </div>
+    );
 };
 
 export default StudentPet;
