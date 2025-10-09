@@ -9,7 +9,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { GenerateRequest } from '@genkit-ai/googleai';
+import axios from 'axios';
 
 const CreateAvatarInputSchema = z.object({
   hair: z.string().describe('The hair style and color of the avatar.'),
@@ -20,7 +20,7 @@ const CreateAvatarInputSchema = z.object({
 export type CreateAvatarInput = z.infer<typeof CreateAvatarInputSchema>;
 
 const CreateAvatarOutputSchema = z.object({
-  imageUrl: z.string().describe('The data URI of the generated avatar image.'),
+  imageUrl: z.string().describe('The URL of the generated avatar image.'),
 });
 export type CreateAvatarOutput = z.infer<typeof CreateAvatarOutputSchema>;
 
@@ -51,11 +51,32 @@ const createAvatarFlow = ai.defineFlow(
       prompt: filledPrompt,
     });
     
-    const imageUrl = media.url;
-    if (!imageUrl) {
-        throw new Error('Image generation failed to return a URL.');
+    const dataUrl = media.url;
+    if (!dataUrl) {
+        throw new Error('Image generation failed to return a data URL.');
     }
+    
+    // Convert data URL to a format suitable for Imgur API
+    const base64Data = dataUrl.split(',')[1];
 
-    return { imageUrl };
+    try {
+      const response = await axios.post('https://api.imgur.com/3/image', {
+        image: base64Data,
+        type: 'base64',
+      }, {
+        headers: {
+          'Authorization': `Client-ID 4f9e5a1b3c9b7de`, // Replace with your Imgur Client ID
+        },
+      });
+
+      if (response.data.success) {
+        return { imageUrl: response.data.data.link };
+      } else {
+        throw new Error(`Imgur upload failed: ${response.data.data.error}`);
+      }
+    } catch (error: any) {
+      console.error('Error uploading to Imgur:', error.response?.data || error.message);
+      throw new Error('Failed to upload generated image.');
+    }
   }
 );
