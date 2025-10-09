@@ -84,7 +84,7 @@ const WorldMap = () => {
         <div className="relative w-full h-full flex items-center justify-center bg-gray-800 overflow-hidden">
              <div 
                 className="relative"
-                style={{ width: MAP_WIDTH, height: MAP_HEIGHT }}
+                style={{ width: MAP_WIDTH, height: MAP_HEIGHT, position: 'relative' }}
             >
                 <Image 
                     src="https://i.imgur.com/K073i5s.png" 
