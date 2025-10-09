@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext, useEffect } from "react";
+import React, { useState, useContext, useEffect, Suspense, lazy } from "react";
 import Image from "next/image";
 import {
   Card,
@@ -21,7 +21,7 @@ import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
 import type { PetStage } from "@/lib/types";
 import { resizeImage, fileToDataUrl } from "@/lib/image-utils";
-import { DragDropContext, Droppable, Draggable, type DropResult, type DroppableProps } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable, type DropResult } from 'react-beautiful-dnd';
 
 const defaultPetStages: PetStage[] = [
   {
@@ -50,24 +50,10 @@ const defaultPetStages: PetStage[] = [
   },
 ];
 
-// Custom Droppable component to handle React 18 Strict Mode issue
-const StrictDroppable = ({ children, ...props }: DroppableProps) => {
-  const [enabled, setEnabled] = useState(false);
-
-  useEffect(() => {
-    const animation = requestAnimationFrame(() => setEnabled(true));
-    return () => {
-      cancelAnimationFrame(animation);
-      setEnabled(false);
-    };
-  }, []);
-
-  if (!enabled) {
-    return null;
-  }
-
-  return <Droppable {...props}>{children}</Droppable>;
-};
+// Dynamically import Droppable to avoid SSR/Strict Mode issues with react-beautiful-dnd
+const LazyDroppable = lazy(() =>
+  import('react-beautiful-dnd').then(module => ({ default: module.Droppable }))
+);
 
 
 export default function TeacherPetsPage() {
@@ -177,7 +163,11 @@ export default function TeacherPetsPage() {
     };
 
     if (!isBrowser) {
-        return null;
+        return (
+             <div className="flex items-center justify-center h-full">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            </div>
+        );
     }
 
     return (
@@ -192,99 +182,101 @@ export default function TeacherPetsPage() {
                 </CardHeader>
                 <CardContent>
                     <DragDropContext onDragEnd={handleOnDragEnd}>
-                        <StrictDroppable droppableId="petStages">
-                            {(provided) => (
-                                <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-6">
-                                    {petStages.map((stage, index) => (
-                                        <Draggable key={stage.level} draggableId={String(stage.level)} index={index}>
-                                            {(provided) => (
-                                                <div ref={provided.innerRef} {...provided.draggableProps}>
-                                                    <Card className="p-4 relative border-2">
-                                                        <div {...provided.dragHandleProps} className="absolute top-1/2 -left-3 -translate-y-1/2 text-muted-foreground cursor-grab">
-                                                            <GripVertical />
-                                                        </div>
-                                                        <CardHeader className="p-2">
-                                                            <CardTitle>階段 {index + 1}</CardTitle>
-                                                        </CardHeader>
-                                                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 p-2">
-                                                            <div className="space-y-4">
-                                                                <div className="space-y-2">
-                                                                    <Label>預設圖片 (僅作為初始或備用)</Label>
-                                                                    <div className="flex items-center gap-4">
-                                                                        <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
-                                                                            {stage.image ? (
-                                                                                <Image src={stage.image} alt={stage.name} fill className="object-contain p-1" />
-                                                                            ) : (
-                                                                                <ImageOff className="h-8 w-8 text-muted-foreground" />
-                                                                            )}
+                         <Suspense fallback={<div>Loading...</div>}>
+                            <LazyDroppable droppableId="petStages">
+                                {(provided) => (
+                                    <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-6">
+                                        {petStages.map((stage, index) => (
+                                            <Draggable key={stage.level} draggableId={String(stage.level)} index={index}>
+                                                {(provided) => (
+                                                    <div ref={provided.innerRef} {...provided.draggableProps}>
+                                                        <Card className="p-4 relative border-2">
+                                                            <div {...provided.dragHandleProps} className="absolute top-1/2 -left-3 -translate-y-1/2 text-muted-foreground cursor-grab">
+                                                                <GripVertical />
+                                                            </div>
+                                                            <CardHeader className="p-2">
+                                                                <CardTitle>階段 {index + 1}</CardTitle>
+                                                            </CardHeader>
+                                                            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 p-2">
+                                                                <div className="space-y-4">
+                                                                    <div className="space-y-2">
+                                                                        <Label>預設圖片 (僅作為初始或備用)</Label>
+                                                                        <div className="flex items-center gap-4">
+                                                                            <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
+                                                                                {stage.image ? (
+                                                                                    <Image src={stage.image} alt={stage.name} fill className="object-contain p-1" />
+                                                                                ) : (
+                                                                                    <ImageOff className="h-8 w-8 text-muted-foreground" />
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="flex flex-col gap-2">
+                                                                                <Input id={`image-upload-${index}`} type="file" accept="image/*" onChange={(e) => handleImageUpload(e, index)} className="hidden" disabled={!!uploadingKey} />
+                                                                                <Label htmlFor={`image-upload-${index}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                                                                                    {uploadingKey === `stage_${index}` ? <Loader2 className="mr-2 animate-spin"/> : <UploadCloud className="mr-2"/>}
+                                                                                    上傳
+                                                                                </Label>
+                                                                                {stage.image && (
+                                                                                    <Button variant="link" size="sm" className="text-destructive h-auto p-0 flex items-center gap-1" onClick={() => handleRemoveImage(index)} disabled={!!uploadingKey}>
+                                                                                        <Trash2 className="h-4 w-4" />
+                                                                                        移除
+                                                                                    </Button>
+                                                                                )}
+                                                                            </div>
                                                                         </div>
-                                                                        <div className="flex flex-col gap-2">
-                                                                            <Input id={`image-upload-${index}`} type="file" accept="image/*" onChange={(e) => handleImageUpload(e, index)} className="hidden" disabled={!!uploadingKey} />
-                                                                            <Label htmlFor={`image-upload-${index}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
-                                                                                {uploadingKey === `stage_${index}` ? <Loader2 className="mr-2 animate-spin"/> : <UploadCloud className="mr-2"/>}
-                                                                                上傳
-                                                                            </Label>
-                                                                            {stage.image && (
-                                                                                <Button variant="link" size="sm" className="text-destructive h-auto p-0 flex items-center gap-1" onClick={() => handleRemoveImage(index)} disabled={!!uploadingKey}>
-                                                                                    <Trash2 className="h-4 w-4" />
-                                                                                    移除
-                                                                                </Button>
-                                                                            )}
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <Label htmlFor={`points-${index}`}>進化所需點數門檻</Label>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <Coins className="h-5 w-5 text-muted-foreground"/>
+                                                                            <Input 
+                                                                                id={`points-${index}`}
+                                                                                type="number"
+                                                                                value={stage.pointsRequired}
+                                                                                onChange={(e) => handleStageChange(index, 'pointsRequired', Number(e.target.value))}
+                                                                                disabled={index === 0}
+                                                                            />
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                                <div className="space-y-2">
-                                                                    <Label htmlFor={`points-${index}`}>進化所需點數門檻</Label>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Coins className="h-5 w-5 text-muted-foreground"/>
-                                                                        <Input 
-                                                                            id={`points-${index}`}
-                                                                            type="number"
-                                                                            value={stage.pointsRequired}
-                                                                            onChange={(e) => handleStageChange(index, 'pointsRequired', Number(e.target.value))}
-                                                                            disabled={index === 0}
-                                                                        />
+                                                                <div className="space-y-4">
+                                                                    <div className="space-y-2">
+                                                                        <Label htmlFor={`name-${index}`}>階段名稱</Label>
+                                                                        <Input id={`name-${index}`} value={stage.name} onChange={(e) => handleStageChange(index, 'name', e.target.value)} />
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <Label htmlFor={`desc-${index}`}>階段描述</Label>
+                                                                        <Textarea id={`desc-${index}`} value={stage.description} onChange={(e) => handleStageChange(index, 'description', e.target.value)} />
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <Label htmlFor={`ai-hint-${index}`} className="flex items-center gap-1.5">
+                                                                            <Wand2 className="h-4 w-4 text-primary" />
+                                                                            AI 進化提示詞 (AI Hint)
+                                                                        </Label>
+                                                                        <Input id={`ai-hint-${index}`} value={stage.aiHint} onChange={(e) => handleStageChange(index, 'aiHint', e.target.value)} placeholder="例如：cute baby dragon" />
+                                                                        <p className="text-xs text-muted-foreground">給 AI 畫家的靈感關鍵字，它會基於此主題生成獨特的寵物。</p>
                                                                     </div>
                                                                 </div>
-                                                            </div>
-                                                            <div className="space-y-4">
-                                                                <div className="space-y-2">
-                                                                    <Label htmlFor={`name-${index}`}>階段名稱</Label>
-                                                                    <Input id={`name-${index}`} value={stage.name} onChange={(e) => handleStageChange(index, 'name', e.target.value)} />
-                                                                </div>
-                                                                <div className="space-y-2">
-                                                                    <Label htmlFor={`desc-${index}`}>階段描述</Label>
-                                                                    <Textarea id={`desc-${index}`} value={stage.description} onChange={(e) => handleStageChange(index, 'description', e.target.value)} />
-                                                                </div>
-                                                                <div className="space-y-2">
-                                                                    <Label htmlFor={`ai-hint-${index}`} className="flex items-center gap-1.5">
-                                                                        <Wand2 className="h-4 w-4 text-primary" />
-                                                                        AI 進化提示詞 (AI Hint)
-                                                                    </Label>
-                                                                    <Input id={`ai-hint-${index}`} value={stage.aiHint} onChange={(e) => handleStageChange(index, 'aiHint', e.target.value)} placeholder="例如：cute baby dragon" />
-                                                                    <p className="text-xs text-muted-foreground">給 AI 畫家的靈感關鍵字，它會基於此主題生成獨特的寵物。</p>
-                                                                </div>
-                                                            </div>
-                                                        </CardContent>
-                                                        {petStages.length > 1 && (
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="absolute top-2 right-2 text-destructive hover:text-destructive"
-                                                                onClick={() => removeStage(index)}
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        )}
-                                                    </Card>
-                                                </div>
-                                            )}
-                                        </Draggable>
-                                    ))}
-                                    {provided.placeholder}
-                                </div>
-                            )}
-                        </StrictDroppable>
+                                                            </CardContent>
+                                                            {petStages.length > 1 && (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="absolute top-2 right-2 text-destructive hover:text-destructive"
+                                                                    onClick={() => removeStage(index)}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            )}
+                                                        </Card>
+                                                    </div>
+                                                )}
+                                            </Draggable>
+                                        ))}
+                                        {provided.placeholder}
+                                    </div>
+                                )}
+                            </LazyDroppable>
+                         </Suspense>
                     </DragDropContext>
                     <div className="flex justify-start mt-6">
                         <Button variant="outline" onClick={addStage}>新增進化階段</Button>
@@ -300,3 +292,5 @@ export default function TeacherPetsPage() {
         </div>
     );
 }
+
+    
