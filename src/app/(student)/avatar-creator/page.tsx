@@ -1,13 +1,17 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useContext } from "react";
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Wand2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { createAvatar, type CreateAvatarInput } from "@/ai/flows/create-avatar";
+import { useToast } from "@/hooks/use-toast";
+import { AppDataContext } from "@/context/AppDataContext";
+import { StudentDataContext } from "@/context/StudentDataContext";
 
 // --- 造型選項資料 ---
 
@@ -43,13 +47,18 @@ type StyleCategory = keyof typeof styles;
 // --- 組件 ---
 
 export default function AvatarCreatorPage() {
+  const { studentData } = useContext(StudentDataContext);
+  const { setStudents } = useContext(AppDataContext);
+  const { toast } = useToast();
+
   const [selections, setSelections] = useState({
     hair: styles.hair[0],
     eyes: styles.eyes[0],
     mouth: styles.mouth[0],
     accessory: styles.accessory[0],
   });
-  const [generatedAvatar, setGeneratedAvatar] = useState<string>("https://i.imgur.com/pAn39b4.png"); // 預設娃娃
+  
+  const [generatedAvatar, setGeneratedAvatar] = useState<string>(studentData.student?.avatar || "https://i.imgur.com/pAn39b4.png");
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleSelect = (category: StyleCategory, item: typeof styles[StyleCategory][0]) => {
@@ -58,13 +67,42 @@ export default function AvatarCreatorPage() {
 
   const handleGenerate = async () => {
     setIsGenerating(true);
-    // 這裡是未來要呼叫 AI Flow 的地方
-    // 為了展示，我們暫時設定一個延遲後顯示預設圖片
-    console.log("Generating with selections:", selections);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    // 這裡會接收 AI 回傳的圖片 URL
-    // setGeneratedAvatar(aiResultUrl); 
-    setIsGenerating(false);
+    
+    const input: CreateAvatarInput = {
+        hair: selections.hair.prompt,
+        eyes: selections.eyes.prompt,
+        mouth: selections.mouth.prompt,
+        accessory: selections.accessory.prompt,
+    };
+
+    try {
+        const result = await createAvatar(input);
+        
+        if (result.imageUrl) {
+            setGeneratedAvatar(result.imageUrl);
+            
+            // Update student data in context and Firestore
+            await setStudents(currentStudents => currentStudents.map(s => {
+                if (s.id === studentData.student?.id && s.classId === studentData.student.classId) {
+                    return { ...s, avatar: result.imageUrl };
+                }
+                return s;
+            }));
+
+            toast({ title: "分身已更新！", description: "你的新造型已經儲存好了。" });
+        } else {
+             throw new Error("AI 未能回傳圖片。");
+        }
+    } catch (error) {
+        console.error("Avatar generation failed:", error);
+        toast({
+            title: "生成失敗",
+            description: "生成分身時發生錯誤，請稍後再試一次。",
+            variant: "destructive",
+        });
+    } finally {
+        setIsGenerating(false);
+    }
   };
 
   const OptionCard = ({ item, category }: { item: typeof styles[StyleCategory][0]; category: StyleCategory; }) => {
