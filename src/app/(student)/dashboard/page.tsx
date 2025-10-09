@@ -195,12 +195,6 @@ export default function StudentDashboardPage() {
           <h1 className="text-2xl font-bold tracking-tight">你好, {currentStudent.name}!</h1>
           <p className="text-muted-foreground">歡迎回來！這是您今天的財務狀況概覽。</p>
         </div>
-        <Link href="/world">
-            <Button>
-                <Globe className="mr-2 h-4 w-4" />
-                前往世界地圖
-            </Button>
-        </Link>
       </div>
       <div className={cn("grid md:grid-cols-2 lg:grid-cols-4 gap-6")}>
         <Card>
