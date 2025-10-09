@@ -87,7 +87,7 @@ const WorldMap = () => {
                 style={{ width: MAP_WIDTH, height: MAP_HEIGHT }}
             >
                 <Image 
-                    src="https://storage.googleapis.com/deins_public_files/K073i5s-2.png" 
+                    src="/world-map.png"
                     alt="World Map" 
                     fill
                     className="object-cover"
@@ -99,7 +99,7 @@ const WorldMap = () => {
                     style={spriteStyle}
                 >
                      <Image 
-                        src="https://storage.googleapis.com/deins_public_files/TqH3p2e.png" 
+                        src="/player-sprite.png" 
                         alt="Player" 
                         width={SPRITE_WIDTH} 
                         height={SPRITE_HEIGHT}
