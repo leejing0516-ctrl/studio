@@ -46,19 +46,9 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
+import { resizeImage, fileToDataUrl } from "@/lib/image-utils";
 
 const HABIT_DURATION = 21;
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-
-const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
 
 export default function HabitsPage() {
   const { studentData } = useContext(StudentDataContext);
@@ -123,19 +113,21 @@ export default function HabitsPage() {
     setHabitDescription("");
   };
   
-  const handleCheckInImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCheckInImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-        if (file.size > MAX_FILE_SIZE) {
-            toast({
-                title: "圖片檔案太大",
-                description: `請選擇小於 ${MAX_FILE_SIZE / 1024 / 1024}MB 的圖片。`,
-                variant: "destructive",
-            });
-            return;
-        }
-        setCheckInImageFile(file);
-        setCheckInImagePreview(URL.createObjectURL(file));
+      try {
+        const resizedFile = await resizeImage(file, 1024, 1024);
+        setCheckInImageFile(resizedFile);
+        setCheckInImagePreview(URL.createObjectURL(resizedFile));
+      } catch (error) {
+        console.error("Image resize error:", error);
+        toast({
+          title: "圖片處理失敗",
+          description: "無法縮小圖片尺寸，請嘗試其他圖片。",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -207,7 +199,7 @@ export default function HabitsPage() {
       : 0;
 
     return (
-        <Card className="flex flex-col relative">
+        <Card className="flex flex-col relative transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
             <Badge className="absolute top-2 right-2 z-10" variant={habit.status === 'active' ? 'default' : habit.status === 'pending_approval' ? 'secondary' : habit.status === 'completed' ? 'default' : 'destructive'}>
                 {
                     {
@@ -296,7 +288,7 @@ export default function HabitsPage() {
 
   return (
     <div className="animate-in fade-in-0 duration-500 space-y-8">
-      <Card>
+      <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>建立新的習慣養成計畫</CardTitle>
@@ -325,7 +317,7 @@ export default function HabitsPage() {
         <div>
             <h2 className="text-2xl font-bold mb-4">我的習慣計畫</h2>
             {studentHabits.length === 0 ? (
-            <Card className="text-center p-12">
+            <Card className="text-center p-12 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                 <CardTitle className="mt-4">尚未建立任何習慣計畫</CardTitle>
                 <CardDescription className="mt-2">點擊上面的按鈕，開始你的第一個 21 天挑戰吧！</CardDescription>
             </Card>
@@ -401,7 +393,7 @@ export default function HabitsPage() {
             </DialogHeader>
             <div className="py-4 space-y-4">
                  <div className="space-y-2">
-                    <Label>上傳證明照片（選填，上限 2MB）</Label>
+                    <Label>上傳證明照片（選填）</Label>
                     <div className="flex items-center gap-4">
                         <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
                             {checkInImagePreview ? (

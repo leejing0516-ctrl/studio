@@ -40,17 +40,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { Badge } from "@/components/ui/badge";
-
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-
-const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
+import { resizeImage, fileToDataUrl } from "@/lib/image-utils";
 
 export default function TeacherRewardsPage() {
     const { 
@@ -97,19 +87,21 @@ export default function TeacherRewardsPage() {
         return rewards.filter(r => r.providerId === teacherId);
     }, [rewards, role, teacherId]);
 
-    const handleRewardImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleRewardImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            if (file.size > MAX_FILE_SIZE) {
+            try {
+                const resizedFile = await resizeImage(file, 512, 512);
+                setRewardImageFile(resizedFile);
+                setRewardImagePreview(URL.createObjectURL(resizedFile));
+            } catch (error) {
+                console.error("Image resize error:", error);
                 toast({
-                    title: "圖片檔案太大",
-                    description: `請選擇小於 ${MAX_FILE_SIZE / 1024 / 1024}MB 的圖片。`,
+                    title: "圖片處理失敗",
+                    description: "無法縮小圖片尺寸，請嘗試其他圖片。",
                     variant: "destructive",
                 });
-                return;
             }
-            setRewardImageFile(file);
-            setRewardImagePreview(URL.createObjectURL(file));
         }
     };
     
@@ -355,7 +347,7 @@ export default function TeacherRewardsPage() {
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
                             <div className="space-y-2">
-                                <Label>獎勵圖片 (建議大小上限 2MB)</Label>
+                                <Label>獎勵圖片</Label>
                                 <div className="flex items-center gap-4">
                                     <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
                                         {rewardImagePreview ? (
@@ -415,7 +407,7 @@ export default function TeacherRewardsPage() {
                         </DialogHeader>
                          <div className="grid gap-4 py-4">
                             <div className="space-y-2">
-                                <Label>獎勵圖片 (建議大小上限 2MB)</Label>
+                                <Label>獎勵圖片</Label>
                                 <div className="flex items-center gap-4">
                                     <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
                                         {rewardImagePreview ? (

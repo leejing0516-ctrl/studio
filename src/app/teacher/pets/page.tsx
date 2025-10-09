@@ -21,17 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
 import type { PetStage } from "@/lib/types";
-
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-
-const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
+import { resizeImage, fileToDataUrl } from "@/lib/image-utils";
 
 const defaultPetStages: PetStage[] = [
   {
@@ -94,17 +84,14 @@ export default function TeacherPetsPage() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        if (file.size > MAX_FILE_SIZE) {
-            toast({ title: "檔案太大", description: `請選擇小於 ${MAX_FILE_SIZE / 1024 / 1024}MB 的圖片。`, variant: "destructive" });
-            return;
-        }
-
         setUploadingKey(`stage_${index}`);
         try {
-            const dataUrl = await fileToDataUrl(file);
+            const resizedFile = await resizeImage(file, 512, 512);
+            const dataUrl = await fileToDataUrl(resizedFile);
             handleStageChange(index, 'image', dataUrl);
             toast({ title: "圖片已預覽", description: "請記得點擊下方的「儲存設定」以保存變更。" });
         } catch (error) {
+            console.error("Image processing error:", error);
             toast({ title: "圖片處理失敗", variant: "destructive" });
         } finally {
             setUploadingKey(null);

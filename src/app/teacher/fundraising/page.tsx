@@ -47,18 +47,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
-
-
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-
-const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
+import { resizeImage, fileToDataUrl } from "@/lib/image-utils";
 
 
 export default function TeacherFundraisingPage() {
@@ -94,19 +83,21 @@ export default function TeacherFundraisingPage() {
   }, [router, toast]);
 
 
-  const handleProjectImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProjectImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-        if (file.size > MAX_FILE_SIZE) {
-            toast({
-                title: "圖片檔案太大",
-                description: `請選擇小於 ${MAX_FILE_SIZE / 1024 / 1024}MB 的圖片。`,
-                variant: "destructive",
-            });
-            return;
-        }
-        setProjectImageFile(file);
-        setProjectImagePreview(URL.createObjectURL(file));
+      try {
+        const resizedFile = await resizeImage(file, 800, 600);
+        setProjectImageFile(resizedFile);
+        setProjectImagePreview(URL.createObjectURL(resizedFile));
+      } catch (error) {
+        console.error("Image resize error:", error);
+        toast({
+          title: "圖片處理失敗",
+          description: "無法縮小圖片尺寸，請嘗試其他圖片。",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -324,7 +315,7 @@ export default function TeacherFundraisingPage() {
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="space-y-2">
-                            <Label>專案圖片 (建議大小上限 2MB)</Label>
+                            <Label>專案圖片</Label>
                             <div className="flex items-center gap-4">
                                 <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
                                     {projectImagePreview ? (
@@ -405,7 +396,7 @@ export default function TeacherFundraisingPage() {
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                          <div className="space-y-2">
-                            <Label>專案圖片 (建議大小上限 2MB)</Label>
+                            <Label>專案圖片</Label>
                             <div className="flex items-center gap-4">
                                 <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
                                     {projectImagePreview ? (

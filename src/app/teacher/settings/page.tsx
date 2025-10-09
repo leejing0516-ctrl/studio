@@ -19,18 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
 import { themes, type Theme } from "@/lib/themes";
-
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-
-const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
-
+import { resizeImage, fileToDataUrl } from "@/lib/image-utils";
 
 export default function TeacherSettingsPage() {
     const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
@@ -70,16 +59,12 @@ export default function TeacherSettingsPage() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        if (file.size > MAX_FILE_SIZE) {
-            toast({ title: "檔案太大", description: `請選擇小於 ${MAX_FILE_SIZE / 1024 / 1024}MB 的圖片。`, variant: "destructive" });
-            return;
-        }
-
         const uploadKey = `sponsor_${index}`;
         setUploadingKey(uploadKey);
         
         try {
-            const dataUrl = await fileToDataUrl(file);
+            const resizedFile = await resizeImage(file, 288, 96);
+            const dataUrl = await fileToDataUrl(resizedFile);
             const newUrls = [...sponsorLogoUrls];
             newUrls[index] = dataUrl;
             setSponsorLogoUrls(newUrls);
@@ -265,7 +250,7 @@ export default function TeacherSettingsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>贊助商 Logo</CardTitle>
-                    <CardDescription>上傳最多四個贊助商 Logo，將會顯示在登入頁面。每個檔案上限 2MB。</CardDescription>
+                    <CardDescription>上傳最多四個贊助商 Logo，將會顯示在登入頁面。上傳後將自動壓縮。</CardDescription>
                 </CardHeader>
                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                     {Array.from({ length: 4 }).map((_, index) => (
