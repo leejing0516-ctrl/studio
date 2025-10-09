@@ -87,6 +87,15 @@ export type StudentHabit = {
   checkIns: HabitCheckIn[]; // Array of check-in records
 };
 
+export type AvatarCustomization = {
+    body: string;
+    eyes: string;
+    mouth: string;
+    hair: string;
+    accessory: string;
+    background: string;
+}
+
 export type Student = {
   id: string; // Student ID within the class
   _docId?: string; // Firestore document ID
@@ -103,6 +112,7 @@ export type Student = {
   challenges?: StudentChallenge[];
   fixedDeposits?: FixedDeposit[];
   habits?: StudentHabit[];
+  avatarCustomization?: AvatarCustomization;
 };
 
 export type Reward = {
