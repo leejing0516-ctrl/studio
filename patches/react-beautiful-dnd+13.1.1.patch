@@ -1,0 +1,49 @@
+diff --git a/node_modules/react-beautiful-dnd/dist/react-beautiful-dnd.esm.js b/node_modules/react-beautiful-dnd/dist/react-beautiful-dnd.esm.js
+index 54005b8..f0449d0 100644
+--- a/node_modules/react-beautiful-dnd/dist/react-beautiful-dnd.esm.js
++++ b/node_modules/react-beautiful-dnd/dist/react-beautiful-dnd.esm.js
+@@ -10266,7 +10266,7 @@ var Droppable = /*#__PURE__*/function (_React$Component) {
+ 
+   function Droppable(props) {
+     var _this;
+-
+     _classCallCheck(this, Droppable);
+-
+     _this = _possibleConstructorReturn(this, _getPrototypeOf(Droppable).call(this, props));
+     _this.styleContext = void 0;
+     _this.ref = null;
+@@ -10300,7 +10300,7 @@ var Droppable = /*#__PURE__*/function (_React$Component) {
+     };
+ 
+     _this.getDroppableRef = function (ref) {
+-      if (ref === null || _this.ref === ref) {
++      if (ref === null) {
+         return;
+       }
+ 
+@@ -10309,6 +10309,8 @@ var Droppable = /*#__PURE__*/function (_React$Component) {
+       _this.ref = ref;
+ 
+       var _this$props2 = _this.props,
++          isDropDisabled = _this$props2.isDropDisabled === undefined ? false : _this$props2.isDropDisabled,
++
+           droppableId = _this$props2.droppableId,
+           type = _this$props2.type;
+ 
+@@ -10317,7 +10319,7 @@ var Droppable = /*#__PURE__*/function (_React$Component) {
+         id: droppableId,
+         type: type,
+         getDimension: _this.getDimension
+-      }, _this.props.isDropDisabled);
++      }, isDropDisabled);
+ 
+       _this.props.dispatch({
+         type: 'PUBLISH_DROPPABLE',
+@@ -10336,7 +10338,6 @@ var Droppable = /*#__PURE__*/function (_React$Component) {
+     var droppableId = this.props.droppableId;
+     !this.props.isDropDisabled ? invariant(this.ref, "Droppable[droppableId=\"".concat(droppableId, "\"]: getDroppableRef must be called with a HTMLElement")) : void 0;
+   };
+-
+   _createClass(Droppable, [{
+     key: "componentDidUpdate",
+     value: function componentDidUpdate(prevProps) {
