@@ -11,10 +11,10 @@ import { themes } from "@/lib/themes";
 
 const ThemeInjector = ({ children }: { children: React.ReactNode }) => {
   const { platformConfig } = useContext(AppDataContext);
-  const themeName = useMemo(() => platformConfig?.theme || 'default', [platformConfig]);
+  const themeName = useMemo(() => platformConfig?.theme || 'kiddy-fun', [platformConfig]);
 
   useEffect(() => {
-    const theme = themes.find(t => t.name === themeName) || themes[0];
+    const theme = themes.find(t => t.name === themeName) || themes.find(t => t.name === 'kiddy-fun')!;
     
     const root = document.documentElement;
     root.classList.remove(...themes.map(t => t.name));
