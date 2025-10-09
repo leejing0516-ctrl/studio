@@ -1,6 +1,11 @@
 
 export const resizeImage = (file: File, maxWidth: number, maxHeight: number): Promise<File> => {
   return new Promise((resolve, reject) => {
+    // If the file is a GIF, skip resizing to preserve animation.
+    if (file.type === 'image/gif') {
+      return resolve(file);
+    }
+
     const img = document.createElement('img');
     const reader = new FileReader();
 
