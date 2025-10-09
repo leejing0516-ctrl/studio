@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Coins, Trophy, Wallet, BarChart as BarChartIcon, Landmark, Users, Globe, PiggyBank, Bone } from "lucide-react";
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Bar, BarChart, XAxis, YAxis } from "recharts"
-import RewardSuggestion from "@/components/reward-suggestion";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
 import { cn } from "@/lib/utils";
@@ -316,15 +315,6 @@ export default function StudentDashboardPage() {
                     <Bar dataKey="points" fill="hsl(var(--accent))" radius={4} />
                 </BarChart>
             </ChartContainer>
-          </CardContent>
-        </Card>
-        <Card className="md:col-span-5 flex flex-col">
-          <CardHeader>
-            <CardTitle>AI 獎勵顧問</CardTitle>
-            <CardDescription>根據您的活動獲得個人化的獎勵建議。</CardDescription>
-          </CardHeader>
-          <CardContent className="flex-grow flex items-center justify-center">
-            <RewardSuggestion studentPoints={totalPoints} stockMarketPerformance={stockPerformance} />
           </CardContent>
         </Card>
       </div>
