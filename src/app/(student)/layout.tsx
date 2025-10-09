@@ -167,7 +167,6 @@ export default function StudentLayout({
     { href: "/challenges", label: "挑戰任務", icon: Flag },
     { href: "/habits", label: "習慣養成", icon: Repeat },
     { href: "/fundraising", label: "募資平台", icon: HeartHandshake },
-    { href: "/avatar-creator", label: "分身造型", icon: Smile },
     { href: "/my-collection", label: "我的收藏", icon: Package },
     { href: "/rewards", label: "獎勵商店", icon: Gift },
     { href: "/stocks", label: "股票市場", icon: LineChart },
