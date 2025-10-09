@@ -110,7 +110,7 @@ export default function AvatarCreatorPage() {
     return (
       <Card
         className={cn(
-          "cursor-pointer transition-all duration-200",
+          "cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1",
           isSelected ? "border-primary ring-2 ring-primary shadow-lg" : "hover:shadow-md"
         )}
         onClick={() => handleSelect(category, item)}
