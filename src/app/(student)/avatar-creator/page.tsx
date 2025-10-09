@@ -1,21 +1,159 @@
 
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Wrench } from "lucide-react";
+import { useState } from "react";
+import Image from "next/image";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Wand2, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+// --- 造型選項資料 ---
+
+const styles = {
+  hair: [
+    { name: "金色長髮", thumbnail: "https://i.imgur.com/L4Z1j5s.png", prompt: "long golden hair" },
+    { name: "黑色短髮", thumbnail: "https://i.imgur.com/yv4s5Y8.png", prompt: "short black hair" },
+    { name: "棕色辮子", thumbnail: "https://i.imgur.com/O6XjYjA.png", prompt: "brown pigtails" },
+    { name: "粉紅包包頭", thumbnail: "https://i.imgur.com/S5Xf4mJ.png", prompt: "pink buns hair" },
+  ],
+  eyes: [
+    { name: "藍色大眼", thumbnail: "https://i.imgur.com/o2xZkL9.png", prompt: "big blue eyes" },
+    { name: "綠色眼睛", thumbnail: "https://i.imgur.com/W2A8Rra.png", prompt: "sparkling green eyes" },
+    { name: "瞇瞇笑眼", thumbnail: "https://i.imgur.com/sC5q08P.png", prompt: "smiling eyes" },
+    { name: "驚訝圓眼", thumbnail: "https://i.imgur.com/3Z6sZ0h.png", prompt: "surprised round eyes" },
+  ],
+  mouth: [
+    { name: "開心微笑", thumbnail: "https://i.imgur.com/3rGq36b.png", prompt: "happy smile" },
+    { name: "O型小嘴", thumbnail: "https://i.imgur.com/8a3a2bJ.png", prompt: "small O-shaped mouth" },
+    { name: "吐舌頭", thumbnail: "https://i.imgur.com/5l0hF3h.png", prompt: "tongue out" },
+    { name: "得意笑容", thumbnail: "https://i.imgur.com/qJQH7mO.png", prompt: "smirking smile" },
+  ],
+  accessory: [
+     { name: "無", thumbnail: "https://i.imgur.com/v8tFk6k.png", prompt: "no accessory" },
+     { name: "飛行員護目鏡", thumbnail: "https://i.imgur.com/o1g9j3L.png", prompt: "wearing aviator goggles on forehead" },
+     { name: "貓耳耳機", thumbnail: "https://i.imgur.com/T0v6b7N.png", prompt: "wearing cat ear headphones" },
+     { name: "蝴蝶髮夾", thumbnail: "https://i.imgur.com/x5z4A8d.png", prompt: "wearing a butterfly hair clip" },
+  ]
+};
+
+type StyleCategory = keyof typeof styles;
+
+// --- 組件 ---
 
 export default function AvatarCreatorPage() {
-  return (
-    <div className="animate-in fade-in-0 duration-500">
-      <Card className="text-center p-12">
-        <Wrench className="mx-auto h-16 w-16 text-primary" />
-        <CardTitle className="mt-6 text-3xl font-bold">
-          「分身造型」功能即將推出！
-        </CardTitle>
-        <CardDescription className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-          我們正在努力打造一個超酷的娃娃屋系統，讓你可以用點數購買各種有趣的配件，創造出專屬於你的獨一無二數位分身。敬請期待！
-        </CardDescription>
+  const [selections, setSelections] = useState({
+    hair: styles.hair[0],
+    eyes: styles.eyes[0],
+    mouth: styles.mouth[0],
+    accessory: styles.accessory[0],
+  });
+  const [generatedAvatar, setGeneratedAvatar] = useState<string>("https://i.imgur.com/pAn39b4.png"); // 預設娃娃
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleSelect = (category: StyleCategory, item: typeof styles[StyleCategory][0]) => {
+    setSelections(prev => ({ ...prev, [category]: item }));
+  };
+
+  const handleGenerate = async () => {
+    setIsGenerating(true);
+    // 這裡是未來要呼叫 AI Flow 的地方
+    // 為了展示，我們暫時設定一個延遲後顯示預設圖片
+    console.log("Generating with selections:", selections);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    // 這裡會接收 AI 回傳的圖片 URL
+    // setGeneratedAvatar(aiResultUrl); 
+    setIsGenerating(false);
+  };
+
+  const OptionCard = ({ item, category }: { item: typeof styles[StyleCategory][0]; category: StyleCategory; }) => {
+    const isSelected = selections[category].name === item.name;
+    return (
+      <Card
+        className={cn(
+          "cursor-pointer transition-all duration-200",
+          isSelected ? "border-primary ring-2 ring-primary shadow-lg" : "hover:shadow-md"
+        )}
+        onClick={() => handleSelect(category, item)}
+      >
+        <CardContent className="p-2">
+          <div className="aspect-square relative bg-muted rounded-md">
+            <Image src={item.thumbnail} alt={item.name} fill className="object-contain p-2" sizes="150px" />
+          </div>
+          <p className="text-center text-sm mt-2 truncate">{item.name}</p>
+        </CardContent>
       </Card>
+    );
+  };
+
+
+  return (
+    <div className="grid lg:grid-cols-3 gap-8 animate-in fade-in-0 duration-500">
+      
+      {/* 左側預覽與生成區塊 */}
+      <div className="lg:col-span-1 space-y-6">
+        <Card className="sticky top-20">
+          <CardHeader>
+            <CardTitle>我的分身</CardTitle>
+            <CardDescription>搭配你最喜歡的造型，讓 AI 為你創造獨一無二的大頭娃娃！</CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center justify-center">
+            <div className="w-64 h-64 relative bg-muted rounded-full overflow-hidden border-4 border-primary/20">
+              {isGenerating ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                </div>
+              ) : (
+                <Image src={generatedAvatar} alt="Generated Avatar" fill className="object-cover" sizes="256px" />
+              )}
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button className="w-full" size="lg" onClick={handleGenerate} disabled={isGenerating}>
+              <Wand2 className="mr-2"/>
+              {isGenerating ? "生成中..." : "生成我的分身！"}
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+
+      {/* 右側選項區塊 */}
+      <div className="lg:col-span-2">
+        <Tabs defaultValue="hair" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="hair">髮型</TabsTrigger>
+            <TabsTrigger value="eyes">眼睛</TabsTrigger>
+            <TabsTrigger value="mouth">嘴巴</TabsTrigger>
+            <TabsTrigger value="accessory">配件</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="hair" className="mt-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {styles.hair.map(item => <OptionCard key={item.name} item={item} category="hair" />)}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="eyes" className="mt-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {styles.eyes.map(item => <OptionCard key={item.name} item={item} category="eyes" />)}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="mouth" className="mt-4">
+             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {styles.mouth.map(item => <OptionCard key={item.name} item={item} category="mouth" />)}
+            </div>
+          </TabsContent>
+
+           <TabsContent value="accessory" className="mt-4">
+             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {styles.accessory.map(item => <OptionCard key={item.name} item={item} category="accessory" />)}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+
     </div>
   );
 }
