@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI flow for creating custom Q-version doll avatars.
@@ -55,6 +56,8 @@ const createAvatarFlow = ai.defineFlow(
         throw new Error('Image generation failed to return a data URL.');
     }
     
+    // The flow now simply returns the Data URL. 
+    // The client will handle uploading this to a permanent storage.
     return { imageUrl: dataUrl };
   }
 );

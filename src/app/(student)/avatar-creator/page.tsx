@@ -12,6 +12,7 @@ import { createAvatar, type CreateAvatarInput } from "@/ai/flows/create-avatar";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { StudentDataContext } from "@/context/StudentDataContext";
+import { uploadImageFromString } from "@/hooks/use-firebase-storage";
 
 // --- 造型選項資料 ---
 
@@ -66,6 +67,10 @@ export default function AvatarCreatorPage() {
   };
 
   const handleGenerate = async () => {
+    if (!studentData.student) {
+        toast({ title: "錯誤", description: "無法讀取學生資料，請重新登入。", variant: "destructive" });
+        return;
+    }
     setIsGenerating(true);
     
     const input: CreateAvatarInput = {
@@ -81,10 +86,18 @@ export default function AvatarCreatorPage() {
         if (result.imageUrl) {
             setGeneratedAvatar(result.imageUrl);
             
-            // Update student data in context and Firestore
+            // Upload the image to Firebase Storage and get URL
+            const filePath = `avatars/${studentData.student.classId}-${studentData.student.id}-${Date.now()}.png`;
+            const downloadURL = await uploadImageFromString(result.imageUrl, filePath);
+
+            if (!downloadURL) {
+                throw new Error("圖片上傳至雲端儲存失敗。");
+            }
+            
+            // Update student data in context and Firestore with the new URL
             await setStudents(currentStudents => currentStudents.map(s => {
                 if (s.id === studentData.student?.id && s.classId === studentData.student.classId) {
-                    return { ...s, avatar: result.imageUrl };
+                    return { ...s, avatar: downloadURL };
                 }
                 return s;
             }));
@@ -93,11 +106,11 @@ export default function AvatarCreatorPage() {
         } else {
              throw new Error("AI 未能回傳圖片。");
         }
-    } catch (error) {
-        console.error("Avatar generation failed:", error);
+    } catch (error: any) {
+        console.error("Avatar generation or upload failed:", error);
         toast({
             title: "生成失敗",
-            description: "生成分身時發生錯誤，請稍後再試一次。",
+            description: error.message || "生成分身時發生錯誤，請稍後再試一次。",
             variant: "destructive",
         });
     } finally {
