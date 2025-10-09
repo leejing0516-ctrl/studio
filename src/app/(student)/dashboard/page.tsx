@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useContext, useMemo } from "react";
@@ -11,6 +12,8 @@ import { AppDataContext } from "@/context/AppDataContext";
 import { cn } from "@/lib/utils";
 import { subDays, format, parseISO, startOfDay, isWithinInterval } from "date-fns";
 import StudentPet from "@/components/student-pet";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 const chartConfig: ChartConfig = {
   points: {
@@ -187,9 +190,17 @@ export default function StudentDashboardPage() {
 
   return (
     <div className="grid gap-6 animate-in fade-in-0 duration-500">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight">你好, {currentStudent.name}!</h1>
-        <p className="text-muted-foreground">歡迎回到您的儀表板。這是您今天的財務狀況概覽。</p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">你好, {currentStudent.name}!</h1>
+          <p className="text-muted-foreground">歡迎回來！這是您今天的財務狀況概覽。</p>
+        </div>
+        <Link href="/world">
+            <Button>
+                <Globe className="mr-2 h-4 w-4" />
+                前往世界地圖
+            </Button>
+        </Link>
       </div>
       <div className={cn("grid md:grid-cols-2 lg:grid-cols-4 gap-6")}>
         <Card>

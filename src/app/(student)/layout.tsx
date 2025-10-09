@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import Link from "next/link";
@@ -162,6 +163,7 @@ export default function StudentLayout({
   };
 
   const navItems = [
+    { href: "/world", label: "世界地圖", icon: Globe },
     { href: "/dashboard", label: "儀表板", icon: LayoutDashboard },
     { href: "/announcements", label: "最新公告", icon: Megaphone },
     { href: "/challenges", label: "挑戰任務", icon: Flag },
