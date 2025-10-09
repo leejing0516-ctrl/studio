@@ -1,4 +1,5 @@
 
+
 export type Donation = {
   studentId: string;
   studentName: string;
@@ -86,6 +87,16 @@ export type StudentHabit = {
   checkIns: HabitCheckIn[]; // Array of check-in records
 };
 
+export type PetAttributes = {
+  passion: number;      // 熱情
+  optimism: number;     // 樂觀
+  curiosity: number;    // 好奇
+  gratitude: number;    // 感恩
+  selfControl: number;  // 自制
+  grit: number;         // 堅毅
+  socialIntelligence: number; // 社交智慧
+};
+
 export type Student = {
   id: string; // Student ID within the class
   _docId?: string; // Firestore document ID
@@ -102,6 +113,7 @@ export type Student = {
   challenges?: StudentChallenge[];
   fixedDeposits?: FixedDeposit[];
   habits?: StudentHabit[];
+  petAttributes: PetAttributes;
 };
 
 export type Reward = {

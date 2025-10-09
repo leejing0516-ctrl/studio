@@ -1,110 +1,80 @@
 
 "use client";
 
-import { useMemo, useContext } from 'react';
+import { useMemo } from 'react';
 import Image from 'next/image';
-import { motion } from 'framer-motion';
-import { AppDataContext } from '@/context/AppDataContext';
-import type { PetStage, Student } from '@/lib/types';
-import { Sparkles } from 'lucide-react';
+import type { Student, PetAttributes } from '@/lib/types';
+import {
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+  ResponsiveContainer,
+} from 'recharts';
+import { Card, CardContent } from './ui/card';
 
-const defaultPetStages: PetStage[] = [
-  {
-    level: 1,
-    name: "點點蛋",
-    image: "https://i.imgur.com/2Ofa3a5.png",
-    description: "一顆神秘的蛋，似乎對點數有反應。",
-    pointsRequired: 0,
-    aiHint: "mysterious egg",
-  },
-  {
-    level: 2,
-    name: "點點幼龍",
-    image: "https://i.imgur.com/s6geD3w.png",
-    description: "蛋孵化了！是隻活潑的幼龍，對世界充滿好奇。",
-    pointsRequired: 500,
-    aiHint: "cute baby dragon",
-  },
-  {
-    level: 3,
-    name: "點點巨龍",
-    image: "https://i.imgur.com/N5NCt3I.png",
-    description: "在充足的點數滋養下，牠成長為威風凜凜的巨龍！",
-    pointsRequired: 2000,
-    aiHint: "majestic dragon",
-  },
+const attributeMapping: { key: keyof PetAttributes; label: string }[] = [
+  { key: 'grit', label: '堅毅' },
+  { key: 'socialIntelligence', label: '社交' },
+  { key: 'gratitude', label: '感恩' },
+  { key: 'optimism', label: '樂觀' },
+  { key: 'curiosity', label: '好奇' },
+  { key: 'selfControl', label: '自制' },
+  { key: 'passion', label: '熱情' },
 ];
 
-
 const StudentPet = ({ student }: { student: Student }) => {
-  const { platformConfig } = useContext(AppDataContext);
-  
-  const petStages = useMemo(() => {
-    return platformConfig?.petStages && platformConfig.petStages.length > 0 
-      ? [...platformConfig.petStages].sort((a,b) => a.pointsRequired - b.pointsRequired)
-      : defaultPetStages;
-  }, [platformConfig]);
+  const petData = useMemo(() => {
+    if (!student.petAttributes) return [];
+    
+    return attributeMapping.map(attr => ({
+      subject: attr.label,
+      value: student.petAttributes[attr.key] ?? 0,
+      fullMark: 100, // Assuming a max value of 100 for radar chart scaling
+    }));
+  }, [student.petAttributes]);
 
-  const currentStage = useMemo(() => {
-    let stage: PetStage = petStages[0];
-    for (let i = petStages.length - 1; i >= 0; i--) {
-        if (student.points >= petStages[i].pointsRequired) {
-            stage = petStages[i];
-            break;
-        }
+  const highestAttribute = useMemo(() => {
+    if (!student.petAttributes) return null;
+
+    let maxVal = -1;
+    let maxAttr: string | null = null;
+
+    for (const attr of attributeMapping) {
+      const value = student.petAttributes[attr.key] ?? 0;
+      if (value > maxVal) {
+        maxVal = value;
+        maxAttr = attr.label;
+      }
     }
-    return stage;
-  }, [student.points, petStages]);
-  
-  const nextStage = petStages.find(s => s.level === currentStage.level + 1);
-  
-  const progress = useMemo(() => {
-    if (!nextStage) return 100;
-    const pointsInCurrentStage = student.points - currentStage.pointsRequired;
-    const pointsForNextStage = nextStage.pointsRequired - currentStage.pointsRequired;
-    if (pointsForNextStage <= 0) return 100;
-    return Math.min((pointsInCurrentStage / pointsForNextStage) * 100, 100);
-  }, [student.points, currentStage, nextStage]);
+    
+    if (maxVal === 0) {
+      return "均衡發展中";
+    }
+
+    return maxAttr;
+  }, [student.petAttributes]);
+
 
   return (
     <div className="flex flex-col items-center gap-4 text-center">
-        <motion.div 
-            key={currentStage.level}
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 260, damping: 20 }}
-            className="relative w-40 h-40"
-        >
-            <Image 
-                src={currentStage.image}
-                alt={currentStage.name}
-                fill
-                className="object-contain"
-                sizes="(max-width: 768px) 100vw, 160px"
-            />
-        </motion.div>
-        <div>
-            <h3 className="text-xl font-bold text-primary">{currentStage.name}</h3>
-            <p className="text-sm text-muted-foreground">{currentStage.description}</p>
-        </div>
-        
-        {nextStage && (
-            <div className="w-full space-y-1.5">
-                <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Lv. {currentStage.level}</span>
-                    <span>下一階段: {nextStage.pointsRequired.toLocaleString()} 點</span>
-                    <span>Lv. {nextStage.level}</span>
-                </div>
-                 <div className="w-full bg-secondary rounded-full h-2.5 overflow-hidden">
-                    <motion.div 
-                        className="bg-primary h-2.5 rounded-full" 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${progress}%` }}
-                        transition={{ duration: 0.8, ease: "easeInOut" }}
-                    />
-                </div>
-            </div>
-        )}
+      <div className="w-full h-56">
+        <ResponsiveContainer width="100%" height="100%">
+          <RadarChart cx="50%" cy="50%" outerRadius="80%" data={petData}>
+            <PolarGrid />
+            <PolarAngleAxis dataKey="subject" tick={{ fill: 'hsl(var(--foreground))', fontSize: 14 }} />
+            <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+            <Radar name={student.name} dataKey="value" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.6} />
+          </RadarChart>
+        </ResponsiveContainer>
+      </div>
+      <div>
+        <h3 className="text-xl font-bold text-primary">寵物品格雷達</h3>
+        <p className="text-sm text-muted-foreground">
+          你最強的品格特質是：<span className="font-semibold">{highestAttribute}</span>
+        </p>
+      </div>
     </div>
   );
 };

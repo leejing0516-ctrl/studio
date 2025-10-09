@@ -28,23 +28,33 @@ export const teachers: Teacher[] = [
     { id: "subjectTeacher1", name: "張老師", role: "subject_teacher", classIds: ["6A", "6B", "5A"], password: TEACHER_PASSWORD, pointBalance: 15000 },
 ];
 
+const defaultPetAttributes = {
+  passion: 0,
+  optimism: 0,
+  curiosity: 0,
+  gratitude: 0,
+  selfControl: 0,
+  grit: 0,
+  socialIntelligence: 0,
+};
+
 export const students: Student[] = [
   // Class 1B
-  { id: "S001", name: "陳容德", classId: "1B", points: 600, avatar: "https://picsum.photos/seed/S001/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petLevel: 1 },
-  { id: "S002", name: "方崇恩", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S002/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petLevel: 1 },
-  { id: "S003", name: "林桐佑", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S003/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petLevel: 1 },
-  { id: "S004", name: "盧宥宇", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S004/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petLevel: 1 },
-  { id: "S005", name: "吳義塏", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S005/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petLevel: 1 },
-  { id: "S006", name: "蘇品祐", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S006/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petLevel: 1 },
-  { id: "S007", name: "阮經言", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S007/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petLevel: 1 },
-  { id: "S008", name: "王楨之", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S008/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petLevel: 1 },
-  { id: "S009", name: "李瑄然", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S009/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petLevel: 1 },
-  { id: "S010", name: "張荷曼", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S010/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petLevel: 1 },
-  { id: "S011", name: "楊亘昀", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S011/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petLevel: 1 },
-  { id: "S012", name: "顏瑋珺", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S012/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petLevel: 1 },
-  { id: "S013", name: "李宇蕎", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S013/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petLevel: 1 },
-  { id: "S014", name: "徐偌晨", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S014/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petLevel: 1 },
-  { id: "S015", name: "羅羿晴", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S015/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petLevel: 1 },
+  { id: "S001", name: "陳容德", classId: "1B", points: 600, avatar: "https://picsum.photos/seed/S001/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petAttributes: { ...defaultPetAttributes, grit: 20, curiosity: 15 } },
+  { id: "S002", name: "方崇恩", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S002/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petAttributes: defaultPetAttributes },
+  { id: "S003", name: "林桐佑", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S003/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petAttributes: defaultPetAttributes },
+  { id: "S004", name: "盧宥宇", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S004/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petAttributes: defaultPetAttributes },
+  { id: "S005", name: "吳義塏", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S005/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petAttributes: defaultPetAttributes },
+  { id: "S006", name: "蘇品祐", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S006/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petAttributes: defaultPetAttributes },
+  { id: "S007", name: "阮經言", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S007/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petAttributes: defaultPetAttributes },
+  { id: "S008", name: "王楨之", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S008/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petAttributes: defaultPetAttributes },
+  { id: "S009", name: "李瑄然", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S009/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petAttributes: defaultPetAttributes },
+  { id: "S010", name: "張荷曼", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S010/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petAttributes: defaultPetAttributes },
+  { id: "S011", name: "楊亘昀", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S011/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petAttributes: defaultPetAttributes },
+  { id: "S012", name: "顏瑋珺", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S012/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petAttributes: defaultPetAttributes },
+  { id: "S013", name: "李宇蕎", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S013/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petAttributes: defaultPetAttributes },
+  { id: "S014", name: "徐偌晨", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S014/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petAttributes: defaultPetAttributes },
+  { id: "S015", name: "羅羿晴", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S015/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [], petAttributes: defaultPetAttributes },
 ];
 
 
