@@ -155,7 +155,7 @@ export default function RewardsPage() {
   const RewardCard = ({ reward }: { reward: Reward }) => (
      <Card key={reward.id} className={cn(
          "flex flex-col overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1 duration-300 text-white",
-         reward.scope === 'school' ? "bg-purple-500" : "bg-green-500"
+         reward.scope === 'school' ? "bg-orange-500" : "bg-green-500"
      )}>
         <div className="relative h-48 w-full">
         <Image
