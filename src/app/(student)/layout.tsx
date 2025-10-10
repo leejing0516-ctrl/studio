@@ -251,7 +251,7 @@ export default function StudentLayout({
                   <AvatarFallback>{student?.name.slice(0, 2)}</AvatarFallback>
                 </Avatar>
                 <div className="text-left group-data-[collapsible=icon]:hidden">
-                  <p className="font-semibold">{student?.name || '學生'}</p>
+                  <p className="font-semibold text-lg">{student?.name || '學生'}</p>
                   <p className="text-xs text-muted-foreground">學生</p>
                 </div>
                 <ChevronDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />

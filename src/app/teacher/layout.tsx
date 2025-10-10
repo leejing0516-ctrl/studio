@@ -302,7 +302,7 @@ export default function TeacherLayout({
                   <AvatarFallback>{teacherName?.slice(0, 2)}</AvatarFallback>
                 </Avatar>
                 <div className="text-left group-data-[collapsible=icon]:hidden">
-                  <p className="font-semibold">{teacherName}</p>
+                  <p className="font-semibold text-lg">{teacherName}</p>
                   <p className="text-xs text-muted-foreground">{roleNameMapping[teacherRole || ''] || '老師'}</p>
                 </div>
                 <ChevronDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
