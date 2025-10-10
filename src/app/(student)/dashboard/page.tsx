@@ -182,10 +182,9 @@ export default function StudentDashboardPage() {
 
 
   const totalAssets = totalPoints + portfolioValue + totalDepositAmount - totalLoanAmount;
-  const stockPerformance = "上週透過投資科技股獲利 5%。";
 
   if (!currentStudent) {
-    return <div>載入中...</div>; // Or a more sophisticated loading state
+    return <div>載入中...</div>;
   }
 
   return (
@@ -197,42 +196,42 @@ export default function StudentDashboardPage() {
         </div>
       </div>
       <div className={cn("grid md:grid-cols-2 lg:grid-cols-4 gap-6")}>
-        <Card>
+        <Card className="bg-yellow-400 text-yellow-900">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">總點數</CardTitle>
-            <Coins className="h-4 w-4 text-accent" />
+            <Coins className="h-4 w-4 text-yellow-800" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {Math.round(totalPoints).toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground">可用於交易或兌換獎勵</p>
+            <p className="text-xs text-yellow-800/80">可用於交易或兌換獎勵</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-teal-400 text-teal-900">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">投資組合價值</CardTitle>
-            <BarChartIcon className="h-4 w-4 text-accent" />
+            <BarChartIcon className="h-4 w-4 text-teal-800" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">${Math.round(portfolioValue).toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">本月 +5.2%</p>
+            <p className="text-xs text-teal-800/80">本月 +5.2%</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-sky-400 text-sky-900">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">定存總額</CardTitle>
-                <PiggyBank className="h-4 w-4 text-accent" />
+                <PiggyBank className="h-4 w-4 text-sky-800" />
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">
                 {Math.round(totalDepositAmount).toLocaleString()}
                 </div>
-                <p className="text-xs text-muted-foreground">目前進行中的定期存款</p>
+                <p className="text-xs text-sky-800/80">目前進行中的定期存款</p>
             </CardContent>
         </Card>
-         {totalLoanAmount > 0 && (
-          <Card className="border-destructive">
+         {totalLoanAmount > 0 ? (
+          <Card className="border-destructive bg-red-100 text-red-900">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">目前貸款</CardTitle>
               <Landmark className="h-4 w-4 text-destructive" />
@@ -241,20 +240,21 @@ export default function StudentDashboardPage() {
               <div className="text-2xl font-bold text-destructive">
                 {Math.round(totalLoanAmount).toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">需在期限內償還</p>
+              <p className="text-xs text-red-800/80">需在期限內償還</p>
             </CardContent>
           </Card>
+        ) : (
+            <Card className="bg-purple-400 text-purple-900">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">總資產</CardTitle>
+                <Wallet className="h-4 w-4 text-purple-800" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">${Math.round(totalAssets).toLocaleString()}</div>
+                <p className="text-xs text-purple-800/80">點數 + 投資 + 定存</p>
+              </CardContent>
+            </Card>
         )}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">總資產</CardTitle>
-            <Wallet className="h-4 w-4 text-accent" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${Math.round(totalAssets).toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">點數 + 投資 + 定存 - 貸款</p>
-          </CardContent>
-        </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">班級排名</CardTitle>
@@ -275,14 +275,14 @@ export default function StudentDashboardPage() {
             <p className="text-xs text-muted-foreground">全校前 {100 - Math.floor(schoolPercentile)}%</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">我的分組</CardTitle>
             <Users className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
              {studentGroups.length > 0 ? (
-                <div className="space-y-2 text-xs text-muted-foreground">
+                <div className="space-y-2 text-sm text-muted-foreground">
                     {studentGroups.map((group, index) => (
                         <p key={index}>
                             在 **{group.teacherName}** 的課堂中，您是 **{group.groupName}** 的成員。
@@ -290,7 +290,7 @@ export default function StudentDashboardPage() {
                     ))}
                 </div>
             ) : (
-                <p className="text-xs text-muted-foreground">您尚未被分派到任何小組。</p>
+                <p className="text-sm text-muted-foreground">您尚未被分派到任何小組。</p>
             )}
           </CardContent>
         </Card>

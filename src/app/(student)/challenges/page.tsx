@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Building, GraduationCap, CheckCircle, Hourglass, PlayCircle, Coins } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 export default function ChallengesPage() {
     const { studentData } = useContext(StudentDataContext);
@@ -97,24 +98,27 @@ export default function ChallengesPage() {
 
 
     const ChallengeCard = ({ challenge }: { challenge: Challenge }) => (
-        <Card className="flex flex-col">
+        <Card className={cn(
+            "flex flex-col text-white",
+            challenge.scope === 'school' ? "bg-blue-500" : "bg-orange-500"
+        )}>
             <CardHeader>
                  <div className="flex justify-between items-start">
                     <CardTitle>{challenge.name}</CardTitle>
-                    <Badge variant={challenge.scope === 'school' ? 'default' : 'secondary'}>
+                    <Badge variant="secondary" className="bg-white/30 text-white border-none">
                         {challenge.scope === 'school' ? <Building className="mr-1.5" /> : <GraduationCap className="mr-1.5" />}
                         {challenge.scope === 'school' ? '學校任務' : '班級任務'}
                     </Badge>
                 </div>
-                <CardDescription>{challenge.description}</CardDescription>
+                <CardDescription className="text-white/80">{challenge.description}</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow"></CardContent>
-            <CardFooter className="flex justify-between items-center bg-muted/50 p-4">
-                 <div className="flex items-center gap-2 font-bold text-lg text-primary">
+            <CardFooter className="flex justify-between items-center bg-black/10 p-4">
+                 <div className="flex items-center gap-2 font-bold text-lg text-white">
                     <Coins className="h-5 w-5" />
                     <span>+{challenge.points.toLocaleString()}</span>
                 </div>
-                <Button onClick={() => handleAcceptChallenge(challenge.id)}>接受挑戰</Button>
+                <Button onClick={() => handleAcceptChallenge(challenge.id)} variant="secondary" className="bg-white text-black hover:bg-gray-200">接受挑戰</Button>
             </CardFooter>
         </Card>
     );
@@ -225,5 +229,3 @@ export default function ChallengesPage() {
         </div>
     )
 }
-
-    
