@@ -60,6 +60,8 @@ export default {
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))',
         },
+        'reward-card-school': 'hsl(var(--reward-card-school))',
+        'reward-card-class': 'hsl(var(--reward-card-class))',
         sidebar: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--sidebar-foreground))',

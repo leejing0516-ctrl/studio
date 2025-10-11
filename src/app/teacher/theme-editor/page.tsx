@@ -43,6 +43,8 @@ const defaultThemeColors: CustomTheme = {
     "chart-2": "180 80% 45%",
     "chart-3": "217 91% 60%",
     "chart-4": "300 80% 60%",
+    "reward-card-school": "25 95% 55%",
+    "reward-card-class": "140 70% 40%",
 };
 
 const colorOptions = [
@@ -65,6 +67,11 @@ const chartColorOptions = [
     { key: "chart-2", label: "儀表板卡片 2 (投資組合)" },
     { key: "chart-3", label: "儀表板卡片 3 (定存總額)" },
     { key: "chart-4", label: "儀表板卡片 4 (總資產)" },
+]
+
+const cardColorOptions = [
+    { key: "reward-card-school", label: "學校獎勵卡片" },
+    { key: "reward-card-class", label: "班級獎勵卡片" },
 ]
 
 // Color conversion helpers
@@ -240,6 +247,31 @@ export default function TeacherThemeEditorPage() {
                                             value={customColors[key] || defaultThemeColors[key] || ''}
                                             onChange={(e) => handleColorChange(key, e.target.value)}
                                             placeholder="例如: 48 96% 53%"
+                                            className="flex-1"
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                     <div>
+                        <h3 className="text-lg font-semibold mb-4 border-b pb-2">卡片顏色</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {cardColorOptions.map(({ key, label }) => (
+                                <div key={key} className="space-y-2">
+                                    <Label htmlFor={key}>{label}</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Input 
+                                            type="color"
+                                            value={getHexFromHsl(key)}
+                                            onChange={(e) => handleHexColorChange(key, e.target.value)}
+                                            className="p-1 h-10 w-10 cursor-pointer"
+                                        />
+                                        <Input 
+                                            id={key}
+                                            value={customColors[key] || defaultThemeColors[key] || ''}
+                                            onChange={(e) => handleColorChange(key, e.target.value)}
+                                            placeholder="例如: 25 95% 55%"
                                             className="flex-1"
                                         />
                                     </div>
