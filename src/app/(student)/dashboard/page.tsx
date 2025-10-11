@@ -196,62 +196,62 @@ export default function StudentDashboardPage() {
         </div>
       </div>
       <div className={cn("grid md:grid-cols-2 lg:grid-cols-4 gap-6")}>
-        <Card className="bg-yellow-400 text-yellow-900">
+        <Card className="bg-chart-1 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">總點數</CardTitle>
-            <Coins className="h-4 w-4 text-yellow-800" />
+            <Coins className="h-4 w-4 text-white/80" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {Math.round(totalPoints).toLocaleString()}
             </div>
-            <p className="text-xs text-yellow-800/80">可用於交易或兌換獎勵</p>
+            <p className="text-xs text-white/80">可用於交易或兌換獎勵</p>
           </CardContent>
         </Card>
-        <Card className="bg-teal-400 text-teal-900">
+        <Card className="bg-chart-2 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">投資組合價值</CardTitle>
-            <BarChartIcon className="h-4 w-4 text-teal-800" />
+            <BarChartIcon className="h-4 w-4 text-white/80" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">${Math.round(portfolioValue).toLocaleString()}</div>
-            <p className="text-xs text-teal-800/80">本月 +5.2%</p>
+            <p className="text-xs text-white/80">本月 +5.2%</p>
           </CardContent>
         </Card>
-        <Card className="bg-sky-400 text-sky-900">
+        <Card className="bg-chart-3 text-white">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">定存總額</CardTitle>
-                <PiggyBank className="h-4 w-4 text-sky-800" />
+                <PiggyBank className="h-4 w-4 text-white/80" />
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">
                 {Math.round(totalDepositAmount).toLocaleString()}
                 </div>
-                <p className="text-xs text-sky-800/80">目前進行中的定期存款</p>
+                <p className="text-xs text-white/80">目前進行中的定期存款</p>
             </CardContent>
         </Card>
          {totalLoanAmount > 0 ? (
-          <Card className="border-destructive bg-red-100 text-red-900">
+          <Card className="border-destructive bg-destructive/10 text-destructive">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">目前貸款</CardTitle>
-              <Landmark className="h-4 w-4 text-destructive" />
+              <Landmark className="h-4 w-4" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-destructive">
+              <div className="text-2xl font-bold">
                 {Math.round(totalLoanAmount).toLocaleString()}
               </div>
-              <p className="text-xs text-red-800/80">需在期限內償還</p>
+              <p className="text-xs text-destructive/80">需在期限內償還</p>
             </CardContent>
           </Card>
         ) : (
-            <Card className="bg-purple-400 text-purple-900">
+            <Card className="bg-chart-4 text-white">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">總資產</CardTitle>
-                <Wallet className="h-4 w-4 text-purple-800" />
+                <Wallet className="h-4 w-4 text-white/80" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">${Math.round(totalAssets).toLocaleString()}</div>
-                <p className="text-xs text-purple-800/80">點數 + 投資 + 定存</p>
+                <p className="text-xs text-white/80">點數 + 投資 + 定存</p>
               </CardContent>
             </Card>
         )}

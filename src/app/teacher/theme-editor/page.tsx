@@ -39,6 +39,10 @@ const defaultThemeColors: CustomTheme = {
     border: "214.3 31.8% 91.4%",
     input: "214.3 31.8% 91.4%",
     ring: "222.2 84% 4.9%",
+    "chart-1": "48 96% 53%",
+    "chart-2": "180 80% 45%",
+    "chart-3": "217 91% 60%",
+    "chart-4": "300 80% 60%",
 };
 
 const colorOptions = [
@@ -55,6 +59,13 @@ const colorOptions = [
     { key: "destructive", label: "危險/刪除色" },
     { key: "border", label: "邊框顏色" },
 ];
+
+const chartColorOptions = [
+    { key: "chart-1", label: "儀表板卡片 1 (總點數)" },
+    { key: "chart-2", label: "儀表板卡片 2 (投資組合)" },
+    { key: "chart-3", label: "儀表板卡片 3 (定存總額)" },
+    { key: "chart-4", label: "儀表板卡片 4 (總資產)" },
+]
 
 // Color conversion helpers
 function hslToHex(h: number, s: number, l: number): string {
@@ -185,28 +196,56 @@ export default function TeacherThemeEditorPage() {
                         自訂您平台的主要顏色。您可以點擊色塊來使用滴管或色盤選色，或直接輸入 HSL 格式 (色相、飽和度%、亮度%) 的數值。變更會即時預覽，滿意後請務必點擊下方的「儲存自訂主題」按鈕。
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {colorOptions.map(({ key, label }) => (
-                            <div key={key} className="space-y-2">
-                                <Label htmlFor={key}>{label}</Label>
-                                <div className="flex items-center gap-2">
-                                    <Input 
-                                        type="color"
-                                        value={getHexFromHsl(key)}
-                                        onChange={(e) => handleHexColorChange(key, e.target.value)}
-                                        className="p-1 h-10 w-10 cursor-pointer"
-                                    />
-                                    <Input 
-                                        id={key}
-                                        value={customColors[key] || ''}
-                                        onChange={(e) => handleColorChange(key, e.target.value)}
-                                        placeholder="例如: 210 40% 98%"
-                                        className="flex-1"
-                                    />
+                <CardContent className="space-y-8">
+                     <div>
+                        <h3 className="text-lg font-semibold mb-4 border-b pb-2">主要顏色</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {colorOptions.map(({ key, label }) => (
+                                <div key={key} className="space-y-2">
+                                    <Label htmlFor={key}>{label}</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Input 
+                                            type="color"
+                                            value={getHexFromHsl(key)}
+                                            onChange={(e) => handleHexColorChange(key, e.target.value)}
+                                            className="p-1 h-10 w-10 cursor-pointer"
+                                        />
+                                        <Input 
+                                            id={key}
+                                            value={customColors[key] || defaultThemeColors[key] || ''}
+                                            onChange={(e) => handleColorChange(key, e.target.value)}
+                                            placeholder="例如: 210 40% 98%"
+                                            className="flex-1"
+                                        />
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
+                    </div>
+                     <div>
+                        <h3 className="text-lg font-semibold mb-4 border-b pb-2">儀表板卡片顏色</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {chartColorOptions.map(({ key, label }) => (
+                                <div key={key} className="space-y-2">
+                                    <Label htmlFor={key}>{label}</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Input 
+                                            type="color"
+                                            value={getHexFromHsl(key)}
+                                            onChange={(e) => handleHexColorChange(key, e.target.value)}
+                                            className="p-1 h-10 w-10 cursor-pointer"
+                                        />
+                                        <Input 
+                                            id={key}
+                                            value={customColors[key] || defaultThemeColors[key] || ''}
+                                            onChange={(e) => handleColorChange(key, e.target.value)}
+                                            placeholder="例如: 48 96% 53%"
+                                            className="flex-1"
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </CardContent>
             </Card>
