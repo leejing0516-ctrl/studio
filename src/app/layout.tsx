@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useContext, useEffect, useMemo } from "react";
@@ -11,22 +12,28 @@ import { themes } from "@/lib/themes";
 
 const ThemeInjector = ({ children }: { children: React.ReactNode }) => {
   const { platformConfig } = useContext(AppDataContext);
-  const themeName = useMemo(() => platformConfig?.theme || 'kiddy-fun', [platformConfig]);
+  const themeName = useMemo(() => platformConfig?.theme || 'default', [platformConfig]);
+  const customTheme = useMemo(() => platformConfig?.customTheme, [platformConfig]);
 
   useEffect(() => {
-    const theme = themes.find(t => t.name === themeName) || themes.find(t => t.name === 'kiddy-fun')!;
-    
     const root = document.documentElement;
     root.classList.remove(...themes.map(t => t.name));
-    root.classList.add(theme.name);
-
-    if (theme.cssVars.dark) {
-      Object.entries(theme.cssVars.dark).forEach(([key, value]) => {
-        root.style.setProperty(`--${key}`, value);
-      });
+    
+    if (themeName === 'custom' && customTheme) {
+        Object.entries(customTheme).forEach(([key, value]) => {
+            root.style.setProperty(`--${key}`, value);
+        });
+    } else {
+      const theme = themes.find(t => t.name === themeName) || themes.find(t => t.name === 'default')!;
+      root.classList.add(theme.name);
+       if (theme.cssVars.dark) {
+        Object.entries(theme.cssVars.dark).forEach(([key, value]) => {
+            root.style.setProperty(`--${key}`, value);
+        });
+      }
     }
 
-  }, [themeName]);
+  }, [themeName, customTheme]);
 
   return <>{children}</>;
 }

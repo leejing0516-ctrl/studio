@@ -198,6 +198,10 @@ export type PetStage = {
   aiHint: string;
 };
 
+export type CustomTheme = {
+  [key: string]: string;
+};
+
 export type PlatformConfig = {
     id: 'main';
     schoolFunds?: number;
@@ -213,6 +217,7 @@ export type PlatformConfig = {
     homeSubtitle?: string;
     homeIllustrationUrl?: string;
     theme?: string;
+    customTheme?: CustomTheme;
     marketOpenHour?: number;
     marketCloseHour?: number;
     stockMarketNews?: Announcement[];
