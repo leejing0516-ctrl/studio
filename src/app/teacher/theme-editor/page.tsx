@@ -46,12 +46,6 @@ const defaultThemeColors: CustomTheme = {
     "chart-4": "300 80% 60%",
     "reward-card-school": "25 95% 55%",
     "reward-card-class": "140 70% 40%",
-    "card-title-foreground": "210 40% 98%",
-    "card-value-foreground": "210 40% 98%",
-    "card-description-foreground": "210 40% 90%",
-    "card-title-size": "0.875rem",
-    "card-value-size": "1.5rem",
-    "card-description-size": "0.75rem",
     "class-rank-card-background": "0 0% 100%",
     "class-rank-card-foreground": "222.2 84% 4.9%",
     "school-rank-card-background": "0 0% 100%",
@@ -62,6 +56,12 @@ const defaultThemeColors: CustomTheme = {
     "my-pet-card-foreground": "222.2 84% 4.9%",
     "points-trend-card-background": "0 0% 100%",
     "points-trend-card-foreground": "222.2 84% 4.9%",
+    "card-title-foreground": "210 40% 98%",
+    "card-value-foreground": "210 40% 98%",
+    "card-description-foreground": "210 40% 90%",
+    "card-title-size": "0.875rem",
+    "card-value-size": "1.5rem",
+    "card-description-size": "0.75rem",
 };
 
 const colorOptions = [
@@ -84,22 +84,20 @@ const chartColorOptions = [
     { key: "chart-2", label: "儀表板卡片 2 (投資價值)" },
     { key: "chart-3", label: "儀表板卡片 3 (定存點數)" },
     { key: "chart-4", label: "儀表板卡片 4 (總資產)" },
-]
+];
 
-const cardColorOptions = [
+const dashboardCardOptions = [
+    { keyBackground: "class-rank-card-background", keyForeground: "class-rank-card-foreground", label: "班級排名卡片" },
+    { keyBackground: "school-rank-card-background", keyForeground: "school-rank-card-foreground", label: "全校排名卡片" },
+    { keyBackground: "my-groups-card-background", keyForeground: "my-groups-card-foreground", label: "我的分組卡片" },
+    { keyBackground: "my-pet-card-background", keyForeground: "my-pet-card-foreground", label: "我的寵物卡片" },
+    { keyBackground: "points-trend-card-background", keyForeground: "points-trend-card-foreground", label: "點數趨勢卡片" },
+];
+
+const specialCardOptions = [
     { key: "reward-card-school", label: "學校獎勵卡片" },
     { key: "reward-card-class", label: "班級獎勵卡片" },
-    { key: "class-rank-card-background", label: "班級排名卡片背景" },
-    { key: "class-rank-card-foreground", label: "班級排名卡片文字" },
-    { key: "school-rank-card-background", label: "全校排名卡片背景" },
-    { key: "school-rank-card-foreground", label: "全校排名卡片文字" },
-    { key: "my-groups-card-background", label: "我的分組卡片背景" },
-    { key: "my-groups-card-foreground", label: "我的分組卡片文字" },
-    { key: "my-pet-card-background", label: "我的寵物卡片背景" },
-    { key: "my-pet-card-foreground", label: "我的寵物卡片文字" },
-    { key: "points-trend-card-background", label: "點數趨勢卡片背景" },
-    { key: "points-trend-card-foreground", label: "點數趨勢卡片文字" },
-]
+];
 
 const cardTextOptions = [
     { key: "card-title-foreground", label: "卡片標題文字顏色" },
@@ -228,36 +226,46 @@ export default function TeacherThemeEditorPage() {
         if (defaultTheme) {
             setCustomColors(defaultTheme.cssVars.dark);
             Object.entries(defaultTheme.cssVars.dark).forEach(([key, value]) => {
-                document.documentElement.style.setProperty(`--${key}`, value);
+                document.documentElement.style.setProperty(`--${key}`, value as string);
             });
             toast({ title: "已重設", description: "顏色已重設為預設主題，請儲存以生效。" });
         }
     };
 
-    const ColorInputGroup = ({ options }: { options: {key: string, label: string}[]}) => (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {options.map(({ key, label }) => (
-                <div key={key} className="space-y-2">
-                    <Label htmlFor={key}>{label}</Label>
-                    <div className="flex items-center gap-2">
-                        <Input 
-                            type="color"
-                            value={getHexFromHsl(key)}
-                            onChange={(e) => handleHexColorChange(key, e.target.value)}
-                            className="p-1 h-10 w-10 cursor-pointer"
-                        />
-                        <Input 
-                            id={key}
-                            value={customColors[key] || defaultThemeColors[key] || ''}
-                            onChange={(e) => handleValueChange(key, e.target.value)}
-                            placeholder="例如: 210 40% 98%"
-                            className="flex-1"
-                        />
-                    </div>
-                </div>
-            ))}
+    const ColorInput = ({ colorKey, label }: { colorKey: string, label: string }) => (
+        <div className="space-y-2">
+            <Label htmlFor={colorKey}>{label}</Label>
+            <div className="flex items-center gap-2">
+                <Input 
+                    type="color"
+                    value={getHexFromHsl(colorKey)}
+                    onChange={(e) => handleHexColorChange(colorKey, e.target.value)}
+                    className="p-1 h-10 w-10 cursor-pointer"
+                />
+                <Input 
+                    id={colorKey}
+                    value={customColors[colorKey] || defaultThemeColors[colorKey] || ''}
+                    onChange={(e) => handleValueChange(colorKey, e.target.value)}
+                    placeholder="例如: 210 40% 98%"
+                    className="flex-1"
+                />
+            </div>
         </div>
     );
+    
+    const SizeInput = ({ sizeKey, label }: { sizeKey: string, label: string }) => (
+        <div className="space-y-2">
+            <Label htmlFor={sizeKey}>{label}</Label>
+            <Input 
+                id={sizeKey}
+                value={customColors[sizeKey] || defaultThemeColors[sizeKey] || ''}
+                onChange={(e) => handleValueChange(sizeKey, e.target.value)}
+                placeholder="例如: 1.5rem 或 24px"
+                className="flex-1"
+            />
+        </div>
+    );
+
 
     return (
         <div className="space-y-6 animate-in fade-in-0 duration-500">
@@ -269,59 +277,76 @@ export default function TeacherThemeEditorPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-8">
-                     <div>
-                        <h3 className="text-lg font-semibold mb-4 border-b pb-2">主要顏色</h3>
-                        <ColorInputGroup options={colorOptions} />
-                    </div>
-                     <div>
-                        <h3 className="text-lg font-semibold mb-4 border-b pb-2">儀表板頂部卡片</h3>
-                        <ColorInputGroup options={chartColorOptions} />
-                    </div>
-                     <div>
-                        <h3 className="text-lg font-semibold mb-4 border-b pb-2">各式卡片顏色</h3>
-                        <ColorInputGroup options={cardColorOptions} />
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-semibold mb-4 border-b pb-2">儀表板頂部卡片文字</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {cardTextOptions.map(({ key, label }) => (
-                                <div key={key} className="space-y-2">
-                                    <Label htmlFor={key}>{label}</Label>
-                                    <div className="flex items-center gap-2">
-                                        <Input 
-                                            type="color"
-                                            value={getHexFromHsl(key)}
-                                            onChange={(e) => handleHexColorChange(key, e.target.value)}
-                                            className="p-1 h-10 w-10 cursor-pointer"
-                                        />
-                                        <Input 
-                                            id={key}
-                                            value={customColors[key] || defaultThemeColors[key] || ''}
-                                            onChange={(e) => handleValueChange(key, e.target.value)}
-                                            placeholder="例如: 210 40% 98%"
-                                            className="flex-1"
-                                        />
+                     <Card>
+                        <CardHeader>
+                            <CardTitle className="text-lg">主要顏色</CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {colorOptions.map(({ key, label }) => (
+                                <ColorInput key={key} colorKey={key} label={label} />
+                            ))}
+                        </CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader>
+                             <CardTitle className="text-lg">儀表板頂部卡片</CardTitle>
+                             <CardDescription>設定儀表板最上方四張數據卡片的背景顏色。</CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                             {chartColorOptions.map(({ key, label }) => (
+                                <ColorInput key={key} colorKey={key} label={label} />
+                            ))}
+                        </CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader>
+                             <CardTitle className="text-lg">儀表板下方卡片</CardTitle>
+                             <CardDescription>分別設定儀表板下方區塊各張卡片的背景與文字顏色。</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            {dashboardCardOptions.map(({ keyBackground, keyForeground, label }) => (
+                                <div key={keyBackground} className="p-4 border rounded-md">
+                                    <h4 className="font-medium mb-4">{label}</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <ColorInput colorKey={keyBackground} label="背景顏色" />
+                                        <ColorInput colorKey={keyForeground} label="文字顏色" />
                                     </div>
                                 </div>
                             ))}
-                        </div>
-                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-                             {cardSizeOptions.map(({ key, label }) => (
-                                <div key={key} className="space-y-2">
-                                    <Label htmlFor={key}>{label}</Label>
-                                    <div className="flex items-center gap-2">
-                                        <Input 
-                                            id={key}
-                                            value={customColors[key] || defaultThemeColors[key] || ''}
-                                            onChange={(e) => handleValueChange(key, e.target.value)}
-                                            placeholder="例如: 1.5rem 或 24px"
-                                            className="flex-1"
-                                        />
-                                    </div>
-                                </div>
+                        </CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader>
+                             <CardTitle className="text-lg">其他特殊卡片</CardTitle>
+                             <CardDescription>設定獎勵商店等頁面中特殊卡片的顏色。</CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                             {specialCardOptions.map(({ key, label }) => (
+                                <ColorInput key={key} colorKey={key} label={label} />
                             ))}
-                        </div>
-                    </div>
+                        </CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader>
+                             <CardTitle className="text-lg">全域卡片文字設定</CardTitle>
+                             <CardDescription>統一調整儀表板所有資訊卡片（包含頂部與下方卡片）的文字顏色與大小。</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <h4 className="font-medium mb-4">文字顏色</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {cardTextOptions.map(({ key, label }) => (
+                                    <ColorInput key={key} colorKey={key} label={label} />
+                                ))}
+                            </div>
+                             <h4 className="font-medium mt-6 mb-4">文字大小</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {cardSizeOptions.map(({ key, label }) => (
+                                    <SizeInput key={key} sizeKey={key} label={label} />
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+
                 </CardContent>
             </Card>
 
