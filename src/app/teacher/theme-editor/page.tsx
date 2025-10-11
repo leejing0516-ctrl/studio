@@ -111,7 +111,6 @@ const cardSizeOptions = [
     { key: "card-description-size", label: "卡片描述文字大小" },
 ];
 
-
 function hslToHex(h: number, s: number, l: number): string {
     s /= 100;
     l /= 100;
@@ -146,46 +145,41 @@ function hslToHex(h: number, s: number, l: number): string {
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
-
 function hexToHsl(hex: string): string {
-    let r_num = 0, g_num = 0, b_num = 0;
+  let r = 0, g = 0, b = 0;
+  if (hex.length === 4) {
+    r = parseInt(hex[1] + hex[1], 16);
+    g = parseInt(hex[2] + hex[2], 16);
+    b = parseInt(hex[3] + hex[3], 16);
+  } else if (hex.length === 7) {
+    r = parseInt(hex.substring(1, 3), 16);
+    g = parseInt(hex.substring(3, 5), 16);
+    b = parseInt(hex.substring(5, 7), 16);
+  }
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0, s = 0, l = (max + min) / 2;
 
-    if (hex.length === 4) {
-        r_num = parseInt(hex[1] + hex[1], 16);
-        g_num = parseInt(hex[2] + hex[2], 16);
-        b_num = parseInt(hex[3] + hex[3], 16);
-    } else if (hex.length === 7) {
-        r_num = parseInt(hex.substring(1, 3), 16);
-        g_num = parseInt(hex.substring(3, 5), 16);
-        b_num = parseInt(hex.substring(5, 7), 16);
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
     }
-    
-    const r = r_num / 255;
-    const g = g_num / 255;
-    const b = b_num / 255;
+    h /= 6;
+  }
 
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    let h = 0, s = 0, l = (max + min) / 2;
+  h = Math.round(h * 360);
+  s = Math.round(s * 100);
+  l = Math.round(l * 100);
 
-    if (max !== min) {
-        const d = max - min;
-        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-        switch (max) {
-            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-            case g: h = (b - r) / d + 2; break;
-            case b: h = (r - g) / d + 4; break;
-        }
-        h /= 6;
-    }
-
-    h = Math.round(h * 360);
-    s = Math.round(s * 100);
-    l = Math.round(l * 100);
-
-    return `${h} ${s}% ${l}%`;
+  return `${h} ${s}% ${l}%`;
 }
-
 
 export default function TeacherThemeEditorPage() {
     const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
@@ -203,37 +197,17 @@ export default function TeacherThemeEditorPage() {
             return;
         }
 
-        if (platformConfig?.customTheme) {
-            setCustomColors(platformConfig.customTheme);
-        } else if (platformConfig?.theme) {
-            const baseTheme = themes.find(t => t.name === platformConfig.theme);
-            if (baseTheme && baseTheme.cssVars.dark) {
-                setCustomColors(baseTheme.cssVars.dark);
-            }
-        } else {
-             setCustomColors(defaultThemeColors);
-        }
+        const initialColors = platformConfig?.customTheme 
+            || themes.find(t => t.name === platformConfig?.theme)?.cssVars.dark 
+            || defaultThemeColors;
+        setCustomColors(initialColors);
+
     }, [platformConfig, router, toast]);
 
     const handleValueChange = (key: string, value: string) => {
         const newValues = { ...customColors, [key]: value };
         setCustomColors(newValues);
         document.documentElement.style.setProperty(`--${key}`, value);
-    };
-
-    const handleHexColorChange = (key: string, hex: string) => {
-        const hsl = hexToHsl(hex);
-        handleValueChange(key, hsl);
-    };
-
-    const getHexFromHsl = (key: string): string => {
-        const hslString = customColors[key] || defaultThemeColors[key] || "0 0% 0%";
-        if (typeof hslString !== 'string' || !hslString.includes(' ')) return '#000000';
-        const parts = hslString.replace(/%/g, '').split(' ').map(Number);
-        if (parts.length === 3 && !parts.some(isNaN)) {
-            return hslToHex(parts[0], parts[1], parts[2]);
-        }
-        return '#000000';
     };
 
     const handleSaveTheme = async () => {
@@ -263,26 +237,56 @@ export default function TeacherThemeEditorPage() {
         }
     };
 
-    const ColorInput = ({ colorKey, label }: { colorKey: string, label: string }) => (
-        <div className="space-y-2">
-            <Label htmlFor={colorKey}>{label}</Label>
-            <div className="flex items-center gap-2">
-                <Input 
-                    type="color"
-                    value={getHexFromHsl(colorKey)}
-                    onChange={(e) => handleHexColorChange(colorKey, e.target.value)}
-                    className="p-1 h-10 w-10 cursor-pointer"
-                />
-                <Input 
-                    id={colorKey}
-                    value={customColors[colorKey] || defaultThemeColors[colorKey] || ''}
-                    onChange={(e) => handleValueChange(colorKey, e.target.value)}
-                    placeholder="例如: 210 40% 98%"
-                    className="flex-1"
-                />
+    const ColorInput = ({ colorKey, label }: { colorKey: string, label: string }) => {
+        const [previewHex, setPreviewHex] = useState(() => getHexFromHsl(colorKey));
+
+        useEffect(() => {
+            setPreviewHex(getHexFromHsl(colorKey));
+        }, [customColors[colorKey]]);
+
+        const getHexFromHsl = (key: string): string => {
+            const hslString = customColors[key] || defaultThemeColors[key] || "0 0% 0%";
+            if (typeof hslString !== 'string' || !hslString.includes(' ')) return '#000000';
+            const parts = hslString.replace(/%/g, '').split(' ').map(Number);
+            if (parts.length === 3 && !parts.some(isNaN)) {
+                return hslToHex(parts[0], parts[1], parts[2]);
+            }
+            return '#000000';
+        };
+
+        const handleHexColorInput = (hex: string) => {
+            setPreviewHex(hex);
+            const hsl = hexToHsl(hex);
+            document.documentElement.style.setProperty(`--${colorKey}`, hsl);
+        };
+        
+        const handleHexColorChange = (hex: string) => {
+            setPreviewHex(hex);
+            handleValueChange(colorKey, hexToHsl(hex));
+        };
+
+        return (
+            <div className="space-y-2">
+                <Label htmlFor={colorKey}>{label}</Label>
+                <div className="flex items-center gap-2">
+                    <Input 
+                        type="color"
+                        value={previewHex}
+                        onInput={(e) => handleHexColorInput(e.currentTarget.value)}
+                        onChange={(e) => handleHexColorChange(e.currentTarget.value)}
+                        className="p-1 h-10 w-10 cursor-pointer"
+                    />
+                    <Input 
+                        id={colorKey}
+                        value={customColors[colorKey] || defaultThemeColors[colorKey] || ''}
+                        onChange={(e) => handleValueChange(colorKey, e.target.value)}
+                        placeholder="例如: 210 40% 98%"
+                        className="flex-1"
+                    />
+                </div>
             </div>
-        </div>
-    );
+        );
+    };
     
     const SizeInput = ({ sizeKey, label }: { sizeKey: string, label: string }) => (
         <div className="space-y-2">
@@ -296,7 +300,6 @@ export default function TeacherThemeEditorPage() {
             />
         </div>
     );
-
 
     return (
         <div className="space-y-6 animate-in fade-in-0 duration-500">
