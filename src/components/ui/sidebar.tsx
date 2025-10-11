@@ -177,6 +177,13 @@ const Sidebar = React.forwardRef<
     ref
   ) => {
     const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+    const [isClient, setIsClient] = React.useState(false)
+
+    React.useEffect(() => {
+      setIsClient(true)
+    }, [])
+
+
     const handleSheetClick = (event: React.MouseEvent) => {
       const target = event.target as HTMLElement
       if (target.closest("a")) {
@@ -198,9 +205,9 @@ const Sidebar = React.forwardRef<
         </div>
       )
     }
-
-    if (isMobile) {
-      return (
+    
+    if (isMobile && isClient) {
+       return (
         <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
           <SheetContent
             data-sidebar="sidebar"
@@ -218,6 +225,10 @@ const Sidebar = React.forwardRef<
           </SheetContent>
         </Sheet>
       )
+    }
+
+    if (!isClient) {
+      return null;
     }
 
     return (
@@ -769,5 +780,3 @@ export {
   SidebarTrigger,
   useSidebar,
 }
-
-    
