@@ -210,70 +210,72 @@ export default function TeacherRewardsPage() {
     }
 
     const RewardsTable = ({ rewards, isReadOnly = false }: { rewards: Reward[], isReadOnly?: boolean }) => (
-        <Table>
-            <TableHeader>
-                <TableRow>
-                    <TableHead>獎勵</TableHead>
-                    <TableHead>費用</TableHead>
-                    <TableHead>庫存</TableHead>
-                    {isReadOnly && <TableHead>提供者</TableHead>}
-                    <TableHead className="text-right">操作</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {rewards.length > 0 ? rewards.map((reward) => (
-                    <TableRow key={reward.id}>
-                        <TableCell className="flex items-center gap-4">
-                            <Image src={reward.image} alt={reward.name} width={64} height={64} className="rounded-md object-cover" />
-                            <div>
-                                <p className="font-medium">{reward.name}</p>
-                                <p className="text-sm text-muted-foreground">{reward.description}</p>
-                            </div>
-                        </TableCell>
-                        <TableCell>
-                            <div className="flex items-center gap-1 font-semibold text-primary">
-                                <Coins className="h-4 w-4" />
-                                {Math.round(reward.cost).toLocaleString()}
-                            </div>
-                        </TableCell>
-                        <TableCell>{reward.stock}</TableCell>
-                        {isReadOnly && (
-                            <TableCell>{teachers.find(t => t.id === reward.providerId)?.name || '學校'}</TableCell>
-                        )}
-                        <TableCell className="text-right">
-                             <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleEditRewardClick(reward)} disabled={isReadOnly}>
-                                <Edit className="h-4 w-4" />
-                            </Button>
-                            <AlertDialog open={!!rewardToDelete && rewardToDelete.id === reward.id} onOpenChange={(open) => !open && setRewardToDelete(null)}>
-                                <AlertDialogTrigger asChild>
-                                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteRewardClick(reward)} disabled={isReadOnly}>
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            您確定要刪除獎勵「{reward.name}」嗎？此操作無法復原。
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>取消</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleConfirmDeleteReward()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </TableCell>
-                    </TableRow>
-                )) : (
+        <div className="overflow-x-auto">
+            <Table>
+                <TableHeader>
                     <TableRow>
-                        <TableCell colSpan={isReadOnly ? 5 : 4} className="h-24 text-center">
-                            目前沒有獎勵。
-                        </TableCell>
+                        <TableHead>獎勵</TableHead>
+                        <TableHead>費用</TableHead>
+                        <TableHead>庫存</TableHead>
+                        {isReadOnly && <TableHead>提供者</TableHead>}
+                        <TableHead className="text-right">操作</TableHead>
                     </TableRow>
-                )}
-            </TableBody>
-        </Table>
+                </TableHeader>
+                <TableBody>
+                    {rewards.length > 0 ? rewards.map((reward) => (
+                        <TableRow key={reward.id}>
+                            <TableCell className="flex items-center gap-4">
+                                <Image src={reward.image} alt={reward.name} width={64} height={64} className="rounded-md object-cover" />
+                                <div>
+                                    <p className="font-medium">{reward.name}</p>
+                                    <p className="text-sm text-muted-foreground">{reward.description}</p>
+                                </div>
+                            </TableCell>
+                            <TableCell>
+                                <div className="flex items-center gap-1 font-semibold text-primary">
+                                    <Coins className="h-4 w-4" />
+                                    {Math.round(reward.cost).toLocaleString()}
+                                </div>
+                            </TableCell>
+                            <TableCell>{reward.stock}</TableCell>
+                            {isReadOnly && (
+                                <TableCell>{teachers.find(t => t.id === reward.providerId)?.name || '學校'}</TableCell>
+                            )}
+                            <TableCell className="text-right">
+                                 <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleEditRewardClick(reward)} disabled={isReadOnly}>
+                                    <Edit className="h-4 w-4" />
+                                </Button>
+                                <AlertDialog open={!!rewardToDelete && rewardToDelete.id === reward.id} onOpenChange={(open) => !open && setRewardToDelete(null)}>
+                                    <AlertDialogTrigger asChild>
+                                         <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteRewardClick(reward)} disabled={isReadOnly}>
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                您確定要刪除獎勵「{reward.name}」嗎？此操作無法復原。
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>取消</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => handleConfirmDeleteReward()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </TableCell>
+                        </TableRow>
+                    )) : (
+                        <TableRow>
+                            <TableCell colSpan={isReadOnly ? 5 : 4} className="h-24 text-center">
+                                目前沒有獎勵。
+                            </TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+        </div>
     );
 
     return (
@@ -425,7 +427,7 @@ export default function TeacherRewardsPage() {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="edit-reward-name">獎勵名稱</Label>
+                                <Label htmlFor="edit-reward-name">獎勵名称</Label>
                                 <Input id="edit-reward-name" name="name" defaultValue={editingReward?.name} required />
                             </div>
                             <div className="space-y-2">
@@ -454,3 +456,5 @@ export default function TeacherRewardsPage() {
         </div>
     );
 }
+
+    

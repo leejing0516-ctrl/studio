@@ -262,51 +262,53 @@ export default function TeacherStocksPage() {
                 </Button>
             </CardHeader>
             <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>代碼</TableHead>
-                            <TableHead>公司名稱</TableHead>
-                            <TableHead>初始價格</TableHead>
-                            <TableHead>市值</TableHead>
-                            <TableHead className="text-right">操作</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {stocks.map(stock => (
-                            <TableRow key={stock.ticker}>
-                                <TableCell>{stock.ticker}</TableCell>
-                                <TableCell>{stock.name}</TableCell>
-                                <TableCell>{Math.round(stock.price).toLocaleString()}</TableCell>
-                                <TableCell>{stock.marketCap}</TableCell>
-                                <TableCell className="text-right">
-                                    <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleEditStockClick(stock)}>
-                                        <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <AlertDialog open={!!stockToDelete && stockToDelete.ticker === stock.ticker} onOpenChange={(open) => !open && setStockToDelete(null)}>
-                                        <AlertDialogTrigger asChild>
-                                             <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStockClick(stock)}>
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>您確定要下市嗎？</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                    您確定要將「{stock.name}」從市場上下市嗎？此操作將會把這支股票從所有學生的投資組合中移除。
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel>取消</AlertDialogCancel>
-                                                <AlertDialogAction onClick={handleConfirmDeleteStock} className={buttonVariants({ variant: "destructive" })}>確定下市</AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                </TableCell>
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>代碼</TableHead>
+                                <TableHead>公司名稱</TableHead>
+                                <TableHead>初始價格</TableHead>
+                                <TableHead>市值</TableHead>
+                                <TableHead className="text-right">操作</TableHead>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                        </TableHeader>
+                        <TableBody>
+                            {stocks.map(stock => (
+                                <TableRow key={stock.ticker}>
+                                    <TableCell>{stock.ticker}</TableCell>
+                                    <TableCell>{stock.name}</TableCell>
+                                    <TableCell>{Math.round(stock.price).toLocaleString()}</TableCell>
+                                    <TableCell>{stock.marketCap}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleEditStockClick(stock)}>
+                                            <Edit className="h-4 w-4" />
+                                        </Button>
+                                        <AlertDialog open={!!stockToDelete && stockToDelete.ticker === stock.ticker} onOpenChange={(open) => !open && setStockToDelete(null)}>
+                                            <AlertDialogTrigger asChild>
+                                                 <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStockClick(stock)}>
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>您確定要下市嗎？</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        您確定要將「{stock.name}」從市場上下市嗎？此操作將會把這支股票從所有學生的投資組合中移除。
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>取消</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={handleConfirmDeleteStock} className={buttonVariants({ variant: "destructive" })}>確定下市</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
             </CardContent>
         </Card>
 
@@ -322,53 +324,55 @@ export default function TeacherStocksPage() {
                 </Button>
             </CardHeader>
             <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-[150px]">發布日期</TableHead>
-                            <TableHead>標題</TableHead>
-                            <TableHead>內容</TableHead>
-                            <TableHead className="text-right w-[120px]">操作</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {(platformConfig?.stockMarketNews || []).length > 0 ? (platformConfig?.stockMarketNews || []).map((news) => (
-                        <TableRow key={news.id}>
-                            <TableCell>{format(new Date(news.date), "yyyy-MM-dd HH:mm")}</TableCell>
-                            <TableCell>{news.title}</TableCell>
-                            <TableCell className="max-w-sm truncate">{news.content}</TableCell>
-                            <TableCell className="text-right">
-                                <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleEditNewsClick(news)}>
-                                    <Edit className="h-4 w-4" />
-                                </Button>
-                                <AlertDialog open={!!newsToDelete && newsToDelete.id === news.id} onOpenChange={(open) => !open && setNewsToDelete(null)}>
-                                    <AlertDialogTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteNewsClick(news)}>
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                您確定要刪除新聞「{news.title}」嗎？此操作無法復原。
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>取消</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => handleConfirmDeleteNews()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            </TableCell>
-                        </TableRow>
-                        )) : (
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
                             <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center">目前沒有股市新聞。</TableCell>
+                                <TableHead className="w-[150px]">發布日期</TableHead>
+                                <TableHead>標題</TableHead>
+                                <TableHead>內容</TableHead>
+                                <TableHead className="text-right w-[120px]">操作</TableHead>
                             </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
+                        </TableHeader>
+                        <TableBody>
+                            {(platformConfig?.stockMarketNews || []).length > 0 ? (platformConfig?.stockMarketNews || []).map((news) => (
+                            <TableRow key={news.id}>
+                                <TableCell>{format(new Date(news.date), "yyyy-MM-dd HH:mm")}</TableCell>
+                                <TableCell>{news.title}</TableCell>
+                                <TableCell className="max-w-sm truncate">{news.content}</TableCell>
+                                <TableCell className="text-right">
+                                    <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleEditNewsClick(news)}>
+                                        <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <AlertDialog open={!!newsToDelete && newsToDelete.id === news.id} onOpenChange={(open) => !open && setNewsToDelete(null)}>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteNewsClick(news)}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    您確定要刪除新聞「{news.title}」嗎？此操作無法復原。
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>取消</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleConfirmDeleteNews()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </TableCell>
+                            </TableRow>
+                            )) : (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="h-24 text-center">目前沒有股市新聞。</TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
             </CardContent>
         </Card>
         
@@ -521,3 +525,5 @@ export default function TeacherStocksPage() {
     </div>
   );
 }
+
+    

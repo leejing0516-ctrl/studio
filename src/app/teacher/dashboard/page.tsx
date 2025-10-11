@@ -1006,54 +1006,56 @@ export default function TeacherDashboardPage() {
                                     </Select>
                                 </div>
                             </div>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>座號</TableHead>
-                                        <TableHead>姓名</TableHead>
-                                        <TableHead>持有總點數</TableHead>
-                                        <TableHead className="text-right">操作</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {studentsInClass.length > 0 ? studentsInClass.map(student => (
-                                        <TableRow key={student._docId}>
-                                            <TableCell>{student.id}</TableCell>
-                                            <TableCell>{student.name}</TableCell>
-                                            <TableCell>{Math.round(student.points).toLocaleString()}</TableCell>
-                                            <TableCell className="text-right">
-                                                {role !== 'subject_teacher' && (
-                                                    <>
-                                                        <Button variant="ghost" size="icon" onClick={() => { setStudentToEdit(student); setIsEditStudentDialogOpen(true); }}><Edit className="h-4 w-4"/></Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => { setStudentToResetPassword(student); setIsResetPasswordDialogOpen(true); }}><KeyRound className="h-4 w-4"/></Button>
-                                                        <AlertDialog>
-                                                            <AlertDialogTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4"/></Button>
-                                                            </AlertDialogTrigger>
-                                                            <AlertDialogContent>
-                                                                <AlertDialogHeader>
-                                                                    <AlertDialogTitle>確定要刪除嗎？</AlertDialogTitle>
-                                                                    <AlertDialogDescription>
-                                                                        您確定要從班級中移除 {student?.name} 嗎？此操作無法復原。
-                                                                    </AlertDialogDescription>
-                                                                </AlertDialogHeader>
-                                                                <AlertDialogFooter>
-                                                                    <AlertDialogCancel>取消</AlertDialogCancel>
-                                                                    <AlertDialogAction onClick={() => handleDeleteStudent(student)} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-                                                                </AlertDialogFooter>
-                                                            </AlertDialogContent>
-                                                        </AlertDialog>
-                                                    </>
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
-                                    )) : (
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
                                         <TableRow>
-                                            <TableCell colSpan={4} className="h-24 text-center">請先選擇班級，或此班級無學生。</TableCell>
+                                            <TableHead>座號</TableHead>
+                                            <TableHead>姓名</TableHead>
+                                            <TableHead>持有總點數</TableHead>
+                                            <TableHead className="text-right">操作</TableHead>
                                         </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {studentsInClass.length > 0 ? studentsInClass.map(student => (
+                                            <TableRow key={student._docId}>
+                                                <TableCell>{student.id}</TableCell>
+                                                <TableCell>{student.name}</TableCell>
+                                                <TableCell>{Math.round(student.points).toLocaleString()}</TableCell>
+                                                <TableCell className="text-right">
+                                                    {role !== 'subject_teacher' && (
+                                                        <>
+                                                            <Button variant="ghost" size="icon" onClick={() => { setStudentToEdit(student); setIsEditStudentDialogOpen(true); }}><Edit className="h-4 w-4"/></Button>
+                                                            <Button variant="ghost" size="icon" onClick={() => { setStudentToResetPassword(student); setIsResetPasswordDialogOpen(true); }}><KeyRound className="h-4 w-4"/></Button>
+                                                            <AlertDialog>
+                                                                <AlertDialogTrigger asChild>
+                                                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4"/></Button>
+                                                                </AlertDialogTrigger>
+                                                                <AlertDialogContent>
+                                                                    <AlertDialogHeader>
+                                                                        <AlertDialogTitle>確定要刪除嗎？</AlertDialogTitle>
+                                                                        <AlertDialogDescription>
+                                                                            您確定要從班級中移除 {student?.name} 嗎？此操作無法復原。
+                                                                        </AlertDialogDescription>
+                                                                    </AlertDialogHeader>
+                                                                    <AlertDialogFooter>
+                                                                        <AlertDialogCancel>取消</AlertDialogCancel>
+                                                                        <AlertDialogAction onClick={() => handleDeleteStudent(student)} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                                                                    </AlertDialogFooter>
+                                                                </AlertDialogContent>
+                                                            </AlertDialog>
+                                                        </>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        )) : (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="h-24 text-center">請先選擇班級，或此班級無學生。</TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -1070,7 +1072,7 @@ export default function TeacherDashboardPage() {
                                 </div>
                                 <Button onClick={() => setIsAddTeacherDialogOpen(true)}><PlusCircle className="mr-2" />新增教師</Button>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="overflow-x-auto">
                                  <Table>
                                     <TableHeader>
                                         <TableRow>
@@ -1281,43 +1283,45 @@ export default function TeacherDashboardPage() {
                                     </Button>
                                 </div>
                             </div>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>姓名</TableHead>
-                                        <TableHead>分組</TableHead>
-                                        <TableHead>目前點數</TableHead>
-                                        <TableHead className="w-[250px]">個別操作</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                     {studentsInClass.length > 0 ? studentsInClass.map(student => (
-                                        <TableRow key={student._docId}>
-                                            <TableCell>{student.name}</TableCell>
-                                            <TableCell>{currentTeacherGroups?.find(g => g.id === student.groupId)?.name || '未分組'}</TableCell>
-                                            <TableCell>{Math.round(student.points).toLocaleString()}</TableCell>
-                                            <TableCell>
-                                                <div className="flex gap-2">
-                                                    <Input 
-                                                        type="number"
-                                                        placeholder="點數 (例如: 50, -50)"
-                                                        value={pointInputs[student._docId!] || ''}
-                                                        onChange={e => setPointInputs({...pointInputs, [student._docId!]: e.target.value})}
-                                                        disabled={!!isProcessing}
-                                                    />
-                                                     <Button onClick={() => handleAwardPoints(student)} disabled={isProcessing === student._docId || !pointInputs[student._docId!]}>
-                                                        {isProcessing === student._docId ? <Loader2 className="h-4 w-4 animate-spin"/> : '執行'}
-                                                     </Button>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    )) : (
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
                                         <TableRow>
-                                            <TableCell colSpan={4} className="h-24 text-center">請先選擇班級。</TableCell>
+                                            <TableHead>姓名</TableHead>
+                                            <TableHead>分組</TableHead>
+                                            <TableHead>目前點數</TableHead>
+                                            <TableHead className="w-[250px]">個別操作</TableHead>
                                         </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
+                                    </TableHeader>
+                                    <TableBody>
+                                         {studentsInClass.length > 0 ? studentsInClass.map(student => (
+                                            <TableRow key={student._docId}>
+                                                <TableCell>{student.name}</TableCell>
+                                                <TableCell>{currentTeacherGroups?.find(g => g.id === student.groupId)?.name || '未分組'}</TableCell>
+                                                <TableCell>{Math.round(student.points).toLocaleString()}</TableCell>
+                                                <TableCell>
+                                                    <div className="flex gap-2">
+                                                        <Input 
+                                                            type="number"
+                                                            placeholder="點數 (例如: 50, -50)"
+                                                            value={pointInputs[student._docId!] || ''}
+                                                            onChange={e => setPointInputs({...pointInputs, [student._docId!]: e.target.value})}
+                                                            disabled={!!isProcessing}
+                                                        />
+                                                         <Button onClick={() => handleAwardPoints(student)} disabled={isProcessing === student._docId || !pointInputs[student._docId!]}>
+                                                            {isProcessing === student._docId ? <Loader2 className="h-4 w-4 animate-spin"/> : '執行'}
+                                                         </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        )) : (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="h-24 text-center">請先選擇班級。</TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -1372,7 +1376,7 @@ export default function TeacherDashboardPage() {
                                             </CardDescription>
                                         </CardHeader>
                                         <CardContent>
-                                            <ScrollArea className="h-72">
+                                            <div className="overflow-x-auto">
                                                 <Table>
                                                     <TableHeader>
                                                         <TableRow>
@@ -1399,7 +1403,7 @@ export default function TeacherDashboardPage() {
                                                         )}
                                                     </TableBody>
                                                 </Table>
-                                            </ScrollArea>
+                                            </div>
                                         </CardContent>
                                     </Card>
 
@@ -1488,106 +1492,112 @@ export default function TeacherDashboardPage() {
                                     <Separator />
                                     <div>
                                         <h3 className="text-lg font-semibold mb-2">挑戰任務審核 ({challengeApprovalRequests.length})</h3>
-                                        {challengeApprovalRequests.length > 0 ? (
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>學生</TableHead>
-                                                        <TableHead>挑戰名稱</TableHead>
-                                                        <TableHead className="text-right">操作</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {challengeApprovalRequests.map(({ student, challenge }) => {
-                                                        const details = platformConfig?.challenges?.find(c => c.id === challenge.challengeId);
-                                                        return (
-                                                            <TableRow key={`${student._docId}-${challenge.challengeId}`}>
+                                        <div className="overflow-x-auto">
+                                            {challengeApprovalRequests.length > 0 ? (
+                                                <Table>
+                                                    <TableHeader>
+                                                        <TableRow>
+                                                            <TableHead>學生</TableHead>
+                                                            <TableHead>挑戰名稱</TableHead>
+                                                            <TableHead className="text-right">操作</TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {challengeApprovalRequests.map(({ student, challenge }) => {
+                                                            const details = platformConfig?.challenges?.find(c => c.id === challenge.challengeId);
+                                                            return (
+                                                                <TableRow key={`${student._docId}-${challenge.challengeId}`}>
+                                                                    <TableCell>{student.name}</TableCell>
+                                                                    <TableCell>{details?.name}</TableCell>
+                                                                    <TableCell className="text-right">
+                                                                        <AlertDialog>
+                                                                            <AlertDialogTrigger asChild>
+                                                                                <Button size="sm" onClick={() => setChallengeToApprove({ student, challenge })}>
+                                                                                    <Check className="mr-2" /> 批准 (+{details?.points.toLocaleString()}點)
+                                                                                </Button>
+                                                                            </AlertDialogTrigger>
+                                                                            <AlertDialogContent>
+                                                                                <AlertDialogHeader>
+                                                                                    <AlertDialogTitle>批准挑戰完成</AlertDialogTitle>
+                                                                                    <AlertDialogDescription>
+                                                                                    您確定要批准 {student.name} 完成「{details?.name}」並發放獎勵嗎？
+                                                                                    </AlertDialogDescription>
+                                                                                </AlertDialogHeader>
+                                                                                <AlertDialogFooter>
+                                                                                    <AlertDialogCancel>取消</AlertDialogCancel>
+                                                                                    <AlertDialogAction onClick={handleApproveChallenge}>確定批准</AlertDialogAction>
+                                                                                </AlertDialogFooter>
+                                                                            </AlertDialogContent>
+                                                                        </AlertDialog>
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            )
+                                                        })}
+                                                    </TableBody>
+                                                </Table>
+                                            ) : <p className="text-sm text-muted-foreground">沒有待審核的挑戰任務。</p>}
+                                        </div>
+                                    </div>
+                                    <Separator />
+                                    <div>
+                                        <h3 className="text-lg font-semibold mb-2">貸款申請 ({loanApprovalRequests.length})</h3>
+                                        <div className="overflow-x-auto">
+                                            {loanApprovalRequests.length > 0 ? (
+                                                <Table>
+                                                    <TableHeader><TableRow><TableHead>學生</TableHead><TableHead>金額</TableHead><TableHead>理由</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
+                                                    <TableBody>
+                                                        {loanApprovalRequests.map(({student, loan}) => (
+                                                            <TableRow key={loan.id}>
                                                                 <TableCell>{student.name}</TableCell>
-                                                                <TableCell>{details?.name}</TableCell>
+                                                                <TableCell>{loan.amount.toLocaleString()}</TableCell>
+                                                                <TableCell>{loan.reason}</TableCell>
                                                                 <TableCell className="text-right">
                                                                     <AlertDialog>
                                                                         <AlertDialogTrigger asChild>
-                                                                            <Button size="sm" onClick={() => setChallengeToApprove({ student, challenge })}>
-                                                                                <Check className="mr-2" /> 批准 (+{details?.points.toLocaleString()}點)
-                                                                            </Button>
+                                                                            <Button size="sm" className="mr-2" onClick={() => setLoanToProcess({student, loan})}>處理</Button>
                                                                         </AlertDialogTrigger>
                                                                         <AlertDialogContent>
                                                                             <AlertDialogHeader>
-                                                                                <AlertDialogTitle>批准挑戰完成</AlertDialogTitle>
+                                                                                <AlertDialogTitle>處理貸款申請</AlertDialogTitle>
                                                                                 <AlertDialogDescription>
-                                                                                您確定要批准 {student.name} 完成「{details?.name}」並發放獎勵嗎？
+                                                                                    學生 {student.name} 申請了 {loan.amount.toLocaleString()} 點的貸款。理由：{loan.reason}
                                                                                 </AlertDialogDescription>
                                                                             </AlertDialogHeader>
                                                                             <AlertDialogFooter>
-                                                                                <AlertDialogCancel>取消</AlertDialogCancel>
-                                                                                <AlertDialogAction onClick={handleApproveChallenge}>確定批准</AlertDialogAction>
+                                                                                <Button variant="destructive" onClick={() => handleProcessLoan('rejected')}>拒絕</Button>
+                                                                                <Button onClick={() => handleProcessLoan('active')}>批准貸款</Button>
                                                                             </AlertDialogFooter>
                                                                         </AlertDialogContent>
                                                                     </AlertDialog>
                                                                 </TableCell>
                                                             </TableRow>
-                                                        )
-                                                    })}
-                                                </TableBody>
-                                            </Table>
-                                        ) : <p className="text-sm text-muted-foreground">沒有待審核的挑戰任務。</p>}
-                                    </div>
-                                    <Separator />
-                                    <div>
-                                        <h3 className="text-lg font-semibold mb-2">貸款申請 ({loanApprovalRequests.length})</h3>
-                                        {loanApprovalRequests.length > 0 ? (
-                                            <Table>
-                                                <TableHeader><TableRow><TableHead>學生</TableHead><TableHead>金額</TableHead><TableHead>理由</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
-                                                <TableBody>
-                                                    {loanApprovalRequests.map(({student, loan}) => (
-                                                        <TableRow key={loan.id}>
-                                                            <TableCell>{student.name}</TableCell>
-                                                            <TableCell>{loan.amount.toLocaleString()}</TableCell>
-                                                            <TableCell>{loan.reason}</TableCell>
-                                                            <TableCell className="text-right">
-                                                                <AlertDialog>
-                                                                    <AlertDialogTrigger asChild>
-                                                                        <Button size="sm" className="mr-2" onClick={() => setLoanToProcess({student, loan})}>處理</Button>
-                                                                    </AlertDialogTrigger>
-                                                                    <AlertDialogContent>
-                                                                        <AlertDialogHeader>
-                                                                            <AlertDialogTitle>處理貸款申請</AlertDialogTitle>
-                                                                            <AlertDialogDescription>
-                                                                                學生 {student.name} 申請了 {loan.amount.toLocaleString()} 點的貸款。理由：{loan.reason}
-                                                                            </AlertDialogDescription>
-                                                                        </AlertDialogHeader>
-                                                                        <AlertDialogFooter>
-                                                                            <Button variant="destructive" onClick={() => handleProcessLoan('rejected')}>拒絕</Button>
-                                                                            <Button onClick={() => handleProcessLoan('active')}>批准貸款</Button>
-                                                                        </AlertDialogFooter>
-                                                                    </AlertDialogContent>
-                                                                </AlertDialog>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
-                                        ) : <p className="text-sm text-muted-foreground">沒有待處理的貸款申請。</p>}
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            ) : <p className="text-sm text-muted-foreground">沒有待處理的貸款申請。</p>}
+                                        </div>
                                     </div>
                                     <Separator />
                                     <div>
                                         <h3 className="text-lg font-semibold mb-2">獎勵使用請求 ({rewardApprovalRequests.length})</h3>
-                                        {rewardApprovalRequests.length > 0 ? (
-                                             <Table>
-                                                <TableHeader><TableRow><TableHead>學生</TableHead><TableHead>獎勵名稱</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
-                                                <TableBody>
-                                                    {rewardApprovalRequests.map(({student, rewardItem}) => (
-                                                        <TableRow key={`${student._docId}-${rewardItem.redemptionId}`}>
-                                                            <TableCell>{student.name}</TableCell>
-                                                            <TableCell>{rewardItem.reward.name}</TableCell>
-                                                            <TableCell className="text-right">
-                                                                <Button size="sm" onClick={() => handleApproveRewardUse(student, rewardItem)}>同意使用</Button>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
-                                        ): <p className="text-sm text-muted-foreground">沒有待處理的獎勵使用請求。</p>}
+                                        <div className="overflow-x-auto">
+                                            {rewardApprovalRequests.length > 0 ? (
+                                                 <Table>
+                                                    <TableHeader><TableRow><TableHead>學生</TableHead><TableHead>獎勵名稱</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
+                                                    <TableBody>
+                                                        {rewardApprovalRequests.map(({student, rewardItem}) => (
+                                                            <TableRow key={`${student._docId}-${rewardItem.redemptionId}`}>
+                                                                <TableCell>{student.name}</TableCell>
+                                                                <TableCell>{rewardItem.reward.name}</TableCell>
+                                                                <TableCell className="text-right">
+                                                                    <Button size="sm" onClick={() => handleApproveRewardUse(student, rewardItem)}>同意使用</Button>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            ): <p className="text-sm text-muted-foreground">沒有待處理的獎勵使用請求。</p>}
+                                        </div>
                                     </div>
                                 </div>
                             </CardContent>
@@ -1972,3 +1982,5 @@ const GroupManagementDialog = ({
         </DialogContent>
     );
 };
+
+    
