@@ -154,9 +154,9 @@ export default function StudentDashboardPage() {
     studentsWithAssets.sort((a, b) => b.totalAssets - a.totalAssets);
 
     const studentRank = studentsWithAssets.findIndex(s => s.id === currentStudent.id && s.classId === currentStudent.classId) + 1;
-    const studentPercentile = students.length > 1 ? ((students.length - studentRank) / (students.length - 1) ) * 100 : 100;
+    const percentile = students.length > 1 ? ((students.length - studentRank) / (students.length - 1) ) * 100 : 100;
     
-    return { schoolRank: studentRank, schoolPercentile: schoolPercentile };
+    return { schoolRank: studentRank, schoolPercentile: percentile };
   }, [students, currentStudent, marketStocks]);
 
 
@@ -258,24 +258,24 @@ export default function StudentDashboardPage() {
             </Card>
         )}
         <Card className="bg-class-rank-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-card-title text-class-rank-card-foreground">{cardTexts.classRank?.title || '班級排名'}</CardTitle>
-            <Trophy className="h-4 w-4 text-accent" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-class-rank-card-foreground">#{classRank}</div>
-            <p className="text-xs text-muted-foreground">{(cardTexts.classRank?.description || "班級前 {percentile}%").replace('{percentile}', String(100 - Math.floor(classPercentile)))}</p>
-          </CardContent>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-card-title text-class-rank-card-foreground">{cardTexts.classRank?.title || '班級排名'}</CardTitle>
+                <Trophy className="h-4 w-4 text-accent" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold text-class-rank-card-foreground">#{classRank}</div>
+                <p className="text-xs text-muted-foreground">{(cardTexts.classRank?.description || "班級前 {percentile}%").replace('{percentile}', String(100 - Math.floor(classPercentile)))}</p>
+            </CardContent>
         </Card>
         <Card className="bg-school-rank-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-card-title text-school-rank-card-foreground">{cardTexts.schoolRank?.title || '全校排名'}</CardTitle>
-            <Globe className="h-4 w-4 text-accent" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-school-rank-card-foreground">#{schoolRank}</div>
-            <p className="text-xs text-muted-foreground">{(cardTexts.schoolRank?.description || "全校前 {percentile}%").replace('{percentile}', String(100 - Math.floor(schoolPercentile)))}</p>
-          </CardContent>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-card-title text-school-rank-card-foreground">{cardTexts.schoolRank?.title || '全校排名'}</CardTitle>
+                <Globe className="h-4 w-4 text-accent" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold text-school-rank-card-foreground">#{schoolRank}</div>
+                <p className="text-xs text-muted-foreground">{(cardTexts.schoolRank?.description || "全校前 {percentile}%").replace('{percentile}', String(100 - Math.floor(schoolPercentile)))}</p>
+            </CardContent>
         </Card>
         <Card className="lg:col-span-2 bg-my-groups-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -284,7 +284,7 @@ export default function StudentDashboardPage() {
           </CardHeader>
           <CardContent>
              {studentGroups.length > 0 ? (
-                <div className="space-y-2 text-sm text-muted-foreground">
+                <div className="space-y-2 text-sm text-my-groups-card-foreground">
                     {studentGroups.map((group, index) => (
                         <p key={index}>
                             在 **{group.teacherName}** 的課堂中，您是 **{group.groupName}** 的成員。
@@ -292,7 +292,7 @@ export default function StudentDashboardPage() {
                     ))}
                 </div>
             ) : (
-                <p className="text-sm text-muted-foreground">{cardTexts.myGroups?.description || '您尚未被分派到任何小組。'}</p>
+                <p className="text-sm text-my-groups-card-foreground">{cardTexts.myGroups?.description || '您尚未被分派到任何小組。'}</p>
             )}
           </CardContent>
         </Card>
