@@ -65,6 +65,10 @@ export default {
         },
         'reward-card-school': 'hsl(var(--reward-card-school))',
         'reward-card-class': 'hsl(var(--reward-card-class))',
+        'dashboard-card': {
+          DEFAULT: 'hsl(var(--dashboard-card-background))',
+          foreground: 'hsl(var(--dashboard-card-foreground))',
+        },
         sidebar: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--sidebar-foreground))',
@@ -110,5 +114,3 @@ export default {
   },
   plugins: [require('tailwindcss-animate')],
 } satisfies Config;
-
-    

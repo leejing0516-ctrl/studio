@@ -28,7 +28,9 @@ const chartConfig: ChartConfig = {
 
 export default function StudentDashboardPage() {
   const { studentData } = useContext(StudentDataContext);
-  const { students, stocks: marketStocks, classes, teachers } = useContext(AppDataContext);
+  const { students, stocks: marketStocks, classes, teachers, platformConfig } = useContext(AppDataContext);
+
+  const cardTexts = useMemo(() => platformConfig?.dashboardCards || {}, [platformConfig]);
   
   const currentStudent = useMemo(() => 
     students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId)
@@ -198,86 +200,86 @@ export default function StudentDashboardPage() {
       <div className={cn("grid md:grid-cols-2 lg:grid-cols-4 gap-6")}>
         <Card className="bg-chart-1 text-card-title-foreground">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-card-title font-medium">目前點數</CardTitle>
+            <CardTitle className="text-card-title font-medium">{cardTexts.totalPoints?.title || '目前點數'}</CardTitle>
             <Coins className="h-4 w-4 text-card-title-foreground/80" />
           </CardHeader>
           <CardContent>
             <div className="text-card-value font-bold">
               {Math.round(totalPoints).toLocaleString()}
             </div>
-            <p className="text-card-description text-card-description-foreground">可用於交易或兌換獎勵</p>
+            <p className="text-card-description text-card-description-foreground">{cardTexts.totalPoints?.description || '可用於交易或兌換獎勵'}</p>
           </CardContent>
         </Card>
         <Card className="bg-chart-2 text-card-title-foreground">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-card-title font-medium">投資價值</CardTitle>
+            <CardTitle className="text-card-title font-medium">{cardTexts.portfolioValue?.title || '投資價值'}</CardTitle>
             <BarChartIcon className="h-4 w-4 text-card-title-foreground/80" />
           </CardHeader>
           <CardContent>
             <div className="text-card-value font-bold">${Math.round(portfolioValue).toLocaleString()}</div>
-            <p className="text-card-description text-card-description-foreground">本月 +5.2%</p>
+            <p className="text-card-description text-card-description-foreground">{cardTexts.portfolioValue?.description || '本月 +5.2%'}</p>
           </CardContent>
         </Card>
         <Card className="bg-chart-3 text-card-title-foreground">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-card-title font-medium">定存點數</CardTitle>
+                <CardTitle className="text-card-title font-medium">{cardTexts.fixedDeposits?.title || '定存點數'}</CardTitle>
                 <PiggyBank className="h-4 w-4 text-card-title-foreground/80" />
             </CardHeader>
             <CardContent>
                 <div className="text-card-value font-bold">
                 {Math.round(totalDepositAmount).toLocaleString()}
                 </div>
-                <p className="text-card-description text-card-description-foreground">目前進行中的定期存款</p>
+                <p className="text-card-description text-card-description-foreground">{cardTexts.fixedDeposits?.description || '目前進行中的定期存款'}</p>
             </CardContent>
         </Card>
          {totalLoanAmount > 0 ? (
           <Card className="border-destructive bg-destructive/10 text-destructive">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">目前貸款</CardTitle>
+              <CardTitle className="text-sm font-medium">{cardTexts.currentLoan?.title || '目前貸款'}</CardTitle>
               <Landmark className="h-4 w-4" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
                 {Math.round(totalLoanAmount).toLocaleString()}
               </div>
-              <p className="text-xs text-destructive/80">需在期限內償還</p>
+              <p className="text-xs text-destructive/80">{cardTexts.currentLoan?.description || '需在期限內償還'}</p>
             </CardContent>
           </Card>
         ) : (
             <Card className="bg-chart-4 text-card-title-foreground">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-card-title font-medium">總資產</CardTitle>
+                <CardTitle className="text-card-title font-medium">{cardTexts.totalAssets?.title || '總資產'}</CardTitle>
                 <Wallet className="h-4 w-4 text-card-title-foreground/80" />
               </CardHeader>
               <CardContent>
                 <div className="text-card-value font-bold">${Math.round(totalAssets).toLocaleString()}</div>
-                <p className="text-card-description text-card-description-foreground">點數 + 投資 + 定存</p>
+                <p className="text-card-description text-card-description-foreground">{cardTexts.totalAssets?.description || '點數 + 投資 + 定存'}</p>
               </CardContent>
             </Card>
         )}
-        <Card>
+        <Card className="bg-dashboard-card text-dashboard-card-foreground">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">班級排名</CardTitle>
+            <CardTitle className="text-sm font-medium">{cardTexts.classRank?.title || '班級排名'}</CardTitle>
             <Trophy className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">#{classRank}</div>
-            <p className="text-xs text-muted-foreground">班級前 {100 - Math.floor(classPercentile)}%</p>
+            <p className="text-xs text-muted-foreground">{(cardTexts.classRank?.description || "班級前 {percentile}%").replace('{percentile}', String(100 - Math.floor(classPercentile)))}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-dashboard-card text-dashboard-card-foreground">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">全校排名</CardTitle>
+            <CardTitle className="text-sm font-medium">{cardTexts.schoolRank?.title || '全校排名'}</CardTitle>
             <Globe className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">#{schoolRank}</div>
-            <p className="text-xs text-muted-foreground">全校前 {100 - Math.floor(schoolPercentile)}%</p>
+            <p className="text-xs text-muted-foreground">{(cardTexts.schoolRank?.description || "全校前 {percentile}%").replace('{percentile}', String(100 - Math.floor(schoolPercentile)))}</p>
           </CardContent>
         </Card>
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 bg-dashboard-card text-dashboard-card-foreground">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">我的分組</CardTitle>
+            <CardTitle className="text-sm font-medium">{cardTexts.myGroups?.title || '我的分組'}</CardTitle>
             <Users className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
@@ -290,26 +292,26 @@ export default function StudentDashboardPage() {
                     ))}
                 </div>
             ) : (
-                <p className="text-sm text-muted-foreground">您尚未被分派到任何小組。</p>
+                <p className="text-sm text-muted-foreground">{cardTexts.myGroups?.description || '您尚未被分派到任何小組。'}</p>
             )}
           </CardContent>
         </Card>
       </div>
 
       <div className="grid md:grid-cols-5 gap-6">
-        <Card className="md:col-span-2">
+        <Card className="md:col-span-2 bg-dashboard-card text-dashboard-card-foreground">
             <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Bone /> 我的寵物</CardTitle>
-                <CardDescription>您的點數越多，牠就會越強大！</CardDescription>
+                <CardTitle className="flex items-center gap-2"><Bone /> {cardTexts.myPet?.title || '我的寵物'}</CardTitle>
+                <CardDescription>{cardTexts.myPet?.description || '您的點數越多，牠就會越強大！'}</CardDescription>
             </CardHeader>
             <CardContent>
                 <StudentPet student={currentStudent} />
             </CardContent>
         </Card>
-        <Card className="md:col-span-3">
+        <Card className="md:col-span-3 bg-dashboard-card text-dashboard-card-foreground">
           <CardHeader>
-            <CardTitle>最近七日點數趨勢</CardTitle>
-            <CardDescription>您最近七天每日從老師那裡獲得的點數紀錄。</CardDescription>
+            <CardTitle>{cardTexts.pointsTrend?.title || '最近七日點數趨勢'}</CardTitle>
+            <CardDescription>{cardTexts.pointsTrend?.description || '您最近七天每日從老師那裡獲得的點數紀錄。'}</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[250px] w-full">
@@ -326,5 +328,3 @@ export default function StudentDashboardPage() {
     </div>
   );
 }
-
-    

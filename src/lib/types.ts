@@ -202,6 +202,10 @@ export type CustomTheme = {
   [key: string]: string;
 };
 
+export type DashboardCardTexts = {
+  [key: string]: { title?: string; description?: string };
+}
+
 export type PlatformConfig = {
     id: 'main';
     schoolFunds?: number;
@@ -223,6 +227,5 @@ export type PlatformConfig = {
     stockMarketNews?: Announcement[];
     stockMarqueeMessages?: string[];
     petStages?: PetStage[];
+    dashboardCards?: DashboardCardTexts;
 }
-
-    

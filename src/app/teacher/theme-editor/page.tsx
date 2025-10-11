@@ -52,6 +52,8 @@ const defaultThemeColors: CustomTheme = {
     "card-title-size": "0.875rem",
     "card-value-size": "1.5rem",
     "card-description-size": "0.75rem",
+    "dashboard-card-background": "0 0% 100%",
+    "dashboard-card-foreground": "222.2 84% 4.9%",
 };
 
 const colorOptions = [
@@ -79,6 +81,8 @@ const chartColorOptions = [
 const cardColorOptions = [
     { key: "reward-card-school", label: "學校獎勵卡片" },
     { key: "reward-card-class", label: "班級獎勵卡片" },
+    { key: "dashboard-card-background", label: "儀表板通用卡片背景" },
+    { key: "dashboard-card-foreground", label: "儀表板通用卡片文字" },
 ]
 
 const cardTextOptions = [
@@ -250,7 +254,7 @@ export default function TeacherThemeEditorPage() {
                         </div>
                     </div>
                      <div>
-                        <h3 className="text-lg font-semibold mb-4 border-b pb-2">儀表板卡片顏色</h3>
+                        <h3 className="text-lg font-semibold mb-4 border-b pb-2">儀表板頂部卡片</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {chartColorOptions.map(({ key, label }) => (
                                 <div key={key} className="space-y-2">
@@ -275,7 +279,7 @@ export default function TeacherThemeEditorPage() {
                         </div>
                     </div>
                      <div>
-                        <h3 className="text-lg font-semibold mb-4 border-b pb-2">卡片顏色</h3>
+                        <h3 className="text-lg font-semibold mb-4 border-b pb-2">各式卡片顏色</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {cardColorOptions.map(({ key, label }) => (
                                 <div key={key} className="space-y-2">
@@ -300,7 +304,7 @@ export default function TeacherThemeEditorPage() {
                         </div>
                     </div>
                     <div>
-                        <h3 className="text-lg font-semibold mb-4 border-b pb-2">儀表板卡片文字</h3>
+                        <h3 className="text-lg font-semibold mb-4 border-b pb-2">儀表板頂部卡片文字</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {cardTextOptions.map(({ key, label }) => (
                                 <div key={key} className="space-y-2">
@@ -353,5 +357,3 @@ export default function TeacherThemeEditorPage() {
         </div>
     );
 }
-
-    

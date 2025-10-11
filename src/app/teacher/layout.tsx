@@ -36,6 +36,7 @@ import {
   Trophy,
   Bone,
   Palette,
+  FileEdit,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -224,6 +225,7 @@ export default function TeacherLayout({
     { href: "/teacher/stocks", label: "股票管理", icon: LineChart, roles: ['admin'] },
     { href: "/teacher/fundraising", label: "募資管理", icon: HeartHandshake, roles: ['admin'] },
     { href: "/teacher/home-editor", label: "首頁編輯", icon: Home, roles: ['admin'] },
+    { href: "/teacher/dashboard-editor", label: "儀表板編輯", icon: FileEdit, roles: ['admin'] },
     { href: "/teacher/theme-editor", label: "主題編輯", icon: Palette, roles: ['admin'] },
     { href: "/teacher/settings", label: "平台設定", icon: Settings, roles: ['admin'] },
     { href: "/teacher/backup", label: "資料備份與還原", icon: DatabaseZap, roles: ['admin'] },
