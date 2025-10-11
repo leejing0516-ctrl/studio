@@ -196,38 +196,38 @@ export default function StudentDashboardPage() {
         </div>
       </div>
       <div className={cn("grid md:grid-cols-2 lg:grid-cols-4 gap-6")}>
-        <Card className="bg-chart-1 text-white">
+        <Card className="bg-chart-1 text-card-title-foreground">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">總點數</CardTitle>
-            <Coins className="h-4 w-4 text-white/80" />
+            <CardTitle className="text-card-title font-medium">總點數</CardTitle>
+            <Coins className="h-4 w-4 text-card-title-foreground/80" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-card-value font-bold">
               {Math.round(totalPoints).toLocaleString()}
             </div>
-            <p className="text-xs text-white/80">可用於交易或兌換獎勵</p>
+            <p className="text-card-description text-card-description-foreground">可用於交易或兌換獎勵</p>
           </CardContent>
         </Card>
-        <Card className="bg-chart-2 text-white">
+        <Card className="bg-chart-2 text-card-title-foreground">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">投資組合價值</CardTitle>
-            <BarChartIcon className="h-4 w-4 text-white/80" />
+            <CardTitle className="text-card-title font-medium">投資組合價值</CardTitle>
+            <BarChartIcon className="h-4 w-4 text-card-title-foreground/80" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${Math.round(portfolioValue).toLocaleString()}</div>
-            <p className="text-xs text-white/80">本月 +5.2%</p>
+            <div className="text-card-value font-bold">${Math.round(portfolioValue).toLocaleString()}</div>
+            <p className="text-card-description text-card-description-foreground">本月 +5.2%</p>
           </CardContent>
         </Card>
-        <Card className="bg-chart-3 text-white">
+        <Card className="bg-chart-3 text-card-title-foreground">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">定存總額</CardTitle>
-                <PiggyBank className="h-4 w-4 text-white/80" />
+                <CardTitle className="text-card-title font-medium">定存總額</CardTitle>
+                <PiggyBank className="h-4 w-4 text-card-title-foreground/80" />
             </CardHeader>
             <CardContent>
-                <div className="text-2xl font-bold">
+                <div className="text-card-value font-bold">
                 {Math.round(totalDepositAmount).toLocaleString()}
                 </div>
-                <p className="text-xs text-white/80">目前進行中的定期存款</p>
+                <p className="text-card-description text-card-description-foreground">目前進行中的定期存款</p>
             </CardContent>
         </Card>
          {totalLoanAmount > 0 ? (
@@ -244,14 +244,14 @@ export default function StudentDashboardPage() {
             </CardContent>
           </Card>
         ) : (
-            <Card className="bg-chart-4 text-white">
+            <Card className="bg-chart-4 text-card-title-foreground">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">總資產</CardTitle>
-                <Wallet className="h-4 w-4 text-white/80" />
+                <CardTitle className="text-card-title font-medium">總資產</CardTitle>
+                <Wallet className="h-4 w-4 text-card-title-foreground/80" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">${Math.round(totalAssets).toLocaleString()}</div>
-                <p className="text-xs text-white/80">點數 + 投資 + 定存</p>
+                <div className="text-card-value font-bold">${Math.round(totalAssets).toLocaleString()}</div>
+                <p className="text-card-description text-card-description-foreground">點數 + 投資 + 定存</p>
               </CardContent>
             </Card>
         )}
@@ -326,3 +326,5 @@ export default function StudentDashboardPage() {
     </div>
   );
 }
+
+    

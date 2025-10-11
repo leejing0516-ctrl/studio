@@ -224,3 +224,5 @@ export type PlatformConfig = {
     stockMarqueeMessages?: string[];
     petStages?: PetStage[];
 }
+
+    

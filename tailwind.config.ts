@@ -21,6 +21,9 @@ export default {
         card: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
+          'title-foreground': 'hsl(var(--card-title-foreground))',
+          'value-foreground': 'hsl(var(--card-value-foreground))',
+          'description-foreground': 'hsl(var(--card-description-foreground))',
         },
         popover: {
           DEFAULT: 'hsl(var(--popover))',
@@ -71,6 +74,11 @@ export default {
           ring: 'hsl(var(--sidebar-ring))',
         },
       },
+       fontSize: {
+        'card-title': 'var(--card-title-size)',
+        'card-value': 'var(--card-value-size)',
+        'card-description': 'var(--card-description-size)',
+      },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
@@ -102,3 +110,5 @@ export default {
   },
   plugins: [require('tailwindcss-animate')],
 } satisfies Config;
+
+    

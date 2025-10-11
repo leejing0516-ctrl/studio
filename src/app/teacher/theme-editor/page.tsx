@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useContext, useEffect } from "react";
@@ -45,6 +46,12 @@ const defaultThemeColors: CustomTheme = {
     "chart-4": "300 80% 60%",
     "reward-card-school": "25 95% 55%",
     "reward-card-class": "140 70% 40%",
+    "card-title-foreground": "210 40% 98%",
+    "card-value-foreground": "210 40% 98%",
+    "card-description-foreground": "210 40% 90%",
+    "card-title-size": "0.875rem",
+    "card-value-size": "1.5rem",
+    "card-description-size": "0.75rem",
 };
 
 const colorOptions = [
@@ -73,6 +80,19 @@ const cardColorOptions = [
     { key: "reward-card-school", label: "學校獎勵卡片" },
     { key: "reward-card-class", label: "班級獎勵卡片" },
 ]
+
+const cardTextOptions = [
+    { key: "card-title-foreground", label: "卡片標題文字顏色" },
+    { key: "card-value-foreground", label: "卡片數值文字顏色" },
+    { key: "card-description-foreground", label: "卡片描述文字顏色" },
+];
+
+const cardSizeOptions = [
+    { key: "card-title-size", label: "卡片標題文字大小" },
+    { key: "card-value-size", label: "卡片數值文字大小" },
+    { key: "card-description-size", label: "卡片描述文字大小" },
+];
+
 
 // Color conversion helpers
 function hslToHex(h: number, s: number, l: number): string {
@@ -147,15 +167,15 @@ export default function TeacherThemeEditorPage() {
         }
     }, [platformConfig, router, toast]);
 
-    const handleColorChange = (key: string, value: string) => {
-        const newColors = { ...customColors, [key]: value };
-        setCustomColors(newColors);
+    const handleValueChange = (key: string, value: string) => {
+        const newValues = { ...customColors, [key]: value };
+        setCustomColors(newValues);
         document.documentElement.style.setProperty(`--${key}`, value);
     };
 
     const handleHexColorChange = (key: string, hex: string) => {
         const hsl = hexToHsl(hex);
-        handleColorChange(key, hsl);
+        handleValueChange(key, hsl);
     };
 
     const getHexFromHsl = (key: string): string => {
@@ -220,7 +240,7 @@ export default function TeacherThemeEditorPage() {
                                         <Input 
                                             id={key}
                                             value={customColors[key] || defaultThemeColors[key] || ''}
-                                            onChange={(e) => handleColorChange(key, e.target.value)}
+                                            onChange={(e) => handleValueChange(key, e.target.value)}
                                             placeholder="例如: 210 40% 98%"
                                             className="flex-1"
                                         />
@@ -245,7 +265,7 @@ export default function TeacherThemeEditorPage() {
                                         <Input 
                                             id={key}
                                             value={customColors[key] || defaultThemeColors[key] || ''}
-                                            onChange={(e) => handleColorChange(key, e.target.value)}
+                                            onChange={(e) => handleValueChange(key, e.target.value)}
                                             placeholder="例如: 48 96% 53%"
                                             className="flex-1"
                                         />
@@ -270,8 +290,49 @@ export default function TeacherThemeEditorPage() {
                                         <Input 
                                             id={key}
                                             value={customColors[key] || defaultThemeColors[key] || ''}
-                                            onChange={(e) => handleColorChange(key, e.target.value)}
+                                            onChange={(e) => handleValueChange(key, e.target.value)}
                                             placeholder="例如: 25 95% 55%"
+                                            className="flex-1"
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-semibold mb-4 border-b pb-2">儀表板卡片文字</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {cardTextOptions.map(({ key, label }) => (
+                                <div key={key} className="space-y-2">
+                                    <Label htmlFor={key}>{label}</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Input 
+                                            type="color"
+                                            value={getHexFromHsl(key)}
+                                            onChange={(e) => handleHexColorChange(key, e.target.value)}
+                                            className="p-1 h-10 w-10 cursor-pointer"
+                                        />
+                                        <Input 
+                                            id={key}
+                                            value={customColors[key] || defaultThemeColors[key] || ''}
+                                            onChange={(e) => handleValueChange(key, e.target.value)}
+                                            placeholder="例如: 210 40% 98%"
+                                            className="flex-1"
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+                             {cardSizeOptions.map(({ key, label }) => (
+                                <div key={key} className="space-y-2">
+                                    <Label htmlFor={key}>{label}</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Input 
+                                            id={key}
+                                            value={customColors[key] || defaultThemeColors[key] || ''}
+                                            onChange={(e) => handleValueChange(key, e.target.value)}
+                                            placeholder="例如: 1.5rem 或 24px"
                                             className="flex-1"
                                         />
                                     </div>
@@ -292,3 +353,5 @@ export default function TeacherThemeEditorPage() {
         </div>
     );
 }
+
+    
