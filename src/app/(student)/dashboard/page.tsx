@@ -154,9 +154,9 @@ export default function StudentDashboardPage() {
     studentsWithAssets.sort((a, b) => b.totalAssets - a.totalAssets);
 
     const studentRank = studentsWithAssets.findIndex(s => s.id === currentStudent.id && s.classId === currentStudent.classId) + 1;
-    const percentile = students.length > 1 ? ((students.length - studentRank) / (students.length - 1) ) * 100 : 100;
+    const schoolPercentile = students.length > 1 ? ((students.length - studentRank) / (students.length - 1) ) * 100 : 100;
     
-    return { schoolRank: studentRank, schoolPercentile: percentile };
+    return { schoolRank: studentRank, schoolPercentile: schoolPercentile };
   }, [students, currentStudent, marketStocks]);
 
 
@@ -264,7 +264,7 @@ export default function StudentDashboardPage() {
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold text-class-rank-card-foreground">#{classRank}</div>
-                <p className="text-xs text-muted-foreground">{(cardTexts.classRank?.description || "班級前 {percentile}%").replace('{percentile}', String(100 - Math.floor(classPercentile)))}</p>
+                <p className="text-xs text-class-rank-card-foreground/80">{(cardTexts.classRank?.description || "班級前 {percentile}%").replace('{percentile}', String(100 - Math.floor(classPercentile)))}</p>
             </CardContent>
         </Card>
         <Card className="bg-school-rank-card">
@@ -274,7 +274,7 @@ export default function StudentDashboardPage() {
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold text-school-rank-card-foreground">#{schoolRank}</div>
-                <p className="text-xs text-muted-foreground">{(cardTexts.schoolRank?.description || "全校前 {percentile}%").replace('{percentile}', String(100 - Math.floor(schoolPercentile)))}</p>
+                <p className="text-xs text-school-rank-card-foreground/80">{(cardTexts.schoolRank?.description || "全校前 {percentile}%").replace('{percentile}', String(100 - Math.floor(schoolPercentile)))}</p>
             </CardContent>
         </Card>
         <Card className="lg:col-span-2 bg-my-groups-card">
@@ -302,7 +302,7 @@ export default function StudentDashboardPage() {
         <Card className="md:col-span-2 bg-my-pet-card">
             <CardHeader>
                 <CardTitle className="text-card-title text-my-pet-card-foreground flex items-center gap-2"><Bone /> {cardTexts.myPet?.title || '我的寵物'}</CardTitle>
-                <CardDescription className="text-my-pet-card-foreground">{cardTexts.myPet?.description || '您的點數越多，牠就會越強大！'}</CardDescription>
+                <CardDescription className="text-my-pet-card-foreground/80">{cardTexts.myPet?.description || '您的點數越多，牠就會越強大！'}</CardDescription>
             </CardHeader>
             <CardContent>
                 <StudentPet student={currentStudent} />
@@ -311,7 +311,7 @@ export default function StudentDashboardPage() {
         <Card className="md:col-span-3 bg-points-trend-card">
           <CardHeader>
             <CardTitle className="text-card-title text-points-trend-card-foreground">{cardTexts.pointsTrend?.title || '最近七日點數趨勢'}</CardTitle>
-            <CardDescription className="text-points-trend-card-foreground">{cardTexts.pointsTrend?.description || '您最近七天每日從老師那裡獲得的點數紀錄。'}</CardDescription>
+            <CardDescription className="text-points-trend-card-foreground/80">{cardTexts.pointsTrend?.description || '您最近七天每日從老師那裡獲得的點數紀錄。'}</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[250px] w-full">
