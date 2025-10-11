@@ -177,6 +177,12 @@ const Sidebar = React.forwardRef<
     ref
   ) => {
     const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+    const handleSheetClick = (event: React.MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (target.closest("a")) {
+        setOpenMobile(false)
+      }
+    }
 
     if (collapsible === "none") {
       return (
@@ -206,6 +212,7 @@ const Sidebar = React.forwardRef<
               } as React.CSSProperties
             }
             side={side}
+            onClick={handleSheetClick}
           >
             <div className="flex h-full w-full flex-col">{children}</div>
           </SheetContent>
@@ -550,22 +557,12 @@ const SidebarMenuButton = React.forwardRef<
       size = "default",
       tooltip,
       className,
-      onClick,
       ...props
     },
     ref
   ) => {
     const Comp = asChild ? Slot : "button"
-    const { isMobile, state, setOpenMobile } = useSidebar()
-    
-    const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-      if (onClick) {
-        onClick(event)
-      }
-      if (isMobile) {
-        setOpenMobile(false)
-      }
-    }
+    const { isMobile, state } = useSidebar()
 
     const button = (
       <Comp
@@ -574,7 +571,6 @@ const SidebarMenuButton = React.forwardRef<
         data-size={size}
         data-active={isActive}
         className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
-        onClick={handleClick}
         {...props}
       />
     )
@@ -773,3 +769,5 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
+    
