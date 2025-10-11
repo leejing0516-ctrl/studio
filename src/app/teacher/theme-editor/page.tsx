@@ -155,7 +155,7 @@ const hexToHsl = (hex: string): string => {
     return `${h} ${s}% ${l}%`;
 };
 
-const getHexFromHsl = (hslString: string): string => {
+const getHexFromHsl = (hslString: string | undefined): string => {
     if (typeof hslString !== 'string' || !hslString.includes(' ')) return '#000000';
     const parts = hslString.replace(/%/g, '').split(' ').map(Number);
     if (parts.length === 3 && !parts.some(isNaN)) {
@@ -164,6 +164,36 @@ const getHexFromHsl = (hslString: string): string => {
     return '#000000';
 };
 
+const ColorInput = ({ colorKey, label, value, onChange }: { colorKey: string, label: string, value: string, onChange: (key: string, value: string) => void }) => {
+    const handleColorPickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        onChange(colorKey, hexToHsl(e.target.value));
+    };
+
+    const handleHslInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        onChange(colorKey, e.target.value);
+    };
+    
+    return (
+        <div className="space-y-2">
+            <Label htmlFor={colorKey}>{label}</Label>
+            <div className="flex items-center gap-2">
+                <Input 
+                    type="color"
+                    value={getHexFromHsl(value)}
+                    onChange={handleColorPickerChange}
+                    className="p-1 h-10 w-10 cursor-pointer"
+                />
+                <Input 
+                    id={colorKey}
+                    value={value}
+                    onChange={handleHslInputChange}
+                    placeholder="例如: 210 40% 98%"
+                    className="flex-1"
+                />
+            </div>
+        </div>
+    );
+};
 
 export default function TeacherThemeEditorPage() {
     const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
@@ -171,7 +201,7 @@ export default function TeacherThemeEditorPage() {
     const router = useRouter();
     
     const [isSaving, setIsSaving] = useState(false);
-    const [customColors, setCustomColors] = useState<CustomTheme>({});
+    const [customColors, setCustomColors] = useState<CustomTheme>(defaultThemeColors);
 
     useEffect(() => {
         const role = localStorage.getItem('teacherRole');
@@ -187,7 +217,7 @@ export default function TeacherThemeEditorPage() {
         setCustomColors(initialColors);
 
     }, [platformConfig, router, toast]);
-
+    
     const handleValueChange = (key: string, value: string) => {
         const newValues = { ...customColors, [key]: value };
         setCustomColors(newValues);
@@ -221,63 +251,6 @@ export default function TeacherThemeEditorPage() {
         }
     };
 
-    const ColorInput = ({ colorKey, label }: { colorKey: string, label: string }) => {
-        const hslInputRef = useRef<HTMLInputElement>(null);
-        const colorPickerRef = useRef<HTMLInputElement>(null);
-
-        const initialHex = getHexFromHsl(customColors[colorKey] || defaultThemeColors[colorKey] || "0 0% 0%");
-
-        const handleColorPickerInput = (e: React.FormEvent<HTMLInputElement>) => {
-             const hex = e.currentTarget.value;
-             const hsl = hexToHsl(hex);
-             if (hslInputRef.current) {
-                 hslInputRef.current.value = hsl;
-             }
-             document.documentElement.style.setProperty(`--${colorKey}`, hsl);
-        };
-        
-        const handleColorPickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-            const hex = e.currentTarget.value;
-            handleValueChange(colorKey, hexToHsl(hex));
-        };
-
-        const handleHslInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-            const hsl = e.currentTarget.value;
-            if (colorPickerRef.current) {
-                 try {
-                    colorPickerRef.current.value = getHexFromHsl(hsl);
-                 } catch (err) {
-                    // Ignore invalid HSL format during typing
-                 }
-            }
-            handleValueChange(colorKey, hsl);
-        }
-
-        return (
-            <div className="space-y-2">
-                <Label htmlFor={colorKey}>{label}</Label>
-                <div className="flex items-center gap-2">
-                    <Input 
-                        ref={colorPickerRef}
-                        type="color"
-                        defaultValue={initialHex}
-                        onInput={handleColorPickerInput}
-                        onChange={handleColorPickerChange}
-                        className="p-1 h-10 w-10 cursor-pointer"
-                    />
-                    <Input 
-                        ref={hslInputRef}
-                        id={colorKey}
-                        defaultValue={customColors[colorKey] || defaultThemeColors[colorKey] || ''}
-                        onChange={handleHslInputChange}
-                        placeholder="例如: 210 40% 98%"
-                        className="flex-1"
-                    />
-                </div>
-            </div>
-        );
-    };
-    
     const SizeInput = ({ sizeKey, label }: { sizeKey: string, label: string }) => (
         <div className="space-y-2">
             <Label htmlFor={sizeKey}>{label}</Label>
@@ -307,7 +280,13 @@ export default function TeacherThemeEditorPage() {
                         </CardHeader>
                         <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {colorOptions.map(({ key, label }) => (
-                                <ColorInput key={key} colorKey={key} label={label} />
+                                <ColorInput 
+                                    key={key} 
+                                    colorKey={key} 
+                                    label={label} 
+                                    value={customColors[key] || defaultThemeColors[key] || ''}
+                                    onChange={handleValueChange}
+                                />
                             ))}
                         </CardContent>
                     </Card>
@@ -318,7 +297,13 @@ export default function TeacherThemeEditorPage() {
                         </CardHeader>
                         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
                              {chartColorOptions.map(({ key, label }) => (
-                                <ColorInput key={key} colorKey={key} label={label} />
+                                <ColorInput 
+                                    key={key} 
+                                    colorKey={key} 
+                                    label={label}
+                                    value={customColors[key] || defaultThemeColors[key] || ''}
+                                    onChange={handleValueChange}
+                                />
                             ))}
                         </CardContent>
                     </Card>
@@ -332,8 +317,18 @@ export default function TeacherThemeEditorPage() {
                                 <div key={keyBackground} className="p-4 border rounded-md">
                                     <h4 className="font-medium mb-4">{label}</h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <ColorInput colorKey={keyBackground} label="背景顏色" />
-                                        <ColorInput colorKey={keyForeground} label="文字顏色" />
+                                        <ColorInput 
+                                            colorKey={keyBackground} 
+                                            label="背景顏色" 
+                                            value={customColors[keyBackground] || defaultThemeColors[keyBackground] || ''}
+                                            onChange={handleValueChange}
+                                        />
+                                        <ColorInput 
+                                            colorKey={keyForeground} 
+                                            label="文字顏色" 
+                                            value={customColors[keyForeground] || defaultThemeColors[keyForeground] || ''}
+                                            onChange={handleValueChange}
+                                        />
                                     </div>
                                 </div>
                             ))}
@@ -346,7 +341,13 @@ export default function TeacherThemeEditorPage() {
                         </CardHeader>
                         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
                              {specialCardOptions.map(({ key, label }) => (
-                                <ColorInput key={key} colorKey={key} label={label} />
+                                <ColorInput 
+                                    key={key} 
+                                    colorKey={key} 
+                                    label={label}
+                                    value={customColors[key] || defaultThemeColors[key] || ''}
+                                    onChange={handleValueChange}
+                                />
                             ))}
                         </CardContent>
                     </Card>
@@ -359,7 +360,13 @@ export default function TeacherThemeEditorPage() {
                             <h4 className="font-medium mb-4">文字顏色</h4>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 {cardTextOptions.map(({ key, label }) => (
-                                    <ColorInput key={key} colorKey={key} label={label} />
+                                    <ColorInput 
+                                        key={key} 
+                                        colorKey={key} 
+                                        label={label}
+                                        value={customColors[key] || defaultThemeColors[key] || ''}
+                                        onChange={handleValueChange}
+                                    />
                                 ))}
                             </div>
                              <h4 className="font-medium mt-6 mb-4">文字大小</h4>
