@@ -64,8 +64,14 @@ export default {
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))',
         },
-        'reward-card-school': 'hsl(var(--reward-card-school))',
-        'reward-card-class': 'hsl(var(--reward-card-class))',
+        'reward-card-school': {
+          DEFAULT: 'hsl(var(--reward-card-school))',
+          foreground: 'hsl(var(--reward-card-school-foreground))',
+        },
+        'reward-card-class': {
+          DEFAULT: 'hsl(var(--reward-card-class))',
+          foreground: 'hsl(var(--reward-card-class-foreground))',
+        },
         'class-rank-card': {
           DEFAULT: 'hsl(var(--class-rank-card-background))',
           foreground: 'hsl(var(--class-rank-card-foreground))',

@@ -154,8 +154,8 @@ export default function RewardsPage() {
 
   const RewardCard = ({ reward }: { reward: Reward }) => (
      <Card key={reward.id} className={cn(
-         "flex flex-col overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1 duration-300 text-white",
-         reward.scope === 'school' ? "bg-reward-card-school" : "bg-reward-card-class"
+         "flex flex-col overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1 duration-300",
+         reward.scope === 'school' ? "bg-reward-card-school text-reward-card-school-foreground" : "bg-reward-card-class text-reward-card-class-foreground"
      )}>
         <div className="relative h-48 w-full">
         <Image
@@ -167,7 +167,7 @@ export default function RewardsPage() {
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
         <Badge 
-            className="absolute top-2 right-2 bg-white/30 text-white border-none"
+            className="absolute top-2 right-2 bg-background/30 text-foreground border-none"
         >
             {reward.scope === 'school' ? <Building className="mr-1.5" /> : <GraduationCap className="mr-1.5" />}
             {reward.scope === 'school' ? '學校提供' : '班級限定'}
@@ -175,17 +175,17 @@ export default function RewardsPage() {
         </div>
         <CardHeader>
         <CardTitle>{reward.name}</CardTitle>
-        <CardDescription className="text-white/80">{reward.description}</CardDescription>
+        <CardDescription className="text-current/80">{reward.description}</CardDescription>
         </CardHeader>
         <CardContent className="flex-grow">
-        <p className="text-sm text-white/80">庫存只剩下 {reward.stock} 件！</p>
+        <p className="text-sm text-current/80">庫存只剩下 {reward.stock} 件！</p>
         </CardContent>
         <CardFooter className="flex justify-between items-center bg-black/10 p-4 mt-auto">
-        <div className="flex items-center gap-2 font-bold text-lg text-white">
+        <div className="flex items-center gap-2 font-bold text-lg text-current">
             <Coins className="h-5 w-5" />
             <span>{reward.cost.toLocaleString()}</span>
         </div>
-        <Button onClick={() => handleRedeemClick(reward)} disabled={reward.stock === 0 || (student?.points || 0) < reward.cost} variant="secondary" className="bg-white text-black hover:bg-gray-200">
+        <Button onClick={() => handleRedeemClick(reward)} disabled={reward.stock === 0 || (student?.points || 0) < reward.cost} variant="secondary" className="bg-background text-foreground hover:bg-background/80">
             <ShoppingCart className="mr-2"/>
             兌換
         </Button>

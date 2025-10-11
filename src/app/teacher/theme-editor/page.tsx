@@ -62,86 +62,8 @@ const defaultThemeColors: CustomTheme = {
     "card-title-size": "0.875rem",
     "card-value-size": "1.5rem",
     "card-description-size": "0.75rem",
-};
-
-const colorOptions = [
-    { key: "background", label: "背景色" },
-    { key: "foreground", label: "前景色 (主要文字)" },
-    { key: "card", label: "卡片背景" },
-    { key: "card-foreground", label: "卡片文字" },
-    { key: "primary", label: "主要顏色 (按鈕、重點)" },
-    { key: "primary-foreground", label: "主要顏色上的文字" },
-    { key: "secondary", label: "次要顏色 (次要按鈕)" },
-    { key: "secondary-foreground", label: "次要顏色上的文字" },
-    { key: "accent", label: "強調色 (滑鼠懸停、焦點)" },
-    { key: "accent-foreground", label: "強調色上的文字" },
-    { key: "destructive", label: "危險/刪除色" },
-    { key: "border", label: "邊框顏色" },
-];
-
-const chartColorOptions = [
-    { key: "chart-1", label: "儀表板卡片 1 (目前點數)" },
-    { key: "chart-2", label: "儀表板卡片 2 (投資價值)" },
-    { key: "chart-3", label: "儀表板卡片 3 (定存點數)" },
-    { key: "chart-4", label: "儀表板卡片 4 (總資產)" },
-];
-
-const dashboardCardOptions = [
-    { keyBackground: "class-rank-card-background", keyForeground: "class-rank-card-foreground", label: "班級排名卡片" },
-    { keyBackground: "school-rank-card-background", keyForeground: "school-rank-card-foreground", label: "全校排名卡片" },
-    { keyBackground: "my-groups-card-background", keyForeground: "my-groups-card-foreground", label: "我的分組卡片" },
-    { keyBackground: "my-pet-card-background", keyForeground: "my-pet-card-foreground", label: "我的寵物卡片" },
-    { keyBackground: "points-trend-card-background", keyForeground: "points-trend-card-foreground", label: "點數趨勢卡片" },
-];
-
-const specialCardOptions = [
-    { key: "reward-card-school", label: "學校獎勵卡片" },
-    { key: "reward-card-class", label: "班級獎勵卡片" },
-];
-
-const cardTextOptions = [
-    { key: "card-title-foreground", label: "卡片標題文字顏色" },
-    { key: "card-value-foreground", label: "卡片數值文字顏色" },
-    { key: "card-description-foreground", label: "卡片描述文字顏色" },
-];
-
-const cardSizeOptions = [
-    { key: "card-title-size", label: "卡片標題文字大小" },
-    { key: "card-value-size", label: "卡片數值文字大小" },
-    { key: "card-description-size", label: "卡片描述文字大小" },
-];
-
-const ColorInput = ({ colorKey, label, value, onChange }: { colorKey: string, label: string, value: string, onChange: (key: string, value: string) => void }) => {
-    const hexValue = getHexFromHsl(value);
-    
-    const handleColorPickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        onChange(colorKey, hexToHsl(e.target.value));
-    };
-
-    const handleHslInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        onChange(colorKey, e.target.value);
-    };
-    
-    return (
-        <div className="space-y-2">
-            <Label htmlFor={colorKey}>{label}</Label>
-            <div className="flex items-center gap-2">
-                <Input 
-                    type="color"
-                    value={hexValue}
-                    onChange={handleColorPickerChange}
-                    className="p-1 h-10 w-10 cursor-pointer"
-                />
-                <Input 
-                    id={colorKey}
-                    value={value}
-                    onChange={handleHslInputChange}
-                    placeholder="例如: 210 40% 98%"
-                    className="flex-1"
-                />
-            </div>
-        </div>
-    );
+    "reward-card-school-foreground": "210 40% 98%",
+    "reward-card-class-foreground": "210 40% 98%",
 };
 
 const hslToHex = (h: number, s: number, l: number): string => {
@@ -198,6 +120,97 @@ const getHexFromHsl = (hslString: string | undefined): string => {
     return '#000000';
 };
 
+const ColorInput = ({ colorKey, label, value, onChange }: { colorKey: string, label: string, value: string, onChange: (key: string, value: string) => void }) => {
+    const hslRef = useRef<HTMLInputElement>(null);
+
+    const handleColorPickerInput = (e: React.FormEvent<HTMLInputElement>) => {
+        const hex = e.currentTarget.value;
+        const hsl = hexToHsl(hex);
+        if (hslRef.current) {
+            hslRef.current.value = hsl; // Directly update the input field for visual feedback
+        }
+    };
+    
+    const handleColorPickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        onChange(colorKey, hexToHsl(e.target.value));
+    };
+
+    const handleHslInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        onChange(colorKey, e.target.value);
+    };
+    
+    return (
+        <div className="space-y-2">
+            <Label htmlFor={colorKey}>{label}</Label>
+            <div className="flex items-center gap-2">
+                <Input 
+                    type="color"
+                    value={getHexFromHsl(value)}
+                    onInput={handleColorPickerInput}
+                    onChange={handleColorPickerChange}
+                    className="p-1 h-10 w-10 cursor-pointer"
+                />
+                <Input 
+                    ref={hslRef}
+                    id={colorKey}
+                    defaultValue={value}
+                    onChange={handleHslInputChange}
+                    placeholder="例如: 210 40% 98%"
+                    className="flex-1"
+                />
+            </div>
+        </div>
+    );
+};
+
+
+const colorOptions = [
+    { key: "background", label: "背景色" },
+    { key: "foreground", label: "前景色 (主要文字)" },
+    { key: "card", label: "卡片背景" },
+    { key: "card-foreground", label: "卡片文字" },
+    { key: "primary", label: "主要顏色 (按鈕、重點)" },
+    { key: "primary-foreground", label: "主要顏色上的文字" },
+    { key: "secondary", label: "次要顏色 (次要按鈕)" },
+    { key: "secondary-foreground", label: "次要顏色上的文字" },
+    { key: "accent", label: "強調色 (滑鼠懸停、焦點)" },
+    { key: "accent-foreground", label: "強調色上的文字" },
+    { key: "destructive", label: "危險/刪除色" },
+    { key: "border", label: "邊框顏色" },
+];
+
+const chartColorOptions = [
+    { key: "chart-1", label: "儀表板卡片 1 (目前點數)" },
+    { key: "chart-2", label: "儀表板卡片 2 (投資價值)" },
+    { key: "chart-3", label: "儀表板卡片 3 (定存點數)" },
+    { key: "chart-4", label: "儀表板卡片 4 (總資產)" },
+];
+
+const dashboardCardOptions = [
+    { keyBackground: "class-rank-card-background", keyForeground: "class-rank-card-foreground", label: "班級排名卡片" },
+    { keyBackground: "school-rank-card-background", keyForeground: "school-rank-card-foreground", label: "全校排名卡片" },
+    { keyBackground: "my-groups-card-background", keyForeground: "my-groups-card-foreground", label: "我的分組卡片" },
+    { keyBackground: "my-pet-card-background", keyForeground: "my-pet-card-foreground", label: "我的寵物卡片" },
+    { keyBackground: "points-trend-card-background", keyForeground: "points-trend-card-foreground", label: "點數趨勢卡片" },
+];
+
+const specialCardOptions = [
+    { keyBackground: "reward-card-school", keyForeground: "reward-card-school-foreground", label: "學校獎勵卡片" },
+    { keyBackground: "reward-card-class", keyForeground: "reward-card-class-foreground", label: "班級獎勵卡片" },
+];
+
+const cardTextOptions = [
+    { key: "card-title-foreground", label: "卡片標題文字顏色" },
+    { key: "card-value-foreground", label: "卡片數值文字顏色" },
+    { key: "card-description-foreground", label: "卡片描述文字顏色" },
+];
+
+const cardSizeOptions = [
+    { key: "card-title-size", label: "卡片標題文字大小" },
+    { key: "card-value-size", label: "卡片數值文字大小" },
+    { key: "card-description-size", label: "卡片描述文字大小" },
+];
+
 
 export default function TeacherThemeEditorPage() {
     const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
@@ -219,12 +232,15 @@ export default function TeacherThemeEditorPage() {
             || themes.find(t => t.name === platformConfig?.theme)?.cssVars.dark 
             || defaultThemeColors;
         setCustomColors(initialColors);
+        
+        Object.entries(initialColors).forEach(([key, value]) => {
+            document.documentElement.style.setProperty(`--${key}`, value);
+        });
 
     }, [platformConfig, router, toast]);
     
     const handleValueChange = (key: string, value: string) => {
-        const newValues = { ...customColors, [key]: value };
-        setCustomColors(newValues);
+        setCustomColors(prev => ({ ...prev, [key]: value }));
         document.documentElement.style.setProperty(`--${key}`, value);
     };
 
@@ -260,7 +276,7 @@ export default function TeacherThemeEditorPage() {
             <Label htmlFor={sizeKey}>{label}</Label>
             <Input 
                 id={sizeKey}
-                value={customColors[sizeKey] || defaultThemeColors[sizeKey] || ''}
+                value={customColors[sizeKey] || defaultThemeColors[sizeKey as keyof typeof defaultThemeColors] || ''}
                 onChange={(e) => handleValueChange(sizeKey, e.target.value)}
                 placeholder="例如: 1.5rem 或 24px"
                 className="flex-1"
@@ -288,7 +304,7 @@ export default function TeacherThemeEditorPage() {
                                     key={key} 
                                     colorKey={key} 
                                     label={label} 
-                                    value={customColors[key] || defaultThemeColors[key] || ''}
+                                    value={customColors[key] || defaultThemeColors[key as keyof typeof defaultThemeColors] || ''}
                                     onChange={handleValueChange}
                                 />
                             ))}
@@ -305,7 +321,7 @@ export default function TeacherThemeEditorPage() {
                                     key={key} 
                                     colorKey={key} 
                                     label={label}
-                                    value={customColors[key] || defaultThemeColors[key] || ''}
+                                    value={customColors[key] || defaultThemeColors[key as keyof typeof defaultThemeColors] || ''}
                                     onChange={handleValueChange}
                                 />
                             ))}
@@ -324,13 +340,13 @@ export default function TeacherThemeEditorPage() {
                                         <ColorInput 
                                             colorKey={keyBackground} 
                                             label="背景顏色" 
-                                            value={customColors[keyBackground] || defaultThemeColors[keyBackground] || ''}
+                                            value={customColors[keyBackground] || defaultThemeColors[keyBackground as keyof typeof defaultThemeColors] || ''}
                                             onChange={handleValueChange}
                                         />
                                         <ColorInput 
                                             colorKey={keyForeground} 
                                             label="文字顏色" 
-                                            value={customColors[keyForeground] || defaultThemeColors[keyForeground] || ''}
+                                            value={customColors[keyForeground] || defaultThemeColors[keyForeground as keyof typeof defaultThemeColors] || ''}
                                             onChange={handleValueChange}
                                         />
                                     </div>
@@ -343,15 +359,25 @@ export default function TeacherThemeEditorPage() {
                              <h3 className="text-lg font-semibold">其他特殊卡片</h3>
                              <CardDescription>設定獎勵商店等頁面中特殊卡片的顏色。</CardDescription>
                         </CardHeader>
-                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                             {specialCardOptions.map(({ key, label }) => (
-                                <ColorInput 
-                                    key={key} 
-                                    colorKey={key} 
-                                    label={label}
-                                    value={customColors[key] || defaultThemeColors[key] || ''}
-                                    onChange={handleValueChange}
-                                />
+                        <CardContent className="space-y-6">
+                           {specialCardOptions.map(({ keyBackground, keyForeground, label }) => (
+                                <div key={keyBackground} className="p-4 border rounded-md">
+                                    <h4 className="font-medium mb-4">{label}</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                         <ColorInput 
+                                            colorKey={keyBackground} 
+                                            label="背景顏色"
+                                            value={customColors[keyBackground] || defaultThemeColors[keyBackground as keyof typeof defaultThemeColors] || ''}
+                                            onChange={handleValueChange}
+                                        />
+                                        <ColorInput 
+                                            colorKey={keyForeground} 
+                                            label="文字顏色"
+                                            value={customColors[keyForeground] || defaultThemeColors[keyForeground as keyof typeof defaultThemeColors] || ''}
+                                            onChange={handleValueChange}
+                                        />
+                                    </div>
+                                </div>
                             ))}
                         </CardContent>
                     </Card>
@@ -368,7 +394,7 @@ export default function TeacherThemeEditorPage() {
                                         key={key} 
                                         colorKey={key} 
                                         label={label}
-                                        value={customColors[key] || defaultThemeColors[key] || ''}
+                                        value={customColors[key] || defaultThemeColors[key as keyof typeof defaultThemeColors] || ''}
                                         onChange={handleValueChange}
                                     />
                                 ))}
