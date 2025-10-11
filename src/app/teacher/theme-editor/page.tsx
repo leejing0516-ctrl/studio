@@ -52,8 +52,16 @@ const defaultThemeColors: CustomTheme = {
     "card-title-size": "0.875rem",
     "card-value-size": "1.5rem",
     "card-description-size": "0.75rem",
-    "dashboard-card-background": "0 0% 100%",
-    "dashboard-card-foreground": "222.2 84% 4.9%",
+    "class-rank-card-background": "0 0% 100%",
+    "class-rank-card-foreground": "222.2 84% 4.9%",
+    "school-rank-card-background": "0 0% 100%",
+    "school-rank-card-foreground": "222.2 84% 4.9%",
+    "my-groups-card-background": "0 0% 100%",
+    "my-groups-card-foreground": "222.2 84% 4.9%",
+    "my-pet-card-background": "0 0% 100%",
+    "my-pet-card-foreground": "222.2 84% 4.9%",
+    "points-trend-card-background": "0 0% 100%",
+    "points-trend-card-foreground": "222.2 84% 4.9%",
 };
 
 const colorOptions = [
@@ -72,17 +80,25 @@ const colorOptions = [
 ];
 
 const chartColorOptions = [
-    { key: "chart-1", label: "儀表板卡片 1 (總點數)" },
-    { key: "chart-2", label: "儀表板卡片 2 (投資組合)" },
-    { key: "chart-3", label: "儀表板卡片 3 (定存總額)" },
+    { key: "chart-1", label: "儀表板卡片 1 (目前點數)" },
+    { key: "chart-2", label: "儀表板卡片 2 (投資價值)" },
+    { key: "chart-3", label: "儀表板卡片 3 (定存點數)" },
     { key: "chart-4", label: "儀表板卡片 4 (總資產)" },
 ]
 
 const cardColorOptions = [
     { key: "reward-card-school", label: "學校獎勵卡片" },
     { key: "reward-card-class", label: "班級獎勵卡片" },
-    { key: "dashboard-card-background", label: "儀表板通用卡片背景" },
-    { key: "dashboard-card-foreground", label: "儀表板通用卡片文字" },
+    { key: "class-rank-card-background", label: "班級排名卡片背景" },
+    { key: "class-rank-card-foreground", label: "班級排名卡片文字" },
+    { key: "school-rank-card-background", label: "全校排名卡片背景" },
+    { key: "school-rank-card-foreground", label: "全校排名卡片文字" },
+    { key: "my-groups-card-background", label: "我的分組卡片背景" },
+    { key: "my-groups-card-foreground", label: "我的分組卡片文字" },
+    { key: "my-pet-card-background", label: "我的寵物卡片背景" },
+    { key: "my-pet-card-foreground", label: "我的寵物卡片文字" },
+    { key: "points-trend-card-background", label: "點數趨勢卡片背景" },
+    { key: "points-trend-card-foreground", label: "點數趨勢卡片文字" },
 ]
 
 const cardTextOptions = [
@@ -218,6 +234,31 @@ export default function TeacherThemeEditorPage() {
         }
     };
 
+    const ColorInputGroup = ({ options }: { options: {key: string, label: string}[]}) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {options.map(({ key, label }) => (
+                <div key={key} className="space-y-2">
+                    <Label htmlFor={key}>{label}</Label>
+                    <div className="flex items-center gap-2">
+                        <Input 
+                            type="color"
+                            value={getHexFromHsl(key)}
+                            onChange={(e) => handleHexColorChange(key, e.target.value)}
+                            className="p-1 h-10 w-10 cursor-pointer"
+                        />
+                        <Input 
+                            id={key}
+                            value={customColors[key] || defaultThemeColors[key] || ''}
+                            onChange={(e) => handleValueChange(key, e.target.value)}
+                            placeholder="例如: 210 40% 98%"
+                            className="flex-1"
+                        />
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+
     return (
         <div className="space-y-6 animate-in fade-in-0 duration-500">
             <Card>
@@ -230,78 +271,15 @@ export default function TeacherThemeEditorPage() {
                 <CardContent className="space-y-8">
                      <div>
                         <h3 className="text-lg font-semibold mb-4 border-b pb-2">主要顏色</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {colorOptions.map(({ key, label }) => (
-                                <div key={key} className="space-y-2">
-                                    <Label htmlFor={key}>{label}</Label>
-                                    <div className="flex items-center gap-2">
-                                        <Input 
-                                            type="color"
-                                            value={getHexFromHsl(key)}
-                                            onChange={(e) => handleHexColorChange(key, e.target.value)}
-                                            className="p-1 h-10 w-10 cursor-pointer"
-                                        />
-                                        <Input 
-                                            id={key}
-                                            value={customColors[key] || defaultThemeColors[key] || ''}
-                                            onChange={(e) => handleValueChange(key, e.target.value)}
-                                            placeholder="例如: 210 40% 98%"
-                                            className="flex-1"
-                                        />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                        <ColorInputGroup options={colorOptions} />
                     </div>
                      <div>
                         <h3 className="text-lg font-semibold mb-4 border-b pb-2">儀表板頂部卡片</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {chartColorOptions.map(({ key, label }) => (
-                                <div key={key} className="space-y-2">
-                                    <Label htmlFor={key}>{label}</Label>
-                                    <div className="flex items-center gap-2">
-                                        <Input 
-                                            type="color"
-                                            value={getHexFromHsl(key)}
-                                            onChange={(e) => handleHexColorChange(key, e.target.value)}
-                                            className="p-1 h-10 w-10 cursor-pointer"
-                                        />
-                                        <Input 
-                                            id={key}
-                                            value={customColors[key] || defaultThemeColors[key] || ''}
-                                            onChange={(e) => handleValueChange(key, e.target.value)}
-                                            placeholder="例如: 48 96% 53%"
-                                            className="flex-1"
-                                        />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                        <ColorInputGroup options={chartColorOptions} />
                     </div>
                      <div>
                         <h3 className="text-lg font-semibold mb-4 border-b pb-2">各式卡片顏色</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {cardColorOptions.map(({ key, label }) => (
-                                <div key={key} className="space-y-2">
-                                    <Label htmlFor={key}>{label}</Label>
-                                    <div className="flex items-center gap-2">
-                                        <Input 
-                                            type="color"
-                                            value={getHexFromHsl(key)}
-                                            onChange={(e) => handleHexColorChange(key, e.target.value)}
-                                            className="p-1 h-10 w-10 cursor-pointer"
-                                        />
-                                        <Input 
-                                            id={key}
-                                            value={customColors[key] || defaultThemeColors[key] || ''}
-                                            onChange={(e) => handleValueChange(key, e.target.value)}
-                                            placeholder="例如: 25 95% 55%"
-                                            className="flex-1"
-                                        />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                        <ColorInputGroup options={cardColorOptions} />
                     </div>
                     <div>
                         <h3 className="text-lg font-semibold mb-4 border-b pb-2">儀表板頂部卡片文字</h3>

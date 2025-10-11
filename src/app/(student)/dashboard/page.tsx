@@ -257,7 +257,7 @@ export default function StudentDashboardPage() {
               </CardContent>
             </Card>
         )}
-        <Card className="bg-dashboard-card text-dashboard-card-foreground">
+        <Card className="bg-class-rank-card text-class-rank-card-foreground">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{cardTexts.classRank?.title || '班級排名'}</CardTitle>
             <Trophy className="h-4 w-4 text-accent" />
@@ -267,7 +267,7 @@ export default function StudentDashboardPage() {
             <p className="text-xs text-muted-foreground">{(cardTexts.classRank?.description || "班級前 {percentile}%").replace('{percentile}', String(100 - Math.floor(classPercentile)))}</p>
           </CardContent>
         </Card>
-        <Card className="bg-dashboard-card text-dashboard-card-foreground">
+        <Card className="bg-school-rank-card text-school-rank-card-foreground">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{cardTexts.schoolRank?.title || '全校排名'}</CardTitle>
             <Globe className="h-4 w-4 text-accent" />
@@ -277,7 +277,7 @@ export default function StudentDashboardPage() {
             <p className="text-xs text-muted-foreground">{(cardTexts.schoolRank?.description || "全校前 {percentile}%").replace('{percentile}', String(100 - Math.floor(schoolPercentile)))}</p>
           </CardContent>
         </Card>
-        <Card className="lg:col-span-2 bg-dashboard-card text-dashboard-card-foreground">
+        <Card className="lg:col-span-2 bg-my-groups-card text-my-groups-card-foreground">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{cardTexts.myGroups?.title || '我的分組'}</CardTitle>
             <Users className="h-4 w-4 text-accent" />
@@ -299,7 +299,7 @@ export default function StudentDashboardPage() {
       </div>
 
       <div className="grid md:grid-cols-5 gap-6">
-        <Card className="md:col-span-2 bg-dashboard-card text-dashboard-card-foreground">
+        <Card className="md:col-span-2 bg-my-pet-card text-my-pet-card-foreground">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Bone /> {cardTexts.myPet?.title || '我的寵物'}</CardTitle>
                 <CardDescription>{cardTexts.myPet?.description || '您的點數越多，牠就會越強大！'}</CardDescription>
@@ -308,7 +308,7 @@ export default function StudentDashboardPage() {
                 <StudentPet student={currentStudent} />
             </CardContent>
         </Card>
-        <Card className="md:col-span-3 bg-dashboard-card text-dashboard-card-foreground">
+        <Card className="md:col-span-3 bg-points-trend-card text-points-trend-card-foreground">
           <CardHeader>
             <CardTitle>{cardTexts.pointsTrend?.title || '最近七日點數趨勢'}</CardTitle>
             <CardDescription>{cardTexts.pointsTrend?.description || '您最近七天每日從老師那裡獲得的點數紀錄。'}</CardDescription>

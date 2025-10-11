@@ -1,4 +1,5 @@
 
+
 import type {Config} from 'tailwindcss';
 
 export default {
@@ -65,9 +66,25 @@ export default {
         },
         'reward-card-school': 'hsl(var(--reward-card-school))',
         'reward-card-class': 'hsl(var(--reward-card-class))',
-        'dashboard-card': {
-          DEFAULT: 'hsl(var(--dashboard-card-background))',
-          foreground: 'hsl(var(--dashboard-card-foreground))',
+        'class-rank-card': {
+          DEFAULT: 'hsl(var(--class-rank-card-background))',
+          foreground: 'hsl(var(--class-rank-card-foreground))',
+        },
+        'school-rank-card': {
+            DEFAULT: 'hsl(var(--school-rank-card-background))',
+            foreground: 'hsl(var(--school-rank-card-foreground))',
+        },
+        'my-groups-card': {
+            DEFAULT: 'hsl(var(--my-groups-card-background))',
+            foreground: 'hsl(var(--my-groups-card-foreground))',
+        },
+        'my-pet-card': {
+            DEFAULT: 'hsl(var(--my-pet-card-background))',
+            foreground: 'hsl(var(--my-pet-card-foreground))',
+        },
+        'points-trend-card': {
+            DEFAULT: 'hsl(var(--points-trend-card-background))',
+            foreground: 'hsl(var(--points-trend-card-foreground))',
         },
         sidebar: {
           DEFAULT: 'hsl(var(--card))',
