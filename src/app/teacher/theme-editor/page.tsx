@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useContext, useEffect, useRef } from "react";
+import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -110,6 +111,39 @@ const cardSizeOptions = [
     { key: "card-description-size", label: "卡片描述文字大小" },
 ];
 
+const ColorInput = ({ colorKey, label, value, onChange }: { colorKey: string, label: string, value: string, onChange: (key: string, value: string) => void }) => {
+    const hexValue = getHexFromHsl(value);
+    
+    const handleColorPickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        onChange(colorKey, hexToHsl(e.target.value));
+    };
+
+    const handleHslInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        onChange(colorKey, e.target.value);
+    };
+    
+    return (
+        <div className="space-y-2">
+            <Label htmlFor={colorKey}>{label}</Label>
+            <div className="flex items-center gap-2">
+                <Input 
+                    type="color"
+                    value={hexValue}
+                    onChange={handleColorPickerChange}
+                    className="p-1 h-10 w-10 cursor-pointer"
+                />
+                <Input 
+                    id={colorKey}
+                    value={value}
+                    onChange={handleHslInputChange}
+                    placeholder="例如: 210 40% 98%"
+                    className="flex-1"
+                />
+            </div>
+        </div>
+    );
+};
+
 const hslToHex = (h: number, s: number, l: number): string => {
     l /= 100;
     const a = s * Math.min(l, 1 - l) / 100;
@@ -164,36 +198,6 @@ const getHexFromHsl = (hslString: string | undefined): string => {
     return '#000000';
 };
 
-const ColorInput = ({ colorKey, label, value, onChange }: { colorKey: string, label: string, value: string, onChange: (key: string, value: string) => void }) => {
-    const handleColorPickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        onChange(colorKey, hexToHsl(e.target.value));
-    };
-
-    const handleHslInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        onChange(colorKey, e.target.value);
-    };
-    
-    return (
-        <div className="space-y-2">
-            <Label htmlFor={colorKey}>{label}</Label>
-            <div className="flex items-center gap-2">
-                <Input 
-                    type="color"
-                    value={getHexFromHsl(value)}
-                    onChange={handleColorPickerChange}
-                    className="p-1 h-10 w-10 cursor-pointer"
-                />
-                <Input 
-                    id={colorKey}
-                    value={value}
-                    onChange={handleHslInputChange}
-                    placeholder="例如: 210 40% 98%"
-                    className="flex-1"
-                />
-            </div>
-        </div>
-    );
-};
 
 export default function TeacherThemeEditorPage() {
     const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
