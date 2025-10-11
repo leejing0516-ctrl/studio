@@ -1,8 +1,7 @@
 
-
 "use client";
 
-import { useState, useContext, useEffect } from "react";
+import { useState, useContext, useEffect, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -111,18 +110,18 @@ const cardSizeOptions = [
     { key: "card-description-size", label: "卡片描述文字大小" },
 ];
 
-function hslToHex(h: number, s: number, l: number): string {
+const hslToHex = (h: number, s: number, l: number): string => {
     l /= 100;
     const a = s * Math.min(l, 1 - l) / 100;
     const f = (n: number) => {
         const k = (n + h / 30) % 12;
         const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-        return Math.round(255 * color).toString(16).padStart(2, '0');   // convert to Hex and prefix "0" if needed
+        return Math.round(255 * color).toString(16).padStart(2, '0');
     };
     return `#${f(0)}${f(8)}${f(4)}`;
-}
+};
 
-function hexToHsl(hex: string): string {
+const hexToHsl = (hex: string): string => {
     let r = 0, g = 0, b = 0;
     if (hex.length === 4) {
         r = parseInt(hex[1] + hex[1], 16);
@@ -133,9 +132,7 @@ function hexToHsl(hex: string): string {
         g = parseInt(hex.substring(3, 5), 16);
         b = parseInt(hex.substring(5, 7), 16);
     }
-    r /= 255;
-    g /= 255;
-    b /= 255;
+    r /= 255; g /= 255; b /= 255;
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
     let h = 0, s = 0, l = (max + min) / 2;
@@ -156,7 +153,16 @@ function hexToHsl(hex: string): string {
     l = Math.round(l * 100);
 
     return `${h} ${s}% ${l}%`;
-}
+};
+
+const getHexFromHsl = (hslString: string): string => {
+    if (typeof hslString !== 'string' || !hslString.includes(' ')) return '#000000';
+    const parts = hslString.replace(/%/g, '').split(' ').map(Number);
+    if (parts.length === 3 && !parts.some(isNaN)) {
+        return hslToHex(parts[0], parts[1], parts[2]);
+    }
+    return '#000000';
+};
 
 
 export default function TeacherThemeEditorPage() {
@@ -214,52 +220,56 @@ export default function TeacherThemeEditorPage() {
             toast({ title: "已重設", description: "顏色已重設為預設主題，請儲存以生效。" });
         }
     };
-    
-    const getHexFromHsl = (key: string): string => {
-        const hslString = customColors[key] || defaultThemeColors[key] || "0 0% 0%";
-        if (typeof hslString !== 'string' || !hslString.includes(' ')) return '#000000';
-        const parts = hslString.replace(/%/g, '').split(' ').map(Number);
-        if (parts.length === 3 && !parts.some(isNaN)) {
-            return hslToHex(parts[0], parts[1], parts[2]);
-        }
-        return '#000000';
-    };
-
 
     const ColorInput = ({ colorKey, label }: { colorKey: string, label: string }) => {
-        const [previewHex, setPreviewHex] = useState(() => getHexFromHsl(colorKey));
+        const hslInputRef = useRef<HTMLInputElement>(null);
+        const colorPickerRef = useRef<HTMLInputElement>(null);
 
-        useEffect(() => {
-            setPreviewHex(getHexFromHsl(colorKey));
-        }, [customColors[colorKey]]);
+        const initialHex = getHexFromHsl(customColors[colorKey] || defaultThemeColors[colorKey] || "0 0% 0%");
 
-
-        const handleHexColorInput = (hex: string) => {
-            setPreviewHex(hex);
-            const hsl = hexToHsl(hex);
-            document.documentElement.style.setProperty(`--${colorKey}`, hsl);
+        const handleColorPickerInput = (e: React.FormEvent<HTMLInputElement>) => {
+             const hex = e.currentTarget.value;
+             const hsl = hexToHsl(hex);
+             if (hslInputRef.current) {
+                 hslInputRef.current.value = hsl;
+             }
+             document.documentElement.style.setProperty(`--${colorKey}`, hsl);
         };
         
-        const handleHexColorChange = (hex: string) => {
-            setPreviewHex(hex);
+        const handleColorPickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+            const hex = e.currentTarget.value;
             handleValueChange(colorKey, hexToHsl(hex));
         };
+
+        const handleHslInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+            const hsl = e.currentTarget.value;
+            if (colorPickerRef.current) {
+                 try {
+                    colorPickerRef.current.value = getHexFromHsl(hsl);
+                 } catch (err) {
+                    // Ignore invalid HSL format during typing
+                 }
+            }
+            handleValueChange(colorKey, hsl);
+        }
 
         return (
             <div className="space-y-2">
                 <Label htmlFor={colorKey}>{label}</Label>
                 <div className="flex items-center gap-2">
                     <Input 
+                        ref={colorPickerRef}
                         type="color"
-                        value={previewHex}
-                        onInput={(e) => handleHexColorInput(e.currentTarget.value)}
-                        onChange={(e) => handleHexColorChange(e.currentTarget.value)}
+                        defaultValue={initialHex}
+                        onInput={handleColorPickerInput}
+                        onChange={handleColorPickerChange}
                         className="p-1 h-10 w-10 cursor-pointer"
                     />
                     <Input 
+                        ref={hslInputRef}
                         id={colorKey}
-                        value={customColors[colorKey] || defaultThemeColors[colorKey] || ''}
-                        onChange={(e) => handleValueChange(colorKey, e.target.value)}
+                        defaultValue={customColors[colorKey] || defaultThemeColors[colorKey] || ''}
+                        onChange={handleHslInputChange}
                         placeholder="例如: 210 40% 98%"
                         className="flex-1"
                     />
