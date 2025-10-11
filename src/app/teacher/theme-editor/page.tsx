@@ -112,74 +112,52 @@ const cardSizeOptions = [
 ];
 
 function hslToHex(h: number, s: number, l: number): string {
-    s /= 100;
     l /= 100;
-
-    let c = (1 - Math.abs(2 * l - 1)) * s,
-        x = c * (1 - Math.abs((h / 60) % 2 - 1)),
-        m = l - c/2,
-        r = 0,
-        g = 0,
-        b = 0;
-
-    if (0 <= h && h < 60) {
-        r = c; g = x; b = 0;
-    } else if (60 <= h && h < 120) {
-        r = x; g = c; b = 0;
-    } else if (120 <= h && h < 180) {
-        r = 0; g = c; b = x;
-    } else if (180 <= h && h < 240) {
-        r = 0; g = x; b = c;
-    } else if (240 <= h && h < 300) {
-        r = x; g = 0; b = c;
-    } else if (300 <= h && h < 360) {
-        r = c; g = 0; b = x;
-    }
-    
-    r = Math.round((r + m) * 255);
-    g = Math.round((g + m) * 255);
-    b = Math.round((b + m) * 255);
-
-    const toHex = (c: number) => c.toString(16).padStart(2, '0');
-
-    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+    const a = s * Math.min(l, 1 - l) / 100;
+    const f = (n: number) => {
+        const k = (n + h / 30) % 12;
+        const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+        return Math.round(255 * color).toString(16).padStart(2, '0');   // convert to Hex and prefix "0" if needed
+    };
+    return `#${f(0)}${f(8)}${f(4)}`;
 }
 
 function hexToHsl(hex: string): string {
-  let r = 0, g = 0, b = 0;
-  if (hex.length === 4) {
-    r = parseInt(hex[1] + hex[1], 16);
-    g = parseInt(hex[2] + hex[2], 16);
-    b = parseInt(hex[3] + hex[3], 16);
-  } else if (hex.length === 7) {
-    r = parseInt(hex.substring(1, 3), 16);
-    g = parseInt(hex.substring(3, 5), 16);
-    b = parseInt(hex.substring(5, 7), 16);
-  }
-  r /= 255;
-  g /= 255;
-  b /= 255;
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  let h = 0, s = 0, l = (max + min) / 2;
-
-  if (max !== min) {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    switch (max) {
-      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-      case g: h = (b - r) / d + 2; break;
-      case b: h = (r - g) / d + 4; break;
+    let r = 0, g = 0, b = 0;
+    if (hex.length === 4) {
+        r = parseInt(hex[1] + hex[1], 16);
+        g = parseInt(hex[2] + hex[2], 16);
+        b = parseInt(hex[3] + hex[3], 16);
+    } else if (hex.length === 7) {
+        r = parseInt(hex.substring(1, 3), 16);
+        g = parseInt(hex.substring(3, 5), 16);
+        b = parseInt(hex.substring(5, 7), 16);
     }
-    h /= 6;
-  }
+    r /= 255;
+    g /= 255;
+    b /= 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h = 0, s = 0, l = (max + min) / 2;
 
-  h = Math.round(h * 360);
-  s = Math.round(s * 100);
-  l = Math.round(l * 100);
+    if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+    }
 
-  return `${h} ${s}% ${l}%`;
+    h = Math.round(h * 360);
+    s = Math.round(s * 100);
+    l = Math.round(l * 100);
+
+    return `${h} ${s}% ${l}%`;
 }
+
 
 export default function TeacherThemeEditorPage() {
     const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
@@ -236,6 +214,17 @@ export default function TeacherThemeEditorPage() {
             toast({ title: "已重設", description: "顏色已重設為預設主題，請儲存以生效。" });
         }
     };
+    
+    const getHexFromHsl = (key: string): string => {
+        const hslString = customColors[key] || defaultThemeColors[key] || "0 0% 0%";
+        if (typeof hslString !== 'string' || !hslString.includes(' ')) return '#000000';
+        const parts = hslString.replace(/%/g, '').split(' ').map(Number);
+        if (parts.length === 3 && !parts.some(isNaN)) {
+            return hslToHex(parts[0], parts[1], parts[2]);
+        }
+        return '#000000';
+    };
+
 
     const ColorInput = ({ colorKey, label }: { colorKey: string, label: string }) => {
         const [previewHex, setPreviewHex] = useState(() => getHexFromHsl(colorKey));
@@ -244,15 +233,6 @@ export default function TeacherThemeEditorPage() {
             setPreviewHex(getHexFromHsl(colorKey));
         }, [customColors[colorKey]]);
 
-        const getHexFromHsl = (key: string): string => {
-            const hslString = customColors[key] || defaultThemeColors[key] || "0 0% 0%";
-            if (typeof hslString !== 'string' || !hslString.includes(' ')) return '#000000';
-            const parts = hslString.replace(/%/g, '').split(' ').map(Number);
-            if (parts.length === 3 && !parts.some(isNaN)) {
-                return hslToHex(parts[0], parts[1], parts[2]);
-            }
-            return '#000000';
-        };
 
         const handleHexColorInput = (hex: string) => {
             setPreviewHex(hex);
@@ -313,7 +293,7 @@ export default function TeacherThemeEditorPage() {
                 <CardContent className="space-y-8">
                      <Card>
                         <CardHeader>
-                            <CardTitle className="text-lg font-semibold">主要顏色</CardTitle>
+                            <h3 className="text-lg font-semibold">主要顏色</h3>
                         </CardHeader>
                         <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {colorOptions.map(({ key, label }) => (
@@ -323,7 +303,7 @@ export default function TeacherThemeEditorPage() {
                     </Card>
                      <Card>
                         <CardHeader>
-                             <CardTitle className="text-lg font-semibold">儀表板頂部卡片</CardTitle>
+                             <h3 className="text-lg font-semibold">儀表板頂部卡片</h3>
                              <CardDescription>設定儀表板最上方四張數據卡片的背景顏色。</CardDescription>
                         </CardHeader>
                         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -334,7 +314,7 @@ export default function TeacherThemeEditorPage() {
                     </Card>
                      <Card>
                         <CardHeader>
-                             <CardTitle className="text-lg font-semibold">儀表板下方卡片</CardTitle>
+                             <h3 className="text-lg font-semibold">儀表板下方卡片</h3>
                              <CardDescription>分別設定儀表板下方區塊各張卡片的背景與文字顏色。</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
@@ -351,7 +331,7 @@ export default function TeacherThemeEditorPage() {
                     </Card>
                      <Card>
                         <CardHeader>
-                             <CardTitle className="text-lg font-semibold">其他特殊卡片</CardTitle>
+                             <h3 className="text-lg font-semibold">其他特殊卡片</h3>
                              <CardDescription>設定獎勵商店等頁面中特殊卡片的顏色。</CardDescription>
                         </CardHeader>
                         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -362,7 +342,7 @@ export default function TeacherThemeEditorPage() {
                     </Card>
                      <Card>
                         <CardHeader>
-                             <CardTitle className="text-lg font-semibold">全域卡片文字設定</CardTitle>
+                             <h3 className="text-lg font-semibold">全域卡片文字設定</h3>
                              <CardDescription>統一調整儀表板所有資訊卡片（包含頂部與下方卡片）的文字顏色與大小。</CardDescription>
                         </CardHeader>
                         <CardContent>
