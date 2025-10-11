@@ -197,7 +197,7 @@ export default function StudentDashboardPage() {
           <p className="text-muted-foreground">歡迎回來！這是您今天的財務狀況概覽。</p>
         </div>
       </div>
-      <div className={cn("grid md:grid-cols-2 lg:grid-cols-4 gap-6")}>
+      <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6")}>
         <Card className="bg-chart-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-card-title text-card-title-foreground">{cardTexts.totalPoints?.title || '目前點數'}</CardTitle>
