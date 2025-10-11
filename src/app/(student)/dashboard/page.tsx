@@ -154,9 +154,9 @@ export default function StudentDashboardPage() {
     studentsWithAssets.sort((a, b) => b.totalAssets - a.totalAssets);
 
     const studentRank = studentsWithAssets.findIndex(s => s.id === currentStudent.id && s.classId === currentStudent.classId) + 1;
-    const schoolPercentile = students.length > 1 ? ((students.length - studentRank) / (students.length - 1) ) * 100 : 100;
+    const percentile = students.length > 1 ? ((students.length - studentRank) / (students.length - 1) ) * 100 : 100;
     
-    return { schoolRank: studentRank, schoolPercentile: schoolPercentile };
+    return { schoolRank: studentRank, schoolPercentile: percentile };
   }, [students, currentStudent, marketStocks]);
 
 
@@ -314,8 +314,8 @@ export default function StudentDashboardPage() {
             <CardDescription className="text-points-trend-card-foreground/80">{cardTexts.pointsTrend?.description || '您最近七天每日從老師那裡獲得的點數紀錄。'}</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="w-full overflow-hidden">
-                <ChartContainer config={chartConfig} className="h-[250px] min-w-[300px]">
+             <div className="overflow-x-auto">
+                <ChartContainer config={chartConfig} className="h-[250px] w-full min-w-[300px]">
                     <BarChart accessibilityLayer data={pointsData} margin={{ left: -20, right: 10, top:10, bottom: 0}}>
                         <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => value} />
                         <YAxis tickLine={false} axisLine={false} tickMargin={8} domain={[0, 'dataMax + 10']} hide />
@@ -330,5 +330,3 @@ export default function StudentDashboardPage() {
     </div>
   );
 }
-
-    

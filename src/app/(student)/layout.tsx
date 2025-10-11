@@ -308,7 +308,7 @@ export default function StudentLayout({
                     </PopoverContent>
                 </Popover>
             </header>
-            <main className={cn("flex-1 p-4 md:p-6")}>{children}</main>
+            <main className={cn("flex-1 p-4 md:p-6 overflow-x-hidden")}>{children}</main>
             <footer className="text-center p-4 text-muted-foreground text-sm border-t bg-white/50 backdrop-blur-lg">
                 <p>&copy; {new Date().getFullYear()} 南梓實小虛擬銀行. 版權所有。</p>
             </footer>
