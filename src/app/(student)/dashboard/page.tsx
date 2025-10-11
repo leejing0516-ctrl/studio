@@ -198,7 +198,7 @@ export default function StudentDashboardPage() {
       <div className={cn("grid md:grid-cols-2 lg:grid-cols-4 gap-6")}>
         <Card className="bg-chart-1 text-card-title-foreground">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-card-title font-medium">總點數</CardTitle>
+            <CardTitle className="text-card-title font-medium">目前點數</CardTitle>
             <Coins className="h-4 w-4 text-card-title-foreground/80" />
           </CardHeader>
           <CardContent>
@@ -210,7 +210,7 @@ export default function StudentDashboardPage() {
         </Card>
         <Card className="bg-chart-2 text-card-title-foreground">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-card-title font-medium">投資組合價值</CardTitle>
+            <CardTitle className="text-card-title font-medium">投資價值</CardTitle>
             <BarChartIcon className="h-4 w-4 text-card-title-foreground/80" />
           </CardHeader>
           <CardContent>
@@ -220,7 +220,7 @@ export default function StudentDashboardPage() {
         </Card>
         <Card className="bg-chart-3 text-card-title-foreground">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-card-title font-medium">定存總額</CardTitle>
+                <CardTitle className="text-card-title font-medium">定存點數</CardTitle>
                 <PiggyBank className="h-4 w-4 text-card-title-foreground/80" />
             </CardHeader>
             <CardContent>
