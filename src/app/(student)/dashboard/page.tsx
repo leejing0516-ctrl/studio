@@ -197,7 +197,7 @@ export default function StudentDashboardPage() {
           <p className="text-muted-foreground">歡迎回來！這是您今天的財務狀況概覽。</p>
         </div>
       </div>
-      <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6")}>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="bg-chart-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-card-title text-card-title-foreground">{cardTexts.totalPoints?.title || '目前點數'}</CardTitle>
@@ -298,7 +298,7 @@ export default function StudentDashboardPage() {
         </Card>
       </div>
 
-      <div className="grid md:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         <Card className="md:col-span-2 bg-my-pet-card">
             <CardHeader>
                 <CardTitle className="text-card-title text-my-pet-card-foreground flex items-center gap-2"><Bone /> {cardTexts.myPet?.title || '我的寵物'}</CardTitle>
@@ -314,17 +314,21 @@ export default function StudentDashboardPage() {
             <CardDescription className="text-points-trend-card-foreground/80">{cardTexts.pointsTrend?.description || '您最近七天每日從老師那裡獲得的點數紀錄。'}</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-[250px] w-full">
-                <BarChart accessibilityLayer data={pointsData} margin={{ left: -20, right: 10, top:10, bottom: 0}}>
-                    <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => value} />
-                    <YAxis tickLine={false} axisLine={false} tickMargin={8} domain={[0, 'dataMax + 10']} hide />
-                    <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
-                    <Bar dataKey="points" fill="hsl(var(--accent))" radius={4} />
-                </BarChart>
-            </ChartContainer>
+            <div className="w-full overflow-hidden">
+                <ChartContainer config={chartConfig} className="h-[250px] min-w-[300px]">
+                    <BarChart accessibilityLayer data={pointsData} margin={{ left: -20, right: 10, top:10, bottom: 0}}>
+                        <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => value} />
+                        <YAxis tickLine={false} axisLine={false} tickMargin={8} domain={[0, 'dataMax + 10']} hide />
+                        <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+                        <Bar dataKey="points" fill="hsl(var(--accent))" radius={4} />
+                    </BarChart>
+                </ChartContainer>
+            </div>
           </CardContent>
         </Card>
       </div>
     </div>
   );
 }
+
+    
