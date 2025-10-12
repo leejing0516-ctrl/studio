@@ -21,7 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
 import type { Feedback } from "@/lib/types";
-import { format }s from "date-fns";
+import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 
 export default function TeacherFeedbackPage() {
