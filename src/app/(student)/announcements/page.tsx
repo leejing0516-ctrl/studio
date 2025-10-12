@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useContext, useMemo } from "react";
+import { useContext, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Megaphone, GraduationCap } from "lucide-react";
 import { format } from "date-fns";
@@ -30,7 +30,7 @@ const AnnouncementList = ({ announcements }: { announcements: Announcement[] }) 
 
 export default function AnnouncementsPage() {
     const { platformConfig, classes } = useContext(AppDataContext);
-    const { studentData } = useContext(StudentDataContext);
+    const { studentData, setStudentData } = useContext(StudentDataContext);
 
     const schoolAnnouncements = useMemo(() => {
         return (platformConfig?.announcements || [])
@@ -43,6 +43,16 @@ export default function AnnouncementsPage() {
         return (studentClass?.announcements || [])
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [classes, studentData.student]);
+
+    useEffect(() => {
+        // When the user visits this page, update the last viewed timestamp.
+        const now = new Date().toISOString();
+        localStorage.setItem('lastAnnouncementsView', now);
+        // Also update context to make the notification dot disappear immediately
+        if (studentData.student) {
+            setStudentData(prev => ({...prev, lastAnnouncementsView: now}));
+        }
+    }, [setStudentData, studentData.student]);
 
     return (
         <div className="animate-in fade-in-0 duration-500 space-y-8">

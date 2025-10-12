@@ -69,7 +69,7 @@ export default function StudentLayout({
   const pathname = usePathname();
   const router = useRouter();
   const { studentData, setStudentData } = useContext(StudentDataContext);
-  const { students, setStudents, isLoading } = useContext(AppDataContext);
+  const { students, setStudents, isLoading, classes, platformConfig } = useContext(AppDataContext);
   const { toast } = useToast();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -77,15 +77,17 @@ export default function StudentLayout({
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [hasNewAnnouncements, setHasNewAnnouncements] = useState(false);
 
   const student = useMemo(() => studentData.student, [studentData.student]);
 
   const handleLogout = useCallback(() => {
-    setStudentData({ student: null });
+    setStudentData({ student: null, lastAnnouncementsView: null });
     localStorage.removeItem('studentClassId');
     localStorage.removeItem('studentId');
     localStorage.removeItem('studentPassword');
     localStorage.removeItem('userRole');
+    localStorage.removeItem('lastAnnouncementsView');
     router.push('/');
   }, [router, setStudentData]);
 
@@ -96,6 +98,7 @@ export default function StudentLayout({
     const storedClassId = localStorage.getItem('studentClassId');
     const storedStudentId = localStorage.getItem('studentId');
     const storedPassword = localStorage.getItem('studentPassword');
+    const lastView = localStorage.getItem('lastAnnouncementsView');
 
     if (userRole !== 'student' || !storedClassId || !storedStudentId || !storedPassword) {
       handleLogout();
@@ -106,13 +109,35 @@ export default function StudentLayout({
     
     if (foundStudent && foundStudent.password === storedPassword) {
         if (JSON.stringify(foundStudent) !== JSON.stringify(studentData.student)) {
-            setStudentData({ student: foundStudent });
+            setStudentData({ student: foundStudent, lastAnnouncementsView: lastView });
         }
     } else {
         toast({ title: "驗證失敗", description: "您的登入資訊已過期或不正確，請重新登入。", variant: "destructive" });
         handleLogout();
     }
   }, [isLoading, students, studentData.student, setStudentData, handleLogout, toast]);
+
+  useEffect(() => {
+    if (!student || !platformConfig || !classes) {
+      setHasNewAnnouncements(false);
+      return;
+    }
+
+    const lastViewTime = studentData.lastAnnouncementsView ? new Date(studentData.lastAnnouncementsView).getTime() : 0;
+    
+    const latestSchoolAnnouncementDate = (platformConfig.announcements || [])
+      .reduce((latest, ann) => Math.max(latest, new Date(ann.date).getTime()), 0);
+
+    const studentClass = classes.find(c => c.id === student.classId);
+    const latestClassAnnouncementDate = (studentClass?.announcements || [])
+      .reduce((latest, ann) => Math.max(latest, new Date(ann.date).getTime()), 0);
+
+    if (latestSchoolAnnouncementDate > lastViewTime || latestClassAnnouncementDate > lastViewTime) {
+      setHasNewAnnouncements(true);
+    } else {
+      setHasNewAnnouncements(false);
+    }
+  }, [student, platformConfig, classes, studentData.lastAnnouncementsView]);
 
 
   const handleChangePassword = async () => {
@@ -164,7 +189,7 @@ export default function StudentLayout({
 
   const navItems = [
     { href: "/dashboard", label: "儀表板", icon: LayoutDashboard },
-    { href: "/announcements", label: "最新公告", icon: Megaphone },
+    { href: "/announcements", label: "最新公告", icon: Megaphone, hasNew: hasNewAnnouncements },
     { href: "/challenges", label: "挑戰任務", icon: Flag },
     { href: "/habits", label: "習慣養成", icon: Repeat },
     { href: "/fundraising", label: "募資平台", icon: HeartHandshake },
@@ -230,9 +255,12 @@ export default function StudentLayout({
                   isActive={pathname === item.href}
                   tooltip={item.label}
                 >
-                  <Link href={item.href}>
+                  <Link href={item.href} className="relative">
                     <item.icon />
                     <span>{item.label}</span>
+                    {item.hasNew && (
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-destructive" />
+                    )}
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
