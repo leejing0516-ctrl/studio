@@ -1,11 +1,12 @@
 
 "use client";
 
-import { createContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
+import { createContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import type { Student, Reward, Class, Teacher, Stock, PlatformConfig } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { collection, doc, runTransaction as firestoreRunTransaction, Transaction, query, onSnapshot, Unsubscribe, setDoc, writeBatch, getDocs, addDoc, getCountFromServer, deleteDoc } from 'firebase/firestore';
+import { collection, doc, runTransaction as firestoreRunTransaction, Transaction, query, onSnapshot, Unsubscribe, setDoc, writeBatch, getDocs, deleteDoc, updateDoc } from 'firebase/firestore';
 import { isAfter, startOfDay, differenceInDays } from 'date-fns';
+import { isEqual } from 'lodash';
 
 
 type SetStateActionWithFunction<S> = S | ((prevState: S) => S);
@@ -66,48 +67,52 @@ type LoadingStates = {
     config: boolean;
 }
 
-const createSetterWithFirestoreSync = <T extends { _docId?: string, id?: any }>(
+const createSetterWithDiffing = <T extends { _docId?: string; id?: any }>(
   collectionName: string,
+  currentState: T[],
   useIdAsDocId: boolean = false
 ) => {
   return async (action: SetStateActionWithFunction<T[]>) => {
-    // This is a simplified version. In a real app, you'd get the current state from a reliable source.
-    // For this context, we'll assume we need to fetch it first to properly apply the function form of the action.
-    const currentDocsQuery = await getDocs(query(collection(db, collectionName)));
-    const currentState = currentDocsQuery.docs.map(d => ({ ...d.data(), _docId: d.id })) as T[];
-    
     const newState = typeof action === 'function' ? action(currentState) : action;
 
     try {
       const batch = writeBatch(db);
-      const newDocIds = new Set(newState.map(item => useIdAsDocId ? item.id : item._docId).filter(Boolean));
+      const oldStateMap = new Map(currentState.map(item => [useIdAsDocId ? item.id : item._docId, item]));
+      const newStateMap = new Map(newState.map(item => [useIdAsDocId ? item.id : item._docId, item]));
 
-      // Update or add new items
-      for (const item of newState) {
-        const docId = useIdAsDocId ? item.id : (item._docId || null);
-        const { _docId, ...itemData } = item;
+      // Detect updates and additions
+      for (const [key, newItem] of newStateMap.entries()) {
+        const oldItem = oldStateMap.get(key);
+        const { _docId, ...itemData } = newItem;
+        const docId = useIdAsDocId ? newItem.id : newItem._docId;
 
-        let docRef;
-        if (docId) {
-            docRef = doc(db, collectionName, docId);
-        } else {
-            // For brand new items without any ID, create a new doc ref
-            docRef = doc(collection(db, collectionName));
+        if (!oldItem) {
+          // New item
+          const ref = docId ? doc(db, collectionName, docId) : doc(collection(db, collectionName));
+          batch.set(ref, itemData);
+        } else if (!isEqual(oldItem, newItem)) {
+          // Updated item
+          if (docId) {
+            const ref = doc(db, collectionName, docId);
+            batch.set(ref, itemData, { merge: true });
+          }
         }
-        batch.set(docRef, itemData, { merge: true });
       }
-      
-      // Delete items that are no longer in the new state
-      const oldDocIds = new Set(currentState.map(item => useIdAsDocId ? item.id : item._docId).filter(Boolean));
-      for (const oldId of oldDocIds) {
-        if (!newDocIds.has(oldId)) {
-          batch.delete(doc(db, collectionName, oldId));
+
+      // Detect deletions
+      for (const [key, oldItem] of oldStateMap.entries()) {
+        if (!newStateMap.has(key)) {
+          const docId = useIdAsDocId ? oldItem.id : oldItem._docId;
+          if (docId) {
+            const ref = doc(db, collectionName, docId);
+            batch.delete(ref);
+          }
         }
       }
 
       await batch.commit();
     } catch (error) {
-      console.error(`Error syncing ${collectionName}:`, error);
+      console.error(`Error syncing diff for ${collectionName}:`, error);
       throw error;
     }
   };
@@ -144,12 +149,12 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
     return () => clearInterval(marketInterval);
   }, [platformConfig]);
-
-  const setStudents = createSetterWithFirestoreSync<Student>('students');
-  const setTeachers = createSetterWithFirestoreSync<Teacher>('teachers');
-  const setRewards = createSetterWithFirestoreSync<Reward>('rewards');
-  const setStocks = createSetterWithFirestoreSync<Stock>('stocks');
-  const setClasses = createSetterWithFirestoreSync<Class>('classes', true);
+  
+  const setStudents = createSetterWithDiffing<Student>('students', students);
+  const setTeachers = createSetterWithDiffing<Teacher>('teachers', teachers);
+  const setRewards = createSetterWithDiffing<Reward>('rewards', rewards);
+  const setStocks = createSetterWithDiffing<Stock>('stocks', stocks, true);
+  const setClasses = createSetterWithDiffing<Class>('classes', classes, true);
 
   const setPlatformConfig = async (dataToUpdate: Partial<PlatformConfig>) => {
       const configRef = doc(db, 'config', 'main');
@@ -163,13 +168,11 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         const today = startOfDay(new Date()).toISOString().split('T')[0]; // YYYY-MM-DD
 
         if (lastRun === today) {
-            // console.log("Daily finance has already been processed today.");
             return;
         }
 
         if (isLoading || students.length === 0) return;
 
-        // console.log("Running daily finance processing...");
         const batch = writeBatch(db);
         let hasChanges = false;
 
@@ -178,18 +181,17 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
             let studentPoints = student.points;
             let needsUpdate = false;
+            let updatePayload: any = {};
 
             // Process Fixed Deposits
             const updatedDeposits = (student.fixedDeposits || []).map(deposit => {
                 if (deposit.status === 'active') {
                     if (isAfter(new Date(), new Date(deposit.maturityDate))) {
-                        // Deposit has matured
                         const totalReturn = deposit.amount + deposit.interestEarned;
                         studentPoints += totalReturn;
                         needsUpdate = true;
                         return { ...deposit, status: 'matured' as const };
                     } else {
-                         // Accrue interest
                         const newInterest = deposit.interestEarned + (deposit.amount * deposit.interestRate);
                         if (Math.floor(newInterest) > Math.floor(deposit.interestEarned)) {
                             needsUpdate = true;
@@ -200,65 +202,75 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 return deposit;
             });
 
+            if (needsUpdate) {
+              updatePayload.fixedDeposits = updatedDeposits;
+            }
+
+
             // Process Loans
             const updatedLoans = (student.loans || []).map(loan => {
+                let loanNeedsUpdate = false;
+                let updatedLoan = { ...loan };
+
                 if (loan.status === 'active') {
                     const todayDate = startOfDay(new Date());
                     if (isAfter(todayDate, new Date(loan.repaymentDate))) {
-                        // Loan is overdue
-                         needsUpdate = true;
-                        return { ...loan, status: 'overdue' as const };
-                    } else {
-                        // Accrue interest
-                        const lastAccrued = loan.lastInterestAccruedDate ? new Date(loan.lastInterestAccruedDate) : new Date(loan.approvalDate || loan.requestDate);
-                        const daysSinceLastAccrual = differenceInDays(todayDate, lastAccrued);
-                        
-                        if (daysSinceLastAccrual > 0) {
-                            const newInterest = loan.interest + (loan.amount * loan.interestRate * daysSinceLastAccrual);
-                            needsUpdate = true;
-                            return { ...loan, interest: newInterest, lastInterestAccruedDate: todayDate.toISOString() };
-                        }
+                        updatedLoan.status = 'overdue' as const;
+                        loanNeedsUpdate = true;
                     }
-                }
-                 if (loan.status === 'overdue') { // Continue accruing interest on overdue loans
-                    const lastAccrued = loan.lastInterestAccruedDate ? new Date(loan.lastInterestAccruedDate) : new Date(loan.repaymentDate);
-                    const daysSinceLastAccrual = differenceInDays(startOfDay(new Date()), lastAccrued);
+                    const lastAccrued = loan.lastInterestAccruedDate ? new Date(loan.lastInterestAccruedDate) : new Date(loan.approvalDate || loan.requestDate);
+                    const daysSinceLastAccrual = differenceInDays(todayDate, lastAccrued);
                     if (daysSinceLastAccrual > 0) {
-                        const newInterest = loan.interest + (loan.amount * loan.interestRate * daysSinceLastAccrual);
-                        needsUpdate = true;
-                        return { ...loan, interest: newInterest, lastInterestAccruedDate: new Date().toISOString() };
+                        updatedLoan.interest += (loan.amount * loan.interestRate * daysSinceLastAccrual);
+                        updatedLoan.lastInterestAccruedDate = todayDate.toISOString();
+                        loanNeedsUpdate = true;
+                    }
+                } else if (loan.status === 'overdue') {
+                    const todayDate = startOfDay(new Date());
+                    const lastAccrued = loan.lastInterestAccruedDate ? new Date(loan.lastInterestAccruedDate) : new Date(loan.repaymentDate);
+                    const daysSinceLastAccrual = differenceInDays(todayDate, lastAccrued);
+                    if (daysSinceLastAccrual > 0) {
+                        updatedLoan.interest += (loan.amount * loan.interestRate * daysSinceLastAccrual);
+                        updatedLoan.lastInterestAccruedDate = new Date().toISOString();
+                        loanNeedsUpdate = true;
                     }
                 }
-                return loan;
+                
+                if (loanNeedsUpdate) {
+                  needsUpdate = true;
+                }
+                return updatedLoan;
             });
+            
+            if (needsUpdate) {
+              updatePayload.loans = updatedLoans;
+            }
+
+            if (student.points !== studentPoints) {
+                updatePayload.points = studentPoints;
+                needsUpdate = true;
+            }
 
             if (needsUpdate) {
                 hasChanges = true;
                 const studentRef = doc(db, 'students', student._docId);
-                batch.update(studentRef, { 
-                    points: studentPoints, 
-                    fixedDeposits: updatedDeposits,
-                    loans: updatedLoans
-                });
+                batch.update(studentRef, updatePayload);
             }
         });
 
         if (hasChanges) {
             try {
                 await batch.commit();
-                // console.log("Daily finance processing successful.");
                 localStorage.setItem('lastFinanceRun', today);
             } catch (error) {
                 console.error("Error committing daily finance batch:", error);
             }
         } else {
-            // console.log("No financial changes to process today.");
-            localStorage.setItem('lastFinanceRun', today); // Mark as run even if no changes
+            localStorage.setItem('lastFinanceRun', today);
         }
     };
     
-    // Run once a day, with a timeout to ensure data is loaded.
-    const timer = setTimeout(processDailyFinance, 5000); // Wait 5 seconds after initial load
+    const timer = setTimeout(processDailyFinance, 5000);
     return () => clearTimeout(timer);
 
   }, [isLoading, students]);
@@ -321,7 +333,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     subscriptions.push(setupSubscription<Teacher>('teachers', setTeachersState, 'teachers'));
     subscriptions.push(setupSubscription<Class>('classes', setClassesState, 'classes', true));
     subscriptions.push(setupSubscription<Reward>('rewards', setRewardsState, 'rewards'));
-    subscriptions.push(setupSubscription<Stock>('stocks', setStocksState, 'stocks'));
+    subscriptions.push(setupSubscription<Stock>('stocks', setStocksState, 'stocks', true));
     subscriptions.push(setupDocSubscription<PlatformConfig>(['config', 'main'], setPlatformConfigState, 'config'));
 
     return () => {
