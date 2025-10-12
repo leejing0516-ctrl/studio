@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { AppDataContext } from '@/context/AppDataContext';
 import { StudentDataContext } from '@/context/StudentDataContext';
@@ -25,7 +25,6 @@ const DailyReward = () => {
         if (!studentData.student) return;
 
         setIsClaiming(true);
-        const currentStudent = studentData.student;
 
         // --- Get reward settings from platformConfig ---
         const jackpotChance = platformConfig?.dailyRewardJackpotChance ?? 0.05;
@@ -52,32 +51,44 @@ const DailyReward = () => {
         setRewardResult(pointsAwarded);
         setIsResultDialogOpen(true);
         setIsClaiming(false);
-
-        // --- Update database in the background ---
-        const newRecord: PointRecord | null = pointsAwarded > 0 ? {
-            points: pointsAwarded,
-            date: new Date().toISOString(),
-            reason: '每日簽到獎勵',
-            teacherId: 'system'
-        } : null;
-
-        setStudents(prevStudents =>
-            prevStudents.map(s => {
-                if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
-                    const updatedStudent: Student = {
-                        ...s,
-                        lastDailyReward: todayStr,
-                    };
-                    if (pointsAwarded > 0 && newRecord) {
-                        updatedStudent.points = (s.points || 0) + pointsAwarded;
-                        updatedStudent.pointHistory = [...(s.pointHistory || []), newRecord];
-                    }
-                    return updatedStudent;
-                }
-                return s;
-            })
-        );
     };
+
+    const handleDialogClose = (open: boolean) => {
+        if (!open) {
+            // This is the crucial part: update the database ONLY when the dialog is closing.
+            if (rewardResult !== null && studentData.student) {
+                const currentStudent = studentData.student;
+                const pointsAwarded = rewardResult;
+
+                const newRecord: PointRecord | null = pointsAwarded > 0 ? {
+                    points: pointsAwarded,
+                    date: new Date().toISOString(),
+                    reason: '每日簽到獎勵',
+                    teacherId: 'system'
+                } : null;
+
+                setStudents(prevStudents =>
+                    prevStudents.map(s => {
+                        if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
+                            const updatedStudent: Student = {
+                                ...s,
+                                lastDailyReward: todayStr,
+                            };
+                            if (pointsAwarded > 0 && newRecord) {
+                                updatedStudent.points = (s.points || 0) + pointsAwarded;
+                                updatedStudent.pointHistory = [...(s.pointHistory || []), newRecord];
+                            }
+                            return updatedStudent;
+                        }
+                        return s;
+                    })
+                );
+            }
+            // Reset for the next time
+            setIsResultDialogOpen(false);
+            setRewardResult(null);
+        }
+    }
 
     if (!canClaim) {
         return null; // Don't show anything if they've already claimed today
@@ -103,7 +114,7 @@ const DailyReward = () => {
                 </Button>
             </div>
             
-            <Dialog open={isResultDialogOpen} onOpenChange={setIsResultDialogOpen}>
+            <Dialog open={isResultDialogOpen} onOpenChange={handleDialogClose}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle className="text-2xl text-center">
