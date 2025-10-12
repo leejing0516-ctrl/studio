@@ -26,8 +26,9 @@ const SimpleRenderer = ({ content }: { content: string }) => {
                  if (line.startsWith('### ')) {
                     return <h3 key={index} className="text-lg font-semibold mt-4 mb-1">{line.substring(4)}</h3>;
                 }
-                 if (line.startsWith('*   ')) {
-                    return <li key={index} className="ml-4 list-disc">{line.substring(4)}</li>;
+                 if (line.trim().startsWith('* ')) {
+                    const contentIndex = line.indexOf('*') + 1;
+                    return <li key={index} className="ml-4 list-disc">{line.substring(contentIndex).trim()}</li>;
                 }
                 if (line.match(/\[(.*?)\]\((.*?)\)/)) {
                     const linkMatch = line.match(/\[(.*?)\]\((.*?)\)/);
