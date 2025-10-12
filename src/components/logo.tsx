@@ -1,10 +1,17 @@
 
+"use client";
+
 import Image from 'next/image';
 import { cn } from "@/lib/utils";
-import { LOGO_URL } from '@/lib/config';
+import { DEFAULT_LOGO_URL } from '@/lib/config';
+import { useContext } from 'react';
+import { AppDataContext } from '@/context/AppDataContext';
 
 const Logo = ({ className }: { className?: string }) => {
-  if (!LOGO_URL) {
+  const { platformConfig } = useContext(AppDataContext);
+  const logoUrl = platformConfig?.logoUrl || DEFAULT_LOGO_URL;
+
+  if (!logoUrl) {
     return (
         <div className={cn("relative bg-muted rounded-md", className)}>
             {/* Placeholder for when no logo is set */}
@@ -15,7 +22,7 @@ const Logo = ({ className }: { className?: string }) => {
   return (
     <div className={cn("relative", className)}>
         <Image 
-            src={LOGO_URL}
+            src={logoUrl}
             alt="Platform Logo"
             fill
             sizes="(max-width: 768px) 100vw, 100px" // Provide appropriate sizes

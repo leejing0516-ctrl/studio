@@ -8,8 +8,29 @@ import { Toaster } from "@/components/ui/toaster";
 import { AppDataProvider, AppDataContext } from "@/context/AppDataContext";
 import { StudentDataProvider } from "@/context/StudentDataContext";
 import { themes } from "@/lib/themes";
-import { APP_ICON_URL } from "@/lib/config";
+import { DEFAULT_APP_ICON_URL } from "@/lib/config";
 
+
+const DynamicHead = () => {
+  const { platformConfig } = useContext(AppDataContext);
+  const appIconUrl = platformConfig?.appIconUrl || DEFAULT_APP_ICON_URL;
+
+  return (
+      <head>
+        <title>南梓實小虛擬銀行</title>
+        <meta name="description" content="一個為學生設計，充滿活力的獎勵與金融素養應用程式。" />
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href={appIconUrl} />
+        <meta name="theme-color" content="#000000" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+  )
+}
 
 const ThemeInjector = ({ children }: { children: React.ReactNode }) => {
   const { platformConfig } = useContext(AppDataContext);
@@ -47,29 +68,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <title>南梓實小虛擬銀行</title>
-        <meta name="description" content="一個為學生設計，充滿活力的獎勵與金融素養應用程式。" />
-        <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" href={APP_ICON_URL} />
-        <meta name="theme-color" content="#000000" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="font-body antialiased">
-        <AppDataProvider>
-          <ThemeInjector>
-            <StudentDataProvider>
-                {children}
-                <Toaster />
-            </StudentDataProvider>
-          </ThemeInjector>
-        </AppDataProvider>
-      </body>
+      <AppDataProvider>
+        <DynamicHead />
+        <body className="font-body antialiased">
+            <ThemeInjector>
+              <StudentDataProvider>
+                  {children}
+                  <Toaster />
+              </StudentDataProvider>
+            </ThemeInjector>
+        </body>
+      </AppDataProvider>
     </html>
   );
 }

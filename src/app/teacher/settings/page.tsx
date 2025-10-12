@@ -13,13 +13,14 @@ import {
 } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Percent, ImageOff, UploadCloud, Trash2, Clock, Gift } from "lucide-react";
+import { Loader2, Percent, ImageOff, UploadCloud, Trash2, Clock, Gift, AppWindow, Smartphone } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
 import { themes, type Theme } from "@/lib/themes";
 import { resizeImage, fileToDataUrl } from "@/lib/image-utils";
+import { DEFAULT_LOGO_URL, DEFAULT_APP_ICON_URL } from "@/lib/config";
 
 export default function TeacherSettingsPage() {
     const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
@@ -29,6 +30,8 @@ export default function TeacherSettingsPage() {
     const [isSavingSettings, setIsSavingSettings] = useState(false);
     const [uploadingKey, setUploadingKey] = useState<string | null>(null);
 
+    const [logoUrl, setLogoUrl] = useState('');
+    const [appIconUrl, setAppIconUrl] = useState('');
     const [fixedDepositRate, setFixedDepositRate] = useState<number | string>('');
     const [loanInterestRate, setLoanInterestRate] = useState<number | string>('');
     const [marketOpenHour, setMarketOpenHour] = useState<number | string>('');
@@ -54,6 +57,8 @@ export default function TeacherSettingsPage() {
         }
 
         if (platformConfig) {
+            setLogoUrl(platformConfig.logoUrl || DEFAULT_LOGO_URL);
+            setAppIconUrl(platformConfig.appIconUrl || DEFAULT_APP_ICON_URL);
             setFixedDepositRate((platformConfig.fixedDepositInterestRate || 0) * 100);
             setLoanInterestRate((platformConfig.loanInterestRate || 0) * 100);
             setMarketOpenHour(platformConfig.marketOpenHour ?? 9);
@@ -105,6 +110,8 @@ export default function TeacherSettingsPage() {
         try {
             await setPlatformConfig({
                 ...platformConfig,
+                logoUrl: logoUrl,
+                appIconUrl: appIconUrl,
                 fixedDepositInterestRate: Number(fixedDepositRate) / 100,
                 loanInterestRate: Number(loanInterestRate) / 100,
                 marketOpenHour: Number(marketOpenHour),
@@ -142,76 +149,90 @@ export default function TeacherSettingsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>一般設定</CardTitle>
-                    <CardDescription>管理平台的核心金融與市場參數。</CardDescription>
+                    <CardDescription>管理平台的核心金融、外觀與圖示。</CardDescription>
                 </CardHeader>
-                <CardContent className="grid md:grid-cols-2 gap-6">
-                    <div className="flex items-center justify-between rounded-lg border p-4">
-                        <div>
-                            <Label htmlFor="fixed-deposit-rate" className="font-semibold">定存日利率</Label>
-                            <p className="text-xs text-muted-foreground">
-                                設定學生定期存款的每日利率。
-                            </p>
+                <CardContent className="space-y-6">
+                     <div className="grid md:grid-cols-2 gap-6">
+                         <div className="space-y-2">
+                            <Label htmlFor="logo-url" className="flex items-center gap-2 font-semibold"><AppWindow /> 平台 Logo URL</Label>
+                            <Input id="logo-url" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="請貼上 Logo 圖片網址" />
+                            <p className="text-xs text-muted-foreground">此 Logo 將顯示在側邊欄頂部。</p>
                         </div>
-                        <div className="flex items-center gap-2">
-                             <Input 
-                                id="fixed-deposit-rate" 
-                                type="number" 
-                                value={fixedDepositRate}
-                                onChange={(e) => setFixedDepositRate(e.target.value === '' ? '' : Number(e.target.value))}
-                                className="w-24"
-                                step="0.01"
-                            />
-                            <Percent className="h-4 w-4 text-muted-foreground" />
+                        <div className="space-y-2">
+                             <Label htmlFor="app-icon-url" className="flex items-center gap-2 font-semibold"><Smartphone /> 手機 App 圖示 URL</Label>
+                            <Input id="app-icon-url" value={appIconUrl} onChange={(e) => setAppIconUrl(e.target.value)} placeholder="請貼上 App 圖示網址" />
+                            <p className="text-xs text-muted-foreground">此圖示將用於手機主畫面，建議為 512x512 像素的方形圖片。</p>
                         </div>
-                    </div>
-                     <div className="flex items-center justify-between rounded-lg border p-4">
-                        <div>
-                            <Label htmlFor="loan-interest-rate" className="font-semibold">貸款日利率</Label>
-                            <p className="text-xs text-muted-foreground">
-                                設定學生信用貸款的每日利率。
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                             <Input 
-                                id="loan-interest-rate" 
-                                type="number" 
-                                value={loanInterestRate}
-                                onChange={(e) => setLoanInterestRate(e.target.value === '' ? '' : Number(e.target.value))}
-                                className="w-24"
-                                step="0.01"
-                            />
-                            <Percent className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                    </div>
-                     <div className="flex items-center justify-between rounded-lg border p-4 md:col-span-2">
-                        <div>
-                            <Label htmlFor="market-open-hour" className="font-semibold flex items-center gap-2"><Clock />股市交易時間</Label>
-                            <p className="text-xs text-muted-foreground">
-                                設定虛擬股票市場的開盤與收盤時間 (24 小時制)。
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-4">
+                     </div>
+                     <div className="grid md:grid-cols-2 gap-6">
+                        <div className="flex items-center justify-between rounded-lg border p-4">
+                            <div>
+                                <Label htmlFor="fixed-deposit-rate" className="font-semibold">定存日利率</Label>
+                                <p className="text-xs text-muted-foreground">
+                                    設定學生定期存款的每日利率。
+                                </p>
+                            </div>
                             <div className="flex items-center gap-2">
                                 <Input 
-                                    id="market-open-hour" 
+                                    id="fixed-deposit-rate" 
                                     type="number" 
-                                    value={marketOpenHour}
-                                    onChange={(e) => setMarketOpenHour(e.target.value === '' ? '' : Number(e.target.value))}
-                                    className="w-20"
-                                    min="0" max="23"
+                                    value={fixedDepositRate}
+                                    onChange={(e) => setFixedDepositRate(e.target.value === '' ? '' : Number(e.target.value))}
+                                    className="w-24"
+                                    step="0.01"
                                 />
-                                <span className="text-muted-foreground">點 (開盤)</span>
+                                <Percent className="h-4 w-4 text-muted-foreground" />
                             </div>
-                             <div className="flex items-center gap-2">
+                        </div>
+                        <div className="flex items-center justify-between rounded-lg border p-4">
+                            <div>
+                                <Label htmlFor="loan-interest-rate" className="font-semibold">貸款日利率</Label>
+                                <p className="text-xs text-muted-foreground">
+                                    設定學生信用貸款的每日利率。
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2">
                                 <Input 
-                                    id="market-close-hour" 
+                                    id="loan-interest-rate" 
                                     type="number" 
-                                    value={marketCloseHour}
-                                    onChange={(e) => setMarketCloseHour(e.target.value === '' ? '' : Number(e.target.value))}
-                                    className="w-20"
-                                    min="0" max="23"
+                                    value={loanInterestRate}
+                                    onChange={(e) => setLoanInterestRate(e.target.value === '' ? '' : Number(e.target.value))}
+                                    className="w-24"
+                                    step="0.01"
                                 />
-                                <span className="text-muted-foreground">點 (收盤)</span>
+                                <Percent className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between rounded-lg border p-4 md:col-span-2">
+                            <div>
+                                <Label htmlFor="market-open-hour" className="font-semibold flex items-center gap-2"><Clock />股市交易時間</Label>
+                                <p className="text-xs text-muted-foreground">
+                                    設定虛擬股票市場的開盤與收盤時間 (24 小時制)。
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2">
+                                    <Input 
+                                        id="market-open-hour" 
+                                        type="number" 
+                                        value={marketOpenHour}
+                                        onChange={(e) => setMarketOpenHour(e.target.value === '' ? '' : Number(e.target.value))}
+                                        className="w-20"
+                                        min="0" max="23"
+                                    />
+                                    <span className="text-muted-foreground">點 (開盤)</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Input 
+                                        id="market-close-hour" 
+                                        type="number" 
+                                        value={marketCloseHour}
+                                        onChange={(e) => setMarketCloseHour(e.target.value === '' ? '' : Number(e.target.value))}
+                                        className="w-20"
+                                        min="0" max="23"
+                                    />
+                                    <span className="text-muted-foreground">點 (收盤)</span>
+                                </div>
                             </div>
                         </div>
                     </div>

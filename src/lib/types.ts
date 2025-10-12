@@ -221,6 +221,8 @@ export type DashboardCardTexts = {
 
 export type PlatformConfig = {
     id: 'main';
+    logoUrl?: string;
+    appIconUrl?: string;
     schoolFunds?: number;
     sponsorLogoUrls?: (string | null)[];
     teacherPassword?: string;
