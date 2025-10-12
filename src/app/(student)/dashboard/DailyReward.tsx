@@ -159,7 +159,9 @@ const DailyReward = () => {
                     </DialogHeader>
                     <DialogFooter>
                         <DialogClose asChild>
-                           <Button className="w-full">太棒了！</Button>
+                           <Button className="w-full">
+                                {rewardResult !== null && rewardResult > 0 ? "太棒了！" : "再加油"}
+                           </Button>
                         </DialogClose>
                     </DialogFooter>
                 </DialogContent>
