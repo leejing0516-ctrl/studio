@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext, useEffect, useCallback } from 'react';
+import { useState, useContext, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { AppDataContext } from '@/context/AppDataContext';
 import { StudentDataContext } from '@/context/StudentDataContext';
@@ -125,7 +125,7 @@ const DailyReward = () => {
                                     您獲得了 <span className="font-bold text-primary text-xl">{rewardResult.toLocaleString()}</span> 點！
                                 </>
                             ) : (
-                                "這次是空的，感謝您的參與！明天再來試試手氣吧！"
+                                "今天沒有抽中點數，感謝你的參與！明天再來試試手氣吧！"
                             )}
                         </DialogDescription>
                     </DialogHeader>
