@@ -47,26 +47,36 @@ export default function AnnouncementsPage() {
     useEffect(() => {
         const student = studentData.student;
         if (!student) return;
-        
-        const now = new Date().toISOString();
-        
-        // Prevent unnecessary writes
-        if (student.lastAnnouncementsView === now) return;
 
-        const updateStudentReadTime = async () => {
-            await setStudents(prevStudents => 
-                prevStudents.map(s => {
-                    if (s.id === student.id && s.classId === student.classId) {
-                        return { ...s, lastAnnouncementsView: now };
-                    }
-                    return s;
-                })
-            );
-        };
-        
-        updateStudentReadTime();
+        const lastViewTime = student.lastAnnouncementsView ? new Date(student.lastAnnouncementsView).getTime() : 0;
 
-    }, [studentData.student, setStudents]);
+        const latestSchoolAnnouncementDate = (platformConfig?.announcements || [])
+          .reduce((latest, ann) => Math.max(latest, new Date(ann.date).getTime()), 0);
+
+        const studentClass = classes.find(c => c.id === student.classId);
+        const latestClassAnnouncementDate = (studentClass?.announcements || [])
+          .reduce((latest, ann) => Math.max(latest, new Date(ann.date).getTime()), 0);
+
+        const hasNew = latestSchoolAnnouncementDate > lastViewTime || latestClassAnnouncementDate > lastViewTime;
+
+        // Only update if there are new announcements to be marked as read
+        if (hasNew) {
+            const now = new Date().toISOString();
+            const updateStudentReadTime = async () => {
+                await setStudents(prevStudents => 
+                    prevStudents.map(s => {
+                        if (s.id === student.id && s.classId === student.classId) {
+                            return { ...s, lastAnnouncementsView: now };
+                        }
+                        return s;
+                    })
+                );
+            };
+            
+            updateStudentReadTime();
+        }
+
+    }, [studentData.student, setStudents, platformConfig, classes]);
 
     return (
         <div className="animate-in fade-in-0 duration-500 space-y-8">

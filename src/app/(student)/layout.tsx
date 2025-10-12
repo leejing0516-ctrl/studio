@@ -204,6 +204,7 @@ export default function StudentLayout({
     if (!student || !hasNewPointHistory) return;
     
     const now = new Date().toISOString();
+    
     // Optimistically update the UI
     setHasNewPointHistory(false);
 
@@ -346,7 +347,7 @@ export default function StudentLayout({
                         {navItems.find(item => item.href === pathname)?.label || '儀表板'}
                     </h1>
                 </div>
-                <Popover onOpenChange={(open) => { if (open) handleOpenNotifications() }}>
+                <Popover onOpenChange={(open) => { if (open && hasNewPointHistory) handleOpenNotifications() }}>
                     <PopoverTrigger asChild>
                     <Button variant="ghost" size="icon" className="relative">
                         <Bell />
