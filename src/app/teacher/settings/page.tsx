@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Percent, ImageOff, UploadCloud, Trash2, Clock } from "lucide-react";
+import { Loader2, Percent, ImageOff, UploadCloud, Trash2, Clock, Gift } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
@@ -34,6 +34,14 @@ export default function TeacherSettingsPage() {
     const [marketOpenHour, setMarketOpenHour] = useState<number | string>('');
     const [marketCloseHour, setMarketCloseHour] = useState<number | string>('');
     
+    // Daily Reward States
+    const [dailyRewardJackpotChance, setDailyRewardJackpotChance] = useState<number | string>('');
+    const [dailyRewardJackpotMin, setDailyRewardJackpotMin] = useState<number | string>('');
+    const [dailyRewardJackpotMax, setDailyRewardJackpotMax] = useState<number | string>('');
+    const [dailyRewardStandardChance, setDailyRewardStandardChance] = useState<number | string>('');
+    const [dailyRewardStandardMin, setDailyRewardStandardMin] = useState<number | string>('');
+    const [dailyRewardStandardMax, setDailyRewardStandardMax] = useState<number | string>('');
+
     const [sponsorLogoUrls, setSponsorLogoUrls] = useState<(string | null)[]>([]);
     const [selectedTheme, setSelectedTheme] = useState<string>("default");
 
@@ -52,6 +60,14 @@ export default function TeacherSettingsPage() {
             setMarketCloseHour(platformConfig.marketCloseHour ?? 14);
             setSponsorLogoUrls(platformConfig.sponsorLogoUrls || [null, null, null, null]);
             setSelectedTheme(platformConfig.theme || "default");
+            
+            // Set daily reward states
+            setDailyRewardJackpotChance((platformConfig.dailyRewardJackpotChance ?? 0.05) * 100);
+            setDailyRewardJackpotMin(platformConfig.dailyRewardJackpotMin ?? 100);
+            setDailyRewardJackpotMax(platformConfig.dailyRewardJackpotMax ?? 200);
+            setDailyRewardStandardChance((platformConfig.dailyRewardStandardChance ?? 0.75) * 100);
+            setDailyRewardStandardMin(platformConfig.dailyRewardStandardMin ?? 10);
+            setDailyRewardStandardMax(platformConfig.dailyRewardStandardMax ?? 50);
         }
     }, [platformConfig, router, toast]);
 
@@ -95,6 +111,12 @@ export default function TeacherSettingsPage() {
                 marketCloseHour: Number(marketCloseHour),
                 sponsorLogoUrls: sponsorLogoUrls,
                 theme: selectedTheme,
+                dailyRewardJackpotChance: Number(dailyRewardJackpotChance) / 100,
+                dailyRewardJackpotMin: Number(dailyRewardJackpotMin),
+                dailyRewardJackpotMax: Number(dailyRewardJackpotMax),
+                dailyRewardStandardChance: Number(dailyRewardStandardChance) / 100,
+                dailyRewardStandardMin: Number(dailyRewardStandardMin),
+                dailyRewardStandardMax: Number(dailyRewardStandardMax),
             });
 
             toast({ title: "設定已儲存", description: "平台設定已成功更新。" });
@@ -195,6 +217,58 @@ export default function TeacherSettingsPage() {
                     </div>
                 </CardContent>
             </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Gift />每日簽到獎勵設定</CardTitle>
+                    <CardDescription>設定學生每日簽到時可獲得的隨機點數獎勵。機率加總建議小於 100%，剩餘機率為「銘謝惠顧」。</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    {/* Jackpot Settings */}
+                    <div className="rounded-lg border p-4">
+                        <h3 className="font-semibold mb-2">頭獎 (Jackpot) 設定</h3>
+                        <div className="grid md:grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="jackpot-chance">中獎機率</Label>
+                                <div className="flex items-center gap-2">
+                                    <Input id="jackpot-chance" type="number" value={dailyRewardJackpotChance} onChange={e => setDailyRewardJackpotChance(e.target.value === '' ? '' : Number(e.target.value))} step="0.1" />
+                                    <Percent className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="jackpot-min">最小點數</Label>
+                                <Input id="jackpot-min" type="number" value={dailyRewardJackpotMin} onChange={e => setDailyRewardJackpotMin(e.target.value === '' ? '' : Number(e.target.value))} />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="jackpot-max">最大點數</Label>
+                                <Input id="jackpot-max" type="number" value={dailyRewardJackpotMax} onChange={e => setDailyRewardJackpotMax(e.target.value === '' ? '' : Number(e.target.value))} />
+                            </div>
+                        </div>
+                    </div>
+                    {/* Standard Reward Settings */}
+                    <div className="rounded-lg border p-4">
+                        <h3 className="font-semibold mb-2">普通獎設定</h3>
+                        <div className="grid md:grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="standard-chance">中獎機率</Label>
+                                <div className="flex items-center gap-2">
+                                    <Input id="standard-chance" type="number" value={dailyRewardStandardChance} onChange={e => setDailyRewardStandardChance(e.target.value === '' ? '' : Number(e.target.value))} step="1" />
+                                    <Percent className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="standard-min">最小點數</Label>
+                                <Input id="standard-min" type="number" value={dailyRewardStandardMin} onChange={e => setDailyRewardStandardMin(e.target.value === '' ? '' : Number(e.target.value))} />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="standard-max">最大點數</Label>
+                                <Input id="standard-max" type="number" value={dailyRewardStandardMax} onChange={e => setDailyRewardStandardMax(e.target.value === '' ? '' : Number(e.target.value))} />
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
              <Card>
                 <CardHeader>
                     <CardTitle>外觀設定</CardTitle>

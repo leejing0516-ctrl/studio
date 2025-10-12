@@ -13,7 +13,7 @@ import { startOfDay, formatISO } from 'date-fns';
 
 const DailyReward = () => {
     const { studentData } = useContext(StudentDataContext);
-    const { setStudents } = useContext(AppDataContext);
+    const { setStudents, platformConfig } = useContext(AppDataContext);
     const { toast } = useToast();
 
     const [isClaiming, setIsClaiming] = useState(false);
@@ -29,14 +29,24 @@ const DailyReward = () => {
         setIsClaiming(true);
         const currentStudent = studentData.student;
 
+        // --- Get reward settings from platformConfig ---
+        const jackpotChance = platformConfig?.dailyRewardJackpotChance ?? 0.05;
+        const jackpotMin = platformConfig?.dailyRewardJackpotMin ?? 100;
+        const jackpotMax = platformConfig?.dailyRewardJackpotMax ?? 200;
+        
+        const standardChance = platformConfig?.dailyRewardStandardChance ?? 0.75;
+        const standardMin = platformConfig?.dailyRewardStandardMin ?? 10;
+        const standardMax = platformConfig?.dailyRewardStandardMax ?? 50;
+
         // --- Determine the reward ---
         const roll = Math.random();
         let pointsAwarded = 0;
-        if (roll < 0.05) { // 5% chance for jackpot
-            pointsAwarded = Math.floor(Math.random() * 101) + 100; // 100-200 points
-        } else if (roll < 0.8) { // 75% chance for standard reward (80% - 5%)
-            pointsAwarded = Math.floor(Math.random() * 41) + 10; // 10-50 points
-        } else { // 20% chance for nothing
+        
+        if (roll < jackpotChance) { // Jackpot
+            pointsAwarded = Math.floor(Math.random() * (jackpotMax - jackpotMin + 1)) + jackpotMin;
+        } else if (roll < jackpotChance + standardChance) { // Standard reward
+            pointsAwarded = Math.floor(Math.random() * (standardMax - standardMin + 1)) + standardMin;
+        } else { // No reward
             pointsAwarded = 0;
         }
 
