@@ -16,6 +16,9 @@ import React from "react";
 
 // Memoized component to render a single line, preventing unnecessary re-renders.
 const LineRenderer = React.memo(({ line }: { line: string }) => {
+    if (line.trim() === '') {
+        return null;
+    }
     if (line.startsWith('# ')) {
         return <h1 className="text-2xl font-bold mt-6 mb-3 border-b pb-2">{line.substring(2)}</h1>;
     }
