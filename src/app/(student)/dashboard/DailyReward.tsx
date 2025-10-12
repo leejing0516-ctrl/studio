@@ -96,12 +96,12 @@ const DailyReward = () => {
 
     return (
         <>
-            <div className="animate-in fade-in-0 duration-500 bg-accent/20 border border-accent/30 text-accent-foreground p-4 rounded-lg flex items-center justify-between">
+            <div className="animate-in fade-in-0 duration-500 bg-accent/20 border border-accent/30 p-4 rounded-lg flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <Gift className="h-6 w-6 text-accent" />
                     <div>
                         <h3 className="font-semibold">每日簽到獎勵！</h3>
-                        <p className="text-sm opacity-80">今天還沒領取您的每日驚喜獎勵，快來試試手氣！</p>
+                        <p className="text-sm text-muted-foreground">今天還沒領取您的每日驚喜獎勵，快來試試手氣！</p>
                     </div>
                 </div>
                 <Button onClick={handleClaimReward} disabled={isClaiming}>
