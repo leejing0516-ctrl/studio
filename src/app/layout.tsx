@@ -49,6 +49,9 @@ export default function RootLayout({
       <head>
         <title>南梓實小虛擬銀行</title>
         <meta name="description" content="一個為學生設計，充滿活力的獎勵與金融素養應用程式。" />
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/icon-192x192.png" />
+        <meta name="theme-color" content="#000000" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
