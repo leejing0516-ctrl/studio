@@ -28,24 +28,28 @@ const LineRenderer = React.memo(({ line }: { line: string }) => {
     if (line.startsWith('### ')) {
         return <h3 className="text-lg font-semibold mt-4 mb-1">{line.substring(4)}</h3>;
     }
-    if (line.trim().startsWith('* ')) {
+    
+    const trimmedLine = line.trim();
+    if (trimmedLine.startsWith('* ')) {
         const contentIndex = line.indexOf('*') + 1;
         return <li className="ml-4 list-disc">{line.substring(contentIndex).trim()}</li>;
     }
-    if (line.match(/\[!*?(.*?)\]\((.*?)\)/) && !line.startsWith('![')) {
-        const linkMatch = line.match(/\[(.*?)\]\((.*?)\)/);
-        if (linkMatch) {
-            return (
-                <p className="mb-2 leading-relaxed">
-                    {line.substring(0, linkMatch.index)}
-                    <Link href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80">
-                        {linkMatch[1]}
-                    </Link>
-                    {line.substring(linkMatch.index! + linkMatch[0].length)}
-                </p>
-            )
-        }
+    
+    // Regex to match a markdown link `[text](url)` but not an image `![text](url)`
+    const linkMatch = line.match(/\[([^!].*?)\]\((.*?)\)/);
+    if (linkMatch && linkMatch.index !== undefined) {
+         return (
+            <p className="mb-2 leading-relaxed">
+                {line.substring(0, linkMatch.index)}
+                <Link href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80">
+                    {linkMatch[1]}
+                </Link>
+                {line.substring(linkMatch.index + linkMatch[0].length)}
+            </p>
+        )
     }
+    
+    // Regex for image `![alt](src)`
     if (line.startsWith('![') && line.endsWith(')')) {
         const match = line.match(/!\[(.*?)\]\((.*?)\)/);
         if (match) {
@@ -55,11 +59,13 @@ const LineRenderer = React.memo(({ line }: { line: string }) => {
             return <img src={src} alt={alt} className="my-4 rounded-md border shadow-sm" />;
         }
     }
+
     if (line.trim() === '---') {
         return <hr className="my-6" />;
     }
     
-    // Fallback for any other line to just render as a plain paragraph, avoiding complex splits.
+    // Fallback for any other line to just render as a plain paragraph.
+    // This is the safest option to prevent rendering errors.
     return <p className="mb-2 leading-relaxed">{line}</p>;
 });
 LineRenderer.displayName = 'LineRenderer';
