@@ -1,10 +1,11 @@
 
+import type { CustomTheme } from './types';
 
 export type Theme = {
   name: string
   label: string
   cssVars: {
-    dark: Record<string, string>
+    dark: CustomTheme
   }
 }
 

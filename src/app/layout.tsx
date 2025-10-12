@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useContext, useEffect, useMemo } from "react";
@@ -9,11 +8,28 @@ import { AppDataProvider, AppDataContext } from "@/context/AppDataContext";
 import { StudentDataProvider } from "@/context/StudentDataContext";
 import { themes } from "@/lib/themes";
 import { DEFAULT_APP_ICON_URL } from "@/lib/config";
-
+import type { CustomTheme } from "@/lib/types";
 
 const DynamicHead = () => {
   const { platformConfig } = useContext(AppDataContext);
   const appIconUrl = platformConfig?.appIconUrl || DEFAULT_APP_ICON_URL;
+  const themeName = useMemo(() => platformConfig?.theme || 'default', [platformConfig]);
+  const customTheme = useMemo(() => platformConfig?.customTheme, [platformConfig]);
+
+  const themeVars = useMemo(() => {
+    let vars: CustomTheme;
+    if (themeName === 'custom' && customTheme) {
+      vars = customTheme;
+    } else {
+      const theme = themes.find(t => t.name === themeName) || themes.find(t => t.name === 'default')!;
+      vars = theme.cssVars.dark;
+    }
+    const cssText = Object.entries(vars)
+      .map(([key, value]) => `--${key}: ${value};`)
+      .join('\n');
+      
+    return `:root {\n${cssText}\n}`;
+  }, [themeName, customTheme]);
 
   return (
       <head>
@@ -28,38 +44,10 @@ const DynamicHead = () => {
           href="https://fonts.googleapis.com/css2?family=Inter&display=swap"
           rel="stylesheet"
         />
+        <style dangerouslySetInnerHTML={{ __html: themeVars }} />
       </head>
   )
 }
-
-const ThemeInjector = ({ children }: { children: React.ReactNode }) => {
-  const { platformConfig } = useContext(AppDataContext);
-  const themeName = useMemo(() => platformConfig?.theme || 'default', [platformConfig]);
-  const customTheme = useMemo(() => platformConfig?.customTheme, [platformConfig]);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    root.classList.remove(...themes.map(t => t.name));
-    
-    if (themeName === 'custom' && customTheme) {
-        Object.entries(customTheme).forEach(([key, value]) => {
-            root.style.setProperty(`--${key}`, value);
-        });
-    } else {
-      const theme = themes.find(t => t.name === themeName) || themes.find(t => t.name === 'default')!;
-      root.classList.add(theme.name);
-       if (theme.cssVars.dark) {
-        Object.entries(theme.cssVars.dark).forEach(([key, value]) => {
-            root.style.setProperty(`--${key}`, value);
-        });
-      }
-    }
-
-  }, [themeName, customTheme]);
-
-  return <>{children}</>;
-}
-
 
 export default function RootLayout({
   children,
@@ -71,12 +59,10 @@ export default function RootLayout({
       <AppDataProvider>
         <DynamicHead />
         <body className="font-body antialiased">
-            <ThemeInjector>
-              <StudentDataProvider>
-                  {children}
-                  <Toaster />
-              </StudentDataProvider>
-            </ThemeInjector>
+            <StudentDataProvider>
+                {children}
+                <Toaster />
+            </StudentDataProvider>
         </body>
       </AppDataProvider>
     </html>
