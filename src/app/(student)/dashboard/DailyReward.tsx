@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { AppDataContext } from '@/context/AppDataContext';
 import { StudentDataContext } from '@/context/StudentDataContext';
 import { Gift, Loader2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import type { Student, PointRecord } from '@/lib/types';
 import { startOfDay, formatISO } from 'date-fns';
@@ -14,7 +13,6 @@ import { startOfDay, formatISO } from 'date-fns';
 const DailyReward = () => {
     const { studentData } = useContext(StudentDataContext);
     const { setStudents, platformConfig } = useContext(AppDataContext);
-    const { toast } = useToast();
 
     const [isClaiming, setIsClaiming] = useState(false);
     const [rewardResult, setRewardResult] = useState<number | null>(null);
@@ -50,47 +48,35 @@ const DailyReward = () => {
             pointsAwarded = 0;
         }
         
+        // --- Show result to user IMMEDIATELY ---
         setRewardResult(pointsAwarded);
+        setIsResultDialogOpen(true);
+        setIsClaiming(false);
 
-        if (pointsAwarded > 0) {
-            const newRecord: PointRecord = {
-                points: pointsAwarded,
-                date: new Date().toISOString(),
-                reason: '每日簽到獎勵',
-                teacherId: 'system'
-            };
+        // --- Update database in the background ---
+        const newRecord: PointRecord | null = pointsAwarded > 0 ? {
+            points: pointsAwarded,
+            date: new Date().toISOString(),
+            reason: '每日簽到獎勵',
+            teacherId: 'system'
+        } : null;
 
-            setStudents(prevStudents =>
-                prevStudents.map(s =>
-                    s.id === currentStudent.id && s.classId === currentStudent.classId
-                        ? {
-                            ...s,
-                            points: s.points + pointsAwarded,
-                            pointHistory: [...(s.pointHistory || []), newRecord],
-                            lastDailyReward: todayStr,
-                        }
-                        : s
-                )
-            );
-        } else {
-             // Still update the lastDailyReward date even if they got nothing
-             setStudents(prevStudents =>
-                prevStudents.map(s =>
-                    s.id === currentStudent.id && s.classId === currentStudent.classId
-                        ? {
-                            ...s,
-                            lastDailyReward: todayStr,
-                        }
-                        : s
-                )
-            );
-        }
-
-        // A small delay to allow state to propagate and show loading, then show dialog
-        setTimeout(() => {
-            setIsClaiming(false);
-            setIsResultDialogOpen(true);
-        }, 500); 
+        setStudents(prevStudents =>
+            prevStudents.map(s => {
+                if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
+                    const updatedStudent: Student = {
+                        ...s,
+                        lastDailyReward: todayStr,
+                    };
+                    if (pointsAwarded > 0 && newRecord) {
+                        updatedStudent.points = (s.points || 0) + pointsAwarded;
+                        updatedStudent.pointHistory = [...(s.pointHistory || []), newRecord];
+                    }
+                    return updatedStudent;
+                }
+                return s;
+            })
+        );
     };
 
     if (!canClaim) {
