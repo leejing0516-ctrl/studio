@@ -113,6 +113,7 @@ export type Student = {
   fixedDeposits?: FixedDeposit[];
   habits?: StudentHabit[];
   avatarCustomization?: AvatarCustomization;
+  lastDailyReward?: string; // ISO date string (YYYY-MM-DD)
 };
 
 export type Reward = {

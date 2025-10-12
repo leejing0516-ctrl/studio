@@ -14,6 +14,7 @@ import { subDays, format, parseISO, startOfDay, isWithinInterval } from "date-fn
 import StudentPet from "@/components/student-pet";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import DailyReward from "./DailyReward";
 
 const chartConfig: ChartConfig = {
   points: {
@@ -191,6 +192,7 @@ export default function StudentDashboardPage() {
 
   return (
     <div className="grid gap-6 animate-in fade-in-0 duration-500">
+      <DailyReward />
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">你好, {currentStudent.name}!</h1>
