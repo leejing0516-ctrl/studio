@@ -12,3 +12,13 @@
  * with the new image URL.
  */
 export const LOGO_URL = "https://i.imgur.com/rS2Tjso.png";
+
+
+/**
+ * The URL for the application's icon.
+ * This icon is used for the Progressive Web App (PWA) icon that appears on a user's home screen.
+ * 
+ * To change the icon, replace the content of this string with the new image URL.
+ * For best results, use a square image with a resolution of at least 512x512 pixels.
+ */
+export const APP_ICON_URL = "https://i.imgur.com/rS2Tjso.png";
