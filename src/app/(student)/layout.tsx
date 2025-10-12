@@ -236,6 +236,7 @@ export default function StudentLayout({
     { href: "/stocks", label: "股票市場", icon: LineChart },
     { href: "/deposits", label: "定期存款", icon: PiggyBank },
     { href: "/loans", label: "信用貸款", icon: Landmark },
+    { href: "/feedback", label: "意見信箱", icon: Mail },
   ];
   
   const pointHistory = useMemo(() => {

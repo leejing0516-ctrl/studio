@@ -1,5 +1,15 @@
 
 
+export type Feedback = {
+  id: string;
+  studentId: string;
+  studentName: string;
+  classId: string;
+  message: string;
+  date: string; // ISO date string
+  isRead: boolean;
+};
+
 export type Donation = {
   studentId: string;
   studentName: string;
@@ -237,4 +247,5 @@ export type PlatformConfig = {
     dailyRewardStandardChance?: number;
     dailyRewardStandardMin?: number;
     dailyRewardStandardMax?: number;
+    feedback?: Feedback[];
 }
