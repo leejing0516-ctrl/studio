@@ -82,12 +82,11 @@ export default function StudentLayout({
   const student = useMemo(() => studentData.student, [studentData.student]);
 
   const handleLogout = useCallback(() => {
-    setStudentData({ student: null, lastAnnouncementsView: null });
+    setStudentData({ student: null });
     localStorage.removeItem('studentClassId');
     localStorage.removeItem('studentId');
     localStorage.removeItem('studentPassword');
     localStorage.removeItem('userRole');
-    localStorage.removeItem('lastAnnouncementsView');
     router.push('/');
   }, [router, setStudentData]);
 
@@ -98,8 +97,7 @@ export default function StudentLayout({
     const storedClassId = localStorage.getItem('studentClassId');
     const storedStudentId = localStorage.getItem('studentId');
     const storedPassword = localStorage.getItem('studentPassword');
-    const lastView = localStorage.getItem('lastAnnouncementsView');
-
+    
     if (userRole !== 'student' || !storedClassId || !storedStudentId || !storedPassword) {
       handleLogout();
       return;
@@ -109,7 +107,7 @@ export default function StudentLayout({
     
     if (foundStudent && foundStudent.password === storedPassword) {
         if (JSON.stringify(foundStudent) !== JSON.stringify(studentData.student)) {
-            setStudentData({ student: foundStudent, lastAnnouncementsView: lastView });
+            setStudentData({ student: foundStudent });
         }
     } else {
         toast({ title: "驗證失敗", description: "您的登入資訊已過期或不正確，請重新登入。", variant: "destructive" });
@@ -123,7 +121,7 @@ export default function StudentLayout({
       return;
     }
 
-    const lastViewTime = studentData.lastAnnouncementsView ? new Date(studentData.lastAnnouncementsView).getTime() : 0;
+    const lastViewTime = student.lastAnnouncementsView ? new Date(student.lastAnnouncementsView).getTime() : 0;
     
     const latestSchoolAnnouncementDate = (platformConfig.announcements || [])
       .reduce((latest, ann) => Math.max(latest, new Date(ann.date).getTime()), 0);
@@ -137,7 +135,7 @@ export default function StudentLayout({
     } else {
       setHasNewAnnouncements(false);
     }
-  }, [student, platformConfig, classes, studentData.lastAnnouncementsView]);
+  }, [student, platformConfig, classes]);
 
 
   const handleChangePassword = async () => {

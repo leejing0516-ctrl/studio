@@ -114,6 +114,7 @@ export type Student = {
   habits?: StudentHabit[];
   avatarCustomization?: AvatarCustomization;
   lastDailyReward?: string; // ISO date string (YYYY-MM-DD)
+  lastAnnouncementsView?: string | null;
 };
 
 export type Reward = {

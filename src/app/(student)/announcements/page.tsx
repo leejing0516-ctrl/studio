@@ -8,7 +8,7 @@ import { format } from "date-fns";
 import { AppDataContext } from "@/context/AppDataContext";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { Separator } from "@/components/ui/separator";
-import type { Announcement } from "@/lib/types";
+import type { Announcement, Student } from "@/lib/types";
 
 const AnnouncementList = ({ announcements }: { announcements: Announcement[] }) => (
     <div className="space-y-6">
@@ -29,8 +29,8 @@ const AnnouncementList = ({ announcements }: { announcements: Announcement[] }) 
 
 
 export default function AnnouncementsPage() {
-    const { platformConfig, classes } = useContext(AppDataContext);
-    const { studentData, setStudentData } = useContext(StudentDataContext);
+    const { platformConfig, classes, setStudents } = useContext(AppDataContext);
+    const { studentData } = useContext(StudentDataContext);
 
     const schoolAnnouncements = useMemo(() => {
         return (platformConfig?.announcements || [])
@@ -45,14 +45,28 @@ export default function AnnouncementsPage() {
     }, [classes, studentData.student]);
 
     useEffect(() => {
-        // When the user visits this page, update the last viewed timestamp.
+        const student = studentData.student;
+        if (!student) return;
+        
         const now = new Date().toISOString();
-        localStorage.setItem('lastAnnouncementsView', now);
-        // Also update context to make the notification dot disappear immediately
-        if (studentData.student) {
-            setStudentData(prev => ({...prev, lastAnnouncementsView: now}));
-        }
-    }, [setStudentData, studentData.student]);
+        
+        // Prevent unnecessary writes
+        if (student.lastAnnouncementsView === now) return;
+
+        const updateStudentReadTime = async () => {
+            await setStudents(prevStudents => 
+                prevStudents.map(s => {
+                    if (s.id === student.id && s.classId === student.classId) {
+                        return { ...s, lastAnnouncementsView: now };
+                    }
+                    return s;
+                })
+            );
+        };
+        
+        updateStudentReadTime();
+
+    }, [studentData.student, setStudents]);
 
     return (
         <div className="animate-in fade-in-0 duration-500 space-y-8">

@@ -6,7 +6,6 @@ import type { Student } from '@/lib/types';
 
 interface StudentData {
   student: Student | null;
-  lastAnnouncementsView: string | null;
 }
 
 interface StudentDataContextType {
@@ -16,7 +15,6 @@ interface StudentDataContextType {
 
 const defaultStudentData: StudentData = {
     student: null,
-    lastAnnouncementsView: null,
 };
 
 export const StudentDataContext = createContext<StudentDataContextType>({
