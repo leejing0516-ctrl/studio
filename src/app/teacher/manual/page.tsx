@@ -59,21 +59,8 @@ const LineRenderer = React.memo(({ line }: { line: string }) => {
         return <hr className="my-6" />;
     }
     
-    // Handle bold text with **text** and `code`
-    const parts = line.split(/(\*\*.*?\*\*|`.*?`)/g).filter(part => part);
-    return (
-        <p className="mb-2 leading-relaxed">
-            {parts.map((part, i) => {
-                if (part.startsWith('**') && part.endsWith('**')) {
-                    return <strong key={i}>{part.slice(2, -2)}</strong>;
-                }
-                if (part.startsWith('`') && part.endsWith('`')) {
-                    return <code key={i} className="bg-muted text-foreground font-mono text-sm px-1 py-0.5 rounded-sm">{part.slice(1, -1)}</code>;
-                }
-                return part;
-            })}
-        </p>
-    );
+    // Fallback for any other line to just render as a plain paragraph, avoiding complex splits.
+    return <p className="mb-2 leading-relaxed">{line}</p>;
 });
 LineRenderer.displayName = 'LineRenderer';
 
