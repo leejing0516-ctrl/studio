@@ -23,7 +23,7 @@ const DailyReward = () => {
     const todayStr = formatISO(startOfDay(new Date()), { representation: 'date' });
     const canClaim = studentData.student?.lastDailyReward !== todayStr;
 
-    const handleClaimReward = async () => {
+    const handleClaimReward = () => {
         if (!studentData.student) return;
 
         setIsClaiming(true);
@@ -49,7 +49,7 @@ const DailyReward = () => {
         } else { // No reward
             pointsAwarded = 0;
         }
-
+        
         setRewardResult(pointsAwarded);
 
         if (pointsAwarded > 0) {
@@ -60,56 +60,37 @@ const DailyReward = () => {
                 teacherId: 'system'
             };
 
-            try {
-                await setStudents(prevStudents =>
-                    prevStudents.map(s =>
-                        s.id === currentStudent.id && s.classId === currentStudent.classId
-                            ? {
-                                ...s,
-                                points: s.points + pointsAwarded,
-                                pointHistory: [...(s.pointHistory || []), newRecord],
-                                lastDailyReward: todayStr,
-                            }
-                            : s
-                    )
-                );
-            } catch (error) {
-                console.error("Failed to claim daily reward:", error);
-                toast({
-                    title: "領取失敗",
-                    description: "更新您的點數時發生錯誤，請稍後再試。",
-                    variant: "destructive"
-                });
-                setIsClaiming(false);
-                return;
-            }
+            setStudents(prevStudents =>
+                prevStudents.map(s =>
+                    s.id === currentStudent.id && s.classId === currentStudent.classId
+                        ? {
+                            ...s,
+                            points: s.points + pointsAwarded,
+                            pointHistory: [...(s.pointHistory || []), newRecord],
+                            lastDailyReward: todayStr,
+                        }
+                        : s
+                )
+            );
         } else {
              // Still update the lastDailyReward date even if they got nothing
-             try {
-                await setStudents(prevStudents =>
-                    prevStudents.map(s =>
-                        s.id === currentStudent.id && s.classId === currentStudent.classId
-                            ? {
-                                ...s,
-                                lastDailyReward: todayStr,
-                            }
-                            : s
-                    )
-                );
-            } catch (error) {
-                console.error("Failed to update daily reward timestamp:", error);
-                 toast({
-                    title: "領取失敗",
-                    description: "更新簽到狀態時發生錯誤，請稍後再試。",
-                    variant: "destructive"
-                });
-                setIsClaiming(false);
-                return;
-            }
+             setStudents(prevStudents =>
+                prevStudents.map(s =>
+                    s.id === currentStudent.id && s.classId === currentStudent.classId
+                        ? {
+                            ...s,
+                            lastDailyReward: todayStr,
+                        }
+                        : s
+                )
+            );
         }
 
-        setIsClaiming(false);
-        setIsResultDialogOpen(true);
+        // The useEffect will handle opening the dialog
+        setTimeout(() => {
+            setIsClaiming(false);
+            setIsResultDialogOpen(true);
+        }, 500); // A small delay to allow state to propagate and show loading
     };
 
     if (!canClaim) {
