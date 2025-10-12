@@ -29,7 +29,7 @@ const LineRenderer = React.memo(({ line }: { line: string }) => {
         const contentIndex = line.indexOf('*') + 1;
         return <li className="ml-4 list-disc">{line.substring(contentIndex).trim()}</li>;
     }
-    if (line.match(/\[(.*?)\]\((.*?)\)/)) {
+    if (line.match(/\[!*?(.*?)\]\((.*?)\)/) && !line.startsWith('![')) {
         const linkMatch = line.match(/\[(.*?)\]\((.*?)\)/);
         if (linkMatch) {
             return (
