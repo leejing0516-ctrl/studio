@@ -1,12 +1,7 @@
-
 {
   "name": "南梓實小虛擬銀行",
-  "short_name": "南梓銀行",
+  "short_name": "虛擬銀行",
   "description": "一個為學生設計，充滿活力的獎勵與金融素養應用程式。",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#000000",
   "icons": [
     {
       "src": "/icon-192x192.png",
@@ -18,5 +13,10 @@
       "sizes": "512x512",
       "type": "image/png"
     }
-  ]
+  ],
+  "theme_color": "#09090b",
+  "background_color": "#09090b",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait"
 }
