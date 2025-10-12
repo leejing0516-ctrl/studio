@@ -9,10 +9,12 @@ import { Gift, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import type { Student, PointRecord } from "@/lib/types";
 import { startOfDay, formatISO } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
 const DailyReward = () => {
     const { studentData } = useContext(StudentDataContext);
-    const { setStudents, platformConfig } = useContext(AppDataContext);
+    const { setStudents, platformConfig, setPlatformConfig } = useContext(AppDataContext);
+    const { toast } = useToast();
 
     const [isClaiming, setIsClaiming] = useState(false);
     const [rewardResult, setRewardResult] = useState<number | null>(null);
@@ -53,40 +55,66 @@ const DailyReward = () => {
         setIsClaiming(false);
     };
 
-    const handleDialogClose = useCallback((open: boolean) => {
+    const handleDialogClose = useCallback(async (open: boolean) => {
         if (!open && rewardResult !== null && studentData.student) {
             const currentStudent = studentData.student;
             const pointsAwarded = rewardResult;
 
-            const newRecord: PointRecord | null = pointsAwarded > 0 ? {
-                points: pointsAwarded,
-                date: new Date().toISOString(),
-                reason: '每日簽到獎勵',
-                teacherId: 'system'
-            } : null;
+            if (pointsAwarded > 0) {
+                // Check if school has enough funds
+                const currentSchoolFunds = platformConfig?.schoolFunds || 0;
+                if (currentSchoolFunds < pointsAwarded) {
+                    toast({
+                        title: "簽到失敗",
+                        description: "學校資金不足，無法發放今日獎勵！請通知校長。",
+                        variant: "destructive"
+                    });
+                    setRewardResult(null); // Reset for next time
+                    return;
+                }
 
-            setStudents(prevStudents =>
-                prevStudents.map(s => {
-                    if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
-                        const updatedStudent: Student = {
-                            ...s,
-                            lastDailyReward: todayStr,
-                        };
-                        if (pointsAwarded > 0 && newRecord) {
-                            updatedStudent.points = (s.points || 0) + pointsAwarded;
-                            updatedStudent.pointHistory = [...(s.pointHistory || []), newRecord];
+                // Deduct from school funds
+                await setPlatformConfig({
+                    schoolFunds: currentSchoolFunds - pointsAwarded
+                });
+
+                const newRecord: PointRecord = {
+                    points: pointsAwarded,
+                    date: new Date().toISOString(),
+                    reason: '每日簽到獎勵',
+                    teacherId: 'system'
+                };
+
+                await setStudents(prevStudents =>
+                    prevStudents.map(s => {
+                        if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
+                            return {
+                                ...s,
+                                lastDailyReward: todayStr,
+                                points: (s.points || 0) + pointsAwarded,
+                                pointHistory: [...(s.pointHistory || []), newRecord],
+                            };
                         }
-                        return updatedStudent;
-                    }
-                    return s;
-                })
-            );
+                        return s;
+                    })
+                );
+            } else {
+                 // Still mark as claimed even if no reward
+                 await setStudents(prevStudents =>
+                    prevStudents.map(s => {
+                        if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
+                           return { ...s, lastDailyReward: todayStr };
+                        }
+                        return s;
+                    })
+                );
+            }
             
             // Reset for the next time
             setRewardResult(null);
         }
         setIsResultDialogOpen(open);
-    }, [rewardResult, studentData.student, setStudents, todayStr]);
+    }, [rewardResult, studentData.student, setStudents, setPlatformConfig, platformConfig, todayStr, toast]);
 
 
     if (!canClaim) {
