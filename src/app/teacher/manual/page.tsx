@@ -1,7 +1,6 @@
 
 "use client";
 
-import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -14,70 +13,11 @@ import { CHANGELOG_CONTENT } from "@/lib/manual-content";
 import { AlertTriangle, Book, History } from "lucide-react";
 import React from "react";
 
-// Memoized component to render a single line, preventing unnecessary re-renders.
-const LineRenderer = React.memo(({ line }: { line: string }) => {
-    if (line.trim() === '') {
-        return null;
-    }
-    if (line.startsWith('# ')) {
-        return <h1 className="text-2xl font-bold mt-6 mb-3 border-b pb-2">{line.substring(2)}</h1>;
-    }
-    if (line.startsWith('## ')) {
-        return <h2 className="text-xl font-semibold mt-5 mb-2">{line.substring(3)}</h2>;
-    }
-    if (line.startsWith('### ')) {
-        return <h3 className="text-lg font-semibold mt-4 mb-1">{line.substring(4)}</h3>;
-    }
-    
-    const trimmedLine = line.trim();
-    if (trimmedLine.startsWith('* ')) {
-        const contentIndex = line.indexOf('*') + 1;
-        return <li className="ml-4 list-disc">{line.substring(contentIndex).trim()}</li>;
-    }
-    
-    // Regex to match a markdown link `[text](url)` but not an image `![text](url)`
-    const linkMatch = line.match(/\[([^!].*?)\]\((.*?)\)/);
-    if (linkMatch && linkMatch.index !== undefined) {
-         return (
-            <p className="mb-2 leading-relaxed">
-                {line.substring(0, linkMatch.index)}
-                <Link href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80">
-                    {linkMatch[1]}
-                </Link>
-                {line.substring(linkMatch.index + linkMatch[0].length)}
-            </p>
-        )
-    }
-    
-    // Regex for image `![alt](src)`
-    if (line.startsWith('![') && line.endsWith(')')) {
-        const match = line.match(/!\[(.*?)\]\((.*?)\)/);
-        if (match) {
-            const alt = match[1];
-            const src = match[2];
-            // eslint-disable-next-line @next/next/no-img-element
-            return <img src={src} alt={alt} className="my-4 rounded-md border shadow-sm" />;
-        }
-    }
-
-    if (line.trim() === '---') {
-        return <hr className="my-6" />;
-    }
-    
-    // Fallback for any other line to just render as a plain paragraph.
-    // This is the safest option to prevent rendering errors.
-    return <p className="mb-2 leading-relaxed">{line}</p>;
-});
-LineRenderer.displayName = 'LineRenderer';
-
-
+// A simple and safe renderer for the manual content.
 const SimpleRenderer = ({ content }: { content: string }) => {
-    const lines = content.split('\n');
     return (
-        <div className="prose prose-sm max-w-none text-foreground">
-            {lines.map((line, index) => (
-                <LineRenderer key={index} line={line} />
-            ))}
+        <div className="prose prose-sm max-w-none text-foreground whitespace-pre-wrap">
+            {content}
         </div>
     );
 };
