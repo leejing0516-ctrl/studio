@@ -43,11 +43,14 @@ const LineRenderer = React.memo(({ line }: { line: string }) => {
             )
         }
     }
-    if (line.startsWith('![') && line.includes('](') && line.endsWith(')')) {
-        const alt = line.substring(2, line.indexOf(']('));
-        const src = line.substring(line.indexOf('](') + 2, line.length - 1);
-        // eslint-disable-next-line @next/next/no-img-element
-        return <img src={src} alt={alt} className="my-4 rounded-md border shadow-sm" />;
+    if (line.startsWith('![') && line.endsWith(')')) {
+        const match = line.match(/!\[(.*?)\]\((.*?)\)/);
+        if (match) {
+            const alt = match[1];
+            const src = match[2];
+            // eslint-disable-next-line @next/next/no-img-element
+            return <img src={src} alt={alt} className="my-4 rounded-md border shadow-sm" />;
+        }
     }
     if (line.trim() === '---') {
         return <hr className="my-6" />;
