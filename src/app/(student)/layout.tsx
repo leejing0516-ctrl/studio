@@ -78,6 +78,7 @@ export default function StudentLayout({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [hasNewAnnouncements, setHasNewAnnouncements] = useState(false);
+  const [hasNewPointHistory, setHasNewPointHistory] = useState(false);
 
   const student = useMemo(() => studentData.student, [studentData.student]);
 
@@ -116,14 +117,16 @@ export default function StudentLayout({
   }, [isLoading, students, studentData.student, setStudentData, handleLogout, toast]);
 
   useEffect(() => {
-    if (!student || !platformConfig || !classes) {
+    if (!student) {
       setHasNewAnnouncements(false);
+      setHasNewPointHistory(false);
       return;
     }
 
+    // Check for new announcements
     const lastViewTime = student.lastAnnouncementsView ? new Date(student.lastAnnouncementsView).getTime() : 0;
     
-    const latestSchoolAnnouncementDate = (platformConfig.announcements || [])
+    const latestSchoolAnnouncementDate = (platformConfig?.announcements || [])
       .reduce((latest, ann) => Math.max(latest, new Date(ann.date).getTime()), 0);
 
     const studentClass = classes.find(c => c.id === student.classId);
@@ -135,6 +138,18 @@ export default function StudentLayout({
     } else {
       setHasNewAnnouncements(false);
     }
+
+    // Check for new point history
+    const lastPointHistoryView = student.lastPointHistoryView ? new Date(student.lastPointHistoryView).getTime() : 0;
+    const latestPointRecordDate = (student.pointHistory || [])
+      .reduce((latest, record) => Math.max(latest, new Date(record.date).getTime()), 0);
+
+    if (latestPointRecordDate > lastPointHistoryView) {
+      setHasNewPointHistory(true);
+    } else {
+      setHasNewPointHistory(false);
+    }
+
   }, [student, platformConfig, classes]);
 
 
@@ -184,6 +199,30 @@ export default function StudentLayout({
     }
 
   };
+
+  const handleOpenNotifications = useCallback(async () => {
+    if (!student || !hasNewPointHistory) return;
+    
+    const now = new Date().toISOString();
+    // Optimistically update the UI
+    setHasNewPointHistory(false);
+
+    try {
+        await setStudents(prevStudents => 
+            prevStudents.map(s => {
+                if (s.id === student.id && s.classId === student.classId) {
+                    return { ...s, lastPointHistoryView: now };
+                }
+                return s;
+            })
+        );
+    } catch (e) {
+        console.error("Failed to update lastPointHistoryView:", e);
+        // Revert optimistic update on failure
+        setHasNewPointHistory(true);
+        toast({ title: "錯誤", description: "無法更新通知狀態，請稍後再試。", variant: "destructive" });
+    }
+}, [student, hasNewPointHistory, setStudents, toast]);
 
   const navItems = [
     { href: "/dashboard", label: "儀表板", icon: LayoutDashboard },
@@ -307,11 +346,11 @@ export default function StudentLayout({
                         {navItems.find(item => item.href === pathname)?.label || '儀表板'}
                     </h1>
                 </div>
-                <Popover>
+                <Popover onOpenChange={(open) => { if (open) handleOpenNotifications() }}>
                     <PopoverTrigger asChild>
                     <Button variant="ghost" size="icon" className="relative">
                         <Bell />
-                        {pointHistory.length > 0 && <span className="absolute top-1.5 right-1.5 flex h-2 w-2 rounded-full bg-red-500" />}
+                        {hasNewPointHistory && <span className="absolute top-1.5 right-1.5 flex h-2 w-2 rounded-full bg-red-500" />}
                     </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-80">

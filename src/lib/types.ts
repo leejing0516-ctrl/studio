@@ -115,6 +115,7 @@ export type Student = {
   avatarCustomization?: AvatarCustomization;
   lastDailyReward?: string; // ISO date string (YYYY-MM-DD)
   lastAnnouncementsView?: string | null;
+  lastPointHistoryView?: string;
 };
 
 export type Reward = {
