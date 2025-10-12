@@ -24,10 +24,10 @@ const DailyReward = () => {
     const canClaim = studentData.student?.lastDailyReward !== todayStr;
 
     const handleClaimReward = async () => {
-        if (!studentData.student || !studentData.student._docId) return;
+        if (!studentData.student) return;
 
         setIsClaiming(true);
-        const studentId = studentData.student._docId;
+        const currentStudent = studentData.student;
 
         // --- Determine the reward ---
         const roll = Math.random();
@@ -53,7 +53,7 @@ const DailyReward = () => {
             try {
                 await setStudents(prevStudents =>
                     prevStudents.map(s =>
-                        s._docId === studentId
+                        s.id === currentStudent.id && s.classId === currentStudent.classId
                             ? {
                                 ...s,
                                 points: s.points + pointsAwarded,
@@ -78,7 +78,7 @@ const DailyReward = () => {
              try {
                 await setStudents(prevStudents =>
                     prevStudents.map(s =>
-                        s._docId === studentId
+                        s.id === currentStudent.id && s.classId === currentStudent.classId
                             ? {
                                 ...s,
                                 lastDailyReward: todayStr,
