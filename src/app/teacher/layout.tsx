@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import React, { useEffect, useState, useContext, useCallback } from "react";
+import React, { useEffect, useState, useContext, useCallback, useMemo } from "react";
 import {
   SidebarProvider,
   Sidebar,
@@ -76,6 +76,11 @@ export default function TeacherLayout({
   const [isSaving, setIsSaving] = useState(false);
 
   const [isImpersonating, setIsImpersonating] = useState(false);
+
+  const hasNewFeedback = useMemo(() => {
+    return (platformConfig?.feedback || []).some(f => !f.isRead);
+  }, [platformConfig?.feedback]);
+
 
   const handleLogout = useCallback(() => {
     localStorage.removeItem('teacherName');
@@ -219,7 +224,7 @@ export default function TeacherLayout({
     { href: "/teacher/dashboard", label: "班級與點數管理", icon: LayoutDashboard, roles: ['admin', 'teacher', 'subject_teacher'] },
     { href: "/teacher/rankings", label: "全校排名", icon: Trophy, roles: ['admin'] },
     { href: "/teacher/announcements", label: "公告管理", icon: Megaphone, roles: ['admin', 'teacher', 'subject_teacher'] },
-    { href: "/teacher/feedback", label: "意見信箱", icon: Mail, roles: ['admin'] },
+    { href: "/teacher/feedback", label: "意見信箱", icon: Mail, roles: ['admin'], hasNew: hasNewFeedback },
     { href: "/teacher/rewards", label: "獎勵管理", icon: Gift, roles: ['admin', 'teacher'] },
     { href: "/teacher/challenges", label: "挑戰管理", icon: Flag, roles: ['admin', 'teacher', 'subject_teacher'] },
     { href: "/teacher/habits", label: "習慣審核", icon: Repeat, roles: ['admin', 'teacher'] },
@@ -286,9 +291,12 @@ export default function TeacherLayout({
                   isActive={pathname.startsWith(item.href)}
                   tooltip={item.label}
                 >
-                  <Link href={item.href}>
+                  <Link href={item.href} className="relative">
                     <item.icon />
                     <span>{item.label}</span>
+                     {item.hasNew && (
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-destructive" />
+                    )}
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
