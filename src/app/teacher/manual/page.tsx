@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -55,7 +56,7 @@ const SimpleRenderer = ({ content }: { content: string }) => {
                     return <hr key={index} className="my-6" />;
                 }
                 // Handle bold text with **text** and `code`
-                const parts = line.split(/(\*\*.*?\*\*|`.*?`)/g);
+                const parts = line.split(/(\*\*.*?\*\*|`.*?`)/g).filter(part => part);
                 return (
                     <p key={index} className="mb-2 leading-relaxed">
                         {parts.map((part, i) => {
