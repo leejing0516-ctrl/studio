@@ -7,7 +7,7 @@ import { AppDataContext } from '@/context/AppDataContext';
 import { StudentDataContext } from '@/context/StudentDataContext';
 import { Gift, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import type { Student, PointRecord } from '@/lib/types';
 import { startOfDay, formatISO } from 'date-fns';
 
@@ -86,11 +86,11 @@ const DailyReward = () => {
             );
         }
 
-        // The useEffect will handle opening the dialog
+        // A small delay to allow state to propagate and show loading, then show dialog
         setTimeout(() => {
             setIsClaiming(false);
             setIsResultDialogOpen(true);
-        }, 500); // A small delay to allow state to propagate and show loading
+        }, 500); 
     };
 
     if (!canClaim) {
@@ -117,13 +117,13 @@ const DailyReward = () => {
                 </Button>
             </div>
             
-            <AlertDialog open={isResultDialogOpen} onOpenChange={setIsResultDialogOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-2xl text-center">
+            <Dialog open={isResultDialogOpen} onOpenChange={setIsResultDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl text-center">
                             {rewardResult !== null && rewardResult > 0 ? "恭喜！" : "再接再厲！"}
-                        </AlertDialogTitle>
-                        <AlertDialogDescription className="text-center text-base py-4">
+                        </DialogTitle>
+                        <DialogDescription className="text-center text-base py-4">
                             {rewardResult !== null && rewardResult > 0 ? (
                                 <>
                                     您獲得了 <span className="font-bold text-primary text-xl">{rewardResult.toLocaleString()}</span> 點！
@@ -131,13 +131,15 @@ const DailyReward = () => {
                             ) : (
                                 "這次是空的，感謝您的參與！明天再來試試手氣吧！"
                             )}
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogAction onClick={() => setIsResultDialogOpen(false)}>太棒了！</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                           <Button className="w-full">太棒了！</Button>
+                        </DialogClose>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     );
 };
