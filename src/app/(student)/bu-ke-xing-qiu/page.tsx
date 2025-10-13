@@ -55,7 +55,7 @@ export default function BuKeXingQiuPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <StatCard
           title="本月挖掘能量"
-          value={currentStudent.readingEnergy?.toLocaleString() || 0}
+          value={currentStudent.buKeEnergyThisMonth?.toLocaleString() || 0}
           icon={Gem}
         />
         <StatCard

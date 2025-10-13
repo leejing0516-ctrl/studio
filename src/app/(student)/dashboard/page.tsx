@@ -285,7 +285,7 @@ export default function StudentDashboardPage() {
             </CardHeader>
             <CardContent>
                 <div className="text-card-value">
-                {Math.round(currentStudent.readingEnergy || 0).toLocaleString()}
+                {Math.round(currentStudent.buKeEnergyThisMonth || 0).toLocaleString()}
                 </div>
                 <p className="text-card-description">{cardTexts.buKeXingQiu?.description || '每月轉換為點數'}</p>
             </CardContent>

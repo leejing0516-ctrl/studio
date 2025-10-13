@@ -27,7 +27,7 @@ import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import type { Student, PointRecord } from "@/lib/types";
-import { doc } from "firebase/firestore";
+import { doc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Papa from "papaparse";
 import { Separator } from "@/components/ui/separator";
@@ -35,7 +35,7 @@ import { Separator } from "@/components/ui/separator";
 interface BuKeRecord {
     studentId: string;
     classId: string;
-    readingEnergy: number;
+    buKeEnergyThisMonth: number;
     buKeBooksThisMonth: number;
     buKeLevel: number;
     buKeTotalEnergy: number;
@@ -87,7 +87,7 @@ export default function BuKeXingQiuPage() {
                 const bukeData: BuKeRecord[] = [];
                 // Start from row 1 to skip header
                 for (const row of rawData.slice(1)) {
-                    const [year, month, studentName, gradeNum, classNum, seatNum, readingEnergyStr, booksThisMonthStr, levelStr, totalEnergyStr, totalBooksStr] = row;
+                    const [year, month, studentName, gradeNum, classNum, seatNumStr, energyThisMonthStr, booksThisMonthStr, levelStr, totalEnergyStr, totalBooksStr] = row;
                     
                     const gradeName = gradeMap[gradeNum] || '';
                     const classNameSuffix = classMap[classNum] || '';
@@ -95,7 +95,7 @@ export default function BuKeXingQiuPage() {
                     if (gradeName && classNameSuffix) {
                         const fullClassName = `${gradeName}年${classNameSuffix}`;
                         const classId = classNameToIdMap.get(fullClassName);
-                        const studentId = `S${String(seatNum).padStart(3, '0')}`;
+                        const studentId = `S${String(seatNumStr).padStart(3, '0')}`;
                         
                         if (classId) {
                              const student = students.find(s => s.classId === classId && s.id === studentId);
@@ -103,7 +103,7 @@ export default function BuKeXingQiuPage() {
                                  bukeData.push({
                                     studentId: student.id,
                                     classId: student.classId,
-                                    readingEnergy: Number(readingEnergyStr) || 0,
+                                    buKeEnergyThisMonth: Number(energyThisMonthStr) || 0,
                                     buKeBooksThisMonth: Number(booksThisMonthStr) || 0,
                                     buKeLevel: Number(levelStr) || 1,
                                     buKeTotalEnergy: Number(totalEnergyStr) || 0,
@@ -125,24 +125,25 @@ export default function BuKeXingQiuPage() {
 
         const studentDataMap = new Map(parsedCsvData.map(item => [`${item.classId}-${item.studentId}`, item]));
         
-        const updatedStudents = students.map(student => {
-            const key = `${student.classId}-${student.id}`;
-            if (studentDataMap.has(key)) {
-                const csvData = studentDataMap.get(key)!;
-                return {
-                    ...student,
-                    readingEnergy: csvData.readingEnergy,
-                    buKeBooksThisMonth: csvData.buKeBooksThisMonth,
-                    buKeLevel: csvData.buKeLevel,
-                    buKeTotalEnergy: csvData.buKeTotalEnergy,
-                    buKeTotalBooks: csvData.buKeTotalBooks,
-                };
-            }
-            return student;
-        });
-        
         try {
-            await setStudents(updatedStudents);
+            const batch = writeBatch(db);
+            students.forEach(student => {
+                const key = `${student.classId}-${student.id}`;
+                if (studentDataMap.has(key) && student._docId) {
+                    const csvData = studentDataMap.get(key)!;
+                    const studentRef = doc(db, 'students', student._docId);
+                    batch.update(studentRef, {
+                        readingEnergy: csvData.buKeEnergyThisMonth, // For conversion
+                        buKeEnergyThisMonth: csvData.buKeEnergyThisMonth, // For display
+                        buKeBooksThisMonth: csvData.buKeBooksThisMonth,
+                        buKeLevel: csvData.buKeLevel,
+                        buKeTotalEnergy: csvData.buKeTotalEnergy,
+                        buKeTotalBooks: csvData.buKeTotalBooks,
+                    });
+                }
+            });
+            await batch.commit();
+
             toast({
                 title: `匯入完成`,
                 description: `已成功為 ${parsedCsvData.length} 位學生更新布可星球資料。`
@@ -160,14 +161,14 @@ export default function BuKeXingQiuPage() {
 
     const handleBatchConvert = async () => {
         setIsProcessing(true);
-        const studentsWithReadingEnergy = students.filter(s => (s.readingEnergy || 0) > 0);
-        if (studentsWithReadingEnergy.length === 0) {
-            toast({ title: "無可轉換項目", description: "目前沒有學生的布可星球能量大於 0。" });
+        const studentsToConvert = students.filter(s => (s.readingEnergy || 0) > 0);
+        if (studentsToConvert.length === 0) {
+            toast({ title: "無可轉換項目", description: "目前沒有學生的待轉換能量大於 0。" });
             setIsProcessing(false);
             return;
         }
 
-        const totalPointsToAward = studentsWithReadingEnergy.reduce((sum, s) => sum + Math.floor((s.readingEnergy || 0) * conversionRate), 0);
+        const totalPointsToAward = studentsToConvert.reduce((sum, s) => sum + Math.floor((s.readingEnergy || 0) * conversionRate), 0);
         const schoolFunds = platformConfig?.schoolFunds || 0;
 
         if (schoolFunds < totalPointsToAward) {
@@ -181,38 +182,39 @@ export default function BuKeXingQiuPage() {
         }
 
         try {
-            const updatedStudents: Student[] = students.map(student => {
-                const energy = student.readingEnergy || 0;
-                if (energy > 0) {
-                    const pointsToAdd = Math.floor(energy * conversionRate);
-                    const newPointHistory: PointRecord = {
-                        points: pointsToAdd,
-                        date: new Date().toISOString(),
-                        reason: "上月布可星球能量轉換",
-                        teacherId: 'principal'
-                    };
-                    return {
-                        ...student,
-                        points: (student.points || 0) + pointsToAdd,
-                        pointHistory: [...(student.pointHistory || []), newPointHistory],
-                        readingEnergy: 0, // Reset energy after conversion
-                    };
-                }
-                return student;
-            });
-            
-            await setStudents(updatedStudents);
+            await runTransaction(async (transaction) => {
+                const configRef = doc(db, 'config', 'main');
+                transaction.update(configRef, { schoolFunds: schoolFunds - totalPointsToAward });
 
-            if (platformConfig) {
-                 await runTransaction(async (transaction) => {
-                    const configRef = doc(db, 'config', 'main');
-                    transaction.update(configRef, { schoolFunds: schoolFunds - totalPointsToAward });
-                });
-            }
+                for (const student of studentsToConvert) {
+                    if (!student._docId) continue;
+                    const studentRef = doc(db, 'students', student._docId);
+                    const studentDoc = await transaction.get(studentRef);
+
+                    if (studentDoc.exists()) {
+                         const studentData = studentDoc.data() as Student;
+                         const energyToConvert = studentData.readingEnergy || 0;
+                         const pointsToAdd = Math.floor(energyToConvert * conversionRate);
+
+                         const newPointHistory: PointRecord = {
+                            points: pointsToAdd,
+                            date: new Date().toISOString(),
+                            reason: "布可星球能量轉換",
+                            teacherId: 'principal'
+                        };
+                        
+                        transaction.update(studentRef, {
+                            points: (studentData.points || 0) + pointsToAdd,
+                            pointHistory: [...(studentData.pointHistory || []), newPointHistory],
+                            readingEnergy: 0, // Reset conversion energy
+                        });
+                    }
+                }
+            });
 
             toast({
                 title: "轉換成功",
-                description: `已成功為 ${studentsWithReadingEnergy.length} 位學生轉換布可星球能量，共發放 ${totalPointsToAward.toLocaleString()} 點。`
+                description: `已成功為 ${studentsToConvert.length} 位學生轉換布可星球能量，共發放 ${totalPointsToAward.toLocaleString()} 點。`
             });
         } catch (error: any) {
             console.error("Batch conversion failed:", error);
@@ -275,7 +277,7 @@ export default function BuKeXingQiuPage() {
                      <Card className="bg-muted/30">
                         <CardHeader>
                             <CardTitle className="text-xl">步驟二：批次轉換點數</CardTitle>
-                            <CardDescription>此操作將會把列表中所有學生的「本月挖掘能量」乘以轉換率，加到他們的總點數中，並將能量歸零。此操作無法復原。</CardDescription>
+                            <CardDescription>此操作將會把列表中所有學生的「待轉換能量」乘以轉換率，加到他們的總點數中，並將「待轉換能量」歸零。此操作無法復原。</CardDescription>
                         </CardHeader>
                         <CardContent>
                              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 mb-6 border rounded-lg bg-background">
@@ -305,7 +307,7 @@ export default function BuKeXingQiuPage() {
                                         <AlertDialogHeader>
                                             <AlertDialogTitle className="flex items-center gap-2"><AlertTriangle/>確定要開始轉換嗎？</AlertDialogTitle>
                                             <AlertDialogDescription>
-                                                此操作將會把列表中所有學生的「本月挖掘能量」乘以轉換率，加到他們的總點數中，並將該月能量歸零。此操作無法復原。
+                                                此操作將會把列表中所有學生的「待轉換能量」乘以轉換率，加到他們的總點數中，並將該月能量歸零。此操作無法復原。
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
@@ -353,7 +355,3 @@ export default function BuKeXingQiuPage() {
         </div>
     );
 }
-
-    
-
-    

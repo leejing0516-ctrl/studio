@@ -113,7 +113,7 @@ export type Student = {
   classId: string; // Links to the Class object
   groupId?: string; // Links to the group ID within the Class object
   points: number;
-  readingEnergy?: number;
+  readingEnergy?: number; // For internal conversion
   avatar: string;
   password?: string;
   portfolio: PortfolioItem[];
@@ -127,6 +127,7 @@ export type Student = {
   lastDailyReward?: string; // ISO date string (YYYY-MM-DD)
   lastAnnouncementsView?: string | null;
   lastPointHistoryView?: string;
+  buKeEnergyThisMonth?: number; // For display
   buKeBooksThisMonth?: number;
   buKeLevel?: number;
   buKeTotalEnergy?: number;
