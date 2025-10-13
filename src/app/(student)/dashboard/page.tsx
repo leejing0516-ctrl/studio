@@ -3,7 +3,7 @@
 
 import { useContext, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Coins, Trophy, Wallet, BarChart as BarChartIcon, Landmark, Users, Globe, PiggyBank, Bone, BookUp } from "lucide-react";
+import { Coins, Trophy, Wallet, BarChart as BarChartIcon, Landmark, Users, Globe, PiggyBank, Bone, BookUp, Star } from "lucide-react";
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Bar, BarChart, XAxis, YAxis } from "recharts"
 import { StudentDataContext } from "@/context/StudentDataContext";
@@ -278,19 +278,7 @@ export default function StudentDashboardPage() {
                 <p className="text-xs text-school-rank-card-foreground/80">{(cardTexts.schoolRank?.description || "全校前 {percentile}%").replace('{percentile}', String(100 - Math.floor(schoolPercentile)))}</p>
             </CardContent>
         </Card>
-        <Card className="bg-bu-ke-xing-qiu-card text-bu-ke-xing-qiu-card-foreground">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-card-title">{cardTexts.buKeXingQiu?.title || '布可星球'}</CardTitle>
-                <BookUp className="h-4 w-4 text-current/80" />
-            </CardHeader>
-            <CardContent>
-                <div className="text-card-value">
-                {Math.round(currentStudent.buKeEnergyThisMonth || 0).toLocaleString()}
-                </div>
-                <p className="text-card-description">{cardTexts.buKeXingQiu?.description || '每月轉換為點數'}</p>
-            </CardContent>
-        </Card>
-        <Card className="bg-my-groups-card">
+         <Card className="bg-my-groups-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-card-title text-my-groups-card-foreground">{cardTexts.myGroups?.title || '我的分組'}</CardTitle>
             <Users className="h-4 w-4 text-accent" />
@@ -308,6 +296,18 @@ export default function StudentDashboardPage() {
                 <p className="text-sm text-my-groups-card-foreground">{cardTexts.myGroups?.description || '您尚未被分派到任何小組。'}</p>
             )}
           </CardContent>
+        </Card>
+        <Card className="bg-bu-ke-xing-qiu-card text-bu-ke-xing-qiu-card-foreground">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-card-title">{cardTexts.buKeXingQiu?.title || '布可星球'}</CardTitle>
+                <Star className="h-4 w-4 text-current/80" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-card-value">
+                Lv. {currentStudent.buKeLevel || 1}
+                </div>
+                <p className="text-card-description">{cardTexts.buKeXingQiu?.description || '你在閱讀世界中的榮譽等級'}</p>
+            </CardContent>
         </Card>
       </div>
 
@@ -343,5 +343,3 @@ export default function StudentDashboardPage() {
     </div>
   );
 }
-
-    

@@ -24,7 +24,7 @@ const cardFields = {
     totalPoints: { title: "目前點數", description: "可用於交易或兌換獎勵" },
     portfolioValue: { title: "投資價值", description: "本月 +5.2%" },
     fixedDeposits: { title: "定存點數", description: "目前進行中的定期存款" },
-    buKeXingQiu: { title: "布可星球", description: "每月轉換為點數" },
+    buKeXingQiu: { title: "布可星球", description: "你在閱讀世界中的榮譽等級" },
     currentLoan: { title: "目前貸款", description: "需在期限內償還" },
     totalAssets: { title: "總資產", description: "點數 + 投資 + 定存" },
     classRank: { title: "班級排名", description: "班級前 {percentile}%" },
