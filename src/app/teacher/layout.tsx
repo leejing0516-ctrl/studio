@@ -224,7 +224,7 @@ export default function TeacherLayout({
 
   const navItems = [
     { href: "/teacher/dashboard", label: "班級與點數管理", icon: LayoutDashboard, roles: ['admin', 'teacher', 'subject_teacher'] },
-    { href: "/teacher/reading-energy", label: "閱讀能量", icon: BookUp, roles: ['admin'] },
+    { href: "/teacher/bu-ke-xing-qiu", label: "布可星球", icon: BookUp, roles: ['admin'] },
     { href: "/teacher/rankings", label: "全校排名", icon: Trophy, roles: ['admin'] },
     { href: "/teacher/announcements", label: "公告管理", icon: Megaphone, roles: ['admin', 'teacher', 'subject_teacher'] },
     { href: "/teacher/feedback", label: "意見信箱", icon: Mail, roles: ['admin'], hasNew: hasNewFeedback },
@@ -395,3 +395,5 @@ export default function TeacherLayout({
     </>
   );
 }
+
+    
