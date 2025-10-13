@@ -33,7 +33,8 @@ import Papa from "papaparse";
 import { Separator } from "@/components/ui/separator";
 
 interface BuKeRecord {
-    studentId: string;
+    studentId: string; // The internal student ID (e.g., S001)
+    classId: string;
     readingEnergy: number;
 }
 
@@ -62,6 +63,10 @@ export default function BuKeXingQiuPage() {
     const sortedStudents = useMemo(() => {
         return [...students].sort((a, b) => (a.classId.localeCompare(b.classId) || a.id.localeCompare(b.id)));
     }, [students]);
+    
+    const classNameToIdMap = useMemo(() => {
+        return new Map(classes.map(c => [c.name, c.id]));
+    }, [classes]);
 
     const handleFileParse = (file: File) => {
         setCsvFile(file);
@@ -69,14 +74,26 @@ export default function BuKeXingQiuPage() {
             header: false,
             skipEmptyLines: true,
             complete: (results) => {
-                setCsvPreview(results.data.slice(0, 5));
-                const bukeData = results.data.slice(1).map((row: string[]) => {
-                    const [studentId, readingEnergy] = row;
-                    return {
-                        studentId,
-                        readingEnergy: Number(readingEnergy) || 0,
-                    };
-                }).filter(s => s.studentId && s.readingEnergy >= 0);
+                const rawData = results.data;
+                setCsvPreview(rawData.slice(0, 5)); // Show header + 4 rows
+                
+                const bukeData: BuKeRecord[] = [];
+                // Start from row 1 to skip header
+                for (const row of rawData.slice(1)) {
+                    const [year, month, className, studentSeatNum, studentName, readingEnergyStr] = row;
+                    
+                    const classId = classNameToIdMap.get(className);
+                    if (classId && studentSeatNum) {
+                         const student = students.find(s => s.classId === classId && s.id === studentSeatNum);
+                         if (student) {
+                             bukeData.push({
+                                studentId: student.id,
+                                classId: student.classId,
+                                readingEnergy: Number(readingEnergyStr) || 0,
+                            });
+                         }
+                    }
+                }
                 setParsedCsvData(bukeData);
             }
         });
@@ -87,13 +104,14 @@ export default function BuKeXingQiuPage() {
         
         setIsProcessing(true);
 
-        const studentIdToEnergyMap = new Map(parsedCsvData.map(item => [item.studentId, item.readingEnergy]));
+        const studentIdToEnergyMap = new Map(parsedCsvData.map(item => [`${item.classId}-${item.studentId}`, item.readingEnergy]));
         
         const updatedStudents = students.map(student => {
-            if (studentIdToEnergyMap.has(student.id)) {
+            const key = `${student.classId}-${student.id}`;
+            if (studentIdToEnergyMap.has(key)) {
                 return {
                     ...student,
-                    readingEnergy: studentIdToEnergyMap.get(student.id)!,
+                    readingEnergy: studentIdToEnergyMap.get(key)!,
                 };
             }
             return student;
@@ -208,7 +226,7 @@ export default function BuKeXingQiuPage() {
                                 <Download className="mr-2"/>下載 CSV 範本
                             </a>
                             <div className="space-y-2">
-                                <Label htmlFor="csv-upload">上傳 CSV 檔案 (欄位: studentId, readingEnergy)</Label>
+                                <Label htmlFor="csv-upload">上傳 CSV 檔案 (欄位: 年度,月份,班級,座號,姓名,本月挖掘能量)</Label>
                                 <Input id="csv-upload" type="file" accept=".csv" onChange={(e) => e.target.files && handleFileParse(e.target.files[0])}/>
                             </div>
                             {csvPreview.length > 0 && (
