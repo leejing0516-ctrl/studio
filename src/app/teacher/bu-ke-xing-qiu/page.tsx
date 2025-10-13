@@ -27,7 +27,7 @@ import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import type { Student, PointRecord } from "@/lib/types";
-import { doc, writeBatch } from "firebase/firestore";
+import { doc, writeBatch, Transaction } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Papa from "papaparse";
 import { Separator } from "@/components/ui/separator";
@@ -134,7 +134,7 @@ export default function BuKeXingQiuPage() {
                     const studentRef = doc(db, 'students', student._docId);
                     batch.update(studentRef, {
                         readingEnergy: csvData.buKeEnergyThisMonth, // For conversion
-                        buKeEnergyThisMonth: csvData.buKeEnergyThisMonth, // For display
+                        buKeEnergyThisMonth: csvData.buKeEnergyThisMonth,
                         buKeBooksThisMonth: csvData.buKeBooksThisMonth,
                         buKeLevel: csvData.buKeLevel,
                         buKeTotalEnergy: csvData.buKeTotalEnergy,
@@ -169,46 +169,47 @@ export default function BuKeXingQiuPage() {
         }
 
         const totalPointsToAward = studentsToConvert.reduce((sum, s) => sum + Math.floor((s.readingEnergy || 0) * conversionRate), 0);
-        const schoolFunds = platformConfig?.schoolFunds || 0;
-
-        if (schoolFunds < totalPointsToAward) {
-            toast({
-                title: "學校資金不足",
-                description: `需要 ${totalPointsToAward.toLocaleString()} 點，但學校資金僅剩 ${schoolFunds.toLocaleString()} 點。`,
-                variant: "destructive"
-            });
-            setIsProcessing(false);
-            return;
-        }
-
+        
         try {
-            await runTransaction(async (transaction) => {
+            await runTransaction(async (transaction: Transaction) => {
+                // --- 1. READ PHASE ---
                 const configRef = doc(db, 'config', 'main');
-                transaction.update(configRef, { schoolFunds: schoolFunds - totalPointsToAward });
+                const configDoc = await transaction.get(configRef);
+                const schoolFunds = (configDoc.data()?.schoolFunds || 0) as number;
 
-                for (const student of studentsToConvert) {
-                    if (!student._docId) continue;
+                if (schoolFunds < totalPointsToAward) {
+                    throw new Error(`需要 ${totalPointsToAward.toLocaleString()} 點，但學校資金僅剩 ${schoolFunds.toLocaleString()} 點。`);
+                }
+
+                const studentRefsAndData = await Promise.all(studentsToConvert.map(async student => {
+                    if (!student._docId) return null;
                     const studentRef = doc(db, 'students', student._docId);
                     const studentDoc = await transaction.get(studentRef);
+                    return { ref: studentRef, data: studentDoc.data() as Student, docExists: studentDoc.exists() };
+                }));
 
-                    if (studentDoc.exists()) {
-                         const studentData = studentDoc.data() as Student;
-                         const energyToConvert = studentData.readingEnergy || 0;
-                         const pointsToAdd = Math.floor(energyToConvert * conversionRate);
+                // --- 2. WRITE PHASE ---
+                transaction.update(configRef, { schoolFunds: schoolFunds - totalPointsToAward });
+                
+                for (const studentInfo of studentRefsAndData) {
+                    if (!studentInfo || !studentInfo.docExists) continue;
 
-                         const newPointHistory: PointRecord = {
-                            points: pointsToAdd,
-                            date: new Date().toISOString(),
-                            reason: "布可星球能量轉換",
-                            teacherId: 'principal'
-                        };
-                        
-                        transaction.update(studentRef, {
-                            points: (studentData.points || 0) + pointsToAdd,
-                            pointHistory: [...(studentData.pointHistory || []), newPointHistory],
-                            readingEnergy: 0, // Reset conversion energy
-                        });
-                    }
+                    const { ref: studentRef, data: studentData } = studentInfo;
+                    const energyToConvert = studentData.readingEnergy || 0;
+                    const pointsToAdd = Math.floor(energyToConvert * conversionRate);
+
+                    const newPointHistory: PointRecord = {
+                        points: pointsToAdd,
+                        date: new Date().toISOString(),
+                        reason: "布可星球能量轉換",
+                        teacherId: 'principal'
+                    };
+                    
+                    transaction.update(studentRef, {
+                        points: (studentData.points || 0) + pointsToAdd,
+                        pointHistory: [...(studentData.pointHistory || []), newPointHistory],
+                        readingEnergy: 0,
+                    });
                 }
             });
 
@@ -216,6 +217,7 @@ export default function BuKeXingQiuPage() {
                 title: "轉換成功",
                 description: `已成功為 ${studentsToConvert.length} 位學生轉換布可星球能量，共發放 ${totalPointsToAward.toLocaleString()} 點。`
             });
+
         } catch (error: any) {
             console.error("Batch conversion failed:", error);
             toast({ title: "轉換失敗", description: error.message || "發生未知錯誤", variant: "destructive" });
