@@ -4,7 +4,7 @@
 
 import { useContext, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Coins, Trophy, Wallet, BarChart as BarChartIcon, Landmark, Users, Globe, PiggyBank, Bone } from "lucide-react";
+import { Coins, Trophy, Wallet, BarChart as BarChartIcon, Landmark, Users, Globe, PiggyBank, Bone, BookUp } from "lucide-react";
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Bar, BarChart, XAxis, YAxis } from "recharts"
 import { StudentDataContext } from "@/context/StudentDataContext";
@@ -234,8 +234,20 @@ export default function StudentDashboardPage() {
                 <p className="text-card-description text-card-description-foreground">{cardTexts.fixedDeposits?.description || '目前進行中的定期存款'}</p>
             </CardContent>
         </Card>
+        <Card className="bg-chart-5">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-card-title text-card-title-foreground">{cardTexts.buKeXingQiu?.title || '布可星球'}</CardTitle>
+                <BookUp className="h-4 w-4 text-card-title-foreground/80" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-card-value text-card-value-foreground font-bold">
+                {Math.round(currentStudent.readingEnergy || 0).toLocaleString()}
+                </div>
+                <p className="text-card-description text-card-description-foreground">{cardTexts.buKeXingQiu?.description || '每月轉換為點數'}</p>
+            </CardContent>
+        </Card>
          {totalLoanAmount > 0 ? (
-          <Card className="border-destructive bg-destructive/10 text-destructive">
+          <Card className="border-destructive bg-destructive/10 text-destructive lg:col-span-2">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-card-title">{cardTexts.currentLoan?.title || '目前貸款'}</CardTitle>
               <Landmark className="h-4 w-4" />
@@ -248,7 +260,7 @@ export default function StudentDashboardPage() {
             </CardContent>
           </Card>
         ) : (
-            <Card className="bg-chart-4">
+            <Card className="bg-chart-4 lg:col-span-2">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-card-title text-card-title-foreground">{cardTexts.totalAssets?.title || '總資產'}</CardTitle>
                 <Wallet className="h-4 w-4 text-card-title-foreground/80" />

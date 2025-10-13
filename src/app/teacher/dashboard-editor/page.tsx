@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useContext, useEffect } from "react";
@@ -20,16 +21,17 @@ import { useRouter } from "next/navigation";
 import { Textarea } from "@/components/ui/textarea";
 
 const cardFields = {
+    totalPoints: { title: "目前點數", description: "可用於交易或兌換獎勵" },
+    portfolioValue: { title: "投資價值", description: "本月 +5.2%" },
+    fixedDeposits: { title: "定存點數", description: "目前進行中的定期存款" },
+    buKeXingQiu: { title: "布可星球", description: "每月轉換為點數" },
+    currentLoan: { title: "目前貸款", description: "需在期限內償還" },
+    totalAssets: { title: "總資產", description: "點數 + 投資 + 定存" },
     classRank: { title: "班級排名", description: "班級前 {percentile}%" },
     schoolRank: { title: "全校排名", description: "全校前 {percentile}%" },
     myGroups: { title: "我的分組", description: "您尚未被分派到任何小組。" },
     myPet: { title: "我的寵物", description: "您的點數越多，牠就會越強大！" },
     pointsTrend: { title: "最近七日點數趨勢", description: "您最近七天每日從老師那裡獲得的點數紀錄。" },
-    totalPoints: { title: "目前點數", description: "可用於交易或兌換獎勵" },
-    portfolioValue: { title: "投資價值", description: "本月 +5.2%" },
-    fixedDeposits: { title: "定存點數", description: "目前進行中的定期存款" },
-    totalAssets: { title: "總資產", description: "點數 + 投資 + 定存" },
-    currentLoan: { title: "目前貸款", description: "需在期限內償還" },
 };
 
 
