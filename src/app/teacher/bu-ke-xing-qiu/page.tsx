@@ -38,6 +38,9 @@ interface BuKeRecord {
     readingEnergy: number;
 }
 
+const gradeMap: { [key: string]: string } = { "1": "一", "2": "二", "3": "三", "4": "四", "5": "五", "6": "六" };
+const classMap: { [key: string]: string } = { "1": "甲班", "2": "乙班" };
+
 export default function BuKeXingQiuPage() {
     const { students, setStudents, classes, isLoading, platformConfig, runTransaction } = useContext(AppDataContext);
     const { toast } = useToast();
@@ -80,20 +83,26 @@ export default function BuKeXingQiuPage() {
                 const bukeData: BuKeRecord[] = [];
                 // Start from row 1 to skip header
                 for (const row of rawData.slice(1)) {
-                    const [year, month, grade, className, studentSeatNum, studentName, readingEnergyStr] = row;
+                    const [year, month, gradeNum, classNum, seatNum, studentName, readingEnergyStr] = row;
                     
-                    const fullClassName = grade + "年" + className;
-                    const classId = classNameToIdMap.get(fullClassName);
+                    const gradeName = gradeMap[gradeNum] || '';
+                    const classNameSuffix = classMap[classNum] || '';
                     
-                    if (classId && studentSeatNum) {
-                         const student = students.find(s => s.classId === classId && s.id === studentSeatNum);
-                         if (student) {
-                             bukeData.push({
-                                studentId: student.id,
-                                classId: student.classId,
-                                readingEnergy: Number(readingEnergyStr) || 0,
-                            });
-                         }
+                    if (gradeName && classNameSuffix) {
+                        const fullClassName = `${gradeName}年${classNameSuffix}`;
+                        const classId = classNameToIdMap.get(fullClassName);
+                        const studentId = `S${String(seatNum).padStart(3, '0')}`;
+                        
+                        if (classId) {
+                             const student = students.find(s => s.classId === classId && s.id === studentId);
+                             if (student) {
+                                 bukeData.push({
+                                    studentId: student.id,
+                                    classId: student.classId,
+                                    readingEnergy: Number(readingEnergyStr) || 0,
+                                });
+                             }
+                        }
                     }
                 }
                 setParsedCsvData(bukeData);
@@ -228,7 +237,7 @@ export default function BuKeXingQiuPage() {
                                 <Download className="mr-2"/>下載 CSV 範本
                             </a>
                             <div className="space-y-2">
-                                <Label htmlFor="csv-upload">上傳 CSV 檔案 (欄位: 年度,月份,年級,班級,座號,姓名,本月挖掘能量)</Label>
+                                <Label htmlFor="csv-upload">上傳 CSV 檔案 (欄位: 年度,月份,年級(數字),班級(數字),座號(數字),姓名,本月挖掘能量)</Label>
                                 <Input id="csv-upload" type="file" accept=".csv" onChange={(e) => e.target.files && handleFileParse(e.target.files[0])}/>
                             </div>
                             {csvPreview.length > 0 && (
@@ -331,3 +340,5 @@ export default function BuKeXingQiuPage() {
         </div>
     );
 }
+
+    
