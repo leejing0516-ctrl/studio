@@ -44,6 +44,10 @@ const nextConfig: NextConfig = {
         source: '/students-template.csv',
         destination: '/api/download-template',
       },
+       {
+        source: '/buke-template.csv',
+        destination: '/api/download-buke-template',
+      },
     ]
   },
 };

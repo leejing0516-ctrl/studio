@@ -18,9 +18,9 @@ import {
   TableBody,
   TableCell,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, BookUp, AlertTriangle } from "lucide-react";
+import { Loader2, BookUp, AlertTriangle, Upload, Download } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
@@ -29,6 +29,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import type { Student, PointRecord } from "@/lib/types";
 import { doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import Papa from "papaparse";
+import { Separator } from "@/components/ui/separator";
+
+interface BuKeRecord {
+    studentId: string;
+    readingEnergy: number;
+}
 
 export default function BuKeXingQiuPage() {
     const { students, setStudents, classes, isLoading, platformConfig, runTransaction } = useContext(AppDataContext);
@@ -38,6 +45,10 @@ export default function BuKeXingQiuPage() {
     const [role, setRole] = useState<string | null>(null);
     const [conversionRate, setConversionRate] = useState<number>(1);
     const [isProcessing, setIsProcessing] = useState(false);
+
+    const [parsedCsvData, setParsedCsvData] = useState<BuKeRecord[]>([]);
+    const [csvFile, setCsvFile] = useState<File | null>(null);
+    const [csvPreview, setCsvPreview] = useState<string[][]>([]);
 
     useEffect(() => {
         const storedRole = localStorage.getItem('teacherRole');
@@ -52,16 +63,69 @@ export default function BuKeXingQiuPage() {
         return [...students].sort((a, b) => (a.classId.localeCompare(b.classId) || a.id.localeCompare(b.id)));
     }, [students]);
 
+    const handleFileParse = (file: File) => {
+        setCsvFile(file);
+        Papa.parse<string[]>(file, {
+            header: false,
+            skipEmptyLines: true,
+            complete: (results) => {
+                setCsvPreview(results.data.slice(0, 5));
+                const bukeData = results.data.slice(1).map((row: string[]) => {
+                    const [studentId, readingEnergy] = row;
+                    return {
+                        studentId,
+                        readingEnergy: Number(readingEnergy) || 0,
+                    };
+                }).filter(s => s.studentId && s.readingEnergy >= 0);
+                setParsedCsvData(bukeData);
+            }
+        });
+    };
+    
+    const handleImportReadingEnergy = async () => {
+        if (parsedCsvData.length === 0) return;
+        
+        setIsProcessing(true);
+
+        const studentIdToEnergyMap = new Map(parsedCsvData.map(item => [item.studentId, item.readingEnergy]));
+        
+        const updatedStudents = students.map(student => {
+            if (studentIdToEnergyMap.has(student.id)) {
+                return {
+                    ...student,
+                    readingEnergy: studentIdToEnergyMap.get(student.id)!,
+                };
+            }
+            return student;
+        });
+        
+        try {
+            await setStudents(updatedStudents);
+            toast({
+                title: `匯入完成`,
+                description: `已成功為 ${parsedCsvData.length} 位學生更新布可星球能量。`
+            });
+            setParsedCsvData([]);
+            setCsvFile(null);
+            setCsvPreview([]);
+        } catch (error: any) {
+             toast({ title: "匯入失敗", description: error.message, variant: "destructive" });
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+
     const handleBatchConvert = async () => {
         setIsProcessing(true);
-        const studentsWithEnergy = students.filter(s => (s.readingEnergy || 0) > 0);
-        if (studentsWithEnergy.length === 0) {
+        const studentsWithReadingEnergy = students.filter(s => (s.readingEnergy || 0) > 0);
+        if (studentsWithReadingEnergy.length === 0) {
             toast({ title: "無可轉換項目", description: "目前沒有學生的布可星球能量大於 0。" });
             setIsProcessing(false);
             return;
         }
 
-        const totalPointsToAward = studentsWithEnergy.reduce((sum, s) => sum + Math.floor((s.readingEnergy || 0) * conversionRate), 0);
+        const totalPointsToAward = studentsWithReadingEnergy.reduce((sum, s) => sum + Math.floor((s.readingEnergy || 0) * conversionRate), 0);
         const schoolFunds = platformConfig?.schoolFunds || 0;
 
         if (schoolFunds < totalPointsToAward) {
@@ -87,7 +151,7 @@ export default function BuKeXingQiuPage() {
                     };
                     return {
                         ...student,
-                        points: student.points + pointsToAdd,
+                        points: (student.points || 0) + pointsToAdd,
                         pointHistory: [...(student.pointHistory || []), newPointHistory],
                         readingEnergy: 0, // Reset energy after conversion
                     };
@@ -95,10 +159,8 @@ export default function BuKeXingQiuPage() {
                 return student;
             });
             
-            // This will commit all student changes in a batch
             await setStudents(updatedStudents);
 
-            // Update school funds
             if (platformConfig) {
                  await runTransaction(async (transaction) => {
                     const configRef = doc(db, 'config', 'main');
@@ -108,7 +170,7 @@ export default function BuKeXingQiuPage() {
 
             toast({
                 title: "轉換成功",
-                description: `已成功為 ${studentsWithEnergy.length} 位學生轉換布可星球能量，共發放 ${totalPointsToAward.toLocaleString()} 點。`
+                description: `已成功為 ${studentsWithReadingEnergy.length} 位學生轉換布可星球能量，共發放 ${totalPointsToAward.toLocaleString()} 點。`
             });
         } catch (error: any) {
             console.error("Batch conversion failed:", error);
@@ -132,47 +194,87 @@ export default function BuKeXingQiuPage() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2"><BookUp /> 布可星球轉換中心</CardTitle>
                     <CardDescription>
-                        此功能用於在每個月初，將上個月累積的全校學生「布可星球」能量批次轉換為點數。請注意：此操作將會消耗學校總資金。
+                        此處提供兩種主要功能：首先透過匯入 CSV 報表來更新學生的布可星球能量，然後再執行批次轉換將能量換算成點數。
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 mb-6 border rounded-lg bg-muted/50">
-                        <div className="space-y-1">
-                            <Label htmlFor="conversion-rate">轉換率設定</Label>
-                            <div className="flex items-center gap-2">
-                               <span>1 點布可星球能量 =</span>
-                                <Input 
-                                    id="conversion-rate"
-                                    type="number"
-                                    value={conversionRate}
-                                    onChange={e => setConversionRate(Number(e.target.value))}
-                                    className="w-24"
-                                    step="0.1"
-                                />
-                                <span>點數</span>
+                <CardContent className="space-y-6">
+                    <Card className="bg-muted/30">
+                        <CardHeader>
+                            <CardTitle className="text-xl">步驟一：匯入布可星球報表</CardTitle>
+                            <CardDescription>上傳 CSV 檔案以快速更新多位學生的布可星球能量。系統將會直接覆蓋原有的能量值。</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                             <a href="/buke-template.csv" download className={buttonVariants({variant: "outline"})}>
+                                <Download className="mr-2"/>下載 CSV 範本
+                            </a>
+                            <div className="space-y-2">
+                                <Label htmlFor="csv-upload">上傳 CSV 檔案 (欄位: studentId, readingEnergy)</Label>
+                                <Input id="csv-upload" type="file" accept=".csv" onChange={(e) => e.target.files && handleFileParse(e.target.files[0])}/>
                             </div>
-                        </div>
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button size="lg" disabled={isProcessing}>
-                                    {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    開始批次轉換點數
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle className="flex items-center gap-2"><AlertTriangle/>確定要開始轉換嗎？</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        此操作將會把列表中所有學生的「布可星球」能量乘以轉換率，加到他們的總點數中，並將能量歸零。此操作無法復原。
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>取消</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleBatchConvert}>確定轉換</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    </div>
+                            {csvPreview.length > 0 && (
+                                <div>
+                                    <h4 className="font-medium mb-2">檔案預覽 (前 5 筆)</h4>
+                                    <div className="border rounded-md p-2 text-xs bg-background overflow-x-auto">
+                                        <pre><code>{csvPreview.map(row => row.join(',')).join('\n')}</code></pre>
+                                    </div>
+                                </div>
+                            )}
+                        </CardContent>
+                        <CardFooter>
+                             <Button onClick={handleImportReadingEnergy} disabled={isProcessing || parsedCsvData.length === 0}>
+                                {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                確認匯入並更新能量 ({parsedCsvData.length} 筆)
+                            </Button>
+                        </CardFooter>
+                    </Card>
+
+                    <Separator />
+
+                     <Card className="bg-muted/30">
+                        <CardHeader>
+                            <CardTitle className="text-xl">步驟二：批次轉換點數</CardTitle>
+                            <CardDescription>此操作將會把列表中所有學生的「布可星球」能量乘以轉換率，加到他們的總點數中，並將能量歸零。此操作無法復原。</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 mb-6 border rounded-lg bg-background">
+                                <div className="space-y-1">
+                                    <Label htmlFor="conversion-rate">轉換率設定</Label>
+                                    <div className="flex items-center gap-2">
+                                    <span>1 點布可星球能量 =</span>
+                                        <Input 
+                                            id="conversion-rate"
+                                            type="number"
+                                            value={conversionRate}
+                                            onChange={e => setConversionRate(Number(e.target.value))}
+                                            className="w-24"
+                                            step="0.1"
+                                        />
+                                        <span>點數</span>
+                                    </div>
+                                </div>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button size="lg" disabled={isProcessing}>
+                                            {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                            開始批次轉換點數
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle className="flex items-center gap-2"><AlertTriangle/>確定要開始轉換嗎？</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                此操作將會把列表中所有學生的「布可星球」能量乘以轉換率，加到他們的總點數中，並將能量歸零。此操作無法復原。
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>取消</AlertDialogCancel>
+                                            <AlertDialogAction onClick={handleBatchConvert}>確定轉換</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </div>
+                        </CardContent>
+                    </Card>
 
                     <div className="overflow-x-auto">
                         <Table>
@@ -209,5 +311,3 @@ export default function BuKeXingQiuPage() {
         </div>
     );
 }
-
-    
