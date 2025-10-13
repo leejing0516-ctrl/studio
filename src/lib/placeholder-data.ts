@@ -1,4 +1,5 @@
 
+
 import type { Student, Reward, Stock, Class, Teacher, Challenge, RedeemedRewardItem, StudentHabit } from "./types";
 
 export const TEACHER_PASSWORD = "001"; // Shared password for all teachers for simplicity
