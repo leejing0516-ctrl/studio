@@ -87,7 +87,7 @@ export default function BuKeXingQiuPage() {
                 const bukeData: BuKeRecord[] = [];
                 // Start from row 1 to skip header
                 for (const row of rawData.slice(1)) {
-                    const [year, month, gradeNum, classNum, seatNum, studentName, readingEnergyStr, booksThisMonthStr, levelStr, totalEnergyStr, totalBooksStr] = row;
+                    const [year, month, studentName, gradeNum, classNum, seatNum, readingEnergyStr, booksThisMonthStr, levelStr, totalEnergyStr, totalBooksStr] = row;
                     
                     const gradeName = gradeMap[gradeNum] || '';
                     const classNameSuffix = classMap[classNum] || '';
@@ -250,7 +250,7 @@ export default function BuKeXingQiuPage() {
                                 <Download className="mr-2"/>下載 CSV 範本
                             </a>
                             <div className="space-y-2">
-                                <Label htmlFor="csv-upload">上傳 CSV 檔案 (欄位: 年度,月份,年級(數字),班級(數字),座號(數字),姓名,本月挖掘能量,本月挖掘本數,等級,累計挖掘總能量,挖掘總本數)</Label>
+                                <Label htmlFor="csv-upload">上傳 CSV 檔案 (欄位: 年度,月份,姓名,年級(數字),班級(數字),座號(數字),本月挖掘能量,本月挖掘本數,等級,累計挖掘總能量,挖掘總本數)</Label>
                                 <Input id="csv-upload" type="file" accept=".csv" onChange={(e) => e.target.files && handleFileParse(e.target.files[0])}/>
                             </div>
                             {csvPreview.length > 0 && (
