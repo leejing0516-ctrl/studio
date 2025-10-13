@@ -80,9 +80,11 @@ export default function BuKeXingQiuPage() {
                 const bukeData: BuKeRecord[] = [];
                 // Start from row 1 to skip header
                 for (const row of rawData.slice(1)) {
-                    const [year, month, className, studentSeatNum, studentName, readingEnergyStr] = row;
+                    const [year, month, grade, className, studentSeatNum, studentName, readingEnergyStr] = row;
                     
-                    const classId = classNameToIdMap.get(className);
+                    const fullClassName = grade + "年" + className;
+                    const classId = classNameToIdMap.get(fullClassName);
+                    
                     if (classId && studentSeatNum) {
                          const student = students.find(s => s.classId === classId && s.id === studentSeatNum);
                          if (student) {
@@ -226,7 +228,7 @@ export default function BuKeXingQiuPage() {
                                 <Download className="mr-2"/>下載 CSV 範本
                             </a>
                             <div className="space-y-2">
-                                <Label htmlFor="csv-upload">上傳 CSV 檔案 (欄位: 年度,月份,班級,座號,姓名,本月挖掘能量)</Label>
+                                <Label htmlFor="csv-upload">上傳 CSV 檔案 (欄位: 年度,月份,年級,班級,座號,姓名,本月挖掘能量)</Label>
                                 <Input id="csv-upload" type="file" accept=".csv" onChange={(e) => e.target.files && handleFileParse(e.target.files[0])}/>
                             </div>
                             {csvPreview.length > 0 && (
