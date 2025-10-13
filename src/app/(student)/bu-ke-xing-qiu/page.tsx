@@ -2,14 +2,16 @@
 "use client";
 
 import { useContext } from "react";
+import Link from "next/link";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { StudentDataContext } from "@/context/StudentDataContext";
-import { BookUp, Library, Star, TrendingUp, Gem } from "lucide-react";
+import { BookUp, Library, Star, TrendingUp, Gem, ExternalLink } from "lucide-react";
 import { AppDataContext } from "@/context/AppDataContext";
 
 const StatCard = ({
@@ -53,9 +55,17 @@ export default function BuKeXingQiuPage() {
 
   return (
     <div className="animate-in fade-in-0 duration-500 space-y-6">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold">我的布可星球成就</h1>
-        <p className="text-muted-foreground">你在閱讀世界中探索的足跡與榮譽。</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="text-center sm:text-left">
+            <h1 className="text-3xl font-bold">我的布可星球成就</h1>
+            <p className="text-muted-foreground">你在閱讀世界中探索的足跡與榮譽。</p>
+        </div>
+        <Link href="https://read.tn.edu.tw/" target="_blank" rel="noopener noreferrer">
+            <Button>
+                <ExternalLink className="mr-2 h-4 w-4" />
+                前往布可星球網站
+            </Button>
+        </Link>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <StatCard
