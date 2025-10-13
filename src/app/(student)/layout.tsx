@@ -37,7 +37,8 @@ import {
   HeartHandshake,
   Repeat,
   Globe,
-  Smile
+  Smile,
+  BookUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -228,6 +229,7 @@ export default function StudentLayout({
   const navItems = [
     { href: "/dashboard", label: "儀表板", icon: LayoutDashboard },
     { href: "/announcements", label: "最新公告", icon: Megaphone, hasNew: hasNewAnnouncements },
+    { href: "/bu-ke-xing-qiu", label: "布可星球", icon: BookUp },
     { href: "/challenges", label: "挑戰任務", icon: Flag },
     { href: "/habits", label: "習慣養成", icon: Repeat },
     { href: "/fundraising", label: "募資平台", icon: HeartHandshake },

@@ -127,6 +127,10 @@ export type Student = {
   lastDailyReward?: string; // ISO date string (YYYY-MM-DD)
   lastAnnouncementsView?: string | null;
   lastPointHistoryView?: string;
+  buKeBooksThisMonth?: number;
+  buKeLevel?: number;
+  buKeTotalEnergy?: number;
+  buKeTotalBooks?: number;
 };
 
 export type Reward = {
