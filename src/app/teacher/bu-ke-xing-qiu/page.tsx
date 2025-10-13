@@ -27,7 +27,7 @@ import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import type { Student, PointRecord } from "@/lib/types";
-import { doc, writeBatch, Transaction } from "firebase/firestore";
+import { doc, writeBatch, Transaction, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Papa from "papaparse";
 import { Separator } from "@/components/ui/separator";
@@ -95,21 +95,25 @@ export default function BuKeXingQiuPage() {
                     if (gradeName && classNameSuffix) {
                         const fullClassName = `${gradeName}年${classNameSuffix}`;
                         const classId = classNameToIdMap.get(fullClassName);
-                        const studentId = `S${String(seatNumStr).padStart(3, '0')}`;
                         
-                        if (classId) {
-                             const student = students.find(s => s.classId === classId && s.id === studentId);
-                             if (student) {
-                                 bukeData.push({
-                                    studentId: student.id,
-                                    classId: student.classId,
-                                    buKeEnergyThisMonth: Number(energyThisMonthStr) || 0,
-                                    buKeBooksThisMonth: Number(booksThisMonthStr) || 0,
-                                    buKeLevel: Number(levelStr) || 1,
-                                    buKeTotalEnergy: Number(totalEnergyStr) || 0,
-                                    buKeTotalBooks: Number(totalBooksStr) || 0,
-                                });
-                             }
+                        const seatNum = parseInt(seatNumStr, 10);
+                        if (!isNaN(seatNum)) {
+                            const studentId = `S${String(seatNum).padStart(3, '0')}`;
+                            
+                            if (classId) {
+                                 const student = students.find(s => s.classId === classId && s.id === studentId);
+                                 if (student) {
+                                     bukeData.push({
+                                        studentId: student.id,
+                                        classId: student.classId,
+                                        buKeEnergyThisMonth: Number(energyThisMonthStr) || 0,
+                                        buKeBooksThisMonth: Number(booksThisMonthStr) || 0,
+                                        buKeLevel: Number(levelStr) || 1,
+                                        buKeTotalEnergy: Number(totalEnergyStr) || 0,
+                                        buKeTotalBooks: Number(totalBooksStr) || 0,
+                                    });
+                                 }
+                            }
                         }
                     }
                 }
@@ -134,7 +138,7 @@ export default function BuKeXingQiuPage() {
                     const studentRef = doc(db, 'students', student._docId);
                     batch.update(studentRef, {
                         readingEnergy: csvData.buKeEnergyThisMonth, // For conversion
-                        buKeEnergyThisMonth: csvData.buKeEnergyThisMonth,
+                        buKeEnergyThisMonth: csvData.buKeEnergyThisMonth, // For display
                         buKeBooksThisMonth: csvData.buKeBooksThisMonth,
                         buKeLevel: csvData.buKeLevel,
                         buKeTotalEnergy: csvData.buKeTotalEnergy,
@@ -196,6 +200,8 @@ export default function BuKeXingQiuPage() {
 
                     const { ref: studentRef, data: studentData } = studentInfo;
                     const energyToConvert = studentData.readingEnergy || 0;
+                    if (energyToConvert <= 0) continue;
+                    
                     const pointsToAdd = Math.floor(energyToConvert * conversionRate);
 
                     const newPointHistory: PointRecord = {
@@ -261,7 +267,7 @@ export default function BuKeXingQiuPage() {
                                 <div>
                                     <h4 className="font-medium mb-2">檔案預覽 (前 5 筆)</h4>
                                     <div className="border rounded-md p-2 text-xs bg-background overflow-x-auto">
-                                        <pre><code>{csvPreview.map(row => row.join(',')).join('\n')}</code></pre>
+                                        <pre><code>{csvPreview.map(row => row.join(',')).join('\\n')}</code></pre>
                                     </div>
                                 </div>
                             )}
@@ -357,3 +363,5 @@ export default function BuKeXingQiuPage() {
         </div>
     );
 }
+
+    
