@@ -113,6 +113,7 @@ export type Student = {
   classId: string; // Links to the Class object
   groupId?: string; // Links to the group ID within the Class object
   points: number;
+  readingEnergy?: number;
   avatar: string;
   password?: string;
   portfolio: PortfolioItem[];

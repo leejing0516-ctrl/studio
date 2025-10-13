@@ -38,6 +38,7 @@ import {
   Palette,
   FileEdit,
   Mail,
+  BookUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,6 +55,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
+import Logo from "@/components/logo";
 
 export default function TeacherLayout({
   children,
@@ -222,6 +224,7 @@ export default function TeacherLayout({
 
   const navItems = [
     { href: "/teacher/dashboard", label: "班級與點數管理", icon: LayoutDashboard, roles: ['admin', 'teacher', 'subject_teacher'] },
+    { href: "/teacher/reading-energy", label: "閱讀能量", icon: BookUp, roles: ['admin'] },
     { href: "/teacher/rankings", label: "全校排名", icon: Trophy, roles: ['admin'] },
     { href: "/teacher/announcements", label: "公告管理", icon: Megaphone, roles: ['admin', 'teacher', 'subject_teacher'] },
     { href: "/teacher/feedback", label: "意見信箱", icon: Mail, roles: ['admin'], hasNew: hasNewFeedback },
@@ -276,7 +279,8 @@ export default function TeacherLayout({
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 px-2">
+            <Logo className="h-8 w-8" />
             <span className="text-lg font-semibold group-data-[collapsible=icon]:hidden">
               南梓實小虛擬銀行
             </span>
