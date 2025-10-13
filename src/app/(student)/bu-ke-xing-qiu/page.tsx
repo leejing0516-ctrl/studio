@@ -3,6 +3,7 @@
 
 import { useContext } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -57,6 +58,14 @@ export default function BuKeXingQiuPage() {
     <div className="animate-in fade-in-0 duration-500 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="text-center sm:text-left">
+            <div className="relative h-20 w-80 mb-2">
+                <Image
+                    src="https://i.imgur.com/gZ5oM2w.png"
+                    alt="布可星球 Logo"
+                    fill
+                    className="object-contain"
+                />
+            </div>
             <h1 className="text-3xl font-bold">我的布可星球成就</h1>
             <p className="text-muted-foreground">你在閱讀世界中探索的足跡與榮譽。</p>
         </div>
