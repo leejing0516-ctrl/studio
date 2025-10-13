@@ -35,6 +35,7 @@ import { Separator } from "@/components/ui/separator";
 interface BuKeRecord {
     studentId: string;
     classId: string;
+    buKeMonth: number;
     buKeEnergyThisMonth: number;
     buKeBooksThisMonth: number;
     buKeLevel: number;
@@ -87,7 +88,7 @@ export default function BuKeXingQiuPage() {
                 const bukeData: BuKeRecord[] = [];
                 // Start from row 1 to skip header
                 for (const row of rawData.slice(1)) {
-                    const [year, month, studentName, gradeNum, classNum, seatNumStr, energyThisMonthStr, booksThisMonthStr, levelStr, totalEnergyStr, totalBooksStr] = row;
+                    const [year, monthStr, studentName, gradeNum, classNum, seatNumStr, energyThisMonthStr, booksThisMonthStr, levelStr, totalEnergyStr, totalBooksStr] = row;
                     
                     const gradeName = gradeMap[gradeNum] || '';
                     const classNameSuffix = classMap[classNum] || '';
@@ -106,6 +107,7 @@ export default function BuKeXingQiuPage() {
                                      bukeData.push({
                                         studentId: student.id,
                                         classId: student.classId,
+                                        buKeMonth: Number(monthStr) || 0,
                                         buKeEnergyThisMonth: Number(energyThisMonthStr) || 0,
                                         buKeBooksThisMonth: Number(booksThisMonthStr) || 0,
                                         buKeLevel: Number(levelStr) || 1,
@@ -137,8 +139,9 @@ export default function BuKeXingQiuPage() {
                     const csvData = studentDataMap.get(key)!;
                     const studentRef = doc(db, 'students', student._docId);
                     batch.update(studentRef, {
-                        readingEnergy: csvData.buKeEnergyThisMonth, // For conversion
-                        buKeEnergyThisMonth: csvData.buKeEnergyThisMonth, // For display
+                        readingEnergy: csvData.buKeEnergyThisMonth,
+                        buKeMonth: csvData.buKeMonth,
+                        buKeEnergyThisMonth: csvData.buKeEnergyThisMonth,
                         buKeBooksThisMonth: csvData.buKeBooksThisMonth,
                         buKeLevel: csvData.buKeLevel,
                         buKeTotalEnergy: csvData.buKeTotalEnergy,
@@ -176,8 +179,13 @@ export default function BuKeXingQiuPage() {
         
         try {
             await runTransaction(async (transaction: Transaction) => {
-                // --- 1. READ PHASE ---
                 const configRef = doc(db, 'config', 'main');
+                const studentRefsAndData = await Promise.all(studentsToConvert.map(async student => {
+                    if (!student._docId) return null;
+                    const studentRef = doc(db, 'students', student._docId);
+                    const studentDoc = await transaction.get(studentRef);
+                    return { ref: studentRef, data: studentDoc.data() as Student, docExists: studentDoc.exists() };
+                }));
                 const configDoc = await transaction.get(configRef);
                 const schoolFunds = (configDoc.data()?.schoolFunds || 0) as number;
 
@@ -185,14 +193,6 @@ export default function BuKeXingQiuPage() {
                     throw new Error(`需要 ${totalPointsToAward.toLocaleString()} 點，但學校資金僅剩 ${schoolFunds.toLocaleString()} 點。`);
                 }
 
-                const studentRefsAndData = await Promise.all(studentsToConvert.map(async student => {
-                    if (!student._docId) return null;
-                    const studentRef = doc(db, 'students', student._docId);
-                    const studentDoc = await transaction.get(studentRef);
-                    return { ref: studentRef, data: studentDoc.data() as Student, docExists: studentDoc.exists() };
-                }));
-
-                // --- 2. WRITE PHASE ---
                 transaction.update(configRef, { schoolFunds: schoolFunds - totalPointsToAward });
                 
                 for (const studentInfo of studentRefsAndData) {

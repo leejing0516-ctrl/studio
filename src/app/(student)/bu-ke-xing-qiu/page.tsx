@@ -46,6 +46,8 @@ export default function BuKeXingQiuPage() {
     return <div>載入中...</div>;
   }
 
+  const month = currentStudent.buKeMonth;
+
   return (
     <div className="animate-in fade-in-0 duration-500 space-y-6">
       <div className="text-center">
@@ -54,12 +56,12 @@ export default function BuKeXingQiuPage() {
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <StatCard
-          title="本月挖掘能量"
+          title={month ? `${month}月份挖掘能量` : "本月挖掘能量"}
           value={currentStudent.buKeEnergyThisMonth?.toLocaleString() || 0}
           icon={Gem}
         />
         <StatCard
-          title="本月挖掘本數"
+          title={month ? `${month}月份挖掘本數` : "本月挖掘本數"}
           value={currentStudent.buKeBooksThisMonth?.toLocaleString() || 0}
           icon={BookUp}
         />
