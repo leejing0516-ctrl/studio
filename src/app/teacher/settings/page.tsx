@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 import { themes, type Theme } from "@/lib/themes";
 import { resizeImage, fileToDataUrl } from "@/lib/image-utils";
 import { DEFAULT_LOGO_URL, DEFAULT_APP_ICON_URL } from "@/lib/config";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function TeacherSettingsPage() {
     const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
@@ -36,6 +37,7 @@ export default function TeacherSettingsPage() {
     const [loanInterestRate, setLoanInterestRate] = useState<number | string>('');
     const [marketOpenHour, setMarketOpenHour] = useState<number | string>('');
     const [marketCloseHour, setMarketCloseHour] = useState<number | string>('');
+    const [buKeXingQiuDescription, setBuKeXingQiuDescription] = useState<string>('');
     
     // Daily Reward States
     const [dailyRewardJackpotChance, setDailyRewardJackpotChance] = useState<number | string>('');
@@ -65,6 +67,8 @@ export default function TeacherSettingsPage() {
             setMarketCloseHour(platformConfig.marketCloseHour ?? 14);
             setSponsorLogoUrls(platformConfig.sponsorLogoUrls || [null, null, null, null]);
             setSelectedTheme(platformConfig.theme || "default");
+            const defaultBuKeDescription = "「布可星球」是你閱讀成就的殿堂！你在這裡挖掘的每一點能量、每一本書，都是你知識宇宙擴張的證明。\n每個月底，校長會將你「本月挖掘的能量」按照一定的比例，轉換成可以在平台中使用的「點數」，作為對你努力閱讀的實質獎勵。繼續閱讀，讓你的星球更加璀璨吧！";
+            setBuKeXingQiuDescription(platformConfig.buKeXingQiuDescription || defaultBuKeDescription);
             
             // Set daily reward states
             setDailyRewardJackpotChance((platformConfig.dailyRewardJackpotChance ?? 0.05) * 100);
@@ -118,6 +122,7 @@ export default function TeacherSettingsPage() {
                 marketCloseHour: Number(marketCloseHour),
                 sponsorLogoUrls: sponsorLogoUrls,
                 theme: selectedTheme,
+                buKeXingQiuDescription: buKeXingQiuDescription,
                 dailyRewardJackpotChance: Number(dailyRewardJackpotChance) / 100,
                 dailyRewardJackpotMin: Number(dailyRewardJackpotMin),
                 dailyRewardJackpotMax: Number(dailyRewardJackpotMax),
@@ -236,6 +241,21 @@ export default function TeacherSettingsPage() {
                             </div>
                         </div>
                     </div>
+                </CardContent>
+            </Card>
+
+             <Card>
+                <CardHeader>
+                    <CardTitle>關於布可星球說明</CardTitle>
+                    <CardDescription>自訂「布可星球」成就頁面下方的說明文字。</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Textarea
+                        value={buKeXingQiuDescription}
+                        onChange={(e) => setBuKeXingQiuDescription(e.target.value)}
+                        rows={5}
+                        placeholder="輸入關於布可星球的說明..."
+                    />
                 </CardContent>
             </Card>
 

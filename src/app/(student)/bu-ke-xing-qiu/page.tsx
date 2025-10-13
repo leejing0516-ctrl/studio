@@ -34,7 +34,7 @@ const StatCard = ({
 
 export default function BuKeXingQiuPage() {
   const { studentData } = useContext(StudentDataContext);
-  const { students } = useContext(AppDataContext);
+  const { students, platformConfig } = useContext(AppDataContext);
 
   const currentStudent = students.find(
     (s) =>
@@ -47,6 +47,9 @@ export default function BuKeXingQiuPage() {
   }
 
   const month = currentStudent.buKeMonth;
+
+  const defaultDescription = "「布可星球」是你閱讀成就的殿堂！你在這裡挖掘的每一點能量、每一本書，都是你知識宇宙擴張的證明。\n每個月底，校長會將你「本月挖掘的能量」按照一定的比例，轉換成可以在平台中使用的「點數」，作為對你努力閱讀的實質獎勵。繼續閱讀，讓你的星球更加璀璨吧！";
+  const buKeDescription = platformConfig?.buKeXingQiuDescription || defaultDescription;
 
   return (
     <div className="animate-in fade-in-0 duration-500 space-y-6">
@@ -85,9 +88,8 @@ export default function BuKeXingQiuPage() {
         <CardHeader>
           <CardTitle>關於布可星球</CardTitle>
         </CardHeader>
-        <CardContent className="text-muted-foreground space-y-2">
-          <p>「布可星球」是你閱讀成就的殿堂！你在這裡挖掘的每一點能量、每一本書，都是你知識宇宙擴張的證明。</p>
-          <p>每個月底，校長會將你「本月挖掘的能量」按照一定的比例，轉換成可以在平台中使用的「點數」，作為對你努力閱讀的實質獎勵。繼續閱讀，讓你的星球更加璀璨吧！</p>
+        <CardContent className="text-muted-foreground space-y-2 whitespace-pre-wrap">
+          <p>{buKeDescription}</p>
         </CardContent>
       </Card>
     </div>

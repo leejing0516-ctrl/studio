@@ -250,6 +250,7 @@ export type PlatformConfig = {
     stockMarqueeMessages?: string[];
     petStages?: PetStage[];
     dashboardCards?: DashboardCardTexts;
+    buKeXingQiuDescription?: string;
     dailyRewardJackpotChance?: number;
     dailyRewardJackpotMin?: number;
     dailyRewardJackpotMax?: number;
