@@ -234,16 +234,16 @@ export default function StudentDashboardPage() {
                 <p className="text-card-description text-card-description-foreground">{cardTexts.fixedDeposits?.description || '目前進行中的定期存款'}</p>
             </CardContent>
         </Card>
-        <Card className="bg-chart-5">
+        <Card className="bg-bu-ke-xing-qiu-card text-bu-ke-xing-qiu-card-foreground">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-card-title text-card-title-foreground">{cardTexts.buKeXingQiu?.title || '布可星球'}</CardTitle>
-                <BookUp className="h-4 w-4 text-card-title-foreground/80" />
+                <CardTitle className="text-card-title">{cardTexts.buKeXingQiu?.title || '布可星球'}</CardTitle>
+                <BookUp className="h-4 w-4 text-current/80" />
             </CardHeader>
             <CardContent>
-                <div className="text-card-value text-card-value-foreground font-bold">
+                <div className="text-card-value">
                 {Math.round(currentStudent.readingEnergy || 0).toLocaleString()}
                 </div>
-                <p className="text-card-description text-card-description-foreground">{cardTexts.buKeXingQiu?.description || '每月轉換為點數'}</p>
+                <p className="text-card-description">{cardTexts.buKeXingQiu?.description || '每月轉換為點數'}</p>
             </CardContent>
         </Card>
          {totalLoanAmount > 0 ? (

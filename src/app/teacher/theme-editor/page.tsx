@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useContext, useEffect, useRef } from "react";
@@ -56,6 +57,8 @@ const defaultThemeColors: CustomTheme = {
     "my-pet-card-foreground": "222.2 84% 4.9%",
     "points-trend-card-background": "0 0% 100%",
     "points-trend-card-foreground": "222.2 84% 4.9%",
+    "bu-ke-xing-qiu-card-background": "220 20% 70%",
+    "bu-ke-xing-qiu-card-foreground": "220 20% 10%",
     "card-title-foreground": "210 40% 98%",
     "card-value-foreground": "210 40% 98%",
     "card-description-foreground": "210 40% 90%",
@@ -192,6 +195,7 @@ const dashboardCardOptions = [
     { keyBackground: "my-groups-card-background", keyForeground: "my-groups-card-foreground", label: "我的分組卡片" },
     { keyBackground: "my-pet-card-background", keyForeground: "my-pet-card-foreground", label: "我的寵物卡片" },
     { keyBackground: "points-trend-card-background", keyForeground: "points-trend-card-foreground", label: "點數趨勢卡片" },
+    { keyBackground: "bu-ke-xing-qiu-card-background", keyForeground: "bu-ke-xing-qiu-card-foreground", label: "布可星球卡片" },
 ];
 
 const specialCardOptions = [

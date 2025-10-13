@@ -92,6 +92,10 @@ export default {
             DEFAULT: 'hsl(var(--points-trend-card-background))',
             foreground: 'hsl(var(--points-trend-card-foreground))',
         },
+        'bu-ke-xing-qiu-card': {
+            DEFAULT: 'hsl(var(--bu-ke-xing-qiu-card-background))',
+            foreground: 'hsl(var(--bu-ke-xing-qiu-card-foreground))',
+        },
         sidebar: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--sidebar-foreground))',
