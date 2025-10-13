@@ -33,9 +33,13 @@ import Papa from "papaparse";
 import { Separator } from "@/components/ui/separator";
 
 interface BuKeRecord {
-    studentId: string; // The internal student ID (e.g., S001)
+    studentId: string;
     classId: string;
     readingEnergy: number;
+    buKeBooksThisMonth: number;
+    buKeLevel: number;
+    buKeTotalEnergy: number;
+    buKeTotalBooks: number;
 }
 
 const gradeMap: { [key: string]: string } = { "1": "一", "2": "二", "3": "三", "4": "四", "5": "五", "6": "六" };
@@ -83,7 +87,7 @@ export default function BuKeXingQiuPage() {
                 const bukeData: BuKeRecord[] = [];
                 // Start from row 1 to skip header
                 for (const row of rawData.slice(1)) {
-                    const [year, month, gradeNum, classNum, seatNum, studentName, readingEnergyStr] = row;
+                    const [year, month, gradeNum, classNum, seatNum, studentName, readingEnergyStr, booksThisMonthStr, levelStr, totalEnergyStr, totalBooksStr] = row;
                     
                     const gradeName = gradeMap[gradeNum] || '';
                     const classNameSuffix = classMap[classNum] || '';
@@ -100,6 +104,10 @@ export default function BuKeXingQiuPage() {
                                     studentId: student.id,
                                     classId: student.classId,
                                     readingEnergy: Number(readingEnergyStr) || 0,
+                                    buKeBooksThisMonth: Number(booksThisMonthStr) || 0,
+                                    buKeLevel: Number(levelStr) || 1,
+                                    buKeTotalEnergy: Number(totalEnergyStr) || 0,
+                                    buKeTotalBooks: Number(totalBooksStr) || 0,
                                 });
                              }
                         }
@@ -115,14 +123,19 @@ export default function BuKeXingQiuPage() {
         
         setIsProcessing(true);
 
-        const studentIdToEnergyMap = new Map(parsedCsvData.map(item => [`${item.classId}-${item.studentId}`, item.readingEnergy]));
+        const studentDataMap = new Map(parsedCsvData.map(item => [`${item.classId}-${item.studentId}`, item]));
         
         const updatedStudents = students.map(student => {
             const key = `${student.classId}-${student.id}`;
-            if (studentIdToEnergyMap.has(key)) {
+            if (studentDataMap.has(key)) {
+                const csvData = studentDataMap.get(key)!;
                 return {
                     ...student,
-                    readingEnergy: studentIdToEnergyMap.get(key)!,
+                    readingEnergy: csvData.readingEnergy,
+                    buKeBooksThisMonth: csvData.buKeBooksThisMonth,
+                    buKeLevel: csvData.buKeLevel,
+                    buKeTotalEnergy: csvData.buKeTotalEnergy,
+                    buKeTotalBooks: csvData.buKeTotalBooks,
                 };
             }
             return student;
@@ -132,7 +145,7 @@ export default function BuKeXingQiuPage() {
             await setStudents(updatedStudents);
             toast({
                 title: `匯入完成`,
-                description: `已成功為 ${parsedCsvData.length} 位學生更新布可星球能量。`
+                description: `已成功為 ${parsedCsvData.length} 位學生更新布可星球資料。`
             });
             setParsedCsvData([]);
             setCsvFile(null);
@@ -230,14 +243,14 @@ export default function BuKeXingQiuPage() {
                     <Card className="bg-muted/30">
                         <CardHeader>
                             <CardTitle className="text-xl">步驟一：匯入布可星球報表</CardTitle>
-                            <CardDescription>上傳 CSV 檔案以快速更新多位學生的布可星球能量。系統將會直接覆蓋原有的能量值。</CardDescription>
+                            <CardDescription>上傳 CSV 檔案以快速更新多位學生的布可星球資料。系統將會直接覆蓋原有的能量值與相關數據。</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                              <a href="/buke-template.csv" download className={buttonVariants({variant: "outline"})}>
                                 <Download className="mr-2"/>下載 CSV 範本
                             </a>
                             <div className="space-y-2">
-                                <Label htmlFor="csv-upload">上傳 CSV 檔案 (欄位: 年度,月份,年級(數字),班級(數字),座號(數字),姓名,本月挖掘能量)</Label>
+                                <Label htmlFor="csv-upload">上傳 CSV 檔案 (欄位: 年度,月份,年級(數字),班級(數字),座號(數字),姓名,本月挖掘能量,本月挖掘本數,等級,累計挖掘總能量,挖掘總本數)</Label>
                                 <Input id="csv-upload" type="file" accept=".csv" onChange={(e) => e.target.files && handleFileParse(e.target.files[0])}/>
                             </div>
                             {csvPreview.length > 0 && (
@@ -262,7 +275,7 @@ export default function BuKeXingQiuPage() {
                      <Card className="bg-muted/30">
                         <CardHeader>
                             <CardTitle className="text-xl">步驟二：批次轉換點數</CardTitle>
-                            <CardDescription>此操作將會把列表中所有學生的「布可星球」能量乘以轉換率，加到他們的總點數中，並將能量歸零。此操作無法復原。</CardDescription>
+                            <CardDescription>此操作將會把列表中所有學生的「本月挖掘能量」乘以轉換率，加到他們的總點數中，並將能量歸零。此操作無法復原。</CardDescription>
                         </CardHeader>
                         <CardContent>
                              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 mb-6 border rounded-lg bg-background">
@@ -292,7 +305,7 @@ export default function BuKeXingQiuPage() {
                                         <AlertDialogHeader>
                                             <AlertDialogTitle className="flex items-center gap-2"><AlertTriangle/>確定要開始轉換嗎？</AlertDialogTitle>
                                             <AlertDialogDescription>
-                                                此操作將會把列表中所有學生的「布可星球」能量乘以轉換率，加到他們的總點數中，並將能量歸零。此操作無法復原。
+                                                此操作將會把列表中所有學生的「本月挖掘能量」乘以轉換率，加到他們的總點數中，並將該月能量歸零。此操作無法復原。
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
@@ -340,5 +353,7 @@ export default function BuKeXingQiuPage() {
         </div>
     );
 }
+
+    
 
     
