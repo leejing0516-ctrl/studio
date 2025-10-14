@@ -8,6 +8,7 @@ import { collection, doc, runTransaction as firestoreRunTransaction, Transaction
 import { isAfter, startOfDay, differenceInDays } from 'date-fns';
 import { StudentDataContext } from './StudentDataContext';
 import { useToast } from '@/hooks/use-toast';
+import { usePathname } from 'next/navigation';
 
 type SetStateActionWithFunction<S> = S | ((prevState: S) => S);
 
@@ -74,6 +75,7 @@ const useIdAsDocId = (collectionName: string) => {
 export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const { studentData, setStudentData } = useContext(StudentDataContext);
   const { toast } = useToast();
+  const pathname = usePathname();
   
   const [students, setStudentsState] = useState<Student[]>([]);
   const [rewards, setRewardsState] = useState<Reward[]>([]);
@@ -81,6 +83,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [teachers, setTeachersState] = useState<Teacher[]>([]);
   const [classes, setClassesState] = useState<Class[]>([]);
   const [platformConfig, setPlatformConfigState] = useState<PlatformConfig | null>(null);
+  
+  const [isReadyToLoad, setIsReadyToLoad] = useState(false);
   
   const [loadingStates, setLoadingStates] = useState<LoadingStates>({
       students: true,
@@ -91,9 +95,19 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       config: true,
   });
 
-  const isLoading = Object.values(loadingStates).some(state => state === true);
+  const isLoading = !isReadyToLoad || Object.values(loadingStates).some(state => state === true);
   
   const [isMarketOpen, setIsMarketOpen] = useState(false);
+
+  useEffect(() => {
+    // Only start loading data if we are not on the login page
+    if (pathname !== '/') {
+        setIsReadyToLoad(true);
+    } else {
+        // For login page, we can consider it "not loading" immediately
+        setLoadingStates({ students: false, teachers: false, classes: false, rewards: false, stocks: false, config: false });
+    }
+  }, [pathname]);
   
 
   const handleRunTransaction = useCallback(async (updateFunction: (transaction: Transaction) => Promise<any>) => {
@@ -169,6 +183,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   
   // Effect for daily financial processing (interest, loans, etc.)
   useEffect(() => {
+    if (!isReadyToLoad) return;
+
     const processDailyFinance = async () => {
         const lastRun = localStorage.getItem('lastFinanceRun');
         const today = startOfDay(new Date()).toISOString().split('T')[0]; // YYYY-MM-DD
@@ -279,10 +295,12 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     const timer = setTimeout(processDailyFinance, 5000);
     return () => clearTimeout(timer);
 
-  }, [isLoading, students]);
+  }, [isLoading, students, isReadyToLoad]);
 
 
   useEffect(() => {
+    if (!isReadyToLoad) return;
+
     const subscriptions: Unsubscribe[] = [];
 
     const setupSubscription = <T extends { id?: string, _docId?: string }>(
@@ -302,31 +320,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 });
             });
             setter(data);
-
-            if (collectionName === 'students') {
-                const userRole = localStorage.getItem('userRole');
-                if (userRole === 'student') {
-                    const storedClassId = localStorage.getItem('studentClassId');
-                    const storedStudentId = localStorage.getItem('studentId');
-                    const storedPassword = localStorage.getItem('studentPassword');
-
-                    if (data.length > 0 && storedClassId && storedStudentId && storedPassword) {
-                        const foundStudent = data.find(s => s.classId === storedClassId && s.id === storedStudentId);
-                        if (foundStudent) {
-                            if(foundStudent.password === storedPassword) {
-                                setStudentData({ student: foundStudent });
-                            } else {
-                                setStudentData({ student: null });
-                                toast({ title: "驗證失敗", description: "您的登入資訊已過期或不正確，請重新登入。", variant: "destructive" });
-                                localStorage.clear();
-                                if(window.location.pathname !== '/') {
-                                    window.location.href = '/';
-                                }
-                            }
-                        }
-                    }
-                }
-            }
             
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
         }, (error) => {
@@ -366,7 +359,33 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       subscriptions.forEach(unsub => unsub());
     };
-  }, [setStudentData, toast]);
+  }, [isReadyToLoad]);
+  
+   useEffect(() => {
+        const userRole = localStorage.getItem('userRole');
+        if (userRole !== 'student' || !isReadyToLoad || loadingStates.students) return;
+
+        const storedClassId = localStorage.getItem('studentClassId');
+        const storedStudentId = localStorage.getItem('studentId');
+        const storedPassword = localStorage.getItem('studentPassword');
+
+        if (students.length > 0 && storedClassId && storedStudentId && storedPassword) {
+            const foundStudent = students.find(s => s.classId === storedClassId && s.id === storedStudentId);
+            if (foundStudent) {
+                if (foundStudent.password === storedPassword) {
+                    setStudentData({ student: foundStudent });
+                } else {
+                    setStudentData({ student: null });
+                    toast({ title: "驗證失敗", description: "您的登入資訊已過期或不正確，請重新登入。", variant: "destructive" });
+                    localStorage.clear();
+                    if (window.location.pathname !== '/') {
+                        window.location.href = '/';
+                    }
+                }
+            }
+        }
+    }, [isReadyToLoad, students, loadingStates.students, setStudentData, toast]);
+
 
   return (
     <AppDataContext.Provider value={{ 

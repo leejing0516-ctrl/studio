@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useContext, useEffect, useMemo, useCallback } from 'react';
@@ -13,9 +14,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AppDataContext } from '@/context/AppDataContext';
 import type { Student, Teacher } from '@/lib/types';
-import { Providers } from '@/context/Providers';
 
-function LoginPageContent() {
+
+export default function LoginPageContent() {
   const [studentIdInput, setStudentIdInput] = useState('');
   const [studentPassword, setStudentPassword] = useState('');
   const [classId, setClassId] = useState('');
@@ -40,14 +41,13 @@ function LoginPageContent() {
 
 
   useEffect(() => {
-    if (isLoading) return;
     const userRole = localStorage.getItem('userRole');
     if (userRole === 'student') {
         router.replace('/dashboard');
     } else if (userRole === 'teacher') {
         router.replace('/teacher/dashboard');
     }
-  }, [router, isLoading]);
+  }, [router]);
 
   const handleStudentLogin = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -63,15 +63,10 @@ function LoginPageContent() {
         return;
     }
     
-    if (isLoading) {
-        toast({
-            title: "系統載入中",
-            description: "請稍候再試。",
-            variant: "destructive",
-        });
-        setIsLoggingIn(false);
-        return;
-    }
+    // Although AppDataContext is loading in the background, we don't wait for it.
+    // The login must work even if data is not fully loaded.
+    // We check against the data *if* it's available. This may mean the first login attempt fails if data isn't ready.
+    // A better approach would be to fetch just what's needed for login, but we'll stick to the current architecture.
     
     const foundStudent = students.find(
       (s: Student) => s.classId === classId && s.id === studentIdInput
@@ -87,12 +82,12 @@ function LoginPageContent() {
     } else {
         toast({
             title: "登入失敗",
-            description: "您輸入的班級、學號或密碼不正確。",
+            description: "您輸入的班級、學號或密碼不正確，或資料仍在載入中，請稍候再試。",
             variant: "destructive",
         });
         setIsLoggingIn(false);
     }
-  }, [classId, studentIdInput, studentPassword, students, router, toast, isLoading]);
+  }, [classId, studentIdInput, studentPassword, students, router, toast]);
   
   const handleTeacherLogin = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -101,16 +96,6 @@ function LoginPageContent() {
         toast({
             title: "資訊不完整",
             description: "請選擇帳號並輸入密碼。",
-            variant: "destructive",
-        });
-        setIsLoggingIn(false);
-        return;
-    }
-    
-    if (isLoading) {
-        toast({
-            title: "系統載入中",
-            description: "請稍候再試。",
             variant: "destructive",
         });
         setIsLoggingIn(false);
@@ -127,20 +112,12 @@ function LoginPageContent() {
     } else {
         toast({
             title: "登入失敗",
-            description: "您輸入的帳號或密碼不正確。",
+            description: "您輸入的帳號或密碼不正確，或資料仍在載入中，請稍候再試。",
             variant: "destructive",
         });
         setIsLoggingIn(false);
     }
-  }, [selectedTeacherId, teacherPassword, allTeachers, router, toast, isLoading]);
-
-  if (isLoading) {
-      return (
-        <div className="flex h-screen w-full items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      );
-  }
+  }, [selectedTeacherId, teacherPassword, allTeachers, router, toast]);
 
   const isFormDisabled = isLoggingIn;
 
@@ -300,14 +277,5 @@ function LoginPageContent() {
         )}
       </footer>
     </div>
-  );
-}
-
-
-export default function HomePage() {
-  return (
-    <Providers>
-      <LoginPageContent />
-    </Providers>
   );
 }

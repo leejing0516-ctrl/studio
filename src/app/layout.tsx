@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import "./globals.css";
@@ -74,11 +75,13 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-          <Providers>
-            <StyleInjector />
-            {children}
-            <Toaster />
-          </Providers>
+          <StudentDataProvider>
+            <AppDataProvider>
+              <StyleInjector />
+              {children}
+            </AppDataProvider>
+          </StudentDataProvider>
+          <Toaster />
       </body>
     </html>
   );
