@@ -4,7 +4,7 @@
 import { createContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import type { Student, Reward, Class, Teacher, Stock, PlatformConfig } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { collection, doc, runTransaction as firestoreRunTransaction, Transaction, query, onSnapshot, Unsubscribe, setDoc, writeBatch, getDocs, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, runTransaction as firestoreRunTransaction, Transaction, query, onSnapshot, Unsubscribe, setDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { isAfter, startOfDay, differenceInDays } from 'date-fns';
 
 type SetStateActionWithFunction<S> = S | ((prevState: S) => S);
@@ -65,6 +65,7 @@ type LoadingStates = {
     config: boolean;
 }
 
+// This new setter function ONLY writes to Firestore. It does not touch local state.
 const createSetter = <T extends { _docId?: string; id?: any }>(
   collectionName: string,
   currentState: T[],
@@ -72,36 +73,41 @@ const createSetter = <T extends { _docId?: string; id?: any }>(
 ) => {
   return async (action: SetStateActionWithFunction<T[]>) => {
     const newState = typeof action === 'function' ? action(currentState) : action;
-
     const batch = writeBatch(db);
+    
     const oldStateMap = new Map(currentState.map(item => [useIdAsDocId ? item.id : item._docId, item]));
     const newStateMap = new Map(newState.map(item => [useIdAsDocId ? item.id : item._docId, item]));
 
     // Deletions
     oldStateMap.forEach((oldItem, key) => {
-        if (!newStateMap.has(key)) {
-            const docId = useIdAsDocId ? oldItem.id : oldItem._docId;
-            if (docId) {
-                 const ref = doc(db, collectionName, docId);
-                 batch.delete(ref);
-            }
+      if (!newStateMap.has(key)) {
+        const docId = useIdAsDocId ? oldItem.id : oldItem._docId;
+        if (docId) {
+          const ref = doc(db, collectionName, docId);
+          batch.delete(ref);
         }
+      }
     });
 
-    // Updates and additions
-    for (const item of newState) {
-        const docId = useIdAsDocId ? item.id : item._docId;
-        if (!docId) {
-            console.warn("Item missing docId, cannot process:", item);
-            continue;
-        };
+    // Additions and Updates
+    for (const newItem of newState) {
+      const key = useIdAsDocId ? newItem.id : newItem._docId;
+      const oldItem = oldStateMap.get(key);
+      const docId = key;
 
-        const oldItem = oldStateMap.get(docId);
-        if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(item)) {
-            const { _docId, ...itemData } = item;
-            const ref = doc(db, collectionName, docId);
-            batch.set(ref, itemData, { merge: true });
-        }
+      if (!docId) {
+        // This is a new item without a client-side generated ID, let Firestore generate one
+        const { _docId, ...itemData } = newItem;
+        const newRef = doc(collection(db, collectionName));
+        batch.set(newRef, itemData);
+        continue;
+      }
+      
+      if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(newItem)) {
+        const { _docId, ...itemData } = newItem;
+        const ref = doc(db, collectionName, docId);
+        batch.set(ref, itemData, { merge: true });
+      }
     }
 
     await batch.commit();
@@ -140,11 +146,11 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     return () => clearInterval(marketInterval);
   }, [platformConfig]);
   
-  const setStudents = createSetter<Student>('students', students, setStudentsState);
-  const setTeachers = createSetter<Teacher>('teachers', teachers, setTeachersState);
-  const setRewards = createSetter<Reward>('rewards', rewards, setRewardsState);
-  const setStocks = createSetter<Stock>('stocks', stocks, setStocksState, true);
-  const setClasses = createSetter<Class>('classes', classes, setClassesState, true);
+  const setStudents = createSetter<Student>('students', students);
+  const setTeachers = createSetter<Teacher>('teachers', teachers);
+  const setRewards = createSetter<Reward>('rewards', rewards);
+  const setStocks = createSetter<Stock>('stocks', stocks, true);
+  const setClasses = createSetter<Class>('classes', classes, true);
 
   const setPlatformConfig = async (dataToUpdate: Partial<PlatformConfig>) => {
       const configRef = doc(db, 'config', 'main');
