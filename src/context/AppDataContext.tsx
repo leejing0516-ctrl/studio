@@ -6,8 +6,6 @@ import type { Student, Reward, Class, Teacher, Stock, PlatformConfig } from '@/l
 import { db } from '@/lib/firebase';
 import { collection, doc, runTransaction as firestoreRunTransaction, Transaction, query, onSnapshot, Unsubscribe, setDoc, writeBatch, getDocs, deleteDoc, updateDoc } from 'firebase/firestore';
 import { isAfter, startOfDay, differenceInDays } from 'date-fns';
-import { isEqual } from 'lodash';
-
 
 type SetStateActionWithFunction<S> = S | ((prevState: S) => S);
 
@@ -67,54 +65,42 @@ type LoadingStates = {
     config: boolean;
 }
 
-const createSetterWithDiffing = <T extends { _docId?: string; id?: any }>(
+const createSetter = <T extends { _docId?: string; id?: any }>(
   collectionName: string,
   currentState: T[],
+  setter: React.Dispatch<React.SetStateAction<T[]>>,
   useIdAsDocId: boolean = false
 ) => {
   return async (action: SetStateActionWithFunction<T[]>) => {
     const newState = typeof action === 'function' ? action(currentState) : action;
+    setter(newState);
 
-    try {
-      const batch = writeBatch(db);
-      const oldStateMap = new Map(currentState.map(item => [useIdAsDocId ? item.id : item._docId, item]));
-      const newStateMap = new Map(newState.map(item => [useIdAsDocId ? item.id : item._docId, item]));
+    const batch = writeBatch(db);
+    const oldStateMap = new Map(currentState.map(item => [useIdAsDocId ? item.id : item._docId, item]));
+    const newStateMap = new Map(newState.map(item => [useIdAsDocId ? item.id : item._docId, item]));
 
-      // Detect updates and additions
-      for (const [key, newItem] of newStateMap.entries()) {
-        const oldItem = oldStateMap.get(key);
-        const { _docId, ...itemData } = newItem;
-        const docId = useIdAsDocId ? newItem.id : newItem._docId;
-
-        if (!oldItem) {
-          // New item
-          const ref = docId ? doc(db, collectionName, docId) : doc(collection(db, collectionName));
-          batch.set(ref, itemData);
-        } else if (!isEqual(oldItem, newItem)) {
-          // Updated item
-          if (docId) {
+    // Updates and additions
+    newState.forEach(item => {
+        const docId = useIdAsDocId ? item.id : item._docId;
+        if (docId) {
+            const { _docId, ...itemData } = item;
             const ref = doc(db, collectionName, docId);
             batch.set(ref, itemData, { merge: true });
-          }
         }
-      }
+    });
 
-      // Detect deletions
-      for (const [key, oldItem] of oldStateMap.entries()) {
+    // Deletions
+    oldStateMap.forEach((oldItem, key) => {
         if (!newStateMap.has(key)) {
-          const docId = useIdAsDocId ? oldItem.id : oldItem._docId;
-          if (docId) {
-            const ref = doc(db, collectionName, docId);
-            batch.delete(ref);
-          }
+            const docId = useIdAsDocId ? oldItem.id : oldItem._docId;
+            if (docId) {
+                 const ref = doc(db, collectionName, docId);
+                 batch.delete(ref);
+            }
         }
-      }
+    });
 
-      await batch.commit();
-    } catch (error) {
-      console.error(`Error syncing diff for ${collectionName}:`, error);
-      throw error;
-    }
+    await batch.commit();
   };
 };
 
@@ -150,11 +136,11 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     return () => clearInterval(marketInterval);
   }, [platformConfig]);
   
-  const setStudents = createSetterWithDiffing<Student>('students', students);
-  const setTeachers = createSetterWithDiffing<Teacher>('teachers', teachers);
-  const setRewards = createSetterWithDiffing<Reward>('rewards', rewards);
-  const setStocks = createSetterWithDiffing<Stock>('stocks', stocks, true);
-  const setClasses = createSetterWithDiffing<Class>('classes', classes, true);
+  const setStudents = createSetter<Student>('students', students, setStudentsState);
+  const setTeachers = createSetter<Teacher>('teachers', teachers, setTeachersState);
+  const setRewards = createSetter<Reward>('rewards', rewards, setRewardsState);
+  const setStocks = createSetter<Stock>('stocks', stocks, setStocksState, true);
+  const setClasses = createSetter<Class>('classes', classes, setClassesState, true);
 
   const setPlatformConfig = async (dataToUpdate: Partial<PlatformConfig>) => {
       const configRef = doc(db, 'config', 'main');
