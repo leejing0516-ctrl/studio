@@ -4,6 +4,7 @@
 
 import { useState, useContext, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -13,7 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Percent, ImageOff, UploadCloud, Trash2, Clock, Gift, AppWindow, Smartphone } from "lucide-react";
+import { Loader2, Percent, ImageOff, UploadCloud, Trash2, Clock, Gift, AppWindow, Smartphone, Palette } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
@@ -144,7 +145,7 @@ export default function TeacherSettingsPage() {
                 dailyRewardStandardChance: Number(dailyRewardStandardChance) / 100,
                 dailyRewardStandardMin: Number(dailyRewardStandardMin),
                 dailyRewardStandardMax: Number(dailyRewardStandardMax),
-                customTheme: customThemeData
+                customTheme: customThemeData,
             };
             
             await setPlatformConfig(dataToUpdate);
@@ -161,8 +162,12 @@ export default function TeacherSettingsPage() {
     useEffect(() => {
         const themeToApply = themes.find(t => t.name === selectedTheme)?.cssVars.dark;
         if (themeToApply) {
+            const root = document.documentElement;
             Object.entries(themeToApply).forEach(([key, value]) => {
-                document.documentElement.style.setProperty(`--${key}`, value as string);
+                // Ensure card-related variables from the global theme are NOT applied
+                if (!key.startsWith('chart-') && !key.startsWith('card-')) {
+                    root.style.setProperty(`--${key}`, value as string);
+                }
             });
         }
     }, [selectedTheme]);
@@ -184,8 +189,14 @@ export default function TeacherSettingsPage() {
                         <CardContent>
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <Label className="font-semibold">選擇基礎顏色主題</Label>
-                                     <RadioGroup value={selectedTheme} onValueChange={setSelectedTheme} className="p-4 rounded-lg border grid grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <Label className="font-semibold">選擇基礎顏色主題</Label>
+                                         <Link href="/teacher/theme-editor" className={buttonVariants({ variant: "outline", size: "sm" })}>
+                                            <Palette className="mr-2 h-4 w-4" />
+                                            新增/編輯自訂主題
+                                        </Link>
+                                    </div>
+                                     <RadioGroup value={selectedTheme} onValueChange={setSelectedTheme} className="p-4 rounded-lg border grid grid-cols-2 md:grid-cols-3 gap-4">
                                         {themes.map((theme) => (
                                             <div key={theme.name} className="flex items-center space-x-2">
                                                 <RadioGroupItem value={theme.name} id={`theme-${theme.name}`} />
