@@ -21,26 +21,21 @@ export default function RootLayout({
   const themeName = platformConfig?.theme || 'default';
   const customTheme = platformConfig?.customTheme;
 
-  let vars: CustomTheme;
+  let activeTheme: CustomTheme;
   if (themeName === 'custom' && customTheme) {
-    vars = customTheme;
+    activeTheme = customTheme;
   } else {
-    const theme = themes.find(t => t.name === themeName) || themes.find(t => t.name === 'default')!;
-    vars = theme.cssVars.dark;
+    activeTheme = themes.find(t => t.name === themeName)?.cssVars.dark 
+      || themes.find(t => t.name === 'default')!.cssVars.dark;
   }
   
-  const cssText = vars ? Object.entries(vars)
-    .map(([key, value]) => `--${key}: ${value};`)
-    .join('\n') : '';
+  const cssVariables = activeTheme 
+    ? Object.entries(activeTheme)
+        .map(([key, value]) => `--${key}: ${value};`)
+        .join('\n') 
+    : '';
     
-  const themeVars = `:root {\n${cssText}\n}`;
-
-  useEffect(() => {
-    const styleElement = document.getElementById('dynamic-theme-styles');
-    if (styleElement) {
-      styleElement.innerHTML = themeVars;
-    }
-  }, [themeVars]);
+  const themeStyle = `:root {\n${cssVariables}\n}`;
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -56,7 +51,8 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter&display=swap"
           rel="stylesheet"
         />
-        <style id="dynamic-theme-styles" dangerouslySetInnerHTML={{ __html: themeVars }} />
+        {/* Directly render the style tag in the head */}
+        <style dangerouslySetInnerHTML={{ __html: themeStyle }} />
       </head>
       <body className="font-body antialiased">
         <Providers>
