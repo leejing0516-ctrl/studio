@@ -1,7 +1,2 @@
-import {genkit} from 'genkit';
-import {googleAI} from '@genkit-ai/googleai';
-
-export const ai = genkit({
-  plugins: [googleAI()],
-  model: 'googleai/gemini-pro-vision',
-});
+// This file is intentionally left blank to disable Genkit functionality.
+// The Genkit dependencies were removed to resolve persistent installation issues.
