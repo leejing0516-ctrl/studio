@@ -178,7 +178,7 @@ export default function TeacherSettingsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>平台設定</CardTitle>
-                    <CardDescription>管理平台的核心金融參數、外觀主題與相關圖示。</CardDescription>
+                    <CardDescription>管理平台的的核心金融參數、外觀主題與相關圖示。</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-8">
                     <Card>
