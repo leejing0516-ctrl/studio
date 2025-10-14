@@ -132,7 +132,7 @@ export default function TeacherSettingsPage() {
         
         try {
             const themeConfig = availableThemes.find(t => t.name === selectedThemeName);
-            const themeCssVars = themeConfig ? themeConfig.cssVars.dark : undefined;
+            const themeCssVars = themeConfig ? (themeConfig.cssVars.light || themeConfig.cssVars.dark) : undefined;
 
             const dataToUpdate: Partial<PlatformConfig> = {
                 logoUrl: logoUrl,
@@ -164,13 +164,17 @@ export default function TeacherSettingsPage() {
         }
     };
     
-    useEffect(() => {
-        const themeToApply = availableThemes.find(t => t.name === selectedThemeName)?.cssVars.dark;
-        if (themeToApply) {
+     useEffect(() => {
+        const themeConfig = availableThemes.find(t => t.name === selectedThemeName);
+        if (themeConfig) {
+            // Check if it's a light theme based on name or a property
+            const isLightTheme = themeConfig.name.includes('red') || themeConfig.name.includes('joy') || themeConfig.name.includes('pink') || themeConfig.name.includes('yellow');
+            const themeToApply = isLightTheme && themeConfig.cssVars.light ? themeConfig.cssVars.light : themeConfig.cssVars.dark;
+
             const root = document.documentElement;
             Object.entries(themeToApply).forEach(([key, value]) => {
                 if (!key.startsWith('chart-') && !key.startsWith('card-')) {
-                    root.style.setProperty(`--${key}`, value as string);
+                     root.style.setProperty(`--${key}`, value as string);
                 }
             });
         }
