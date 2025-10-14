@@ -1046,7 +1046,7 @@ export default function TeacherDashboardPage() {
         }
         
         if (role === 'admin' || role === 'teacher' || role === 'subject_teacher') {
-            tabs.push(<TabsTrigger key="groups" value="groups">分組管理</TabsTrigger>);
+             tabs.push(<TabsTrigger key="groups" value="groups">分組管理</TabsTrigger>);
         }
         
         tabs.push(<TabsTrigger key="points" value="points">發送點數</TabsTrigger>);
