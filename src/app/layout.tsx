@@ -1,4 +1,3 @@
-
 "use client";
 
 import "./globals.css";
@@ -6,18 +5,30 @@ import { Toaster } from "@/components/ui/toaster";
 import { themes, type Theme } from "@/lib/themes";
 import { DEFAULT_APP_ICON_URL } from "@/lib/config";
 import type { CustomTheme } from "@/lib/types";
-import { useContext, useMemo } from "react";
-import { AppDataContext, AppDataProvider } from "@/context/AppDataContext";
+import { useState, useMemo, useEffect } from "react";
+import { onSnapshot, doc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { AppDataProvider } from "@/context/AppDataContext";
 import { StudentDataProvider } from "@/context/StudentDataContext";
 
 function StyleInjector() {
-  const { platformConfig } = useContext(AppDataContext);
+  const [themeName, setThemeName] = useState('makeup-pink');
+  const [appIconUrl, setAppIconUrl] = useState(DEFAULT_APP_ICON_URL);
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "config", "main"), (doc) => {
+      if (doc.exists()) {
+        const config = doc.data();
+        setThemeName(config.theme || 'makeup-pink');
+        setAppIconUrl(config.appIconUrl || DEFAULT_APP_ICON_URL);
+      }
+    });
+    return () => unsub();
+  }, []);
 
   const activeTheme = useMemo(() => {
-    if (!platformConfig) return themes.find(t => t.name === 'makeup-pink');
-    const selectedThemeName = platformConfig.theme || 'makeup-pink';
-    return themes.find(t => t.name === selectedThemeName) || themes.find(t => t.name === 'makeup-pink');
-  }, [platformConfig]);
+    return themes.find(t => t.name === themeName) || themes.find(t => t.name === 'makeup-pink');
+  }, [themeName]);
 
   const themeCss = useMemo(() => {
     if (!activeTheme) return "";
@@ -44,7 +55,7 @@ function StyleInjector() {
   return (
     <>
       <style>{themeCss}</style>
-      <link rel="apple-touch-icon" href={platformConfig?.appIconUrl || DEFAULT_APP_ICON_URL} />
+      <link rel="apple-touch-icon" href={appIconUrl} />
     </>
   );
 }
@@ -68,11 +79,11 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter&display=swap"
           rel="stylesheet"
         />
+        <StyleInjector />
       </head>
       <body className="font-body antialiased">
           <StudentDataProvider>
             <AppDataProvider>
-              <StyleInjector />
               {children}
             </AppDataProvider>
           </StudentDataProvider>

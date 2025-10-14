@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -57,6 +56,9 @@ import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
 import Logo from "@/components/logo";
+import { onSnapshot, collection, doc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import type { PlatformConfig, Teacher as TeacherType, Class as ClassType, Student, Reward, Stock } from "@/lib/types";
 
 function TeacherLayoutContent({
   children,
@@ -97,8 +99,6 @@ function TeacherLayoutContent({
   }, [router]);
 
   useEffect(() => {
-    if (isLoading) return;
-
     const userRole = localStorage.getItem('userRole');
     const storedTeacherId = localStorage.getItem('teacherId');
     const storedTeacherPassword = localStorage.getItem('teacherPassword');
@@ -107,7 +107,9 @@ function TeacherLayoutContent({
       handleLogout();
       return;
     }
-
+    
+    // The main data loading is now in the layout provider.
+    // This effect just syncs local state from localStorage and the global context.
     const teacher = teachers.find(t => t.id === storedTeacherId);
 
     if (teacher) {
@@ -122,29 +124,31 @@ function TeacherLayoutContent({
             localStorage.setItem('teacherRole', teacher.role);
             localStorage.setItem('teacherClassIds', JSON.stringify(teacher.classIds || []));
         } else {
-            toast({ title: "驗證失敗", description: "密碼不正確，請重新登入。", variant: "destructive" });
-            handleLogout();
+             if (!isLoading) { // Prevent firing on initial load before context is ready
+                toast({ title: "驗證失敗", description: "密碼不正確，請重新登入。", variant: "destructive" });
+                handleLogout();
+             }
         }
     } else if (!isLoading && teachers.length > 0) {
         toast({ title: "找不到帳號", description: "找不到您的教師帳號，請重新登入。", variant: "destructive" });
         handleLogout();
     }
-  }, [isLoading, teachers, platformConfig?.teacherPassword, handleLogout, toast]);
+  }, [handleLogout, platformConfig?.teacherPassword, toast, teachers, isLoading]);
 
   
   const handleStopImpersonating = () => {
     const originalAdminId = localStorage.getItem('impersonator');
-    const originalAdmin = teachers.find(t => t.id === originalAdminId);
-    if (!originalAdmin) {
+    if (!originalAdminId) {
       toast({ title: "返回失敗", description: "找不到原始管理員身份，請重新登入。", variant: "destructive" });
       handleLogout();
       return;
     }
     
-    const correctPassword = originalAdmin.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
+    const originalAdmin = teachers.find(t => t.id === originalAdminId);
+    const correctPassword = originalAdmin?.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
 
     localStorage.setItem('userRole', 'teacher');
-    localStorage.setItem('teacherId', originalAdmin.id);
+    localStorage.setItem('teacherId', originalAdminId);
     localStorage.setItem('teacherPassword', correctPassword);
     localStorage.removeItem('impersonator');
 
@@ -154,67 +158,48 @@ function TeacherLayoutContent({
 
   const handleChangePassword = async () => {
     setIsSaving(true);
-    
-    if (!teacherId) {
-        toast({ title: "錯誤", description: "無法識別您的身份，請重新登入。", variant: "destructive" });
-        setIsSaving(false);
-        return;
-    }
-    
+    if (!teacherId) return;
+
     if (newPassword !== confirmPassword) {
         toast({ title: "密碼不符", description: "新密碼與確認密碼不相符。", variant: "destructive" });
         setIsSaving(false);
         return;
     }
-     if (newPassword.length < 3) {
+    if (newPassword.length < 3) {
         toast({ title: "密碼太短", description: "新密碼長度至少需要 3 個字元。", variant: "destructive" });
         setIsSaving(false);
         return;
     }
 
     const teacherToUpdate = teachers.find(t => t.id === teacherId);
-    if (!teacherToUpdate) {
-        toast({ title: "錯誤", description: "找不到您的帳號資訊。", variant: "destructive" });
-        setIsSaving(false);
-        return;
-    }
-
+    if (!teacherToUpdate) return;
+    
     const storedPassword = teacherToUpdate.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
     if (currentPassword !== storedPassword) {
         toast({ title: "密碼錯誤", description: "您輸入的目前密碼不正確。", variant: "destructive" });
         setIsSaving(false);
         return;
     }
-    
-    if (teacherRole === 'admin' && teacherId === 'principal') {
-        try {
-          await setPlatformConfig({ teacherPassword: newPassword });
-          toast({ title: "預設密碼已更新", description: "未來新建立的教師帳號將使用此新密碼作為預設密碼。" });
-        } catch(e) {
-          toast({ title: "預設密碼更新失敗", description: "更新預設密碼時發生錯誤。", variant: "destructive" });
-        }
-    }
-
 
     try {
-      await setTeachers(currentTeachers => currentTeachers.map(t => {
-          if (t.id === teacherId) {
-              return { ...t, password: newPassword };
-          }
-          return t;
-      }));
+        await setTeachers(currentTeachers => currentTeachers.map(t => {
+            if (t.id === teacherId) {
+                return { ...t, password: newPassword };
+            }
+            return t;
+        }));
+        
+        localStorage.setItem('teacherPassword', newPassword);
 
-      localStorage.setItem('teacherPassword', newPassword);
-
-      toast({ title: "密碼已更新", description: "您的登入密碼已成功更新。" });
-      setIsSettingsOpen(false);
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+        toast({ title: "密碼已更新", description: "您的密碼已成功更新。" });
+        setIsSettingsOpen(false);
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
     } catch(e) {
-      toast({ title: "更新失敗", description: "更新您的密碼時發生錯誤。", variant: "destructive" });
+        toast({ title: "更新失敗", description: "更新密碼時發生錯誤。", variant: "destructive" });
     } finally {
-      setIsSaving(false);
+        setIsSaving(false);
     }
   }
 
@@ -259,7 +244,6 @@ function TeacherLayoutContent({
   }
 
   return (
-    <>
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader>
@@ -342,14 +326,14 @@ function TeacherLayoutContent({
         </header>
         <main className="flex-1 p-4 md:p-6 overflow-x-hidden">{children}</main>
       </SidebarInset>
-    </SidebarProvider>
+    
 
     <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
             <DialogTitle>帳號設定</DialogTitle>
             <DialogDescription>
-                {teacherRole === 'admin' ? '修改您的登入密碼。您也可以修改未來新教師註冊時的「預設密碼」。' : '修改您的個人登入密碼。'}
+                修改您的個人登入密碼。
             </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -376,7 +360,7 @@ function TeacherLayoutContent({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-    </>
+    </SidebarProvider>
   );
 }
 
@@ -385,5 +369,38 @@ export default function TeacherLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const { setStudents, setStocks, setRewards, setClasses, setTeachers, setPlatformConfig, setIsLoading } = useContext(AppDataContext);
+
+  useEffect(() => {
+    setIsLoading(true);
+    const collectionsToListen: { name: string, setter: (data: any) => void, type: 'collection' | 'doc' }[] = [
+      { name: 'config', setter: setPlatformConfig, type: 'doc' },
+      { name: 'students', setter: setStudents, type: 'collection' },
+      { name: 'teachers', setter: setTeachers, type: 'collection' },
+      { name: 'classes', setter: setClasses, type: 'collection' },
+      { name: 'rewards', setter: setRewards, type: 'collection' },
+      { name: 'stocks', setter: setStocks, type: 'collection' },
+    ];
+
+    const unsubscribes = collectionsToListen.map(({ name, setter, type }) => {
+      if (type === 'doc') {
+        return onSnapshot(doc(db, name, 'main'), (docSnap) => {
+          setter(docSnap.data() as any);
+        });
+      }
+      return onSnapshot(collection(db, name), (snapshot) => {
+        const data = snapshot.docs.map(d => ({ ...d.data(), id: d.id, _docId: d.id }));
+        setter(data as any);
+      });
+    });
+
+    const timer = setTimeout(() => setIsLoading(false), 1500);
+
+    return () => {
+      unsubscribes.forEach(unsub => unsub());
+      clearTimeout(timer);
+    };
+  }, [setStudents, setStocks, setRewards, setClasses, setTeachers, setPlatformConfig, setIsLoading]);
+
   return <TeacherLayoutContent>{children}</TeacherLayoutContent>;
 }

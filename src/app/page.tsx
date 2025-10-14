@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useContext, useEffect, useMemo, useCallback } from 'react';
@@ -11,14 +10,14 @@ import { Label } from "@/components/ui/label";
 import { User, School, ArrowRight, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AppDataContext } from '@/context/AppDataContext';
-import type { Student, Teacher } from '@/lib/types';
-import { collection, getDocs, where, query } from 'firebase/firestore';
+import type { Student, Teacher, Class, PlatformConfig } from '@/lib/types';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
+import { AppDataContext } from '@/context/AppDataContext';
 
 
-export default function LoginPageContent() {
+function LoginPageContent() {
   const [studentIdInput, setStudentIdInput] = useState('');
   const [studentPassword, setStudentPassword] = useState('');
   const [classId, setClassId] = useState('');
@@ -30,10 +29,10 @@ export default function LoginPageContent() {
   const router = useRouter();
   const { toast } = useToast();
   
-  // Use local state for data needed on login page
-  const [localClasses, setLocalClasses] = useState<any[]>([]);
-  const [localTeachers, setLocalTeachers] = useState<any[]>([]);
-  const { platformConfig, fetchInitialData: fetchGlobalData } = useContext(AppDataContext);
+  const [localClasses, setLocalClasses] = useState<Class[]>([]);
+  const [localTeachers, setLocalTeachers] = useState<Teacher[]>([]);
+  const [platformConfig, setPlatformConfig] = useState<PlatformConfig | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const sortedTeachers = useMemo(() => {
     return [...localTeachers].sort((a, b) => {
@@ -48,22 +47,30 @@ export default function LoginPageContent() {
     const userRole = localStorage.getItem('userRole');
     if (userRole === 'student') {
         router.replace('/dashboard');
+        return;
     } else if (userRole === 'teacher') {
         router.replace('/teacher/dashboard');
+        return;
     }
 
-    // Fetch only necessary data for login
     const fetchLoginData = async () => {
+        setIsLoading(true);
         try {
-            const [classesSnap, teachersSnap] = await Promise.all([
+            const [classesSnap, teachersSnap, configDoc] = await Promise.all([
                 getDocs(collection(db, "classes")),
-                getDocs(collection(db, "teachers"))
+                getDocs(collection(db, "teachers")),
+                getDoc(doc(db, 'config', 'main'))
             ]);
-            setLocalClasses(classesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-            setLocalTeachers(teachersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            setLocalClasses(classesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Class[]);
+            setLocalTeachers(teachersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Teacher[]);
+            if (configDoc.exists()) {
+                setPlatformConfig(configDoc.data() as PlatformConfig);
+            }
         } catch (e) {
             console.error("Failed to fetch login data", e);
             toast({ title: "錯誤", description: "無法載入班級與教師資料，請重新整理頁面。", variant: "destructive" });
+        } finally {
+            setIsLoading(false);
         }
     };
     fetchLoginData();
@@ -119,13 +126,16 @@ export default function LoginPageContent() {
 
     try {
         const teacher = localTeachers.find(t => t.id === selectedTeacherId);
-        const correctPassword = teacher?.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
+        if (!teacher) {
+            throw new Error("找不到教師帳號");
+        }
+        const correctPassword = teacher.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
 
-        if (teacher && teacherPassword === correctPassword) {
+        if (teacherPassword === correctPassword) {
             toast({ title: "登入成功！", description: `歡迎回來，${teacher.name}！` });
             localStorage.setItem('userRole', 'teacher');
             localStorage.setItem('teacherId', selectedTeacherId);
-            localStorage.setItem('teacherPassword', teacherPassword); // store the entered pwd
+            localStorage.setItem('teacherPassword', teacherPassword);
             router.push('/teacher/dashboard');
         } else {
             throw new Error("帳號或密碼不正確");
@@ -140,7 +150,15 @@ export default function LoginPageContent() {
     }
   }, [selectedTeacherId, teacherPassword, localTeachers, platformConfig, router, toast]);
 
-  const isFormDisabled = isLoggingIn;
+  const isFormDisabled = isLoggingIn || isLoading;
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
@@ -299,4 +317,10 @@ export default function LoginPageContent() {
       </footer>
     </div>
   );
+}
+
+export default function HomePage() {
+  // This outer component now does nothing but render the content.
+  // No providers are wrapped here.
+  return <LoginPageContent />;
 }

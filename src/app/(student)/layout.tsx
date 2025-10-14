@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -49,12 +48,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { StudentDataContext } from "@/context/StudentDataContext";
-import { AppDataContext, AppDataProvider } from "@/context/AppDataContext";
+import { AppDataContext } from "@/context/AppDataContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import type { Student, PointRecord } from "@/lib/types";
+import type { Student, PointRecord, PlatformConfig, Class as ClassType } from "@/lib/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { formatDistanceToNow } from "date-fns";
@@ -73,10 +72,12 @@ function StudentLayoutContent({
   const router = useRouter();
   const { studentData, setStudentData } = useContext(StudentDataContext);
   const { 
-    students, setStudents, 
-    isLoading, setIsLoading,
-    classes,
+    setStudents,
+    setPlatformConfig,
+    setClasses,
+    isLoading, 
     platformConfig, 
+    classes 
   } = useContext(AppDataContext);
   const { toast } = useToast();
 
@@ -88,7 +89,6 @@ function StudentLayoutContent({
   const [hasNewAnnouncements, setHasNewAnnouncements] = useState(false);
   const [hasNewPointHistory, setHasNewPointHistory] = useState(false);
 
-  // This logic is now safe because the student layout is only rendered after login
   const handleLogout = useCallback(() => {
     setStudentData({ student: null });
     localStorage.removeItem('studentClassId');
@@ -98,67 +98,24 @@ function StudentLayoutContent({
     router.push('/');
   }, [router, setStudentData]);
 
-  useEffect(() => {
-      const userRole = localStorage.getItem('userRole');
-      if (userRole !== 'student') {
-          handleLogout();
-      }
-      
-      const studentId = localStorage.getItem('studentId');
-      const classId = localStorage.getItem('studentClassId');
-
-      if (!studentId || !classId) {
-          handleLogout();
-          return;
-      }
-
-      setIsLoading(true);
-      const unsub = onSnapshot(doc(db, "students", `${classId}-${studentId}`), (doc) => {
-          if (doc.exists()) {
-              const student = { ...doc.data(), _docId: doc.id } as Student;
-              const storedPassword = localStorage.getItem('studentPassword');
-              if (student.password === storedPassword) {
-                  setStudentData({ student });
-              } else {
-                  toast({ title: "驗證失敗", description: "您的登入資訊已過期或不正確，請重新登入。", variant: "destructive" });
-                  handleLogout();
-              }
-          } else {
-              toast({ title: "找不到學生資料", description: "請重新登入。", variant: "destructive" });
-              handleLogout();
-          }
-          setIsLoading(false);
-      });
-
-      return () => unsub();
-
-  }, [handleLogout, setIsLoading, setStudentData, toast]);
-
-
   const student = studentData.student;
-
+  
   useEffect(() => {
-    if (!student) {
-      setHasNewAnnouncements(false);
-      setHasNewPointHistory(false);
-      return;
-    }
+    if (!student) return;
 
+    // Logic to check for new announcements
     const lastViewTime = student.lastAnnouncementsView ? new Date(student.lastAnnouncementsView).getTime() : 0;
-    
     const latestSchoolAnnouncementDate = (platformConfig?.announcements || [])
       .reduce((latest, ann) => Math.max(latest, new Date(ann.date).getTime()), 0);
-
     const studentClass = classes.find(c => c.id === student.classId);
     const latestClassAnnouncementDate = (studentClass?.announcements || [])
       .reduce((latest, ann) => Math.max(latest, new Date(ann.date).getTime()), 0);
-
     setHasNewAnnouncements(latestSchoolAnnouncementDate > lastViewTime || latestClassAnnouncementDate > lastViewTime);
-    
+
+    // Logic to check for new point history
     const lastPointHistoryView = student.lastPointHistoryView ? new Date(student.lastPointHistoryView).getTime() : 0;
     const latestPointRecordDate = (student.pointHistory || [])
       .reduce((latest, record) => Math.max(latest, new Date(record.date).getTime()), 0);
-
     setHasNewPointHistory(latestPointRecordDate > lastPointHistoryView);
 
   }, [student, platformConfig, classes]);
@@ -173,13 +130,11 @@ function StudentLayoutContent({
         setIsSaving(false);
         return;
     }
-
     if (newPassword.length < 3) {
         toast({ title: "密碼太短", description: "新密碼長度至少需要 3 個字元。", variant: "destructive" });
         setIsSaving(false);
         return;
     }
-    
     if (student.password !== currentPassword) {
         toast({ title: "密碼錯誤", description: "您輸入的目前密碼不正確。", variant: "destructive" });
         setIsSaving(false);
@@ -193,9 +148,7 @@ function StudentLayoutContent({
             }
             return s;
         }));
-        
         localStorage.setItem('studentPassword', newPassword);
-
         toast({ title: "密碼已更新", description: "您的密碼已成功更新。" });
         setIsSettingsOpen(false);
         setCurrentPassword("");
@@ -212,8 +165,7 @@ function StudentLayoutContent({
     if (!student || !hasNewPointHistory || !student._docId) return;
     
     const now = new Date().toISOString();
-    
-    setHasNewPointHistory(false);
+    setHasNewPointHistory(false); // Optimistic update
 
     try {
         await setStudents(prevStudents => 
@@ -226,7 +178,7 @@ function StudentLayoutContent({
         );
     } catch (e) {
         console.error("Failed to update lastPointHistoryView:", e);
-        setHasNewPointHistory(true);
+        setHasNewPointHistory(true); // Revert optimistic update on failure
         toast({ title: "錯誤", description: "無法更新通知狀態，請稍後再試。", variant: "destructive" });
     }
 }, [student, hasNewPointHistory, setStudents, toast]);
@@ -281,7 +233,6 @@ function StudentLayoutContent({
   }
 
   return (
-    <>
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader>
@@ -387,7 +338,7 @@ function StudentLayoutContent({
             </footer>
         </div>
       </SidebarInset>
-    </SidebarProvider>
+    
 
     <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
       <DialogContent className="sm:max-w-[425px]">
@@ -419,7 +370,7 @@ function StudentLayoutContent({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-    </>
+    </SidebarProvider>
   );
 }
 
@@ -428,9 +379,70 @@ export default function StudentLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <AppDataProvider>
-      <StudentLayoutContent>{children}</StudentLayoutContent>
-    </AppDataProvider>
-  );
+  const { setStudents, setStocks, setRewards, setClasses, setTeachers, setPlatformConfig, setIsLoading, fetchInitialData } = useContext(AppDataContext);
+  const { setStudentData } = useContext(StudentDataContext);
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem('studentClassId');
+    localStorage.removeItem('studentId');
+    localStorage.removeItem('studentPassword');
+    localStorage.removeItem('userRole');
+    router.push('/');
+  }, [router]);
+
+  useEffect(() => {
+    const studentId = localStorage.getItem('studentId');
+    const classId = localStorage.getItem('studentClassId');
+    const storedPassword = localStorage.getItem('studentPassword');
+    const userRole = localStorage.getItem('userRole');
+
+    if (userRole !== 'student' || !studentId || !classId || !storedPassword) {
+      handleLogout();
+      return;
+    }
+
+    setIsLoading(true);
+
+    // Single listener for the specific student document
+    const unsubStudent = onSnapshot(doc(db, "students", `${classId}-${studentId}`), (doc) => {
+        if (doc.exists()) {
+            const student = { ...doc.data(), _docId: doc.id } as Student;
+            if (student.password === storedPassword) {
+                setStudentData({ student });
+            } else {
+                toast({ title: "驗證失敗", description: "您的登入資訊已過期或不正確，請重新登入。", variant: "destructive" });
+                handleLogout();
+            }
+        } else {
+            toast({ title: "找不到學生資料", description: "請重新登入。", variant: "destructive" });
+            handleLogout();
+        }
+        // We might not be fully "done" loading here, but the primary user data is loaded.
+        // Other listeners will fill in the rest.
+    }, (error) => {
+        console.error("Error fetching student data:", error);
+        toast({ title: "錯誤", description: "讀取學生資料時發生錯誤。", variant: "destructive" });
+        handleLogout();
+    });
+
+    // Listeners for other collections
+    const unsubConfig = onSnapshot(doc(db, "config", "main"), (doc) => setPlatformConfig(doc.data() as PlatformConfig));
+    const unsubClasses = onSnapshot(collection(db, "classes"), (snap) => setClasses(snap.docs.map(d => ({ ...d.data(), id: d.id, _docId: d.id })) as ClassType[]));
+    const unsubStudents = onSnapshot(collection(db, "students"), (snap) => setStudents(snap.docs.map(d => ({ ...d.data(), _docId: d.id })) as Student[]));
+
+    // Combine all unsubscribes
+    const unsubAll = [unsubStudent, unsubConfig, unsubClasses, unsubStudents];
+
+    // Mark loading as false after a short delay to allow all initial data to arrive.
+    const timer = setTimeout(() => setIsLoading(false), 1500);
+
+    return () => {
+      unsubAll.forEach(unsub => unsub());
+      clearTimeout(timer);
+    };
+  }, [setClasses, setIsLoading, setPlatformConfig, setStudentData, setStudents, setTeachers, handleLogout, toast]);
+
+  return <StudentLayoutContent>{children}</StudentLayoutContent>;
 }

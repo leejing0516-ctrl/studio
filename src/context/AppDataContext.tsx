@@ -1,4 +1,3 @@
-
 "use client";
 
 import { createContext, useState, ReactNode, useEffect, useCallback, useContext } from 'react';
@@ -75,46 +74,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [isMarketOpen, setIsMarketOpen] = useState(false);
 
   const fetchInitialData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-        const [
-            studentsSnap,
-            teachersSnap,
-            classesSnap,
-            rewardsSnap,
-            stocksSnap,
-        ] = await Promise.all([
-            getDocs(collection(db, "students")),
-            getDocs(collection(db, "teachers")),
-            getDocs(collection(db, "classes")),
-            getDocs(collection(db, "rewards")),
-            getDocs(collection(db, "stocks")),
-        ]);
-
-        const studentsData = studentsSnap.docs.map(doc => ({ ...doc.data(), _docId: doc.id })) as Student[];
-        const teachersData = teachersSnap.docs.map(doc => ({ ...doc.data(), _docId: doc.id })) as Teacher[];
-        const classesData = classesSnap.docs.map(doc => ({ ...doc.data(), id: doc.id, _docId: doc.id })) as Class[];
-        const rewardsData = rewardsSnap.docs.map(doc => ({ ...doc.data(), _docId: doc.id })) as Reward[];
-        const stocksData = stocksSnap.docs.map(doc => ({ ...doc.data(), id: doc.id, _docId: doc.id })) as Stock[];
-        
-        setStudentsState(studentsData);
-        setTeachersState(teachersData);
-        setClassesState(classesData);
-        setRewardsState(rewardsData);
-        setStocksState(stocksData);
-
-        const configRef = doc(db, 'config', 'main');
-        onSnapshot(configRef, (docSnap) => {
-            if (docSnap.exists()) {
-                setPlatformConfigState({ ...docSnap.data(), id: docSnap.id } as PlatformConfig);
-            }
-        });
-
-    } catch (error) {
-        console.error("Error fetching initial data:", error);
-    } finally {
-        setIsLoading(false);
-    }
+    // This function can be kept for manual refetching if needed,
+    // but the primary data loading is now handled by useEffect in layouts.
   }, []);
 
   const handleRunTransaction = useCallback(async (updateFunction: (transaction: Transaction) => Promise<any>) => {
@@ -132,6 +93,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const setPlatformConfig = async (dataToUpdate: Partial<PlatformConfig>) => {
       const configRef = doc(db, 'config', 'main');
       await setDoc(configRef, dataToUpdate, { merge: true });
+      // Optimistic update
+      setPlatformConfigState(prev => ({ ...(prev || {id: 'main'}), ...dataToUpdate }));
   };
 
   const createSetterWithBatch = <T extends { _docId?: string, id?: any }>(
@@ -159,7 +122,12 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         const oldItem = oldMap.get(key);
         if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(newItem)) {
            const { _docId, ...itemData } = newItem;
-           const docRef = doc(db, collectionName, key);
+           const docId = useId ? newItem.id : key;
+           if (!docId) {
+             console.error(`Missing docId for item in ${collectionName}:`, newItem);
+             return;
+           }
+           const docRef = doc(db, collectionName, docId);
            batch.set(docRef, itemData, { merge: true });
         }
       });
@@ -168,7 +136,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         await batch.commit();
       } catch (error) {
         console.error(`Batch update for ${collectionName} failed:`, error);
-        // Optionally revert optimistic update
         stateSetter(currentState);
       }
     };
@@ -198,4 +165,3 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     </AppDataContext.Provider>
   );
 };
-
