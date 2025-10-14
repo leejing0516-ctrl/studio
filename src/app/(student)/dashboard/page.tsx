@@ -288,7 +288,7 @@ export default function StudentDashboardPage() {
                 <div className="space-y-2 text-sm text-card-description-foreground">
                     {studentGroups.map((group, index) => (
                         <p key={index}>
-                           在 <span className="font-bold text-card-value-foreground">{group.teacherName}</span> 的課堂中，您是 <span className="font-bold text-card-value-foreground">{group.groupName}</span> 的成員。
+                           在 <strong className="text-card-value-foreground">{group.teacherName}</strong> 的課堂中，您是 <strong className="text-card-value-foreground">{group.groupName}</strong> 的成員。
                         </p>
                     ))}
                 </div>
@@ -299,7 +299,7 @@ export default function StudentDashboardPage() {
         </Card>
         <Card className="bg-bu-ke-xing-qiu-card text-bu-ke-xing-qiu-card-foreground">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-card-title">{cardTexts.buKeXingQiu?.title || '布可星球'}</CardTitle>
+                <CardTitle className="text-card-title text-current">{cardTexts.buKeXingQiu?.title || '布可星球'}</CardTitle>
                 <Star className="h-4 w-4 text-current/80" />
             </CardHeader>
             <CardContent>
@@ -343,5 +343,7 @@ export default function StudentDashboardPage() {
     </div>
   );
 }
+
+    
 
     
