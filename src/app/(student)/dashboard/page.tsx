@@ -288,7 +288,7 @@ export default function StudentDashboardPage() {
                 <div className="space-y-2 text-sm text-my-groups-card-foreground">
                     {studentGroups.map((group, index) => (
                         <p key={index}>
-                            在 **{group.teacherName}** 的課堂中，您是 **{group.groupName}** 的成員。
+                            在 <span className="font-bold">{group.teacherName}</span> 的課堂中，您是 <span className="font-bold">{group.groupName}</span> 的成員。
                         </p>
                     ))}
                 </div>
