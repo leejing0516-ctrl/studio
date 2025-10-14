@@ -206,7 +206,6 @@ const GroupManagementDialog = ({
     );
 };
 
-
 export default function TeacherDashboardPage() {
     const { 
         students, setStudents,
