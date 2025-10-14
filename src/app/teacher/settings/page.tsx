@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useContext, useEffect } from "react";
@@ -65,7 +64,7 @@ export default function TeacherSettingsPage() {
     const [dailyRewardStandardMax, setDailyRewardStandardMax] = useState<number | string>('');
 
     const [sponsorLogoUrls, setSponsorLogoUrls] = useState<(string | null)[]>([]);
-    const [selectedThemeName, setSelectedThemeName] = useState<string>("default");
+    const [selectedThemeName, setSelectedThemeName] = useState<string>("makeup-pink");
 
     const availableThemes = [
         ...defaultThemes,
@@ -88,7 +87,7 @@ export default function TeacherSettingsPage() {
             setMarketOpenHour(platformConfig.marketOpenHour ?? 9);
             setMarketCloseHour(platformConfig.marketCloseHour ?? 14);
             setSponsorLogoUrls(platformConfig.sponsorLogoUrls || [null, null, null, null]);
-            setSelectedThemeName(platformConfig.theme || "default");
+            setSelectedThemeName(platformConfig.theme || "makeup-pink");
             
             const defaultBuKeDescription = "「布可星球」是你閱讀成就的殿堂！你在這裡挖掘的每一點能量、每一本書，都是你知識宇宙擴張的證明。\n每個月底，校長會將你「本月挖掘的能量」按照一定的比例，轉換成可以在平台中使用的「點數」，作為對你努力閱讀的實質獎勵。繼續閱讀，讓你的星球更加璀璨吧！";
             setBuKeXingQiuDescription(platformConfig.buKeXingQiuDescription || defaultBuKeDescription);

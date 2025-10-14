@@ -19,21 +19,24 @@ export default function RootLayout({
 
   const appIconUrl = platformConfig?.appIconUrl || DEFAULT_APP_ICON_URL;
 
+  const availableThemes = useMemo(() => [
+    ...themes,
+    ...(platformConfig?.customThemes || [])
+  ], [platformConfig?.customThemes]);
+
   const activeThemeColors = useMemo(() => {
-    const themeName = platformConfig?.theme || 'default';
-    const selectedTheme = themes.find(t => t.name === themeName);
+    const themeName = platformConfig?.theme || 'makeup-pink';
+    const selectedTheme = availableThemes.find(t => t.name === themeName);
     
-    // Prioritize light theme if it exists for the selected theme, otherwise fallback to dark
-    if (selectedTheme?.cssVars.light) {
-      return selectedTheme.cssVars.light;
-    }
-    if (selectedTheme?.cssVars.dark) {
-      return selectedTheme.cssVars.dark;
+    if (selectedTheme) {
+      // Prioritize light theme if it exists for the selected theme, otherwise fallback to dark
+      return selectedTheme.cssVars.light || selectedTheme.cssVars.dark;
     }
     
     // Fallback to the very first default theme's dark variables if nothing matches
-    return themes[0].cssVars.dark;
-  }, [platformConfig?.theme]);
+    const defaultTheme = availableThemes.find(t => t.name === 'makeup-pink') || availableThemes[0];
+    return defaultTheme.cssVars.light || defaultTheme.cssVars.dark;
+  }, [platformConfig?.theme, availableThemes]);
 
 
   const dashboardCardsConfig = platformConfig?.dashboardCards;
