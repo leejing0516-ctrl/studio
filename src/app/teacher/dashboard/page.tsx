@@ -110,12 +110,13 @@ const GroupManagementDialog = ({
 
     const handleSaveChanges = () => {
         const updatedStudentAssignments = studentsInClass.map(student => {
-            const newGroupId = studentGroupAssignments[student._docId!];
+            if (!student._docId) return { studentId: '', groupId: undefined };
+            const newGroupId = studentGroupAssignments[student._docId];
             return {
-                studentId: student._docId!,
+                studentId: student._docId,
                 groupId: newGroupId || undefined,
             };
-        });
+        }).filter(item => item.studentId);
         onSave(groups, updatedStudentAssignments);
     };
 
@@ -1534,8 +1535,8 @@ export default function TeacherDashboardPage() {
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
-                                                    {pointHistoryForTeacherAndClass.records.map(record => (
-                                                        <TableRow key={record.date}>
+                                                    {pointHistoryForTeacherAndClass.records.map((record, index) => (
+                                                        <TableRow key={index}>
                                                             <TableCell>{record.studentName}</TableCell>
                                                             <TableCell>{record.points}</TableCell>
                                                             <TableCell>{record.reason}</TableCell>
