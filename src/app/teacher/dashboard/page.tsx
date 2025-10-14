@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useContext, useEffect, useMemo } from "react";
@@ -1860,9 +1861,11 @@ export default function TeacherDashboardPage() {
                     <DialogHeader>
                         <DialogTitle>編輯 {studentToViewRaw?.name} 的原始資料</DialogTitle>
                         <DialogDescription>
-                            <p className="text-destructive font-bold">警告：這是一個高風險操作！</p>
-                             請只在完全了解您正在做什麼的情況下修改此資料。不正確的修改可能導致該學生的帳戶永久損壞。
-                             修改完成後，請點擊「儲存變更」。
+                            <div>
+                                <p className="text-destructive font-bold">警告：這是一個高風險操作！</p>
+                                 請只在完全了解您正在做什麼的情況下修改此資料。不正確的修改可能導致該學生的帳戶永久損壞。
+                                 修改完成後，請點擊「儲存變更」。
+                            </div>
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
