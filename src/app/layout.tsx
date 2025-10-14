@@ -27,12 +27,13 @@ export default function RootLayout({
     const themeName = platformConfig?.theme || 'makeup-pink';
     const selectedTheme = availableThemes.find(t => t.name === themeName);
     
+    // SAFEGUARD: If selectedTheme is somehow not found, fallback to the first available theme.
     if (selectedTheme) {
       // Prioritize light theme if it exists for the selected theme, otherwise fallback to dark
       return selectedTheme.cssVars.light || selectedTheme.cssVars.dark;
     }
     
-    // Fallback to the very first default theme's dark variables if nothing matches
+    // Absolute fallback to the very first default theme's dark variables if nothing matches
     const fallbackTheme = availableThemes[0];
     return fallbackTheme.cssVars.light || fallbackTheme.cssVars.dark;
   }, [platformConfig?.theme, availableThemes]);
