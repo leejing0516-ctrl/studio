@@ -80,7 +80,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [platformConfig, setPlatformConfigState] = useState<PlatformConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMarketOpen, setIsMarketOpen] = useState(false);
-  const { setStudentData } = useContext(StudentDataContext);
+  const { studentData, setStudentData } = useContext(StudentDataContext);
   const { toast } = useToast();
 
   const [loadingStates, setLoadingStates] = useState<LoadingStates>({
@@ -111,12 +111,26 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const createSetterWithBatch = <T extends { _docId?: string, id?: any }>(collectionName: string) => {
-    return async (action: (prevState: T[]) => T[]) => {
-      const currentData = (collectionName === 'students' ? students : 
-                           collectionName === 'teachers' ? teachers : 
-                           collectionName === 'classes' ? classes : 
-                           collectionName === 'rewards' ? rewards : stocks) as T[];
-      const newData = action(currentData);
+    return async (action: SetStateActionWithFunction<T[]>) => {
+      const currentDataSetterMap = {
+        'students': setStudentsState,
+        'teachers': setTeachersState,
+        'classes': setClassesState,
+        'rewards': setRewardsState,
+        'stocks': setStocksState,
+      };
+
+      const currentDataMap = {
+        'students': students,
+        'teachers': teachers,
+        'classes': classes,
+        'rewards': rewards,
+        'stocks': stocks,
+      };
+      
+      const currentData = currentDataMap[collectionName as keyof typeof currentDataMap] as T[];
+      
+      const newData = typeof action === 'function' ? action(currentData) : action;
       
       const batch = writeBatch(db);
       const useId = useIdAsDocId(collectionName);
@@ -132,13 +146,19 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       
       newMap.forEach((newItem, key) => {
         const oldItem = oldMap.get(key);
+        // A simple JSON diff is not perfect for complex objects but is a good starting point.
         if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(newItem)) {
            const { _docId, ...itemData } = newItem;
-           batch.set(doc(db, collectionName, key), itemData, { merge: true });
+           const docRef = doc(db, collectionName, key);
+           batch.set(docRef, itemData, { merge: true });
         }
       });
       
       await batch.commit();
+
+      // This setter is now only called after the batch commit, but onSnapshot should handle the update.
+      // For immediate UI feedback, you can still call the state setter.
+      // (currentDataSetterMap[collectionName as keyof typeof currentDataSetterMap] as React.Dispatch<React.SetStateAction<T[]>>)(newData);
     };
   };
 
@@ -288,27 +308,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 });
             });
             setter(data);
-
-            const userRole = localStorage.getItem('userRole');
-            if (userRole === 'student') {
-                const storedClassId = localStorage.getItem('studentClassId');
-                const storedStudentId = localStorage.getItem('studentId');
-                const storedPassword = localStorage.getItem('studentPassword');
-
-                if (collectionName === 'students' && storedClassId && storedStudentId && storedPassword) {
-                    const foundStudent = (data as Student[]).find(s => s.classId === storedClassId && s.id === storedStudentId);
-                    if (foundStudent && foundStudent.password === storedPassword) {
-                         setStudentData({ student: foundStudent });
-                    } else {
-                        // This indicates a mismatch, could trigger logout in layout
-                        setStudentData({ student: null });
-                         toast({ title: "驗證失敗", description: "您的登入資訊已過期或不正確，請重新登入。", variant: "destructive" });
-                         localStorage.clear();
-                         window.location.href = '/';
-                    }
-                }
-            }
-
+            
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
         }, (error) => {
             console.error(`Error fetching real-time ${collectionName}:`, error);
@@ -347,7 +347,32 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       subscriptions.forEach(unsub => unsub());
     };
-  }, [setStudentData, toast]);
+  }, []);
+
+  useEffect(() => {
+    const userRole = localStorage.getItem('userRole');
+    if (userRole === 'student') {
+        const storedClassId = localStorage.getItem('studentClassId');
+        const storedStudentId = localStorage.getItem('studentId');
+        const storedPassword = localStorage.getItem('studentPassword');
+
+        if (students.length > 0 && storedClassId && storedStudentId && storedPassword) {
+            const foundStudent = students.find(s => s.classId === storedClassId && s.id === storedStudentId);
+            if (foundStudent) {
+                if(foundStudent.password === storedPassword) {
+                    setStudentData({ student: foundStudent });
+                } else {
+                    setStudentData({ student: null });
+                    toast({ title: "驗證失敗", description: "您的登入資訊已過期或不正確，請重新登入。", variant: "destructive" });
+                    localStorage.clear();
+                    if(window.location.pathname !== '/') {
+                        window.location.href = '/';
+                    }
+                }
+            }
+        }
+    }
+  }, [students, setStudentData, toast]);
 
   return (
     <AppDataContext.Provider value={{ 
