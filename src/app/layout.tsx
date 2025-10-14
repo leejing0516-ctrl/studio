@@ -27,12 +27,14 @@ export default function RootLayout({
     }
     
     // Fallback logic for initial load or if customTheme is somehow missing.
-    if (platformConfig?.theme) {
-      const selectedTheme = themes.find(t => t.name === platformConfig.theme);
-      if (selectedTheme) {
-        return selectedTheme.cssVars.dark; // Default to dark if light is not available
-      }
+    const themeName = platformConfig?.theme || 'default';
+    const selectedTheme = themes.find(t => t.name === themeName);
+    if (selectedTheme) {
+      // For themes with both light and dark, decide which one to use.
+      // Here we can add logic, for now, defaulting to dark if light is not present.
+      return selectedTheme.cssVars.light || selectedTheme.cssVars.dark;
     }
+
     // Absolute fallback to the hardcoded default theme.
     return themes.find(t => t.name === 'default')!.cssVars.dark;
   })();

@@ -134,13 +134,6 @@ export default function TeacherSettingsPage() {
         
         try {
             const selectedTheme = availableThemes.find(t => t.name === selectedThemeName);
-            let customThemeData: CustomTheme | undefined = undefined;
-
-            if (selectedTheme) {
-                // Determine whether to use light or dark vars. Default to dark.
-                customThemeData = selectedTheme.cssVars.light || selectedTheme.cssVars.dark;
-            }
-
             const dataToUpdate: Partial<PlatformConfig> = {
                 logoUrl: logoUrl,
                 appIconUrl: appIconUrl,
@@ -150,6 +143,8 @@ export default function TeacherSettingsPage() {
                 marketCloseHour: Number(marketCloseHour),
                 sponsorLogoUrls: sponsorLogoUrls,
                 theme: selectedThemeName,
+                // Ensure the corresponding color variables are also saved
+                customTheme: selectedTheme ? (selectedTheme.cssVars.light || selectedTheme.cssVars.dark) : undefined,
                 buKeXingQiuDescription: buKeXingQiuDescription,
                 dailyRewardJackpotChance: Number(dailyRewardJackpotChance) / 100,
                 dailyRewardJackpotMin: Number(dailyRewardJackpotMin),
@@ -157,7 +152,6 @@ export default function TeacherSettingsPage() {
                 dailyRewardStandardChance: Number(dailyRewardStandardChance) / 100,
                 dailyRewardStandardMin: Number(dailyRewardStandardMin),
                 dailyRewardStandardMax: Number(dailyRewardStandardMax),
-                customTheme: customThemeData,
             };
             
             await setPlatformConfig(dataToUpdate);
