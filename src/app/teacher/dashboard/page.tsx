@@ -78,12 +78,9 @@ export default function TeacherDashboardPage() {
     const [isAllocatePointsDialogOpen, setIsAllocatePointsDialogOpen] = useState(false);
     const [isImpersonateDialogOpen, setIsImpersonateDialogOpen] = useState(false);
     const [isGroupManagementDialogOpen, setIsGroupManagementDialogOpen] = useState(false);
-    const [isRawDataDialogOpen, setIsRawDataDialogOpen] = useState(false);
 
     const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
     const [studentToResetPassword, setStudentToResetPassword] = useState<Student | null>(null);
-    const [studentToViewRaw, setStudentToViewRaw] = useState<Student | null>(null);
-    const [rawStudentData, setRawStudentData] = useState('');
     const [parsedCsvData, setParsedCsvData] = useState<Student[]>([]);
     const [csvFile, setCsvFile] = useState<File | null>(null);
     const [csvPreview, setCsvPreview] = useState<string[][]>([]);
@@ -939,25 +936,6 @@ export default function TeacherDashboardPage() {
         }
     };
 
-    const handleOpenRawDataDialog = (student: Student) => {
-        setStudentToViewRaw(student);
-        setRawStudentData(JSON.stringify(student, null, 2));
-        setIsRawDataDialogOpen(true);
-    };
-
-    const handleSaveRawData = async () => {
-        if (!studentToViewRaw || !studentToViewRaw._docId) return;
-        try {
-            const updatedStudentData = JSON.parse(rawStudentData);
-            await setStudents(prev => prev.map(s => s._docId === studentToViewRaw._docId ? updatedStudentData : s));
-            toast({ title: "資料已手動更新", description: "學生的原始資料已成功儲存。" });
-            setIsRawDataDialogOpen(false);
-        } catch (e) {
-            toast({ title: "儲存失敗", description: "JSON 格式錯誤，請檢查您的輸入。", variant: "destructive"});
-        }
-    };
-
-
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-full">
@@ -1046,11 +1024,6 @@ export default function TeacherDashboardPage() {
                                                 <TableCell>{student.name}</TableCell>
                                                 <TableCell>{Math.round(student.points).toLocaleString()}</TableCell>
                                                 <TableCell className="text-right">
-                                                    {role === 'admin' && (
-                                                        <Button variant="ghost" size="icon" onClick={() => handleOpenRawDataDialog(student)}>
-                                                            <DatabaseZap className="h-4 w-4 text-amber-500" />
-                                                        </Button>
-                                                    )}
                                                     {role !== 'subject_teacher' && (
                                                         <>
                                                             <Button variant="ghost" size="icon" onClick={() => { setStudentToEdit(student); setIsEditStudentDialogOpen(true); }}><Edit className="h-4 w-4"/></Button>
@@ -1856,34 +1829,6 @@ export default function TeacherDashboardPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-             <Dialog open={isRawDataDialogOpen} onOpenChange={setIsRawDataDialogOpen}>
-                <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle>編輯 {studentToViewRaw?.name} 的原始資料</DialogTitle>
-                        <DialogDescription>
-                            <div>
-                                <p className="text-destructive font-bold">警告：這是一個高風險操作！</p>
-                                 請只在完全了解您正在做什麼的情況下修改此資料。不正確的修改可能導致該學生的帳戶永久損壞。
-                                 修改完成後，請點擊「儲存變更」。
-                            </div>
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4">
-                        <Textarea 
-                            value={rawStudentData}
-                            onChange={(e) => setRawStudentData(e.target.value)}
-                            rows={20}
-                            className="font-mono text-xs"
-                        />
-                    </div>
-                    <DialogFooter>
-                        <DialogClose asChild>
-                            <Button variant="secondary">取消</Button>
-                        </DialogClose>
-                        <Button onClick={handleSaveRawData} variant="destructive">儲存變更</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
     )
 }
@@ -2038,3 +1983,5 @@ const GroupManagementDialog = ({
         </DialogContent>
     );
 };
+
+    
