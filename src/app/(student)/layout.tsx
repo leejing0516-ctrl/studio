@@ -49,7 +49,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { StudentDataContext } from "@/context/StudentDataContext";
-import { AppDataContext } from "@/context/AppDataContext";
+import { AppDataContext, AppDataProvider } from "@/context/AppDataContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,6 +61,8 @@ import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
+import { collection, onSnapshot, doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 function StudentLayoutContent({
   children,
@@ -70,7 +72,12 @@ function StudentLayoutContent({
   const pathname = usePathname();
   const router = useRouter();
   const { studentData, setStudentData } = useContext(StudentDataContext);
-  const { students, setStudents, isLoading, classes, platformConfig } = useContext(AppDataContext);
+  const { 
+    students, setStudents, 
+    isLoading, setIsLoading,
+    classes,
+    platformConfig, 
+  } = useContext(AppDataContext);
   const { toast } = useToast();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -81,11 +88,7 @@ function StudentLayoutContent({
   const [hasNewAnnouncements, setHasNewAnnouncements] = useState(false);
   const [hasNewPointHistory, setHasNewPointHistory] = useState(false);
 
-  const student = useMemo(() => {
-     if (!studentData.student?._docId) return studentData.student;
-     return students.find(s => s._docId === studentData.student!._docId) || studentData.student;
-  }, [studentData.student, students]);
-
+  // This logic is now safe because the student layout is only rendered after login
   const handleLogout = useCallback(() => {
     setStudentData({ student: null });
     localStorage.removeItem('studentClassId');
@@ -96,12 +99,43 @@ function StudentLayoutContent({
   }, [router, setStudentData]);
 
   useEffect(() => {
-    if (isLoading) return;
-    const userRole = localStorage.getItem('userRole');
-    if (userRole !== 'student') {
-        handleLogout();
-    }
-  }, [isLoading, handleLogout]);
+      const userRole = localStorage.getItem('userRole');
+      if (userRole !== 'student') {
+          handleLogout();
+      }
+      
+      const studentId = localStorage.getItem('studentId');
+      const classId = localStorage.getItem('studentClassId');
+
+      if (!studentId || !classId) {
+          handleLogout();
+          return;
+      }
+
+      setIsLoading(true);
+      const unsub = onSnapshot(doc(db, "students", `${classId}-${studentId}`), (doc) => {
+          if (doc.exists()) {
+              const student = { ...doc.data(), _docId: doc.id } as Student;
+              const storedPassword = localStorage.getItem('studentPassword');
+              if (student.password === storedPassword) {
+                  setStudentData({ student });
+              } else {
+                  toast({ title: "驗證失敗", description: "您的登入資訊已過期或不正確，請重新登入。", variant: "destructive" });
+                  handleLogout();
+              }
+          } else {
+              toast({ title: "找不到學生資料", description: "請重新登入。", variant: "destructive" });
+              handleLogout();
+          }
+          setIsLoading(false);
+      });
+
+      return () => unsub();
+
+  }, [handleLogout, setIsLoading, setStudentData, toast]);
+
+
+  const student = studentData.student;
 
   useEffect(() => {
     if (!student) {
@@ -131,7 +165,7 @@ function StudentLayoutContent({
 
 
   const handleChangePassword = async () => {
-    if (!student) return;
+    if (!student || !student._docId) return;
     setIsSaving(true);
 
     if (newPassword !== confirmPassword) {
@@ -146,9 +180,7 @@ function StudentLayoutContent({
         return;
     }
     
-    const studentToUpdate = students.find(s => s.id === student.id && s.classId === student.classId);
-
-    if (studentToUpdate?.password !== currentPassword) {
+    if (student.password !== currentPassword) {
         toast({ title: "密碼錯誤", description: "您輸入的目前密碼不正確。", variant: "destructive" });
         setIsSaving(false);
         return;
@@ -156,7 +188,7 @@ function StudentLayoutContent({
 
     try {
         await setStudents(currentStudents => currentStudents.map(s => {
-            if (s.id === student.id && s.classId === student.classId) {
+            if (s._docId === student._docId) {
                 return { ...s, password: newPassword };
             }
             return s;
@@ -177,7 +209,7 @@ function StudentLayoutContent({
   };
 
   const handleOpenNotifications = useCallback(async () => {
-    if (!student || !hasNewPointHistory) return;
+    if (!student || !hasNewPointHistory || !student._docId) return;
     
     const now = new Date().toISOString();
     
@@ -186,7 +218,7 @@ function StudentLayoutContent({
     try {
         await setStudents(prevStudents => 
             prevStudents.map(s => {
-                if (s.id === student.id && s.classId === student.classId) {
+                if (s._docId === student._docId) {
                     return { ...s, lastPointHistoryView: now };
                 }
                 return s;
@@ -231,15 +263,13 @@ function StudentLayoutContent({
     const actionText = isPositive ? '發送了' : '扣除了';
     const amountText = isPositive ? `+${record.points.toLocaleString()}` : record.points.toLocaleString();
     const textColor = isPositive ? 'text-green-600' : 'text-red-500';
-
-    const teacherName = record.reason?.match(/由老師 (.*?) (發放|批次發放|扣除|批次扣除)/)?.[1] || record.reason;
     
     return (
         <div className="flex items-start gap-3">
             <Mail className="mt-1 h-4 w-4 text-muted-foreground shrink-0" />
             <div className="text-sm">
                 <p>
-                    <span className="font-semibold">{teacherName}</span> 
+                    <span className="font-semibold">{record.reason}</span> 
                     {' '}{actionText} <span className={cn("font-bold", textColor)}>{amountText}</span> 點
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -249,8 +279,6 @@ function StudentLayoutContent({
         </div>
     )
   }
-  
-  const isWorldPage = pathname === '/world';
 
   return (
     <>
@@ -400,5 +428,9 @@ export default function StudentLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <StudentLayoutContent>{children}</StudentLayoutContent>;
+  return (
+    <AppDataProvider>
+      <StudentLayoutContent>{children}</StudentLayoutContent>
+    </AppDataProvider>
+  );
 }

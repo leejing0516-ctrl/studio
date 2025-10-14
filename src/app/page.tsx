@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useContext, useEffect, useMemo, useCallback } from 'react';
@@ -14,6 +13,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AppDataContext } from '@/context/AppDataContext';
 import type { Student, Teacher } from '@/lib/types';
+import { collection, getDocs, where, query } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
 
 
 export default function LoginPageContent() {
@@ -27,18 +29,20 @@ export default function LoginPageContent() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const { classes, isLoading, students, teachers: allTeachers, platformConfig } = useContext(AppDataContext);
+  
+  // Use local state for data needed on login page
+  const [localClasses, setLocalClasses] = useState<any[]>([]);
+  const [localTeachers, setLocalTeachers] = useState<any[]>([]);
+  const { platformConfig, fetchInitialData: fetchGlobalData } = useContext(AppDataContext);
 
   const sortedTeachers = useMemo(() => {
-    if (!allTeachers) return [];
-    return [...allTeachers].sort((a, b) => {
+    return [...localTeachers].sort((a, b) => {
         if (a.sortOrder && b.sortOrder) return a.sortOrder - b.sortOrder;
         if (a.sortOrder) return -1;
         if (b.sortOrder) return 1;
         return (a.id || '').localeCompare(b.id || '');
     });
-  }, [allTeachers]);
-
+  }, [localTeachers]);
 
   useEffect(() => {
     const userRole = localStorage.getItem('userRole');
@@ -47,77 +51,94 @@ export default function LoginPageContent() {
     } else if (userRole === 'teacher') {
         router.replace('/teacher/dashboard');
     }
-  }, [router]);
 
-  const handleStudentLogin = useCallback((e: React.FormEvent) => {
+    // Fetch only necessary data for login
+    const fetchLoginData = async () => {
+        try {
+            const [classesSnap, teachersSnap] = await Promise.all([
+                getDocs(collection(db, "classes")),
+                getDocs(collection(db, "teachers"))
+            ]);
+            setLocalClasses(classesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            setLocalTeachers(teachersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        } catch (e) {
+            console.error("Failed to fetch login data", e);
+            toast({ title: "錯誤", description: "無法載入班級與教師資料，請重新整理頁面。", variant: "destructive" });
+        }
+    };
+    fetchLoginData();
+  }, [router, toast]);
+
+  const handleStudentLogin = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoggingIn(true);
 
     if (!classId || !studentIdInput || !studentPassword) {
-        toast({
-            title: "資訊不完整",
-            description: "請填寫所有欄位。",
-            variant: "destructive",
-        });
+        toast({ title: "資訊不完整", description: "請填寫所有欄位。", variant: "destructive" });
         setIsLoggingIn(false);
         return;
     }
     
-    // Although AppDataContext is loading in the background, we don't wait for it.
-    // The login must work even if data is not fully loaded.
-    // We check against the data *if* it's available. This may mean the first login attempt fails if data isn't ready.
-    // A better approach would be to fetch just what's needed for login, but we'll stick to the current architecture.
-    
-    const foundStudent = students.find(
-      (s: Student) => s.classId === classId && s.id === studentIdInput
-    );
+    try {
+        const studentRef = doc(db, 'students', `${classId}-${studentIdInput}`);
+        const studentDoc = await getDoc(studentRef);
 
-    if (foundStudent && foundStudent.password === studentPassword) {
-        toast({ title: "登入成功！", description: `歡迎回來，${foundStudent.name}！`});
-        localStorage.setItem('userRole', 'student');
-        localStorage.setItem('studentClassId', foundStudent.classId);
-        localStorage.setItem('studentId', foundStudent.id);
-        localStorage.setItem('studentPassword', studentPassword);
-        router.push('/dashboard');
-    } else {
+        if (studentDoc.exists()) {
+            const foundStudent = studentDoc.data() as Student;
+            if (foundStudent.password === studentPassword) {
+                toast({ title: "登入成功！", description: `歡迎回來，${foundStudent.name}！`});
+                localStorage.setItem('userRole', 'student');
+                localStorage.setItem('studentClassId', classId);
+                localStorage.setItem('studentId', studentIdInput);
+                localStorage.setItem('studentPassword', studentPassword);
+                router.push('/dashboard');
+            } else {
+                throw new Error("密碼不正確");
+            }
+        } else {
+             throw new Error("找不到學生資料");
+        }
+    } catch (error) {
         toast({
             title: "登入失敗",
-            description: "您輸入的班級、學號或密碼不正確，或資料仍在載入中，請稍候再試。",
+            description: "您輸入的班級、學號或密碼不正確。",
             variant: "destructive",
         });
         setIsLoggingIn(false);
     }
-  }, [classId, studentIdInput, studentPassword, students, router, toast]);
+  }, [classId, studentIdInput, studentPassword, router, toast]);
   
-  const handleTeacherLogin = useCallback((e: React.FormEvent) => {
+  const handleTeacherLogin = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoggingIn(true);
     if (!selectedTeacherId || !teacherPassword) {
-        toast({
-            title: "資訊不完整",
-            description: "請選擇帳號並輸入密碼。",
-            variant: "destructive",
-        });
+        toast({ title: "資訊不完整", description: "請選擇帳號並輸入密碼。", variant: "destructive" });
         setIsLoggingIn(false);
         return;
     }
 
-    const teacher = allTeachers.find(t => t.id === selectedTeacherId);
-    if (teacher && teacher.password === teacherPassword) {
-        toast({ title: "登入成功！", description: `歡迎回來，${teacher.name}！` });
-        localStorage.setItem('userRole', 'teacher');
-        localStorage.setItem('teacherId', selectedTeacherId);
-        localStorage.setItem('teacherPassword', teacherPassword);
-        router.push('/teacher/dashboard');
-    } else {
-        toast({
+    try {
+        const teacher = localTeachers.find(t => t.id === selectedTeacherId);
+        const correctPassword = teacher?.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
+
+        if (teacher && teacherPassword === correctPassword) {
+            toast({ title: "登入成功！", description: `歡迎回來，${teacher.name}！` });
+            localStorage.setItem('userRole', 'teacher');
+            localStorage.setItem('teacherId', selectedTeacherId);
+            localStorage.setItem('teacherPassword', teacherPassword); // store the entered pwd
+            router.push('/teacher/dashboard');
+        } else {
+            throw new Error("帳號或密碼不正確");
+        }
+    } catch (error) {
+         toast({
             title: "登入失敗",
-            description: "您輸入的帳號或密碼不正確，或資料仍在載入中，請稍候再試。",
+            description: "您輸入的帳號或密碼不正確。",
             variant: "destructive",
         });
         setIsLoggingIn(false);
     }
-  }, [selectedTeacherId, teacherPassword, allTeachers, router, toast]);
+  }, [selectedTeacherId, teacherPassword, localTeachers, platformConfig, router, toast]);
 
   const isFormDisabled = isLoggingIn;
 
@@ -166,7 +187,7 @@ export default function LoginPageContent() {
                             <SelectValue placeholder="請選擇班級" />
                         </SelectTrigger>
                         <SelectContent>
-                            {classes.map(c => (
+                            {localClasses.map(c => (
                                 <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                             ))}
                         </SelectContent>

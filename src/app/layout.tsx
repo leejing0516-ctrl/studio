@@ -1,30 +1,27 @@
 
-
 "use client";
 
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { themes, type Theme } from "@/lib/themes";
 import { DEFAULT_APP_ICON_URL } from "@/lib/config";
-import type { CustomTheme, DashboardCardConfig } from "@/lib/types";
+import type { CustomTheme } from "@/lib/types";
 import { useContext, useMemo } from "react";
 import { AppDataContext, AppDataProvider } from "@/context/AppDataContext";
 import { StudentDataProvider } from "@/context/StudentDataContext";
-import { Providers } from "@/context/Providers";
 
-// This component is necessary to access context within the layout
 function StyleInjector() {
   const { platformConfig } = useContext(AppDataContext);
 
   const activeTheme = useMemo(() => {
-    const selectedThemeName = platformConfig?.theme || 'makeup-pink';
+    if (!platformConfig) return themes.find(t => t.name === 'makeup-pink');
+    const selectedThemeName = platformConfig.theme || 'makeup-pink';
     return themes.find(t => t.name === selectedThemeName) || themes.find(t => t.name === 'makeup-pink');
-  }, [platformConfig?.theme]);
+  }, [platformConfig]);
 
   const themeCss = useMemo(() => {
     if (!activeTheme) return "";
     
-    // Use light theme vars as the base
     const vars = activeTheme.cssVars.light || activeTheme.cssVars.dark;
     
     let css = ":root {\n";
@@ -33,7 +30,6 @@ function StyleInjector() {
     }
     css += "}\n";
 
-    // If a dark theme exists, apply it
     if (activeTheme.cssVars.dark) {
       css += ".dark {\n";
        for (const [key, value] of Object.entries(activeTheme.cssVars.dark)) {
@@ -52,7 +48,6 @@ function StyleInjector() {
     </>
   );
 }
-
 
 export default function RootLayout({
   children,

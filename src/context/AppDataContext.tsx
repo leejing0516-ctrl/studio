@@ -4,11 +4,8 @@
 import { createContext, useState, ReactNode, useEffect, useCallback, useContext } from 'react';
 import type { Student, Reward, Class, Teacher, Stock, PlatformConfig } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { collection, doc, runTransaction as firestoreRunTransaction, Transaction, query, onSnapshot, Unsubscribe, setDoc, writeBatch, deleteDoc } from 'firebase/firestore';
+import { collection, doc, runTransaction as firestoreRunTransaction, Transaction, query, onSnapshot, Unsubscribe, setDoc, writeBatch, deleteDoc, getDocs, where, addDoc } from 'firebase/firestore';
 import { isAfter, startOfDay, differenceInDays } from 'date-fns';
-import { StudentDataContext } from './StudentDataContext';
-import { useToast } from '@/hooks/use-toast';
-import { usePathname } from 'next/navigation';
 
 type SetStateActionWithFunction<S> = S | ((prevState: S) => S);
 
@@ -26,8 +23,10 @@ interface AppDataContextType {
   platformConfig: PlatformConfig | null;
   setPlatformConfig: (dataToUpdate: Partial<PlatformConfig>) => Promise<void>;
   isLoading: boolean;
+  setIsLoading: (loading: boolean) => void;
   isMarketOpen: boolean;
   runTransaction: (updateFunction: (transaction: Transaction) => Promise<any>) => Promise<any>;
+  fetchInitialData: () => Promise<void>;
 }
 
 const defaultState: AppDataContextType = {
@@ -44,71 +43,79 @@ const defaultState: AppDataContextType = {
   platformConfig: null,
   setPlatformConfig: async () => {},
   isLoading: true,
+  setIsLoading: () => {},
   isMarketOpen: false,
   runTransaction: async () => {},
+  fetchInitialData: async () => {},
 };
 
 export const AppDataContext = createContext<AppDataContextType>(defaultState);
 
 const checkMarketOpen = (config: PlatformConfig | null) => {
     const now = new Date();
-    const day = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const day = now.getDay();
     const hour = now.getHours();
     const openHour = config?.marketOpenHour ?? 9;
     const closeHour = config?.marketCloseHour ?? 14;
     return day >= 1 && day <= 5 && hour >= openHour && hour < closeHour;
 };
 
-type LoadingStates = {
-    students: boolean;
-    teachers: boolean;
-    classes: boolean;
-    rewards: boolean;
-    stocks: boolean;
-    config: boolean;
-}
-
 const useIdAsDocId = (collectionName: string) => {
   return ['stocks', 'classes'].includes(collectionName);
 }
 
 export const AppDataProvider = ({ children }: { children: ReactNode }) => {
-  const { studentData, setStudentData } = useContext(StudentDataContext);
-  const { toast } = useToast();
-  const pathname = usePathname();
-  
   const [students, setStudentsState] = useState<Student[]>([]);
   const [rewards, setRewardsState] = useState<Reward[]>([]);
   const [stocks, setStocksState] = useState<Stock[]>([]);
   const [teachers, setTeachersState] = useState<Teacher[]>([]);
   const [classes, setClassesState] = useState<Class[]>([]);
   const [platformConfig, setPlatformConfigState] = useState<PlatformConfig | null>(null);
-  
-  const [isReadyToLoad, setIsReadyToLoad] = useState(false);
-  
-  const [loadingStates, setLoadingStates] = useState<LoadingStates>({
-      students: true,
-      teachers: true,
-      classes: true,
-      rewards: true,
-      stocks: true,
-      config: true,
-  });
-
-  const isLoading = !isReadyToLoad || Object.values(loadingStates).some(state => state === true);
-  
+  const [isLoading, setIsLoading] = useState(true);
   const [isMarketOpen, setIsMarketOpen] = useState(false);
 
-  useEffect(() => {
-    // Only start loading data if we are not on the login page
-    if (pathname !== '/') {
-        setIsReadyToLoad(true);
-    } else {
-        // For login page, we can consider it "not loading" immediately
-        setLoadingStates({ students: false, teachers: false, classes: false, rewards: false, stocks: false, config: false });
+  const fetchInitialData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+        const [
+            studentsSnap,
+            teachersSnap,
+            classesSnap,
+            rewardsSnap,
+            stocksSnap,
+        ] = await Promise.all([
+            getDocs(collection(db, "students")),
+            getDocs(collection(db, "teachers")),
+            getDocs(collection(db, "classes")),
+            getDocs(collection(db, "rewards")),
+            getDocs(collection(db, "stocks")),
+        ]);
+
+        const studentsData = studentsSnap.docs.map(doc => ({ ...doc.data(), _docId: doc.id })) as Student[];
+        const teachersData = teachersSnap.docs.map(doc => ({ ...doc.data(), _docId: doc.id })) as Teacher[];
+        const classesData = classesSnap.docs.map(doc => ({ ...doc.data(), id: doc.id, _docId: doc.id })) as Class[];
+        const rewardsData = rewardsSnap.docs.map(doc => ({ ...doc.data(), _docId: doc.id })) as Reward[];
+        const stocksData = stocksSnap.docs.map(doc => ({ ...doc.data(), id: doc.id, _docId: doc.id })) as Stock[];
+        
+        setStudentsState(studentsData);
+        setTeachersState(teachersData);
+        setClassesState(classesData);
+        setRewardsState(rewardsData);
+        setStocksState(stocksData);
+
+        const configRef = doc(db, 'config', 'main');
+        onSnapshot(configRef, (docSnap) => {
+            if (docSnap.exists()) {
+                setPlatformConfigState({ ...docSnap.data(), id: docSnap.id } as PlatformConfig);
+            }
+        });
+
+    } catch (error) {
+        console.error("Error fetching initial data:", error);
+    } finally {
+        setIsLoading(false);
     }
-  }, [pathname]);
-  
+  }, []);
 
   const handleRunTransaction = useCallback(async (updateFunction: (transaction: Transaction) => Promise<any>) => {
     return firestoreRunTransaction(db, updateFunction);
@@ -119,7 +126,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     const marketInterval = setInterval(() => {
       setIsMarketOpen(checkMarketOpen(platformConfig));
     }, 60000);
-
     return () => clearInterval(marketInterval);
   }, [platformConfig]);
   
@@ -128,32 +134,19 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       await setDoc(configRef, dataToUpdate, { merge: true });
   };
 
-  const createSetterWithBatch = <T extends { _docId?: string, id?: any }>(collectionName: string) => {
+  const createSetterWithBatch = <T extends { _docId?: string, id?: any }>(
+    collectionName: string,
+    stateSetter: React.Dispatch<React.SetStateAction<T[]>>,
+    currentState: T[]
+  ) => {
     return async (action: SetStateActionWithFunction<T[]>) => {
-      const currentDataSetterMap = {
-        'students': setStudentsState,
-        'teachers': setTeachersState,
-        'classes': setClassesState,
-        'rewards': setRewardsState,
-        'stocks': setStocksState,
-      };
-
-      const currentDataMap = {
-        'students': students,
-        'teachers': teachers,
-        'classes': classes,
-        'rewards': rewards,
-        'stocks': stocks,
-      };
-      
-      const currentData = currentDataMap[collectionName as keyof typeof currentDataMap] as T[];
-      
-      const newData = typeof action === 'function' ? action(currentData) : action;
+      const newData = typeof action === 'function' ? action(currentState) : action;
+      stateSetter(newData); // Optimistic update
       
       const batch = writeBatch(db);
       const useId = useIdAsDocId(collectionName);
 
-      const oldMap = new Map(currentData.map(item => [useId ? item.id : item._docId, item]));
+      const oldMap = new Map(currentState.map(item => [useId ? item.id : item._docId, item]));
       const newMap = new Map(newData.map(item => [useId ? item.id : item._docId, item]));
       
       oldMap.forEach((_, key) => {
@@ -171,241 +164,38 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         }
       });
       
-      await batch.commit();
+      try {
+        await batch.commit();
+      } catch (error) {
+        console.error(`Batch update for ${collectionName} failed:`, error);
+        // Optionally revert optimistic update
+        stateSetter(currentState);
+      }
     };
   };
-
-  const setStudents = createSetterWithBatch<Student>('students');
-  const setTeachers = createSetterWithBatch<Teacher>('teachers');
-  const setRewards = createSetterWithBatch<Reward>('rewards');
-  const setStocks = createSetterWithBatch<Stock>('stocks');
-  const setClasses = createSetterWithBatch<Class>('classes');
-  
-  // Effect for daily financial processing (interest, loans, etc.)
-  useEffect(() => {
-    if (!isReadyToLoad) return;
-
-    const processDailyFinance = async () => {
-        const lastRun = localStorage.getItem('lastFinanceRun');
-        const today = startOfDay(new Date()).toISOString().split('T')[0]; // YYYY-MM-DD
-
-        if (lastRun === today) {
-            return;
-        }
-
-        if (isLoading || students.length === 0) return;
-
-        const batch = writeBatch(db);
-        let hasChanges = false;
-
-        students.forEach(student => {
-            if (!student._docId) return;
-
-            let studentPoints = student.points;
-            let needsUpdate = false;
-            let updatePayload: any = {};
-
-            // Process Fixed Deposits
-            const updatedDeposits = (student.fixedDeposits || []).map(deposit => {
-                if (deposit.status === 'active') {
-                    if (isAfter(new Date(), new Date(deposit.maturityDate))) {
-                        const totalReturn = deposit.amount + deposit.interestEarned;
-                        studentPoints += totalReturn;
-                        needsUpdate = true;
-                        return { ...deposit, status: 'matured' as const };
-                    } else {
-                        const newInterest = deposit.interestEarned + (deposit.amount * deposit.interestRate);
-                        if (Math.floor(newInterest) > Math.floor(deposit.interestEarned)) {
-                            needsUpdate = true;
-                            return { ...deposit, interestEarned: newInterest };
-                        }
-                    }
-                }
-                return deposit;
-            });
-
-            if (needsUpdate) {
-              updatePayload.fixedDeposits = updatedDeposits;
-            }
-
-
-            // Process Loans
-            const updatedLoans = (student.loans || []).map(loan => {
-                let loanNeedsUpdate = false;
-                let updatedLoan = { ...loan };
-
-                if (loan.status === 'active') {
-                    const todayDate = startOfDay(new Date());
-                    if (isAfter(todayDate, new Date(loan.repaymentDate))) {
-                        updatedLoan.status = 'overdue' as const;
-                        loanNeedsUpdate = true;
-                    }
-                    const lastAccrued = loan.lastInterestAccruedDate ? new Date(loan.lastInterestAccruedDate) : new Date(loan.approvalDate || loan.requestDate);
-                    const daysSinceLastAccrual = differenceInDays(todayDate, lastAccrued);
-                    if (daysSinceLastAccrual > 0) {
-                        updatedLoan.interest += (loan.amount * loan.interestRate * daysSinceLastAccrual);
-                        updatedLoan.lastInterestAccruedDate = todayDate.toISOString();
-                        loanNeedsUpdate = true;
-                    }
-                } else if (loan.status === 'overdue') {
-                    const todayDate = startOfDay(new Date());
-                    const lastAccrued = loan.lastInterestAccruedDate ? new Date(loan.lastInterestAccruedDate) : new Date(loan.repaymentDate);
-                    const daysSinceLastAccrual = differenceInDays(todayDate, lastAccrued);
-                    if (daysSinceLastAccrual > 0) {
-                        updatedLoan.interest += (loan.amount * loan.interestRate * daysSinceLastAccrual);
-                        updatedLoan.lastInterestAccruedDate = new Date().toISOString();
-                        loanNeedsUpdate = true;
-                    }
-                }
-                
-                if (loanNeedsUpdate) {
-                  needsUpdate = true;
-                }
-                return updatedLoan;
-            });
-            
-            if (needsUpdate) {
-              updatePayload.loans = updatedLoans;
-            }
-
-            if (student.points !== studentPoints) {
-                updatePayload.points = studentPoints;
-                needsUpdate = true;
-            }
-
-            if (needsUpdate) {
-                hasChanges = true;
-                const studentRef = doc(db, 'students', student._docId);
-                batch.update(studentRef, updatePayload);
-            }
-        });
-
-        if (hasChanges) {
-            try {
-                await batch.commit();
-                localStorage.setItem('lastFinanceRun', today);
-            } catch (error) {
-                console.error("Error committing daily finance batch:", error);
-            }
-        } else {
-            localStorage.setItem('lastFinanceRun', today);
-        }
-    };
-    
-    const timer = setTimeout(processDailyFinance, 5000);
-    return () => clearTimeout(timer);
-
-  }, [isLoading, students, isReadyToLoad]);
-
-
-  useEffect(() => {
-    if (!isReadyToLoad) return;
-
-    const subscriptions: Unsubscribe[] = [];
-
-    const setupSubscription = <T extends { id?: string, _docId?: string }>(
-        collectionName: string, 
-        setter: React.Dispatch<React.SetStateAction<any[]>>,
-        stateKey: keyof LoadingStates,
-        useIdAsDocId: boolean = false
-    ) => {
-        const q = query(collection(db, collectionName));
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const data: any[] = [];
-            querySnapshot.forEach(doc => {
-                 data.push({
-                    ...doc.data(),
-                    _docId: doc.id,
-                    ...(useIdAsDocId && { id: doc.id })
-                });
-            });
-            setter(data);
-            
-            setLoadingStates(prev => ({...prev, [stateKey]: false}));
-        }, (error) => {
-            console.error(`Error fetching real-time ${collectionName}:`, error);
-            setLoadingStates(prev => ({...prev, [stateKey]: false}));
-        });
-        return unsubscribe;
-    };
-    
-    const setupDocSubscription = <T,>(
-        docPath: string[], 
-        setter: React.Dispatch<React.SetStateAction<T | null>>,
-        stateKey: keyof LoadingStates
-    ) => {
-        const docRef = doc(db, ...docPath);
-        const unsubscribe = onSnapshot(docRef, (docSnap) => {
-            if (docSnap.exists()) {
-                setter({ ...docSnap.data(), id: docSnap.id } as T);
-            } else {
-                setter(null);
-            }
-            setLoadingStates(prev => ({...prev, [stateKey]: false}));
-        }, (error) => {
-            console.error(`Error fetching real-time doc ${docPath.join('/')}:`, error);
-            setLoadingStates(prev => ({...prev, [stateKey]: false}));
-        });
-        return unsubscribe;
-    };
-    
-    subscriptions.push(setupSubscription<Student>('students', setStudentsState, 'students'));
-    subscriptions.push(setupSubscription<Teacher>('teachers', setTeachersState, 'teachers'));
-    subscriptions.push(setupSubscription<Class>('classes', setClassesState, 'classes', true));
-    subscriptions.push(setupSubscription<Reward>('rewards', setRewardsState, 'rewards'));
-    subscriptions.push(setupSubscription<Stock>('stocks', setStocksState, 'stocks', true));
-    subscriptions.push(setupDocSubscription<PlatformConfig>(['config', 'main'], setPlatformConfigState, 'config'));
-
-    return () => {
-      subscriptions.forEach(unsub => unsub());
-    };
-  }, [isReadyToLoad]);
-  
-   useEffect(() => {
-        const userRole = localStorage.getItem('userRole');
-        if (userRole !== 'student' || !isReadyToLoad || loadingStates.students) return;
-
-        const storedClassId = localStorage.getItem('studentClassId');
-        const storedStudentId = localStorage.getItem('studentId');
-        const storedPassword = localStorage.getItem('studentPassword');
-
-        if (students.length > 0 && storedClassId && storedStudentId && storedPassword) {
-            const foundStudent = students.find(s => s.classId === storedClassId && s.id === storedStudentId);
-            if (foundStudent) {
-                if (foundStudent.password === storedPassword) {
-                    setStudentData({ student: foundStudent });
-                } else {
-                    setStudentData({ student: null });
-                    toast({ title: "驗證失敗", description: "您的登入資訊已過期或不正確，請重新登入。", variant: "destructive" });
-                    localStorage.clear();
-                    if (window.location.pathname !== '/') {
-                        window.location.href = '/';
-                    }
-                }
-            }
-        }
-    }, [isReadyToLoad, students, loadingStates.students, setStudentData, toast]);
-
 
   return (
     <AppDataContext.Provider value={{ 
         students, 
-        setStudents,
+        setStudents: createSetterWithBatch('students', setStudentsState, students),
         rewards, 
-        setRewards,
+        setRewards: createSetterWithBatch('rewards', setRewardsState, rewards),
         stocks,
-        setStocks,
+        setStocks: createSetterWithBatch('stocks', setStocksState, stocks),
         classes, 
-        setClasses,
+        setClasses: createSetterWithBatch('classes', setClassesState, classes),
         teachers,
-        setTeachers,
+        setTeachers: createSetterWithBatch('teachers', setTeachersState, teachers),
         platformConfig,
         setPlatformConfig,
         isLoading,
+        setIsLoading,
         isMarketOpen,
         runTransaction: handleRunTransaction,
+        fetchInitialData,
     }}>
       {children}
     </AppDataContext.Provider>
   );
 };
+
