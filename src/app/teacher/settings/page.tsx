@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useContext, useEffect } from "react";
@@ -133,10 +134,6 @@ export default function TeacherSettingsPage() {
         setIsSavingSettings(true);
         
         try {
-            // Find the full theme object based on the selected name
-            const selectedThemeObject = availableThemes.find(t => t.name === selectedThemeName);
-            const themeCssVars = selectedThemeObject ? (selectedThemeObject.cssVars.light || selectedThemeObject.cssVars.dark) : undefined;
-            
             const dataToUpdate: Partial<PlatformConfig> = {
                 logoUrl: logoUrl,
                 appIconUrl: appIconUrl,
@@ -146,7 +143,6 @@ export default function TeacherSettingsPage() {
                 marketCloseHour: Number(marketCloseHour),
                 sponsorLogoUrls: sponsorLogoUrls,
                 theme: selectedThemeName,
-                customTheme: themeCssVars, // Always save the full CSS vars of the selected theme
                 buKeXingQiuDescription: buKeXingQiuDescription,
                 dailyRewardJackpotChance: Number(dailyRewardJackpotChance) / 100,
                 dailyRewardJackpotMin: Number(dailyRewardJackpotMin),
@@ -185,10 +181,6 @@ export default function TeacherSettingsPage() {
                                 <div>
                                     <div className="flex items-center justify-between mb-2">
                                         <Label className="font-semibold">選擇基礎顏色主題</Label>
-                                         <Link href="/teacher/theme-editor" className={buttonVariants({ variant: "outline", size: "sm" })}>
-                                            <Palette className="mr-2 h-4 w-4" />
-                                            新增/編輯自訂主題
-                                        </Link>
                                     </div>
                                      <RadioGroup value={selectedThemeName} onValueChange={setSelectedThemeName} className="p-4 rounded-lg border grid grid-cols-2 md:grid-cols-3 gap-4">
                                         {availableThemes.map((theme) => (
