@@ -59,7 +59,7 @@ const nextConfig: NextConfig = {
        {
         source: '/buke-template.csv',
         destination: '/api/download-buke-template',
-      },
+      }
     ]
   },
 };
