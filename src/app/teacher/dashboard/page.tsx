@@ -1985,5 +1985,5 @@ export default function TeacherDashboardPage() {
                 </AlertDialogContent>
             </AlertDialog>
         </div>
-    )
+    );
 }
