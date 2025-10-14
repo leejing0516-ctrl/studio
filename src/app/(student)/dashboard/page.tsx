@@ -258,42 +258,42 @@ export default function StudentDashboardPage() {
               </CardContent>
             </Card>
         )}
-        <Card className="bg-chart-5 text-background">
+        <Card className="bg-chart-5 text-card-foreground">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-card-title">{cardTexts.classRank?.title || '班級排名'}</CardTitle>
+                <CardTitle className="text-card-title text-card-title-foreground">{cardTexts.classRank?.title || '班級排名'}</CardTitle>
                 <Trophy className="h-4 w-4 text-accent" />
             </CardHeader>
             <CardContent>
-                <div className="text-2xl font-bold">#{classRank}</div>
-                <p className="text-xs text-background/80">{(cardTexts.classRank?.description || "班級前 {percentile}%").replace('{percentile}', String(100 - Math.floor(classPercentile)))}</p>
+                <div className="text-card-value text-card-value-foreground font-bold">#{classRank}</div>
+                <p className="text-card-description text-card-description-foreground">{(cardTexts.classRank?.description || "班級前 {percentile}%").replace('{percentile}', String(100 - Math.floor(classPercentile)))}</p>
             </CardContent>
         </Card>
-        <Card className="bg-chart-5 text-background">
+        <Card className="bg-chart-5 text-card-foreground">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-card-title">{cardTexts.schoolRank?.title || '全校排名'}</CardTitle>
+                <CardTitle className="text-card-title text-card-title-foreground">{cardTexts.schoolRank?.title || '全校排名'}</CardTitle>
                 <Globe className="h-4 w-4 text-accent" />
             </CardHeader>
             <CardContent>
-                <div className="text-2xl font-bold">#{schoolRank}</div>
-                <p className="text-xs text-background/80">{(cardTexts.schoolRank?.description || "全校前 {percentile}%").replace('{percentile}', String(100 - Math.floor(schoolPercentile)))}</p>
+                <div className="text-card-value text-card-value-foreground font-bold">#{schoolRank}</div>
+                <p className="text-card-description text-card-description-foreground">{(cardTexts.schoolRank?.description || "全校前 {percentile}%").replace('{percentile}', String(100 - Math.floor(schoolPercentile)))}</p>
             </CardContent>
         </Card>
-         <Card className="bg-chart-5 text-background">
+         <Card className="bg-chart-5 text-card-foreground">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-card-title">{cardTexts.myGroups?.title || '我的分組'}</CardTitle>
+            <CardTitle className="text-card-title text-card-title-foreground">{cardTexts.myGroups?.title || '我的分組'}</CardTitle>
             <Users className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
              {studentGroups.length > 0 ? (
-                <div className="space-y-2 text-sm">
+                <div className="space-y-2 text-sm text-card-description-foreground">
                     {studentGroups.map((group, index) => (
                         <p key={index}>
-                            在 <span className="font-bold">{group.teacherName}</span> 的課堂中，您是 <span className="font-bold">{group.groupName}</span> 的成員。
+                           在 <span className="font-bold text-card-value-foreground">{group.teacherName}</span> 的課堂中，您是 <span className="font-bold text-card-value-foreground">{group.groupName}</span> 的成員。
                         </p>
                     ))}
                 </div>
             ) : (
-                <p className="text-sm">{cardTexts.myGroups?.description || '您尚未被分派到任何小組。'}</p>
+                <p className="text-sm text-card-description-foreground">{cardTexts.myGroups?.description || '您尚未被分派到任何小組。'}</p>
             )}
           </CardContent>
         </Card>
@@ -312,19 +312,19 @@ export default function StudentDashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-        <Card className="md:col-span-2 bg-chart-5 text-background">
+        <Card className="md:col-span-2 bg-my-pet-card text-my-pet-card-foreground">
             <CardHeader>
                 <CardTitle className="text-card-title flex items-center gap-2"><Bone /> {cardTexts.myPet?.title || '我的寵物'}</CardTitle>
-                <CardDescription className="text-background/80">{cardTexts.myPet?.description || '您的點數越多，牠就會越強大！'}</CardDescription>
+                <CardDescription className="text-card-description-foreground">{cardTexts.myPet?.description || '您的點數越多，牠就會越強大！'}</CardDescription>
             </CardHeader>
             <CardContent>
                 <StudentPet student={currentStudent} />
             </CardContent>
         </Card>
-        <Card className="md:col-span-3 bg-chart-5 text-background">
+        <Card className="md:col-span-3 bg-points-trend-card text-points-trend-card-foreground">
           <CardHeader>
             <CardTitle className="text-card-title">{cardTexts.pointsTrend?.title || '最近七日點數趨勢'}</CardTitle>
-            <CardDescription className="text-background/80">{cardTexts.pointsTrend?.description || '您最近七天每日從老師那裡獲得的點數紀錄。'}</CardDescription>
+            <CardDescription className="text-card-description-foreground">{cardTexts.pointsTrend?.description || '您最近七天每日從老師那裡獲得的點數紀錄。'}</CardDescription>
           </CardHeader>
           <CardContent>
              <div className="overflow-x-auto">
@@ -343,3 +343,5 @@ export default function StudentDashboardPage() {
     </div>
   );
 }
+
+    

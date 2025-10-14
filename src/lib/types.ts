@@ -80,7 +80,6 @@ export type StudentChallenge = {
 export type HabitCheckIn = {
   date: string; // ISO date string of the check-in
   note?: string;
-  imageUrl?: string;
 };
 
 export type StudentHabit = {

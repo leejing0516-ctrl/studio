@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useContext, useEffect, useRef } from "react";
@@ -21,48 +20,7 @@ import { useRouter } from "next/navigation";
 import { themes } from "@/lib/themes";
 import type { CustomTheme } from "@/lib/types";
 
-const defaultThemeColors: CustomTheme = {
-    background: "0 0% 100%",
-    foreground: "222.2 84% 4.9%",
-    card: "0 0% 100%",
-    "card-foreground": "222.2 84% 4.9%",
-    popover: "0 0% 100%",
-    "popover-foreground": "222.2 84% 4.9%",
-    primary: "222.2 47.4% 11.2%",
-    "primary-foreground": "210 40% 98%",
-    secondary: "210 40% 96.1%",
-    "secondary-foreground": "222.2 47.4% 11.2%",
-    muted: "210 40% 96.1%",
-    "muted-foreground": "215.4 16.3% 46.9%",
-    accent: "210 40% 96.1%",
-    "accent-foreground": "222.2 47.4% 11.2%",
-    destructive: "0 84.2% 60.2%",
-    "destructive-foreground": "210 40% 98%",
-    border: "214.3 31.8% 91.4%",
-    input: "214.3 31.8% 91.4%",
-    ring: "222.2 84% 4.9%",
-    "chart-1": "48 96% 53%",
-    "chart-2": "180 80% 45%",
-    "chart-3": "217 91% 60%",
-    "chart-4": "300 80% 60%",
-    "chart-5": "220 20% 70%",
-    "reward-card-school": "25 95% 55%",
-    "reward-card-class": "140 70% 40%",
-    "card-title-foreground": "210 40% 98%",
-    "card-value-foreground": "210 40% 98%",
-    "card-description-foreground": "210 40% 90%",
-    "card-title-size": "0.875rem",
-    "card-value-size": "1.5rem",
-    "card-description-size": "0.75rem",
-    "reward-card-school-foreground": "210 40% 98%",
-    "reward-card-class-foreground": "210 40% 98%",
-    "bu-ke-xing-qiu-card-background": "220 20% 70%",
-    "bu-ke-xing-qiu-card-foreground": "220 20% 10%",
-    "my-pet-card-background": "220 20% 70%",
-    "my-pet-card-foreground": "220 20% 10%",
-    "points-trend-card-background": "220 20% 70%",
-    "points-trend-card-foreground": "220 20% 10%",
-};
+const defaultThemeColors: CustomTheme = themes.find(t => t.name === 'default')?.cssVars.dark || {} as CustomTheme;
 
 const hslToHex = (h: number, s: number, l: number): string => {
     l /= 100;
