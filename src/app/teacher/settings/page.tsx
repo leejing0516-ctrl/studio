@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
-import { themes, type Theme } from "@/lib/themes";
+import { themes as defaultThemes, type Theme } from "@/lib/themes";
 import { resizeImage, fileToDataUrl } from "@/lib/image-utils";
 import { DEFAULT_LOGO_URL, DEFAULT_APP_ICON_URL } from "@/lib/config";
 import { Textarea } from "@/components/ui/textarea";
@@ -61,7 +61,12 @@ export default function TeacherSettingsPage() {
     const [dailyRewardStandardMax, setDailyRewardStandardMax] = useState<number | string>('');
 
     const [sponsorLogoUrls, setSponsorLogoUrls] = useState<(string | null)[]>([]);
-    const [selectedTheme, setSelectedTheme] = useState<string>("default");
+    const [selectedThemeName, setSelectedThemeName] = useState<string>("default");
+
+    const availableThemes = [
+        ...defaultThemes,
+        ...(platformConfig?.customThemes || [])
+    ];
 
     useEffect(() => {
         const role = localStorage.getItem('teacherRole');
@@ -79,7 +84,7 @@ export default function TeacherSettingsPage() {
             setMarketOpenHour(platformConfig.marketOpenHour ?? 9);
             setMarketCloseHour(platformConfig.marketCloseHour ?? 14);
             setSponsorLogoUrls(platformConfig.sponsorLogoUrls || [null, null, null, null]);
-            setSelectedTheme(platformConfig.theme || "default");
+            setSelectedThemeName(platformConfig.theme || "default");
             
             const defaultBuKeDescription = "「布可星球」是你閱讀成就的殿堂！你在這裡挖掘的每一點能量、每一本書，都是你知識宇宙擴張的證明。\n每個月底，校長會將你「本月挖掘的能量」按照一定的比例，轉換成可以在平台中使用的「點數」，作為對你努力閱讀的實質獎勵。繼續閱讀，讓你的星球更加璀璨吧！";
             setBuKeXingQiuDescription(platformConfig.buKeXingQiuDescription || defaultBuKeDescription);
@@ -126,8 +131,8 @@ export default function TeacherSettingsPage() {
         setIsSavingSettings(true);
         
         try {
-            const themeConfig = themes.find(t => t.name === selectedTheme);
-            const customThemeData = themeConfig ? themeConfig.cssVars.dark : undefined;
+            const themeConfig = availableThemes.find(t => t.name === selectedThemeName);
+            const themeCssVars = themeConfig ? themeConfig.cssVars.dark : undefined;
 
             const dataToUpdate: Partial<PlatformConfig> = {
                 logoUrl: logoUrl,
@@ -137,7 +142,7 @@ export default function TeacherSettingsPage() {
                 marketOpenHour: Number(marketOpenHour),
                 marketCloseHour: Number(marketCloseHour),
                 sponsorLogoUrls: sponsorLogoUrls,
-                theme: selectedTheme,
+                theme: selectedThemeName,
                 buKeXingQiuDescription: buKeXingQiuDescription,
                 dailyRewardJackpotChance: Number(dailyRewardJackpotChance) / 100,
                 dailyRewardJackpotMin: Number(dailyRewardJackpotMin),
@@ -145,7 +150,7 @@ export default function TeacherSettingsPage() {
                 dailyRewardStandardChance: Number(dailyRewardStandardChance) / 100,
                 dailyRewardStandardMin: Number(dailyRewardStandardMin),
                 dailyRewardStandardMax: Number(dailyRewardStandardMax),
-                customTheme: customThemeData,
+                customTheme: themeCssVars,
             };
             
             await setPlatformConfig(dataToUpdate);
@@ -160,17 +165,16 @@ export default function TeacherSettingsPage() {
     };
     
     useEffect(() => {
-        const themeToApply = themes.find(t => t.name === selectedTheme)?.cssVars.dark;
+        const themeToApply = availableThemes.find(t => t.name === selectedThemeName)?.cssVars.dark;
         if (themeToApply) {
             const root = document.documentElement;
             Object.entries(themeToApply).forEach(([key, value]) => {
-                // Ensure card-related variables from the global theme are NOT applied
                 if (!key.startsWith('chart-') && !key.startsWith('card-')) {
                     root.style.setProperty(`--${key}`, value as string);
                 }
             });
         }
-    }, [selectedTheme]);
+    }, [selectedThemeName, availableThemes]);
 
 
     return (
@@ -196,8 +200,8 @@ export default function TeacherSettingsPage() {
                                             新增/編輯自訂主題
                                         </Link>
                                     </div>
-                                     <RadioGroup value={selectedTheme} onValueChange={setSelectedTheme} className="p-4 rounded-lg border grid grid-cols-2 md:grid-cols-3 gap-4">
-                                        {themes.map((theme) => (
+                                     <RadioGroup value={selectedThemeName} onValueChange={setSelectedThemeName} className="p-4 rounded-lg border grid grid-cols-2 md:grid-cols-3 gap-4">
+                                        {availableThemes.map((theme) => (
                                             <div key={theme.name} className="flex items-center space-x-2">
                                                 <RadioGroupItem value={theme.name} id={`theme-${theme.name}`} />
                                                 <Label htmlFor={`theme-${theme.name}`} className="flex flex-col cursor-pointer">
