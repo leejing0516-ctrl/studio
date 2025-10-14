@@ -68,26 +68,14 @@ type LoadingStates = {
 const createSetter = <T extends { _docId?: string; id?: any }>(
   collectionName: string,
   currentState: T[],
-  setter: React.Dispatch<React.SetStateAction<T[]>>,
   useIdAsDocId: boolean = false
 ) => {
   return async (action: SetStateActionWithFunction<T[]>) => {
     const newState = typeof action === 'function' ? action(currentState) : action;
-    setter(newState);
 
     const batch = writeBatch(db);
     const oldStateMap = new Map(currentState.map(item => [useIdAsDocId ? item.id : item._docId, item]));
     const newStateMap = new Map(newState.map(item => [useIdAsDocId ? item.id : item._docId, item]));
-
-    // Updates and additions
-    newState.forEach(item => {
-        const docId = useIdAsDocId ? item.id : item._docId;
-        if (docId) {
-            const { _docId, ...itemData } = item;
-            const ref = doc(db, collectionName, docId);
-            batch.set(ref, itemData, { merge: true });
-        }
-    });
 
     // Deletions
     oldStateMap.forEach((oldItem, key) => {
@@ -99,6 +87,22 @@ const createSetter = <T extends { _docId?: string; id?: any }>(
             }
         }
     });
+
+    // Updates and additions
+    for (const item of newState) {
+        const docId = useIdAsDocId ? item.id : item._docId;
+        if (!docId) {
+            console.warn("Item missing docId, cannot process:", item);
+            continue;
+        };
+
+        const oldItem = oldStateMap.get(docId);
+        if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(item)) {
+            const { _docId, ...itemData } = item;
+            const ref = doc(db, collectionName, docId);
+            batch.set(ref, itemData, { merge: true });
+        }
+    }
 
     await batch.commit();
   };
