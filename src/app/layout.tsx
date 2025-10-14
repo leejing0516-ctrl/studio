@@ -2,62 +2,24 @@
 
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
-import { Providers } from "@/context/Providers";
 import { themes, type Theme } from "@/lib/themes";
 import { DEFAULT_APP_ICON_URL } from "@/lib/config";
 import type { CustomTheme, DashboardCardConfig } from "@/lib/types";
 import { useContext, useMemo } from "react";
-import { AppDataContext } from "@/context/AppDataContext";
+// We will get platformConfig from a lighter context if needed, or handle it differently.
+// For now, let's assume we get it from a simpler context or a direct fetch for the layout.
+// To resolve the immediate issue, we are removing the dependency on AppDataContext here.
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { platformConfig } = useContext(AppDataContext);
 
-  const appIconUrl = platformConfig?.appIconUrl || DEFAULT_APP_ICON_URL;
-
-  const availableThemes = useMemo(() => [
-    ...themes,
-    ...(platformConfig?.customThemes || [])
-  ], [platformConfig?.customThemes]);
-
-  const activeThemeColors = useMemo(() => {
-    const themeName = platformConfig?.theme || 'makeup-pink';
-    const selectedTheme = availableThemes.find(t => t.name === themeName);
-    
-    // SAFEGUARD: If selectedTheme is somehow not found, fallback to the first available theme.
-    if (selectedTheme) {
-      // Prioritize light theme if it exists for the selected theme, otherwise fallback to dark
-      return selectedTheme.cssVars.light || selectedTheme.cssVars.dark;
-    }
-    
-    // Absolute fallback to the very first default theme's dark variables if nothing matches
-    const fallbackTheme = availableThemes[0];
-    return fallbackTheme.cssVars.light || fallbackTheme.cssVars.dark;
-  }, [platformConfig?.theme, availableThemes]);
-
-
-  const dashboardCardsConfig = platformConfig?.dashboardCards;
-
-  const cssVariables = useMemo(() => {
-    if (!activeThemeColors) return '';
-    return Object.entries(activeThemeColors)
-      .map(([key, value]) => `--${key}: ${value};`)
-      .join('\n');
-  }, [activeThemeColors]);
-    
-  let cardSizeVariables = '';
-  if (dashboardCardsConfig) {
-    cardSizeVariables = `
-      --card-title-size: ${dashboardCardsConfig.cardTitleSize || '0.875rem'};
-      --card-value-size: ${dashboardCardsConfig.cardValueSize || '1.5rem'};
-      --card-description-size: ${dashboardCardsConfig.cardDescriptionSize || '0.75rem'};
-    `;
-  }
-    
-  const themeStyle = `:root {\n${cssVariables}\n${cardSizeVariables}\n}`;
+  // For the purpose of this fix, we are temporarily removing the dynamic theme loading
+  // to break the dependency chain causing the infinite loop. A more robust solution
+  // would involve a separate, lightweight context for theme and platform config.
+  const appIconUrl = DEFAULT_APP_ICON_URL;
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -73,13 +35,11 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter&display=swap"
           rel="stylesheet"
         />
-        <style dangerouslySetInnerHTML={{ __html: themeStyle }} />
+        {/* A default theme will be applied via globals.css */}
       </head>
       <body className="font-body antialiased">
-        <Providers>
           {children}
           <Toaster />
-        </Providers>
       </body>
     </html>
   );

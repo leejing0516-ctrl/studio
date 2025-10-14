@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -38,7 +37,8 @@ import {
   FileEdit,
   Mail,
   BookUp,
-  Users
+  Users,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,8 +56,9 @@ import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
 import Logo from "@/components/logo";
+import { Providers } from "@/context/Providers";
 
-export default function TeacherLayout({
+function TeacherLayoutContent({
   children,
 }: {
   children: React.ReactNode;
@@ -112,13 +113,11 @@ export default function TeacherLayout({
     if (teacher) {
         const correctPassword = teacher.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
         if (storedTeacherPassword === correctPassword) {
-            // Auth successful: Set React state immediately
             setTeacherId(teacher.id);
             setTeacherName(teacher.name);
             setTeacherRole(teacher.role);
             setIsImpersonating(!!localStorage.getItem('impersonator'));
 
-            // Update localStorage with potentially new data from db
             localStorage.setItem('teacherName', teacher.name);
             localStorage.setItem('teacherRole', teacher.role);
             localStorage.setItem('teacherClassIds', JSON.stringify(teacher.classIds || []));
@@ -126,7 +125,7 @@ export default function TeacherLayout({
             toast({ title: "驗證失敗", description: "密碼不正確，請重新登入。", variant: "destructive" });
             handleLogout();
         }
-    } else {
+    } else if (!isLoading && teachers.length > 0) {
         toast({ title: "找不到帳號", description: "找不到您的教師帳號，請重新登入。", variant: "destructive" });
         handleLogout();
     }
@@ -146,7 +145,7 @@ export default function TeacherLayout({
 
     localStorage.setItem('userRole', 'teacher');
     localStorage.setItem('teacherId', originalAdmin.id);
-    localStorage.setItem('teacherPassword', correctPassword); // Use the correct password for re-auth
+    localStorage.setItem('teacherPassword', correctPassword);
     localStorage.removeItem('impersonator');
 
     toast({ title: "已返回校長身份" });
@@ -187,7 +186,6 @@ export default function TeacherLayout({
         return;
     }
     
-    // Admins can change the default password for new teachers
     if (teacherRole === 'admin' && teacherId === 'principal') {
         try {
           await setPlatformConfig({ teacherPassword: newPassword });
@@ -206,7 +204,6 @@ export default function TeacherLayout({
           return t;
       }));
 
-      // Update password in localStorage
       localStorage.setItem('teacherPassword', newPassword);
 
       toast({ title: "密碼已更新", description: "您的登入密碼已成功更新。" });
@@ -255,20 +252,7 @@ export default function TeacherLayout({
   if (isLoading || !teacherName) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
-            <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="mr-2 h-6 w-6 animate-spin"
-            >
-                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-            </svg>
+            <Loader2 className="mr-2 h-6 w-6 animate-spin" />
             驗證身份中...
         </div>
     );
@@ -394,4 +378,16 @@ export default function TeacherLayout({
     </Dialog>
     </>
   );
+}
+
+export default function TeacherLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <Providers>
+      <TeacherLayoutContent>{children}</TeacherLayoutContent>
+    </Providers>
+  )
 }

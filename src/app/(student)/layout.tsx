@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -60,8 +59,9 @@ import { Separator } from "@/components/ui/separator";
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { Providers } from "@/context/Providers";
 
-export default function StudentLayout({
+function StudentLayoutContent({
   children,
 }: {
   children: React.ReactNode;
@@ -91,7 +91,6 @@ export default function StudentLayout({
     router.push('/');
   }, [router, setStudentData]);
 
-
   useEffect(() => {
     if (isLoading) return;
     const userRole = localStorage.getItem('userRole');
@@ -100,7 +99,6 @@ export default function StudentLayout({
     }
   }, [isLoading, handleLogout]);
 
-
   useEffect(() => {
     if (!student) {
       setHasNewAnnouncements(false);
@@ -108,7 +106,6 @@ export default function StudentLayout({
       return;
     }
 
-    // Check for new announcements
     const lastViewTime = student.lastAnnouncementsView ? new Date(student.lastAnnouncementsView).getTime() : 0;
     
     const latestSchoolAnnouncementDate = (platformConfig?.announcements || [])
@@ -124,7 +121,6 @@ export default function StudentLayout({
       setHasNewAnnouncements(false);
     }
 
-    // Check for new point history
     const lastPointHistoryView = student.lastPointHistoryView ? new Date(student.lastPointHistoryView).getTime() : 0;
     const latestPointRecordDate = (student.pointHistory || [])
       .reduce((latest, record) => Math.max(latest, new Date(record.date).getTime()), 0);
@@ -136,7 +132,6 @@ export default function StudentLayout({
     }
 
   }, [student, platformConfig, classes]);
-
 
   const handleChangePassword = async () => {
     if (!student) return;
@@ -182,7 +177,6 @@ export default function StudentLayout({
     } finally {
         setIsSaving(false);
     }
-
   };
 
   const handleOpenNotifications = useCallback(async () => {
@@ -190,7 +184,6 @@ export default function StudentLayout({
     
     const now = new Date().toISOString();
     
-    // Optimistically update the UI
     setHasNewPointHistory(false);
 
     try {
@@ -204,7 +197,6 @@ export default function StudentLayout({
         );
     } catch (e) {
         console.error("Failed to update lastPointHistoryView:", e);
-        // Revert optimistic update on failure
         setHasNewPointHistory(true);
         toast({ title: "錯誤", description: "無法更新通知狀態，請稍後再試。", variant: "destructive" });
     }
@@ -229,9 +221,12 @@ export default function StudentLayout({
     return student?.pointHistory?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
   }, [student]);
 
-
   if (isLoading || !student) {
-      return null;
+      return (
+        <div className="flex h-screen w-full items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      );
   }
   
   const NotificationItem = ({ record }: { record: PointRecord }) => {
@@ -401,4 +396,16 @@ export default function StudentLayout({
     </Dialog>
     </>
   );
+}
+
+export default function StudentLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <Providers>
+      <StudentLayoutContent>{children}</StudentLayoutContent>
+    </Providers>
+  )
 }

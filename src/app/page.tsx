@@ -12,9 +12,10 @@ import { User, School, ArrowRight, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AppDataContext } from '@/context/AppDataContext';
+import { Providers } from "@/context/Providers";
 import type { Student, Teacher } from '@/lib/types';
 
-export default function HomePage() {
+function LoginPageContent() {
   const [studentIdInput, setStudentIdInput] = useState('');
   const [studentPassword, setStudentPassword] = useState('');
   const [classId, setClassId] = useState('');
@@ -57,7 +58,6 @@ export default function HomePage() {
         return;
     }
     
-    // Find student based on classId and studentId (seat number)
     const foundStudent = students.find(
       (s: Student) => s.classId === classId && s.id === studentIdInput
     );
@@ -135,7 +135,6 @@ export default function HomePage() {
 
       <div className="w-full max-w-4xl space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
         <div className="grid md:grid-cols-2 gap-8">
-            {/* Student Login Card */}
             <Card className="hover:shadow-lg hover:border-primary transition-all duration-300 transform hover:-translate-y-1">
             <form onSubmit={handleStudentLogin}>
                 <CardHeader>
@@ -189,14 +188,13 @@ export default function HomePage() {
                 </CardContent>
                 <CardFooter>
                 <Button type="submit" className="w-full" disabled={isFormDisabled}>
-                    {isFormDisabled ? <Loader2 className="animate-spin mr-2" /> : <ArrowRight className="mr-2 h-4 w-4" />}
-                    {isFormDisabled ? "同步資料中..." : "登入"}
+                    {isLoggingIn ? <Loader2 className="animate-spin mr-2" /> : <ArrowRight className="mr-2 h-4 w-4" />}
+                    {isLoggingIn ? "登入中..." : "登入"}
                 </Button>
                 </CardFooter>
             </form>
             </Card>
             
-            {/* Teacher Login Card */}
             <Card className="hover:shadow-lg hover:border-accent transition-all duration-300 transform hover:-translate-y-1">
             <form onSubmit={handleTeacherLogin}>
                 <CardHeader>
@@ -239,8 +237,8 @@ export default function HomePage() {
                 </CardContent>
                 <CardFooter>
                 <Button type="submit" className="w-full" variant="outline" disabled={isFormDisabled}>
-                    {isFormDisabled ? <Loader2 className="animate-spin mr-2" /> : <ArrowRight className="mr-2 h-4 w-4" />}
-                    {isFormDisabled ? "同步資料中..." : "以老師身份進入"}
+                    {isLoggingIn ? <Loader2 className="animate-spin mr-2" /> : <ArrowRight className="mr-2 h-4 w-4" />}
+                    {isLoggingIn ? "登入中..." : "以老師身份進入"}
                 </Button>
                 </CardFooter>
             </form>
@@ -269,5 +267,13 @@ export default function HomePage() {
         )}
       </footer>
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Providers>
+      <LoginPageContent />
+    </Providers>
   );
 }
