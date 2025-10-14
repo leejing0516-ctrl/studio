@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useContext, useEffect } from "react";
@@ -76,9 +77,9 @@ const EditorCard = ({
     cardKey: CardFieldKeys, 
     cardLabel: string, 
     texts: {title: string, description: string}, 
-    colors: { bg: string, text: string },
+    colors: {bg: string, text: string},
     onTextChange: (key: CardFieldKeys, field: 'title' | 'description', value: string) => void,
-    onColorChange: (key: 'chart-1' | 'chart-2' | 'chart-3' | 'chart-4' | 'chart-5' | 'bu-ke-xing-qiu-card-background' | 'bu-ke-xing-qiu-card-foreground' | 'my-pet-card-background' | 'my-pet-card-foreground' | 'points-trend-card-background' | 'points-trend-card-foreground' | 'card-foreground', value: string) => void,
+    onColorChange: (key: string, value: string) => void,
     icon: React.ElementType
 }) => {
 
@@ -96,7 +97,7 @@ const EditorCard = ({
                  {/* Live Preview */}
                 <div className="space-y-2">
                     <Label className="text-xs text-muted-foreground">即時預覽</Label>
-                    <div style={cardStyles} className="rounded-lg p-4 border text-card-foreground">
+                    <div style={cardStyles} className="rounded-lg p-4 border">
                         <div className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <h3 className="text-sm font-medium">{texts.title}</h3>
                             <Icon className="h-4 w-4" style={{ opacity: 0.8 }} />
@@ -134,8 +135,8 @@ const EditorCard = ({
              <CardFooter className="mt-auto grid grid-cols-2 gap-4 border-t p-4">
                 <div className="space-y-3">
                     <h4 className="text-sm font-medium">顏色</h4>
-                    <ColorPicker label="背景色" value={colors.bg} onChange={(v) => onColorChange(cardKey, v)} />
-                    <ColorPicker label="文字" value={colors.text} onChange={(v) => onColorChange('card-foreground', v)} />
+                     <ColorPicker label="背景色" value={colors.bg} onChange={(v) => onColorChange(cardKey.replace(/([A-Z])/g, '-$1').toLowerCase() + '-background', v)} />
+                     <ColorPicker label="文字" value={colors.text} onChange={(v) => onColorChange(cardKey.replace(/([A-Z])/g, '-$1').toLowerCase() + '-foreground', v)} />
                 </div>
             </CardFooter>
         </Card>
@@ -240,9 +241,6 @@ export default function TeacherDashboardEditorPage() {
                         <div className="flex flex-wrap gap-6">
                             {['totalPoints', 'portfolioValue', 'fixedDeposits', 'totalAssets', 'currentLoan'].map((key) => {
                                 const cardKey = key as CardFieldKeys;
-                                if ((cardKey === 'totalAssets' && cardTexts.currentLoan) || (cardKey === 'currentLoan' && !cardTexts.currentLoan)) {
-                                    // Logic to decide whether to show total assets or current loan card, not implemented in editor view
-                                }
                                 
                                 // Separate editor for totalAssets and currentLoan
                                 if (cardKey === 'currentLoan' || cardKey === 'totalAssets') return null;
@@ -257,7 +255,7 @@ export default function TeacherDashboardEditorPage() {
                                         texts={cardTexts[cardKey]} 
                                         colors={{bg: customTheme[cardInfo.bgKey], text: customTheme[cardInfo.textKey]}} 
                                         onTextChange={handleTextChange} 
-                                        onColorChange={handleColorChange as any}
+                                        onColorChange={(key, value) => handleColorChange(cardInfo.bgKey, value)}
                                         icon={cardInfo.icon}
                                     />
                                 );
@@ -307,7 +305,13 @@ export default function TeacherDashboardEditorPage() {
                                         texts={cardTexts[cardKey]} 
                                         colors={cardColors as any}
                                         onTextChange={handleTextChange} 
-                                        onColorChange={(key, value) => handleColorChange(cardInfo.bgKey, value)}
+                                        onColorChange={(key, value) => {
+                                             if (key === 'card-foreground') {
+                                                handleColorChange(cardInfo.textKey, value);
+                                            } else {
+                                                handleColorChange(cardInfo.bgKey, value);
+                                            }
+                                        }}
                                         icon={cardInfo.icon}
                                     />
                                 );
@@ -332,7 +336,7 @@ export default function TeacherDashboardEditorPage() {
                                         colors={{bg: customTheme[cardInfo.bgKey], text: customTheme[cardInfo.textKey]}} 
                                         onTextChange={handleTextChange} 
                                         onColorChange={(key, value) => {
-                                            if (key === 'card-foreground') {
+                                            if (key.includes('foreground')) {
                                                 handleColorChange(cardInfo.textKey, value);
                                             } else {
                                                 handleColorChange(cardInfo.bgKey, value);

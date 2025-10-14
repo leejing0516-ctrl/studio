@@ -261,7 +261,7 @@ export default function StudentDashboardPage() {
         )}
         <Card className="bg-chart-5 text-card-foreground">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle>{cardTexts.classRank?.title || '班級排名'}</CardTitle>
+                <CardTitle className="text-card-title">{cardTexts.classRank?.title || '班級排名'}</CardTitle>
                 <Trophy className="h-4 w-4 text-current/80" />
             </CardHeader>
             <CardContent>
@@ -271,7 +271,7 @@ export default function StudentDashboardPage() {
         </Card>
         <Card className="bg-chart-5 text-card-foreground">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle>{cardTexts.schoolRank?.title || '全校排名'}</CardTitle>
+                <CardTitle className="text-card-title">{cardTexts.schoolRank?.title || '全校排名'}</CardTitle>
                 <Globe className="h-4 w-4 text-current/80" />
             </CardHeader>
             <CardContent>
@@ -281,7 +281,7 @@ export default function StudentDashboardPage() {
         </Card>
          <Card className="bg-chart-5 text-card-foreground">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle>{cardTexts.myGroups?.title || '我的分組'}</CardTitle>
+            <CardTitle className="text-card-title">{cardTexts.myGroups?.title || '我的分組'}</CardTitle>
             <Users className="h-4 w-4 text-current/80" />
           </CardHeader>
           <CardContent>
@@ -316,7 +316,7 @@ export default function StudentDashboardPage() {
         <Card className="md:col-span-2 bg-my-pet-card text-my-pet-card-foreground">
             <CardHeader>
                 <CardTitle className="text-card-title flex items-center gap-2"><Bone /> {cardTexts.myPet?.title || '我的寵物'}</CardTitle>
-                <CardDescription>{cardTexts.myPet?.description || '您的點數越多，牠就會越強大！'}</CardDescription>
+                <CardDescription className="text-current/80">{cardTexts.myPet?.description || '您的點數越多，牠就會越強大！'}</CardDescription>
             </CardHeader>
             <CardContent>
                 <StudentPet student={currentStudent} />
@@ -325,7 +325,7 @@ export default function StudentDashboardPage() {
         <Card className="md:col-span-3 bg-points-trend-card text-points-trend-card-foreground">
           <CardHeader>
             <CardTitle className="text-card-title">{cardTexts.pointsTrend?.title || '最近七日點數趨勢'}</CardTitle>
-            <CardDescription>{cardTexts.pointsTrend?.description || '您最近七天每日從老師那裡獲得的點數紀錄。'}</CardDescription>
+            <CardDescription className="text-current/80">{cardTexts.pointsTrend?.description || '您最近七天每日從老師那裡獲得的點數紀錄。'}</CardDescription>
           </CardHeader>
           <CardContent>
              <div className="overflow-x-auto">
