@@ -40,7 +40,6 @@ function LoginPageContent() {
 
 
   useEffect(() => {
-    // This effect should only run once on component mount to check for existing sessions.
     const userRole = localStorage.getItem('userRole');
     if (userRole === 'student') {
         router.replace('/dashboard');
@@ -63,7 +62,16 @@ function LoginPageContent() {
         return;
     }
     
-    // The `students` array is now stable and won't cause re-renders on its own.
+    if (isLoading) {
+        toast({
+            title: "系統載入中",
+            description: "請稍候再試。",
+            variant: "destructive",
+        });
+        setIsLoggingIn(false);
+        return;
+    }
+    
     const foundStudent = students.find(
       (s: Student) => s.classId === classId && s.id === studentIdInput
     );
@@ -83,7 +91,7 @@ function LoginPageContent() {
         });
         setIsLoggingIn(false);
     }
-  }, [classId, studentIdInput, studentPassword, students, router, toast]);
+  }, [classId, studentIdInput, studentPassword, students, router, toast, isLoading]);
   
   const handleTeacherLogin = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -92,6 +100,16 @@ function LoginPageContent() {
         toast({
             title: "資訊不完整",
             description: "請選擇帳號並輸入密碼。",
+            variant: "destructive",
+        });
+        setIsLoggingIn(false);
+        return;
+    }
+    
+    if (isLoading) {
+        toast({
+            title: "系統載入中",
+            description: "請稍候再試。",
             variant: "destructive",
         });
         setIsLoggingIn(false);
@@ -113,7 +131,7 @@ function LoginPageContent() {
         });
         setIsLoggingIn(false);
     }
-  }, [selectedTeacherId, teacherPassword, allTeachers, router, toast]);
+  }, [selectedTeacherId, teacherPassword, allTeachers, router, toast, isLoading]);
 
   const isFormDisabled = isLoading || isLoggingIn;
 
@@ -280,3 +298,5 @@ function LoginPageContent() {
 export default function HomePage() {
   return <LoginPageContent />;
 }
+
+    

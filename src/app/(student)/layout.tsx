@@ -119,23 +119,15 @@ function StudentLayoutContent({
     const latestClassAnnouncementDate = (studentClass?.announcements || [])
       .reduce((latest, ann) => Math.max(latest, new Date(ann.date).getTime()), 0);
 
-    if (latestSchoolAnnouncementDate > lastViewTime || latestClassAnnouncementDate > lastViewTime) {
-      setHasNewAnnouncements(true);
-    } else {
-      setHasNewAnnouncements(false);
-    }
-
+    setHasNewAnnouncements(latestSchoolAnnouncementDate > lastViewTime || latestClassAnnouncementDate > lastViewTime);
+    
     const lastPointHistoryView = student.lastPointHistoryView ? new Date(student.lastPointHistoryView).getTime() : 0;
     const latestPointRecordDate = (student.pointHistory || [])
       .reduce((latest, record) => Math.max(latest, new Date(record.date).getTime()), 0);
 
-    if (latestPointRecordDate > lastPointHistoryView) {
-      setHasNewPointHistory(true);
-    } else {
-      setHasNewPointHistory(false);
-    }
+    setHasNewPointHistory(latestPointRecordDate > lastPointHistoryView);
 
-  }, [student, platformConfig, classes]);
+  }, [student, platformConfig?.announcements, classes]);
 
 
   const handleChangePassword = async () => {
@@ -224,7 +216,7 @@ function StudentLayoutContent({
   
   const pointHistory = useMemo(() => {
     return student?.pointHistory?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
-  }, [student]);
+  }, [student?.pointHistory]);
 
   if (isLoading || !student) {
       return (
@@ -410,3 +402,5 @@ export default function StudentLayout({
 }) {
   return <StudentLayoutContent>{children}</StudentLayoutContent>;
 }
+
+    
