@@ -42,7 +42,7 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
-      {
+       {
         protocol: 'https',
         hostname: 'i.meee.com.tw',
         port: '',
