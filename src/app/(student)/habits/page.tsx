@@ -438,7 +438,7 @@ export default function HabitsPage() {
             <div className="py-4">
                 <ScrollArea className="h-96 pr-4">
                     <div className="space-y-6">
-                    {(viewingHabitHistory?.checkIns || []).slice().reverse().map((checkIn, index) => (
+                    {[...(viewingHabitHistory?.checkIns || [])].reverse().map((checkIn, index) => (
                         <div key={index}>
                             <p className="font-semibold mb-2">
                                 {isValid(new Date(checkIn.date)) ? format(new Date(checkIn.date), 'yyyy年MM月dd日') : '無效日期'}
