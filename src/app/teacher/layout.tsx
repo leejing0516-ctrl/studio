@@ -281,8 +281,7 @@ export default function TeacherLayout({
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader>
-          <div className="flex items-center gap-2 px-2">
-            <Logo className="h-8 w-8" />
+          <div className="flex items-center justify-center gap-2 px-2">
             <span className="text-lg font-semibold group-data-[collapsible=icon]:hidden">
               南梓實小虛擬銀行
             </span>
@@ -397,4 +396,3 @@ export default function TeacherLayout({
     </>
   );
 }
-
