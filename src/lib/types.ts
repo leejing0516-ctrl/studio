@@ -270,3 +270,5 @@ export type PlatformConfig = {
     dailyRewardStandardMax?: number;
     feedback?: Feedback[];
 }
+
+    

@@ -364,15 +364,12 @@ export default function TeacherHabitsPage() {
                                         {isValid(new Date(checkIn.date)) ? format(new Date(checkIn.date), 'yyyy年MM月dd日') : '無效日期'}
                                     </p>
                                     <div className="flex gap-4 items-start">
-                                        {checkIn.imageUrl && (
-                                            <Image src={checkIn.imageUrl} alt={`Check-in for ${checkIn.date}`} width={128} height={128} className="rounded-md object-cover w-32 h-32 shrink-0"/>
-                                        )}
                                         {checkIn.note ? (
                                             <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md flex-1">
                                                 <p>{checkIn.note}</p>
                                             </div>
                                         ) : (
-                                            !checkIn.imageUrl && <p className="text-sm text-muted-foreground">這天只留下了打卡紀錄。</p>
+                                            <p className="text-sm text-muted-foreground">這天只留下了打卡紀錄。</p>
                                         )}
                                     </div>
                                     {index < (viewingHabitHistory?.checkIns || []).length - 1 && <Separator className="mt-6"/>}
@@ -392,3 +389,5 @@ export default function TeacherHabitsPage() {
         </div>
     );
 }
+
+    
