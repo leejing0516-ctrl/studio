@@ -4,7 +4,7 @@
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from "@/context/Providers";
-import { themes } from "@/lib/themes";
+import { themes, type Theme } from "@/lib/themes";
 import { DEFAULT_APP_ICON_URL } from "@/lib/config";
 import type { CustomTheme, DashboardCardConfig } from "@/lib/types";
 import { useContext, useEffect } from "react";
@@ -19,9 +19,23 @@ export default function RootLayout({
 
   const appIconUrl = platformConfig?.appIconUrl || DEFAULT_APP_ICON_URL;
   
-  // Directly use the saved custom theme if it exists, otherwise fall back to default theme CSS variables.
-  const activeTheme = platformConfig?.customTheme 
-    || themes.find(t => t.name === 'default')!.cssVars.dark;
+  // Correctly determine the active theme's CSS variables
+  const activeTheme = (() => {
+    // Priority 1: Use the directly saved custom theme if it exists.
+    if (platformConfig?.customTheme) {
+      return platformConfig.customTheme;
+    }
+    // Priority 2: Find the selected theme by name from the predefined list.
+    if (platformConfig?.theme) {
+      const selectedTheme = themes.find(t => t.name === platformConfig.theme);
+      if (selectedTheme) {
+        // Use light theme if available, otherwise dark
+        return selectedTheme.cssVars.light || selectedTheme.cssVars.dark;
+      }
+    }
+    // Priority 3: Fallback to the hardcoded default theme.
+    return themes.find(t => t.name === 'default')!.cssVars.dark;
+  })();
   
   const dashboardCardsConfig = platformConfig?.dashboardCards;
 

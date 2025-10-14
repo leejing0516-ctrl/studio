@@ -134,8 +134,14 @@ export default function TeacherSettingsPage() {
         setIsSavingSettings(true);
         
         try {
-            const themeConfig = availableThemes.find(t => t.name === selectedThemeName);
-            const themeCssVars = themeConfig ? (themeConfig.cssVars.light || themeConfig.cssVars.dark) : undefined;
+            const selectedTheme = availableThemes.find(t => t.name === selectedThemeName);
+            let customThemeData: CustomTheme | undefined = undefined;
+
+            if (selectedTheme) {
+                // If it's a custom theme, we save its CSS vars.
+                // Otherwise, we save the chosen default theme's vars.
+                customThemeData = selectedTheme.cssVars.light || selectedTheme.cssVars.dark;
+            }
 
             const dataToUpdate: Partial<PlatformConfig> = {
                 logoUrl: logoUrl,
@@ -153,7 +159,7 @@ export default function TeacherSettingsPage() {
                 dailyRewardStandardChance: Number(dailyRewardStandardChance) / 100,
                 dailyRewardStandardMin: Number(dailyRewardStandardMin),
                 dailyRewardStandardMax: Number(dailyRewardStandardMax),
-                customTheme: themeCssVars,
+                customTheme: customThemeData,
             };
             
             await setPlatformConfig(dataToUpdate);
