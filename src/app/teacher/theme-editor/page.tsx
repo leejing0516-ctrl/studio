@@ -45,6 +45,7 @@ const defaultThemeColors: CustomTheme = {
     "chart-2": "180 80% 45%",
     "chart-3": "217 91% 60%",
     "chart-4": "300 80% 60%",
+    "chart-5": "220 20% 70%",
     "reward-card-school": "25 95% 55%",
     "reward-card-class": "140 70% 40%",
     "card-title-foreground": "210 40% 98%",
@@ -57,6 +58,10 @@ const defaultThemeColors: CustomTheme = {
     "reward-card-class-foreground": "210 40% 98%",
     "bu-ke-xing-qiu-card-background": "220 20% 70%",
     "bu-ke-xing-qiu-card-foreground": "220 20% 10%",
+    "my-pet-card-background": "220 20% 70%",
+    "my-pet-card-foreground": "220 20% 10%",
+    "points-trend-card-background": "220 20% 70%",
+    "points-trend-card-foreground": "220 20% 10%",
 };
 
 const hslToHex = (h: number, s: number, l: number): string => {
@@ -185,6 +190,8 @@ const specialCardOptions = [
     { keyBackground: "reward-card-school", keyForeground: "reward-card-school-foreground", label: "學校獎勵卡片" },
     { keyBackground: "reward-card-class", keyForeground: "reward-card-class-foreground", label: "班級獎勵卡片" },
     { keyBackground: "bu-ke-xing-qiu-card-background", keyForeground: "bu-ke-xing-qiu-card-foreground", label: "布可星球卡片" },
+    { keyBackground: "my-pet-card-background", keyForeground: "my-pet-card-foreground", label: "我的寵物卡片" },
+    { keyBackground: "points-trend-card-background", keyForeground: "points-trend-card-foreground", label: "點數趨勢卡片" },
 
 ];
 
@@ -383,3 +390,5 @@ export default function TeacherThemeEditorPage() {
         </div>
     );
 }
+
+    

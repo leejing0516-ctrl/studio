@@ -76,6 +76,14 @@ export default {
             DEFAULT: 'hsl(var(--bu-ke-xing-qiu-card-background))',
             foreground: 'hsl(var(--bu-ke-xing-qiu-card-foreground))',
         },
+        'my-pet-card': {
+            DEFAULT: 'hsl(var(--my-pet-card-background))',
+            foreground: 'hsl(var(--my-pet-card-foreground))',
+        },
+        'points-trend-card': {
+            DEFAULT: 'hsl(var(--points-trend-card-background))',
+            foreground: 'hsl(var(--points-trend-card-foreground))',
+        },
         sidebar: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--sidebar-foreground))',
@@ -121,3 +129,5 @@ export default {
   },
   plugins: [require('tailwindcss-animate')],
 } satisfies Config;
+
+    
