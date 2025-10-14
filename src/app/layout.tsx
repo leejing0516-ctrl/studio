@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import "./globals.css";
@@ -41,9 +40,9 @@ export default function RootLayout({
   
   const dashboardCardsConfig = platformConfig?.dashboardCards;
 
-  const cssVariables = Object.entries(activeTheme)
+  const cssVariables = activeTheme ? Object.entries(activeTheme)
     .map(([key, value]) => `--${key}: ${value};`)
-    .join('\n');
+    .join('\n') : '';
     
   let cardSizeVariables = '';
   if (dashboardCardsConfig) {
