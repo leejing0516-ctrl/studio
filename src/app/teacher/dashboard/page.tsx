@@ -1691,7 +1691,7 @@ export default function TeacherDashboardPage() {
                                                 {habitApprovalRequests.map(({ student, habit }) => (
                                                     <TableRow key={habit.id}>
                                                         <TableCell>{student.name}</TableCell>
-                                                        <TableCell>{habit.habitName}</TableCell>
+                                                        <TableCell>{habit.title}</TableCell>
                                                         <TableCell className="text-right">
                                                             <Button disabled>未實作</Button>
                                                         </TableCell>
@@ -1704,8 +1704,8 @@ export default function TeacherDashboardPage() {
                             )}
                             {(rewardApprovalRequests.length === 0 && loanApprovalRequests.length === 0 && challengeApprovalRequests.length === 0 && habitApprovalRequests.length === 0) && (
                                 <Card>
-                                    <CardContent>
-                                        <p className="text-muted-foreground">目前沒有任何審核請求。</p>
+                                    <CardContent className="pt-6">
+                                        <p className="text-muted-foreground text-center">目前沒有任何審核請求。</p>
                                     </CardContent>
                                 </Card>
                             )}
@@ -1941,15 +1941,15 @@ export default function TeacherDashboardPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-             <Dialog open={isGroupManagementDialogOpen} onOpenChange={setIsGroupManagementDialogOpen}>
-                <GroupManagementDialog
-                    isOpen={isGroupManagementDialogOpen}
-                    onClose={() => setIsGroupManagementDialogOpen(false)}
-                    classGroups={currentTeacherGroups}
-                    studentsInClass={studentsInClass}
-                    onSave={handleSaveGroups}
-                />
-            </Dialog>
+             
+            <GroupManagementDialog
+                isOpen={isGroupManagementDialogOpen}
+                onClose={() => setIsGroupManagementDialogOpen(false)}
+                classGroups={currentTeacherGroups}
+                studentsInClass={studentsInClass}
+                onSave={handleSaveGroups}
+            />
+            
               <Dialog open={!!loanToProcess} onOpenChange={(open) => !open && setLoanToProcess(null)}>
                 <DialogContent>
                     <DialogHeader>
