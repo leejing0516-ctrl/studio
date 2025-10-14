@@ -19,22 +19,28 @@ export default function RootLayout({
 
   const appIconUrl = platformConfig?.appIconUrl || DEFAULT_APP_ICON_URL;
 
-  // Correctly determine the active theme's CSS variables
-  const activeTheme = useMemo(() => {
+  const activeThemeColors = useMemo(() => {
+    // 1. Prioritize customTheme if it exists. This is the source of truth.
+    if (platformConfig?.customTheme && Object.keys(platformConfig.customTheme).length > 0) {
+        return platformConfig.customTheme;
+    }
+    
+    // 2. If no customTheme, find the theme by its name in the default list.
     const themeName = platformConfig?.theme || 'default';
     const selectedTheme = themes.find(t => t.name === themeName) || themes.find(t => t.name === 'default');
-    // All themes use the 'dark' cssVars as the source of truth.
+
+    // 3. All themes are dark by default in themes.ts
     return selectedTheme!.cssVars.dark;
-  }, [platformConfig?.theme]);
-  
+  }, [platformConfig?.theme, platformConfig?.customTheme]);
+
   const dashboardCardsConfig = platformConfig?.dashboardCards;
 
   const cssVariables = useMemo(() => {
-    if (!activeTheme) return '';
-    return Object.entries(activeTheme)
+    if (!activeThemeColors) return '';
+    return Object.entries(activeThemeColors)
       .map(([key, value]) => `--${key}: ${value};`)
       .join('\n');
-  }, [activeTheme]);
+  }, [activeThemeColors]);
     
   let cardSizeVariables = '';
   if (dashboardCardsConfig) {

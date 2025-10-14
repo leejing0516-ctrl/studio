@@ -62,6 +62,10 @@ export default {
           border: 'hsl(var(--sidebar-border))',
           ring: 'hsl(var(--sidebar-ring))',
         },
+        'reward-card-school': 'hsl(var(--primary))',
+        'reward-card-school-foreground': 'hsl(var(--primary-foreground))',
+        'reward-card-class': 'hsl(var(--secondary))',
+        'reward-card-class-foreground': 'hsl(var(--secondary-foreground))',
       },
       borderRadius: {
         lg: 'var(--radius)',

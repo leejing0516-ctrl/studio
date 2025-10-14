@@ -222,12 +222,16 @@ export type CustomTheme = {
 };
 
 export type DashboardCardConfig = {
-  [key: string]: { 
-    title: string; 
-    description: string;
-    backgroundColor: string;
-    textColor: string;
-  } | string;
+  totalPoints: { title: string; description: string; backgroundColor: string; textColor: string; };
+  portfolioValue: { title: string; description: string; backgroundColor: string; textColor: string; };
+  fixedDeposits: { title: string; description: string; backgroundColor: string; textColor: string; };
+  totalAssets: { title: string; description: string; backgroundColor: string; textColor: string; };
+  classRank: { title: string; description: string; backgroundColor: string; textColor: string; };
+  schoolRank: { title: string; description: string; backgroundColor: string; textColor: string; };
+  myGroups: { title: string; description: string; backgroundColor: string; textColor: string; };
+  buKeXingQiu: { title: string; description: string; backgroundColor: string; textColor: string; };
+  myPet: { title: string; description: string; backgroundColor: string; textColor: string; };
+  pointsTrend: { title: string; description: string; backgroundColor: string; textColor: string; };
   cardTitleSize: string;
   cardValueSize: string;
   cardDescriptionSize: string;
@@ -250,7 +254,7 @@ export type PlatformConfig = {
     homeSubtitle?: string;
     homeIllustrationUrl?: string;
     theme?: string;
-    customTheme?: CustomTheme;
+    customThemes?: CustomTheme[];
     marketOpenHour?: number;
     marketCloseHour?: number;
     stockMarketNews?: Announcement[];

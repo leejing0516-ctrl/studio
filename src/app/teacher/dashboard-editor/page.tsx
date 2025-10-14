@@ -21,7 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { DashboardCardConfig } from "@/lib/types";
 import { hslToHex, hexToHsl } from '@/lib/utils';
 
-const initialCardConfig: DashboardCardConfig = {
+const initialCardConfig: Partial<DashboardCardConfig> = {
     totalPoints: { title: "目前點數", description: "可用於交易或兌換獎勵", backgroundColor: "222.2 47.4% 11.2%", textColor: "210 40% 98%" },
     portfolioValue: { title: "投資價值", description: "謹慎理財，信用至上", backgroundColor: "210 40% 96.1%", textColor: "222.2 47.4% 11.2%" },
     fixedDeposits: { title: "定存點數", description: "目前進行中的定期存款", backgroundColor: "217.2 91.2% 59.8%", textColor: "210 40% 98%" },
@@ -37,7 +37,7 @@ const initialCardConfig: DashboardCardConfig = {
     cardDescriptionSize: "0.75rem",
 };
 
-type CardFieldKeys = Exclude<keyof DashboardCardConfig, 'cardTitleSize' | 'cardValueSize' | 'cardDescriptionSize'>;
+type CardFieldKeys = 'totalPoints' | 'portfolioValue' | 'fixedDeposits' | 'totalAssets' | 'classRank' | 'schoolRank' | 'myGroups' | 'buKeXingQiu' | 'myPet' | 'pointsTrend';
 
 
 const ColorPicker = ({ label, value, onChange }: { label: string, value: string, onChange: (value: string) => void }) => {
@@ -85,8 +85,8 @@ const EditorCard = ({
     icon: React.ElementType,
     fontSizes: { title: string, value: string, description: string }
 }) => {
-    if (!cardConfig) {
-        return null; // Return null if the config for this card key doesn't exist
+    if (!cardConfig || typeof cardConfig === 'string') {
+        return null; // Return null if the config for this card key doesn't exist or is invalid
     }
 
     const cardStyles = {
@@ -153,7 +153,7 @@ export default function TeacherDashboardEditorPage() {
     const router = useRouter();
     
     const [isSaving, setIsSaving] = useState(false);
-    const [cardConfig, setCardConfig] = useState<DashboardCardConfig>(initialCardConfig);
+    const [cardConfig, setCardConfig] = useState<Partial<DashboardCardConfig>>(initialCardConfig);
 
     useEffect(() => {
         const role = localStorage.getItem('teacherRole');
@@ -171,25 +171,31 @@ export default function TeacherDashboardEditorPage() {
     }, [platformConfig, router, toast]);
 
     const handleTextChange = (cardKey: CardFieldKeys, field: 'title' | 'description', value: string) => {
-        setCardConfig(prev => ({
-            ...prev,
-            [cardKey]: {
-                // @ts-ignore
-                ...prev[cardKey],
-                [field]: value
-            }
-        }));
+        setCardConfig(prev => {
+            const currentCard = prev[cardKey];
+            if (typeof currentCard === 'string' || !currentCard) return prev;
+            return {
+                ...prev,
+                [cardKey]: {
+                    ...currentCard,
+                    [field]: value
+                }
+            };
+        });
     };
     
     const handleColorChange = (cardKey: CardFieldKeys, field: 'backgroundColor' | 'textColor', value: string) => {
-        setCardConfig(prev => ({
-            ...prev,
-            [cardKey]: {
-                // @ts-ignore
-                ...prev[cardKey],
-                [field]: value
-            }
-        }));
+        setCardConfig(prev => {
+            const currentCard = prev[cardKey];
+            if (typeof currentCard === 'string' || !currentCard) return prev;
+            return {
+                ...prev,
+                [cardKey]: {
+                    ...currentCard,
+                    [field]: value
+                }
+            };
+        });
     };
 
     const handleFontSizeChange = (field: 'cardTitleSize' | 'cardValueSize' | 'cardDescriptionSize', value: string) => {
@@ -200,7 +206,7 @@ export default function TeacherDashboardEditorPage() {
         setIsSaving(true);
         try {
             await setPlatformConfig({ 
-                dashboardCards: cardConfig,
+                dashboardCards: cardConfig as DashboardCardConfig,
             });
             toast({ title: "儲存成功", description: "儀表板卡片設定已更新。" });
         } catch (error: any) {
