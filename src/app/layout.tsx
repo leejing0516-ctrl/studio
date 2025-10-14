@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import "./globals.css";
@@ -21,19 +22,20 @@ export default function RootLayout({
   
   // Correctly determine the active theme's CSS variables
   const activeTheme = (() => {
-    // Priority 1: Use the directly saved custom theme if it exists.
+    // ALWAYS prioritize the explicitly saved customTheme object.
+    // The settings page now ensures this object is always up-to-date with the selected theme.
     if (platformConfig?.customTheme) {
       return platformConfig.customTheme;
     }
-    // Priority 2: Find the selected theme by name from the predefined list.
+    
+    // Fallback logic for initial load or if customTheme is somehow missing.
     if (platformConfig?.theme) {
       const selectedTheme = themes.find(t => t.name === platformConfig.theme);
       if (selectedTheme) {
-        // Use light theme if available, otherwise dark
         return selectedTheme.cssVars.light || selectedTheme.cssVars.dark;
       }
     }
-    // Priority 3: Fallback to the hardcoded default theme.
+    // Absolute fallback to the hardcoded default theme.
     return themes.find(t => t.name === 'default')!.cssVars.dark;
   })();
   
