@@ -22,9 +22,6 @@ export default {
         card: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
-          'title-foreground': 'hsl(var(--card-title-foreground))',
-          'value-foreground': 'hsl(var(--card-value-foreground))',
-          'description-foreground': 'hsl(var(--card-description-foreground))',
         },
         popover: {
           DEFAULT: 'hsl(var(--popover))',
@@ -129,5 +126,3 @@ export default {
   },
   plugins: [require('tailwindcss-animate')],
 } satisfies Config;
-
-    

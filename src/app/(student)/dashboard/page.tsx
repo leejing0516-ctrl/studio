@@ -235,7 +235,7 @@ export default function StudentDashboardPage() {
             </CardContent>
         </Card>
          {totalLoanAmount > 0 ? (
-          <Card className="border-destructive bg-destructive/10 text-destructive">
+          <Card className="bg-chart-4 text-card-foreground">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-card-title">{cardTexts.currentLoan?.title || '目前貸款'}</CardTitle>
               <Landmark className="h-4 w-4" />
@@ -244,7 +244,7 @@ export default function StudentDashboardPage() {
               <div className="text-card-value font-bold">
                 {Math.round(totalLoanAmount).toLocaleString()}
               </div>
-              <p className="text-xs text-destructive/80">{cardTexts.currentLoan?.description || '需在期限內償還'}</p>
+              <p className="text-card-description">{cardTexts.currentLoan?.description || '需在期限內償還'}</p>
             </CardContent>
           </Card>
         ) : (
@@ -261,8 +261,8 @@ export default function StudentDashboardPage() {
         )}
         <Card className="bg-chart-5 text-card-foreground">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-card-title">{cardTexts.classRank?.title || '班級排名'}</CardTitle>
-                <Trophy className="h-4 w-4 text-accent" />
+                <CardTitle>{cardTexts.classRank?.title || '班級排名'}</CardTitle>
+                <Trophy className="h-4 w-4 text-current/80" />
             </CardHeader>
             <CardContent>
                 <div className="text-card-value font-bold">#{classRank}</div>
@@ -271,8 +271,8 @@ export default function StudentDashboardPage() {
         </Card>
         <Card className="bg-chart-5 text-card-foreground">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-card-title">{cardTexts.schoolRank?.title || '全校排名'}</CardTitle>
-                <Globe className="h-4 w-4 text-accent" />
+                <CardTitle>{cardTexts.schoolRank?.title || '全校排名'}</CardTitle>
+                <Globe className="h-4 w-4 text-current/80" />
             </CardHeader>
             <CardContent>
                 <div className="text-card-value font-bold">#{schoolRank}</div>
@@ -281,8 +281,8 @@ export default function StudentDashboardPage() {
         </Card>
          <Card className="bg-chart-5 text-card-foreground">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-card-title">{cardTexts.myGroups?.title || '我的分組'}</CardTitle>
-            <Users className="h-4 w-4 text-accent" />
+            <CardTitle>{cardTexts.myGroups?.title || '我的分組'}</CardTitle>
+            <Users className="h-4 w-4 text-current/80" />
           </CardHeader>
           <CardContent>
              {studentGroups.length > 0 ? (

@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Coins, BarChart, PiggyBank, Wallet, Trophy, Globe, Users, Star, Bone, LineChart } from "lucide-react";
+import { Loader2, Coins, BarChart, PiggyBank, Wallet, Trophy, Globe, Users, Star, Bone, LineChart, Landmark } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
@@ -25,13 +25,13 @@ const initialCardFields = {
     portfolioValue: { title: "投資價值", description: "謹慎理財，信用至上" },
     fixedDeposits: { title: "定存點數", description: "目前進行中的定期存款" },
     totalAssets: { title: "總資產", description: "點數 + 投資 + 定存" },
+    currentLoan: { title: "目前貸款", description: "需在期限內償還" },
     classRank: { title: "班級排名", description: "班級前 {percentile}%" },
     schoolRank: { title: "全校排名", description: "全校前 {percentile}%" },
     myGroups: { title: "我的分組", description: "您尚未被分派到任何小組。" },
     buKeXingQiu: { title: "布可星球", description: "你在閱讀世界中的榮譽等級" },
     myPet: { title: "我的寵物", description: "您的點數越多，牠就會越強大！" },
     pointsTrend: { title: "最近七日點數趨勢", description: "您最近七天每日從老師那裡獲得的點數紀錄。" },
-    currentLoan: { title: "目前貸款", description: "需在期限內償還" },
 };
 
 type CardFieldKeys = keyof typeof initialCardFields;
@@ -76,47 +76,36 @@ const EditorCard = ({
     cardKey: CardFieldKeys, 
     cardLabel: string, 
     texts: {title: string, description: string}, 
-    colors: { bg: string, value: string, description: string, title: string },
+    colors: { bg: string, text: string },
     onTextChange: (key: CardFieldKeys, field: 'title' | 'description', value: string) => void,
-    onColorChange: (key: 'chart-1' | 'chart-2' | 'chart-3' | 'chart-4' | 'chart-5' | 'bu-ke-xing-qiu-card-background' | 'bu-ke-xing-qiu-card-foreground' | 'my-pet-card-background' | 'my-pet-card-foreground' | 'points-trend-card-background' | 'points-trend-card-foreground' | 'card-title-foreground' | 'card-value-foreground' | 'card-description-foreground', value: string) => void,
+    onColorChange: (key: 'chart-1' | 'chart-2' | 'chart-3' | 'chart-4' | 'chart-5' | 'bu-ke-xing-qiu-card-background' | 'bu-ke-xing-qiu-card-foreground' | 'my-pet-card-background' | 'my-pet-card-foreground' | 'points-trend-card-background' | 'points-trend-card-foreground' | 'card-foreground', value: string) => void,
     icon: React.ElementType
 }) => {
-    const bgKey = `chart-${['totalPoints', 'portfolioValue', 'fixedDeposits', 'totalAssets'].indexOf(cardKey) + 1}` as any;
-    
-    // For specific cards that don't follow the chart-x pattern
-    let finalBgKey = bgKey;
-    if (cardKey === 'classRank' || cardKey === 'schoolRank' || cardKey === 'myGroups') finalBgKey = 'chart-5';
-    if (cardKey === 'buKeXingQiu') finalBgKey = 'bu-ke-xing-qiu-card-background';
 
     const cardStyles = {
       backgroundColor: hslToHex(colors.bg),
-      color: hslToHex(colors.title) // Default text color
+      color: hslToHex(colors.text)
     };
-    const valueStyles = { color: hslToHex(colors.value) };
-    const descriptionStyles = { color: hslToHex(colors.description) };
-    const titleStyles = { color: hslToHex(colors.title) };
-
-    const isComplexCard = ['buKeXingQiu', 'myPet', 'pointsTrend'].includes(cardKey);
 
     return (
         <Card className="flex-1 min-w-[320px] flex flex-col">
-             <CardHeader style={cardStyles} className="rounded-t-xl">
+             <CardHeader className="rounded-t-xl">
                  <CardTitle className="text-lg">{cardLabel}</CardTitle>
             </CardHeader>
             <CardContent className="p-4 space-y-4">
                  {/* Live Preview */}
                 <div className="space-y-2">
                     <Label className="text-xs text-muted-foreground">即時預覽</Label>
-                    <div style={cardStyles} className="rounded-lg p-4 border">
+                    <div style={cardStyles} className="rounded-lg p-4 border text-card-foreground">
                         <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <h3 className="text-sm font-medium" style={titleStyles}>{texts.title}</h3>
-                            <Icon className="h-4 w-4" style={{ color: hslToHex(colors.title), opacity: 0.8 }} />
+                            <h3 className="text-sm font-medium">{texts.title}</h3>
+                            <Icon className="h-4 w-4" style={{ opacity: 0.8 }} />
                         </div>
                         <div>
-                             <div className="text-2xl font-bold" style={valueStyles}>
-                                {cardKey.includes('Rank') ? '#1' : cardKey.includes('Value') || cardKey.includes('Assets') ? '$12,345' : '12,345'}
+                             <div className="text-2xl font-bold">
+                                {cardKey.includes('Rank') ? '#1' : cardKey.includes('Value') || cardKey.includes('Assets') || cardKey.includes('Loan') ? '$12,345' : '12,345'}
                             </div>
-                            <p className="text-xs" style={descriptionStyles}>{texts.description.replace('{percentile}', '1')}</p>
+                            <p className="text-xs">{texts.description.replace('{percentile}', '1')}</p>
                         </div>
                     </div>
                 </div>
@@ -144,14 +133,9 @@ const EditorCard = ({
             </CardContent>
              <CardFooter className="mt-auto grid grid-cols-2 gap-4 border-t p-4">
                 <div className="space-y-3">
-                    <h4 className="text-sm font-medium">背景顏色</h4>
-                    <ColorPicker label="背景色" value={colors.bg} onChange={(v) => onColorChange(finalBgKey, v)} />
-                </div>
-                 <div className="space-y-3">
-                    <h4 className="text-sm font-medium">文字顏色</h4>
-                    <ColorPicker label="標題" value={colors.title} onChange={(v) => onColorChange('card-title-foreground', v)} />
-                    <ColorPicker label="數值" value={colors.value} onChange={(v) => onColorChange('card-value-foreground', v)} />
-                    <ColorPicker label="描述" value={colors.description} onChange={(v) => onColorChange('card-description-foreground', v)} />
+                    <h4 className="text-sm font-medium">顏色</h4>
+                    <ColorPicker label="背景色" value={colors.bg} onChange={(v) => onColorChange(cardKey, v)} />
+                    <ColorPicker label="文字" value={colors.text} onChange={(v) => onColorChange('card-foreground', v)} />
                 </div>
             </CardFooter>
         </Card>
@@ -224,17 +208,18 @@ export default function TeacherDashboardEditorPage() {
         );
     }
 
-    const editorCardMap: { [key in CardFieldKeys]?: { label: string, icon: React.ElementType, bgKey: keyof CustomTheme } } = {
-        totalPoints: { label: "目前點數卡片", icon: Coins, bgKey: 'chart-1' },
-        portfolioValue: { label: "投資價值卡片", icon: BarChart, bgKey: 'chart-2' },
-        fixedDeposits: { label: "定存點數卡片", icon: PiggyBank, bgKey: 'chart-3' },
-        totalAssets: { label: "總資產/貸款卡片", icon: Wallet, bgKey: 'chart-4' },
-        classRank: { label: "班級排名卡片", icon: Trophy, bgKey: 'chart-5' },
-        schoolRank: { label: "全校排名卡片", icon: Globe, bgKey: 'chart-5' },
-        myGroups: { label: "我的分組卡片", icon: Users, bgKey: 'chart-5' },
-        buKeXingQiu: { label: "布可星球卡片", icon: Star, bgKey: 'bu-ke-xing-qiu-card-background' },
-        myPet: { label: "我的寵物卡片", icon: Bone, bgKey: 'my-pet-card-background' },
-        pointsTrend: { label: "點數趨勢卡片", icon: LineChart, bgKey: 'points-trend-card-background' },
+    const editorCardMap: { [key in CardFieldKeys]?: { label: string, icon: React.ElementType, bgKey: keyof CustomTheme, textKey: keyof CustomTheme } } = {
+        totalPoints: { label: "目前點數卡片", icon: Coins, bgKey: 'chart-1', textKey: 'card-foreground' },
+        portfolioValue: { label: "投資價值卡片", icon: BarChart, bgKey: 'chart-2', textKey: 'card-foreground' },
+        fixedDeposits: { label: "定存點數卡片", icon: PiggyBank, bgKey: 'chart-3', textKey: 'card-foreground' },
+        totalAssets: { label: "總資產卡片", icon: Wallet, bgKey: 'chart-4', textKey: 'card-foreground' },
+        currentLoan: { label: "目前貸款卡片", icon: Landmark, bgKey: 'chart-4', textKey: 'card-foreground' },
+        classRank: { label: "班級排名卡片", icon: Trophy, bgKey: 'chart-5', textKey: 'card-foreground' },
+        schoolRank: { label: "全校排名卡片", icon: Globe, bgKey: 'chart-5', textKey: 'card-foreground' },
+        myGroups: { label: "我的分組卡片", icon: Users, bgKey: 'chart-5', textKey: 'card-foreground' },
+        buKeXingQiu: { label: "布可星球卡片", icon: Star, bgKey: 'bu-ke-xing-qiu-card-background', textKey: 'bu-ke-xing-qiu-card-foreground' },
+        myPet: { label: "我的寵物卡片", icon: Bone, bgKey: 'my-pet-card-background', textKey: 'my-pet-card-foreground' },
+        pointsTrend: { label: "點數趨勢卡片", icon: LineChart, bgKey: 'points-trend-card-background', textKey: 'points-trend-card-foreground' },
     };
 
 
@@ -253,8 +238,15 @@ export default function TeacherDashboardEditorPage() {
                     <section>
                         <h3 className="text-xl font-semibold mb-4 border-b pb-2">頂部資訊卡 (4個)</h3>
                         <div className="flex flex-wrap gap-6">
-                            {['totalPoints', 'portfolioValue', 'fixedDeposits', 'totalAssets'].map((key) => {
+                            {['totalPoints', 'portfolioValue', 'fixedDeposits', 'totalAssets', 'currentLoan'].map((key) => {
                                 const cardKey = key as CardFieldKeys;
+                                if ((cardKey === 'totalAssets' && cardTexts.currentLoan) || (cardKey === 'currentLoan' && !cardTexts.currentLoan)) {
+                                    // Logic to decide whether to show total assets or current loan card, not implemented in editor view
+                                }
+                                
+                                // Separate editor for totalAssets and currentLoan
+                                if (cardKey === 'currentLoan' || cardKey === 'totalAssets') return null;
+
                                 const cardInfo = editorCardMap[cardKey];
                                 if (!cardInfo) return null;
                                 return (
@@ -263,13 +255,34 @@ export default function TeacherDashboardEditorPage() {
                                         cardKey={cardKey} 
                                         cardLabel={cardInfo.label} 
                                         texts={cardTexts[cardKey]} 
-                                        colors={{bg: customTheme[cardInfo.bgKey], title: customTheme['card-title-foreground'], value: customTheme['card-value-foreground'], description: customTheme['card-description-foreground']}} 
+                                        colors={{bg: customTheme[cardInfo.bgKey], text: customTheme[cardInfo.textKey]}} 
                                         onTextChange={handleTextChange} 
                                         onColorChange={handleColorChange as any}
                                         icon={cardInfo.icon}
                                     />
                                 );
                             })}
+                            
+                            {/* Editor for Total Assets */}
+                            <EditorCard 
+                                cardKey='totalAssets'
+                                cardLabel='總資產卡片'
+                                texts={cardTexts['totalAssets']} 
+                                colors={{bg: customTheme['chart-4'], text: customTheme['card-foreground']}} 
+                                onTextChange={handleTextChange} 
+                                onColorChange={(key, value) => handleColorChange('chart-4', value)}
+                                icon={Wallet}
+                            />
+                             {/* Editor for Current Loan */}
+                            <EditorCard 
+                                cardKey='currentLoan'
+                                cardLabel='目前貸款卡片'
+                                texts={cardTexts['currentLoan']} 
+                                colors={{bg: customTheme['chart-4'], text: customTheme['card-foreground']}} 
+                                onTextChange={handleTextChange} 
+                                onColorChange={(key, value) => handleColorChange('chart-4', value)}
+                                icon={Landmark}
+                            />
                         </div>
                     </section>
                     
@@ -281,9 +294,10 @@ export default function TeacherDashboardEditorPage() {
                                 const cardInfo = editorCardMap[cardKey];
                                 if (!cardInfo) return null;
 
-                                const cardColors = cardKey === 'buKeXingQiu'
-                                    ? {bg: customTheme['bu-ke-xing-qiu-card-background'], title: customTheme['bu-ke-xing-qiu-card-foreground'], value: customTheme['bu-ke-xing-qiu-card-foreground'], description: customTheme['bu-ke-xing-qiu-card-foreground']}
-                                    : {bg: customTheme[cardInfo.bgKey], title: customTheme['card-title-foreground'], value: customTheme['card-value-foreground'], description: customTheme['card-description-foreground']};
+                                const cardColors = {
+                                    bg: customTheme[cardInfo.bgKey],
+                                    text: customTheme[cardInfo.textKey]
+                                };
                                 
                                 return (
                                      <EditorCard 
@@ -293,7 +307,7 @@ export default function TeacherDashboardEditorPage() {
                                         texts={cardTexts[cardKey]} 
                                         colors={cardColors as any}
                                         onTextChange={handleTextChange} 
-                                        onColorChange={handleColorChange as any}
+                                        onColorChange={(key, value) => handleColorChange(cardInfo.bgKey, value)}
                                         icon={cardInfo.icon}
                                     />
                                 );
@@ -308,39 +322,24 @@ export default function TeacherDashboardEditorPage() {
                                 const cardKey = key as CardFieldKeys;
                                 const cardInfo = editorCardMap[cardKey];
                                 if (!cardInfo) return null;
-
-                                const cardColors = {
-                                    bg: customTheme[cardInfo.bgKey],
-                                    title: customTheme[`${cardInfo.bgKey.replace('-background', '-foreground')}` as keyof CustomTheme],
-                                    value: customTheme[`${cardInfo.bgKey.replace('-background', '-foreground')}` as keyof CustomTheme],
-                                    description: customTheme[`${cardInfo.bgKey.replace('-background', '-foreground')}` as keyof CustomTheme]
-                                };
                                 
                                 return (
-                                    <div key={cardKey} className="flex-1 min-w-[320px]">
-                                        <Card className="flex flex-col h-full">
-                                            <CardHeader style={{backgroundColor: hslToHex(cardColors.bg)}}>
-                                                <CardTitle style={{color: hslToHex(cardColors.title)}}>{cardInfo.label}</CardTitle>
-                                            </CardHeader>
-                                             <CardContent className="p-4 space-y-4">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor={`title-${cardKey}`}>標題文字</Label>
-                                                    <Input id={`title-${cardKey}`} value={cardTexts[cardKey].title} onChange={(e) => handleTextChange(cardKey, 'title', e.target.value)} />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor={`desc-${cardKey}`}>說明文字</Label>
-                                                    <Textarea id={`desc-${cardKey}`} value={cardTexts[cardKey].description} onChange={(e) => handleTextChange(cardKey, 'description', e.target.value)} rows={2} />
-                                                </div>
-                                            </CardContent>
-                                            <CardFooter className="mt-auto grid grid-cols-2 gap-4 border-t p-4">
-                                                <div className="space-y-3">
-                                                    <h4 className="text-sm font-medium">顏色設定</h4>
-                                                    <ColorPicker label="背景色" value={cardColors.bg} onChange={(v) => handleColorChange(cardInfo.bgKey, v)} />
-                                                    <ColorPicker label="文字顏色" value={cardColors.title} onChange={(v) => handleColorChange(`${cardInfo.bgKey.replace('-background', '-foreground')}` as keyof CustomTheme, v)} />
-                                                </div>
-                                            </CardFooter>
-                                        </Card>
-                                    </div>
+                                     <EditorCard 
+                                        key={cardKey}
+                                        cardKey={cardKey} 
+                                        cardLabel={cardInfo.label} 
+                                        texts={cardTexts[cardKey]} 
+                                        colors={{bg: customTheme[cardInfo.bgKey], text: customTheme[cardInfo.textKey]}} 
+                                        onTextChange={handleTextChange} 
+                                        onColorChange={(key, value) => {
+                                            if (key === 'card-foreground') {
+                                                handleColorChange(cardInfo.textKey, value);
+                                            } else {
+                                                handleColorChange(cardInfo.bgKey, value);
+                                            }
+                                        }}
+                                        icon={cardInfo.icon}
+                                    />
                                 );
                             })}
                         </div>
