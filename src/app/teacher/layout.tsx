@@ -129,7 +129,7 @@ function TeacherLayoutContent({
         toast({ title: "找不到帳號", description: "找不到您的教師帳號，請重新登入。", variant: "destructive" });
         handleLogout();
     }
-  }, [isLoading, handleLogout, toast, teachers, platformConfig?.teacherPassword]);
+  }, [isLoading, teachers, platformConfig?.teacherPassword, handleLogout, toast]);
 
   
   const handleStopImpersonating = () => {
@@ -387,5 +387,3 @@ export default function TeacherLayout({
 }) {
   return <TeacherLayoutContent>{children}</TeacherLayoutContent>;
 }
-
-    
