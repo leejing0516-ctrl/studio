@@ -7,8 +7,9 @@ import { themes, type Theme } from "@/lib/themes";
 import { DEFAULT_APP_ICON_URL } from "@/lib/config";
 import type { CustomTheme, DashboardCardConfig } from "@/lib/types";
 import { useContext, useMemo } from "react";
+import { AppDataContext, AppDataProvider } from "@/context/AppDataContext";
+import { StudentDataProvider } from "@/context/StudentDataContext";
 import { Providers } from "@/context/Providers";
-import { AppDataContext } from "@/context/AppDataContext";
 
 // This component is necessary to access context within the layout
 function StyleInjector() {

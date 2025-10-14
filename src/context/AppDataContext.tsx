@@ -72,17 +72,16 @@ const useIdAsDocId = (collectionName: string) => {
 }
 
 export const AppDataProvider = ({ children }: { children: ReactNode }) => {
+  const { studentData, setStudentData } = useContext(StudentDataContext);
+  const { toast } = useToast();
+  
   const [students, setStudentsState] = useState<Student[]>([]);
   const [rewards, setRewardsState] = useState<Reward[]>([]);
   const [stocks, setStocksState] = useState<Stock[]>([]);
   const [teachers, setTeachersState] = useState<Teacher[]>([]);
   const [classes, setClassesState] = useState<Class[]>([]);
   const [platformConfig, setPlatformConfigState] = useState<PlatformConfig | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isMarketOpen, setIsMarketOpen] = useState(false);
-  const { studentData, setStudentData } = useContext(StudentDataContext);
-  const { toast } = useToast();
-
+  
   const [loadingStates, setLoadingStates] = useState<LoadingStates>({
       students: true,
       teachers: true,
@@ -91,6 +90,11 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       stocks: true,
       config: true,
   });
+
+  const isLoading = Object.values(loadingStates).some(state => state === true);
+  
+  const [isMarketOpen, setIsMarketOpen] = useState(false);
+  
 
   const handleRunTransaction = useCallback(async (updateFunction: (transaction: Transaction) => Promise<any>) => {
     return firestoreRunTransaction(db, updateFunction);
@@ -146,7 +150,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       
       newMap.forEach((newItem, key) => {
         const oldItem = oldMap.get(key);
-        // A simple JSON diff is not perfect for complex objects but is a good starting point.
         if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(newItem)) {
            const { _docId, ...itemData } = newItem;
            const docRef = doc(db, collectionName, key);
@@ -155,10 +158,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       });
       
       await batch.commit();
-
-      // This setter is now only called after the batch commit, but onSnapshot should handle the update.
-      // For immediate UI feedback, you can still call the state setter.
-      // (currentDataSetterMap[collectionName as keyof typeof currentDataSetterMap] as React.Dispatch<React.SetStateAction<T[]>>)(newData);
     };
   };
 
@@ -284,11 +283,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
 
   useEffect(() => {
-    const allLoaded = Object.values(loadingStates).every(state => state === false);
-    setIsLoading(!allLoaded);
-  }, [loadingStates]);
-
-  useEffect(() => {
     const subscriptions: Unsubscribe[] = [];
 
     const setupSubscription = <T extends { id?: string, _docId?: string }>(
@@ -308,6 +302,31 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 });
             });
             setter(data);
+
+            if (collectionName === 'students') {
+                const userRole = localStorage.getItem('userRole');
+                if (userRole === 'student') {
+                    const storedClassId = localStorage.getItem('studentClassId');
+                    const storedStudentId = localStorage.getItem('studentId');
+                    const storedPassword = localStorage.getItem('studentPassword');
+
+                    if (data.length > 0 && storedClassId && storedStudentId && storedPassword) {
+                        const foundStudent = data.find(s => s.classId === storedClassId && s.id === storedStudentId);
+                        if (foundStudent) {
+                            if(foundStudent.password === storedPassword) {
+                                setStudentData({ student: foundStudent });
+                            } else {
+                                setStudentData({ student: null });
+                                toast({ title: "驗證失敗", description: "您的登入資訊已過期或不正確，請重新登入。", variant: "destructive" });
+                                localStorage.clear();
+                                if(window.location.pathname !== '/') {
+                                    window.location.href = '/';
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
         }, (error) => {
@@ -347,32 +366,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       subscriptions.forEach(unsub => unsub());
     };
-  }, []);
-
-  useEffect(() => {
-    const userRole = localStorage.getItem('userRole');
-    if (userRole === 'student') {
-        const storedClassId = localStorage.getItem('studentClassId');
-        const storedStudentId = localStorage.getItem('studentId');
-        const storedPassword = localStorage.getItem('studentPassword');
-
-        if (students.length > 0 && storedClassId && storedStudentId && storedPassword) {
-            const foundStudent = students.find(s => s.classId === storedClassId && s.id === storedStudentId);
-            if (foundStudent) {
-                if(foundStudent.password === storedPassword) {
-                    setStudentData({ student: foundStudent });
-                } else {
-                    setStudentData({ student: null });
-                    toast({ title: "驗證失敗", description: "您的登入資訊已過期或不正確，請重新登入。", variant: "destructive" });
-                    localStorage.clear();
-                    if(window.location.pathname !== '/') {
-                        window.location.href = '/';
-                    }
-                }
-            }
-        }
-    }
-  }, [students, setStudentData, toast]);
+  }, [setStudentData, toast]);
 
   return (
     <AppDataContext.Provider value={{ 

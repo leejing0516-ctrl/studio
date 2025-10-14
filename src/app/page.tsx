@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AppDataContext } from '@/context/AppDataContext';
 import type { Student, Teacher } from '@/lib/types';
+import { Providers } from '@/context/Providers';
 
 function LoginPageContent() {
   const [studentIdInput, setStudentIdInput] = useState('');
@@ -30,7 +31,6 @@ function LoginPageContent() {
   const sortedTeachers = useMemo(() => {
     if (!allTeachers) return [];
     return [...allTeachers].sort((a, b) => {
-        // Use a sortOrder if available, otherwise fallback to localeCompare on id
         if (a.sortOrder && b.sortOrder) return a.sortOrder - b.sortOrder;
         if (a.sortOrder) return -1;
         if (b.sortOrder) return 1;
@@ -40,13 +40,14 @@ function LoginPageContent() {
 
 
   useEffect(() => {
+    if (isLoading) return;
     const userRole = localStorage.getItem('userRole');
     if (userRole === 'student') {
         router.replace('/dashboard');
     } else if (userRole === 'teacher') {
         router.replace('/teacher/dashboard');
     }
-  }, [router]);
+  }, [router, isLoading]);
 
   const handleStudentLogin = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -133,7 +134,15 @@ function LoginPageContent() {
     }
   }, [selectedTeacherId, teacherPassword, allTeachers, router, toast, isLoading]);
 
-  const isFormDisabled = isLoading || isLoggingIn;
+  if (isLoading) {
+      return (
+        <div className="flex h-screen w-full items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      );
+  }
+
+  const isFormDisabled = isLoggingIn;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
@@ -296,7 +305,9 @@ function LoginPageContent() {
 
 
 export default function HomePage() {
-  return <LoginPageContent />;
+  return (
+    <Providers>
+      <LoginPageContent />
+    </Providers>
+  );
 }
-
-    

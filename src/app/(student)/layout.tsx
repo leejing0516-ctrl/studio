@@ -82,9 +82,9 @@ function StudentLayoutContent({
   const [hasNewPointHistory, setHasNewPointHistory] = useState(false);
 
   const student = useMemo(() => {
-     if (isLoading || !studentData.student?._docId) return studentData.student;
+     if (!studentData.student?._docId) return studentData.student;
      return students.find(s => s._docId === studentData.student!._docId) || studentData.student;
-  }, [studentData.student, students, isLoading]);
+  }, [studentData.student, students]);
 
   const handleLogout = useCallback(() => {
     setStudentData({ student: null });
@@ -127,7 +127,7 @@ function StudentLayoutContent({
 
     setHasNewPointHistory(latestPointRecordDate > lastPointHistoryView);
 
-  }, [student, platformConfig?.announcements, classes]);
+  }, [student, platformConfig, classes]);
 
 
   const handleChangePassword = async () => {
