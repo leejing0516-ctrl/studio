@@ -101,18 +101,22 @@ function StudentLayoutContent({
   }, [isLoading, handleLogout]);
 
   useEffect(() => {
-    if (!student) {
+    const studentInContext = studentData.student;
+    if (!studentInContext) {
       setHasNewAnnouncements(false);
       setHasNewPointHistory(false);
       return;
     }
 
-    const lastViewTime = student.lastAnnouncementsView ? new Date(student.lastAnnouncementsView).getTime() : 0;
+    // Find the latest version of the student from the main students array
+    const currentStudent = students.find(s => s._docId === studentInContext._docId) || studentInContext;
+
+    const lastViewTime = currentStudent.lastAnnouncementsView ? new Date(currentStudent.lastAnnouncementsView).getTime() : 0;
     
     const latestSchoolAnnouncementDate = (platformConfig?.announcements || [])
       .reduce((latest, ann) => Math.max(latest, new Date(ann.date).getTime()), 0);
 
-    const studentClass = classes.find(c => c.id === student.classId);
+    const studentClass = classes.find(c => c.id === currentStudent.classId);
     const latestClassAnnouncementDate = (studentClass?.announcements || [])
       .reduce((latest, ann) => Math.max(latest, new Date(ann.date).getTime()), 0);
 
@@ -122,8 +126,8 @@ function StudentLayoutContent({
       setHasNewAnnouncements(false);
     }
 
-    const lastPointHistoryView = student.lastPointHistoryView ? new Date(student.lastPointHistoryView).getTime() : 0;
-    const latestPointRecordDate = (student.pointHistory || [])
+    const lastPointHistoryView = currentStudent.lastPointHistoryView ? new Date(currentStudent.lastPointHistoryView).getTime() : 0;
+    const latestPointRecordDate = (currentStudent.pointHistory || [])
       .reduce((latest, record) => Math.max(latest, new Date(record.date).getTime()), 0);
 
     if (latestPointRecordDate > lastPointHistoryView) {
@@ -132,7 +136,8 @@ function StudentLayoutContent({
       setHasNewPointHistory(false);
     }
 
-  }, [student, platformConfig, classes]);
+  }, [studentData.student, students, platformConfig, classes]);
+
 
   const handleChangePassword = async () => {
     if (!student) return;

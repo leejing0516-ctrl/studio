@@ -30,11 +30,17 @@ function LoginPageContent() {
   const sortedTeachers = useMemo(() => {
     if (!allTeachers) return [];
     return [...allTeachers].sort((a, b) => {
+        // Use a sortOrder if available, otherwise fallback to localeCompare on id
+        if (a.sortOrder && b.sortOrder) return a.sortOrder - b.sortOrder;
+        if (a.sortOrder) return -1;
+        if (b.sortOrder) return 1;
         return (a.id || '').localeCompare(b.id || '');
     });
   }, [allTeachers]);
 
+
   useEffect(() => {
+    // This effect should only run once on component mount to check for existing sessions.
     const userRole = localStorage.getItem('userRole');
     if (userRole === 'student') {
         router.replace('/dashboard');
@@ -57,6 +63,7 @@ function LoginPageContent() {
         return;
     }
     
+    // The `students` array is now stable and won't cause re-renders on its own.
     const foundStudent = students.find(
       (s: Student) => s.classId === classId && s.id === studentIdInput
     );
@@ -271,7 +278,5 @@ function LoginPageContent() {
 
 
 export default function HomePage() {
-  // We no longer wrap with Providers here. 
-  // LoginPageContent will get its data from the RootLayout's context.
   return <LoginPageContent />;
 }
