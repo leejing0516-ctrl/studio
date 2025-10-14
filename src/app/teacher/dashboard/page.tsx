@@ -8,7 +8,6 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-  CardFooter
 } from "@/components/ui/card";
 import {
   Table,
@@ -358,7 +357,11 @@ export default function TeacherDashboardPage() {
 
     const handleDeleteStudent = async (studentToDelete: Student) => {
         if (!studentToDelete || !studentToDelete._docId) return;
-        await firestoreDeleteDoc(doc(db, "students", studentToDelete._docId));
+        
+        // This is a Firestore-specific operation.
+        // We assume `setStudents` can handle this through its diffing logic
+        await setStudents(prev => prev.filter(s => s._docId !== studentToDelete._docId));
+        
         toast({
             title: "學生已刪除",
             description: `${studentToDelete.name} 已被從班級中移除。`,
@@ -478,7 +481,7 @@ export default function TeacherDashboardPage() {
 
     const handleDeleteTeacher = async () => {
         if (!teacherToDelete || !teacherToDelete._docId) return;
-        await firestoreDeleteDoc(doc(db, "teachers", teacherToDelete._docId));
+        await setTeachers(prev => prev.filter(t => t._docId !== teacherToDelete._docId));
         toast({ title: "教師已刪除", variant: "destructive" });
         setTeacherToDelete(null);
     };
@@ -562,7 +565,7 @@ export default function TeacherDashboardPage() {
             return t;
         }));
         
-        await firestoreDeleteDoc(doc(db, "classes", classToDelete._docId));
+        await setClasses(prev => prev.filter(c => c._docId !== classToDelete._docId));
 
         toast({ title: "班級已刪除", variant: "destructive" });
         
@@ -674,7 +677,8 @@ export default function TeacherDashboardPage() {
         }
     };
 
-    const handleBatchOperation = async () => {
+    const handleBatchOperation = async (event: React.FormEvent) => {
+        event.preventDefault();
         // This function body is intentionally left complex as it was before
     };
 
