@@ -1,4 +1,5 @@
 
+
 import type { CustomTheme } from './types';
 
 export type Theme = {
@@ -85,10 +86,10 @@ export const themes: Theme[] = [
         "sidebar-foreground": "38 33% 96%",
         "sidebar-accent": "48 96% 53%",
         "sidebar-accent-foreground": "208 81% 25%",
-        "chart-1": "48 96% 53%",
-        "chart-2": "180 80% 45%",
-        "chart-3": "217 91% 60%",
-        "chart-4": "300 80% 60%",
+        "chart-1": "222.2 47.4% 11.2%",
+        "chart-2": "210 40% 96.1%",
+        "chart-3": "217.2 91.2% 59.8%",
+        "chart-4": "215.4 16.3% 46.9%",
         "chart-5": "220 20% 70%",
         "reward-card-school": "25 95% 55%",
         "reward-card-class": "140 70% 40%",

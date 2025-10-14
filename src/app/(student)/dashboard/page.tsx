@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useContext, useMemo } from "react";
@@ -288,7 +289,7 @@ export default function StudentDashboardPage() {
                 <div className="space-y-2 text-sm text-card-description-foreground">
                     {studentGroups.map((group, index) => (
                         <p key={index}>
-                           在 <strong className="text-card-value-foreground">{group.teacherName}</strong> 的課堂中，您是 <strong className="text-card-value-foreground">{group.groupName}</strong> 的成員。
+                           在 <span className="text-card-value-foreground font-semibold">{group.teacherName}</span> 的課堂中，您是 <span className="text-card-value-foreground font-semibold">{group.groupName}</span> 的成員。
                         </p>
                     ))}
                 </div>

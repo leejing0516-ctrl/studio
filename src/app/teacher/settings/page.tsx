@@ -24,6 +24,7 @@ import { DEFAULT_LOGO_URL, DEFAULT_APP_ICON_URL } from "@/lib/config";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import type { CustomTheme } from "@/lib/types";
 
 const ThemeColorPreview = ({ theme }: { theme: Theme }) => (
     <div className="flex items-center gap-2">
@@ -33,6 +34,26 @@ const ThemeColorPreview = ({ theme }: { theme: Theme }) => (
         <div className="h-4 w-4 rounded-full" style={{ backgroundColor: `hsl(${theme.cssVars.dark.accent})` }} />
     </div>
 );
+
+const ColorPicker = ({ label, value, onChange }: { label: string, value: string, onChange: (value: string) => void }) => {
+    // Basic validation for HSL format
+    const isValidHsl = /^(\d{1,3})\s+(\d{1,3})%\s+(\d{1,3})%$/.test(value);
+
+    return (
+        <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-md border" style={{ backgroundColor: `hsl(${value})` }} />
+            <div className="flex-1">
+                <Label className="text-xs">{label}</Label>
+                <Input
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    className={`h-8 text-xs ${!isValidHsl ? 'border-red-500' : ''}`}
+                    placeholder="e.g., 222 47% 11%"
+                />
+            </div>
+        </div>
+    );
+};
 
 
 export default function TeacherSettingsPage() {
@@ -61,6 +82,7 @@ export default function TeacherSettingsPage() {
 
     const [sponsorLogoUrls, setSponsorLogoUrls] = useState<(string | null)[]>([]);
     const [selectedTheme, setSelectedTheme] = useState<string>("default");
+    const [currentCustomTheme, setCurrentCustomTheme] = useState<CustomTheme | null>(null);
 
     useEffect(() => {
         const role = localStorage.getItem('teacherRole');
@@ -79,6 +101,10 @@ export default function TeacherSettingsPage() {
             setMarketCloseHour(platformConfig.marketCloseHour ?? 14);
             setSponsorLogoUrls(platformConfig.sponsorLogoUrls || [null, null, null, null]);
             setSelectedTheme(platformConfig.theme || "default");
+            
+            const themeConfig = themes.find(t => t.name === (platformConfig.theme || 'default'))?.cssVars.dark;
+            setCurrentCustomTheme(platformConfig.customTheme || themeConfig || themes.find(t => t.name === 'default')!.cssVars.dark);
+            
             const defaultBuKeDescription = "「布可星球」是你閱讀成就的殿堂！你在這裡挖掘的每一點能量、每一本書，都是你知識宇宙擴張的證明。\n每個月底，校長會將你「本月挖掘的能量」按照一定的比例，轉換成可以在平台中使用的「點數」，作為對你努力閱讀的實質獎勵。繼續閱讀，讓你的星球更加璀璨吧！";
             setBuKeXingQiuDescription(platformConfig.buKeXingQiuDescription || defaultBuKeDescription);
             
@@ -125,7 +151,6 @@ export default function TeacherSettingsPage() {
         
         try {
             const dataToUpdate: Partial<PlatformConfig> = {
-                ...platformConfig,
                 logoUrl: logoUrl,
                 appIconUrl: appIconUrl,
                 fixedDepositInterestRate: Number(fixedDepositRate) / 100,
@@ -143,10 +168,10 @@ export default function TeacherSettingsPage() {
                 dailyRewardStandardMax: Number(dailyRewardStandardMax),
             };
 
-            if (selectedTheme === 'custom') {
-                dataToUpdate.customTheme = platformConfig?.customTheme;
+            if (selectedTheme === 'custom' && currentCustomTheme) {
+                 dataToUpdate.customTheme = currentCustomTheme;
             } else {
-                delete (dataToUpdate as any).customTheme;
+                 dataToUpdate.customTheme = themes.find(t => t.name === selectedTheme)?.cssVars.dark;
             }
             
             await setPlatformConfig(dataToUpdate);
@@ -161,14 +186,26 @@ export default function TeacherSettingsPage() {
     };
     
     useEffect(() => {
-        const theme = themes.find(t => t.name === selectedTheme);
-        if (theme) {
-            Object.entries(theme.cssVars.dark).forEach(([key, value]) => {
-                document.documentElement.style.setProperty(`--${key}`, value);
+        const themeToApply = selectedTheme === 'custom' 
+            ? currentCustomTheme
+            : themes.find(t => t.name === selectedTheme)?.cssVars.dark;
+            
+        if (themeToApply) {
+            Object.entries(themeToApply).forEach(([key, value]) => {
+                document.documentElement.style.setProperty(`--${key}`, value as string);
             });
         }
-    }, [selectedTheme]);
+    }, [selectedTheme, currentCustomTheme]);
 
+    const handleThemeSelectionChange = (themeName: string) => {
+        setSelectedTheme(themeName);
+        if (themeName !== 'custom') {
+            const themeConfig = themes.find(t => t.name === themeName)?.cssVars.dark;
+            if (themeConfig) {
+                setCurrentCustomTheme(themeConfig);
+            }
+        }
+    }
 
     return (
         <div className="space-y-6 animate-in fade-in-0 duration-500">
@@ -182,44 +219,36 @@ export default function TeacherSettingsPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle>外觀設定</CardTitle>
-                            <CardDescription>自訂平台的視覺風格與顏色主題。</CardDescription>
+                            <CardDescription>自訂平台的視覺風格、顏色主題與卡片顏色。</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <div className="flex items-center justify-between rounded-lg border p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <Label htmlFor="theme-select" className="font-semibold">顏色主題</Label>
-                                    <p className="text-xs text-muted-foreground">
-                                        選擇一個預設的顏色模板來改變整個應用的外觀。
-                                    </p>
+                                    <Label className="font-semibold">選擇基礎顏色主題</Label>
+                                    <RadioGroup value={selectedTheme} onValueChange={handleThemeSelectionChange} className="p-4 rounded-lg border grid grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
+                                        {themes.map((theme) => (
+                                            <div key={theme.name} className="flex items-center space-x-2">
+                                                <RadioGroupItem value={theme.name} id={`theme-${theme.name}`} />
+                                                <Label htmlFor={`theme-${theme.name}`} className="flex flex-col cursor-pointer">
+                                                    <span className="font-medium">{theme.label}</span>
+                                                    <ThemeColorPreview theme={theme} />
+                                                </Label>
+                                            </div>
+                                        ))}
+                                    </RadioGroup>
                                 </div>
-                                <div className="w-48">
-                                    <Select value={selectedTheme} onValueChange={setSelectedTheme}>
-                                        <SelectTrigger id="theme-select">
-                                            <SelectValue placeholder="選擇主題" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {themes.map((theme) => (
-                                                <SelectItem key={theme.name} value={theme.name}>
-                                                    {theme.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                            <div>
-                                <Label>主題預覽</Label>
-                                <RadioGroup value={selectedTheme} onValueChange={setSelectedTheme} className="p-4 rounded-lg border grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                    {themes.map((theme) => (
-                                        <div key={theme.name} className="flex items-center space-x-2">
-                                            <RadioGroupItem value={theme.name} id={`theme-${theme.name}`} />
-                                            <Label htmlFor={`theme-${theme.name}`} className="flex flex-col cursor-pointer">
-                                                <span className="font-medium">{theme.label}</span>
-                                                <ThemeColorPreview theme={theme} />
-                                            </Label>
+                                {currentCustomTheme && (
+                                    <div>
+                                        <Label className="font-semibold">儀表板卡片顏色</Label>
+                                        <div className="p-4 rounded-lg border grid grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
+                                            <ColorPicker label="點數卡片" value={currentCustomTheme['chart-1']} onChange={v => setCurrentCustomTheme({...currentCustomTheme, 'chart-1': v})}/>
+                                            <ColorPicker label="投資卡片" value={currentCustomTheme['chart-2']} onChange={v => setCurrentCustomTheme({...currentCustomTheme, 'chart-2': v})}/>
+                                            <ColorPicker label="定存卡片" value={currentCustomTheme['chart-3']} onChange={v => setCurrentCustomTheme({...currentCustomTheme, 'chart-3': v})}/>
+                                            <ColorPicker label="資產卡片" value={currentCustomTheme['chart-4']} onChange={v => setCurrentCustomTheme({...currentCustomTheme, 'chart-4': v})}/>
+                                            <ColorPicker label="排名卡片" value={currentCustomTheme['chart-5']} onChange={v => setCurrentCustomTheme({...currentCustomTheme, 'chart-5': v})}/>
                                         </div>
-                                    ))}
-                                </RadioGroup>
+                                    </div>
+                                )}
                             </div>
                         </CardContent>
                     </Card>
