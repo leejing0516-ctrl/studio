@@ -157,7 +157,7 @@ export default function TeacherDashboardEditorPage() {
             return;
         }
 
-        if (platformConfig) {
+        if (platformConfig?.dashboardCards) {
              setCardConfig({ ...initialCardConfig, ...platformConfig.dashboardCards });
         } else {
              setCardConfig(initialCardConfig);
@@ -230,7 +230,7 @@ export default function TeacherDashboardEditorPage() {
                     <CardDescription>
                         您可以在此獨立自訂學生儀表板上所有資訊卡片的標題、說明文字與顏色。
                         <br/>
-                        **注意**：部分說明文字包含 `{` `}` 符號（例如：{'{percentile}'}），這些是系統會自動替換的變數，請保留它們。
+                        **注意**：部分說明文字包含 {'{'} {'}'} 符號（例如：{'{percentile}'}），這些是系統會自動替換的變數，請保留它們。
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-8">
@@ -309,3 +309,5 @@ export default function TeacherDashboardEditorPage() {
         </div>
     );
 }
+
+    
