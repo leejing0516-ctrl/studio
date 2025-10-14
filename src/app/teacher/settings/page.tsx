@@ -133,7 +133,10 @@ export default function TeacherSettingsPage() {
         setIsSavingSettings(true);
         
         try {
-            const selectedTheme = availableThemes.find(t => t.name === selectedThemeName);
+            // Find the full theme object based on the selected name
+            const selectedThemeObject = availableThemes.find(t => t.name === selectedThemeName);
+            const themeCssVars = selectedThemeObject ? (selectedThemeObject.cssVars.light || selectedThemeObject.cssVars.dark) : undefined;
+            
             const dataToUpdate: Partial<PlatformConfig> = {
                 logoUrl: logoUrl,
                 appIconUrl: appIconUrl,
@@ -143,8 +146,7 @@ export default function TeacherSettingsPage() {
                 marketCloseHour: Number(marketCloseHour),
                 sponsorLogoUrls: sponsorLogoUrls,
                 theme: selectedThemeName,
-                // Ensure the corresponding color variables are also saved
-                customTheme: selectedTheme ? (selectedTheme.cssVars.light || selectedTheme.cssVars.dark) : undefined,
+                customTheme: themeCssVars, // Always save the full CSS vars of the selected theme
                 buKeXingQiuDescription: buKeXingQiuDescription,
                 dailyRewardJackpotChance: Number(dailyRewardJackpotChance) / 100,
                 dailyRewardJackpotMin: Number(dailyRewardJackpotMin),

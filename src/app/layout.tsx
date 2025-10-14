@@ -7,7 +7,7 @@ import { Providers } from "@/context/Providers";
 import { themes, type Theme } from "@/lib/themes";
 import { DEFAULT_APP_ICON_URL } from "@/lib/config";
 import type { CustomTheme, DashboardCardConfig } from "@/lib/types";
-import { useContext, useEffect } from "react";
+import { useContext, useMemo } from "react";
 import { AppDataContext } from "@/context/AppDataContext";
 
 export default function RootLayout({
@@ -18,32 +18,23 @@ export default function RootLayout({
   const { platformConfig } = useContext(AppDataContext);
 
   const appIconUrl = platformConfig?.appIconUrl || DEFAULT_APP_ICON_URL;
-  
-  // Correctly determine the active theme's CSS variables
-  const activeTheme = (() => {
-    // ALWAYS prioritize the explicitly saved customTheme object.
-    if (platformConfig?.customTheme) {
-      return platformConfig.customTheme;
-    }
-    
-    // Fallback logic for initial load or if customTheme is somehow missing.
-    const themeName = platformConfig?.theme || 'default';
-    const selectedTheme = themes.find(t => t.name === themeName);
-    if (selectedTheme) {
-      // For themes with both light and dark, decide which one to use.
-      // Here we can add logic, for now, defaulting to dark if light is not present.
-      return selectedTheme.cssVars.light || selectedTheme.cssVars.dark;
-    }
 
-    // Absolute fallback to the hardcoded default theme.
-    return themes.find(t => t.name === 'default')!.cssVars.dark;
-  })();
+  // Correctly determine the active theme's CSS variables
+  const activeTheme = useMemo(() => {
+    const themeName = platformConfig?.theme || 'default';
+    const selectedTheme = themes.find(t => t.name === themeName) || themes.find(t => t.name === 'default');
+    // All themes use the 'dark' cssVars as the source of truth.
+    return selectedTheme!.cssVars.dark;
+  }, [platformConfig?.theme]);
   
   const dashboardCardsConfig = platformConfig?.dashboardCards;
 
-  const cssVariables = activeTheme ? Object.entries(activeTheme)
-    .map(([key, value]) => `--${key}: ${value};`)
-    .join('\n') : '';
+  const cssVariables = useMemo(() => {
+    if (!activeTheme) return '';
+    return Object.entries(activeTheme)
+      .map(([key, value]) => `--${key}: ${value};`)
+      .join('\n');
+  }, [activeTheme]);
     
   let cardSizeVariables = '';
   if (dashboardCardsConfig) {
