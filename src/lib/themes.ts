@@ -46,7 +46,7 @@ export const themes: Theme[] = [
     name: "makeup-pink",
     label: "美妝粉 (白/粉)",
     cssVars: {
-      dark: {
+      dark: { // Define dark as a copy of light
         background: "350 60% 98%",
         foreground: "350 20% 25%",
         card: "350 60% 98%",
@@ -100,7 +100,7 @@ export const themes: Theme[] = [
     name: "innovative-red",
     label: "創新紅",
     cssVars: {
-      dark: {
+      dark: { // Define dark as a copy of light
         background: "0 0% 98%",
         foreground: "215 28% 17%",
         card: "0 0% 100%",
@@ -154,7 +154,7 @@ export const themes: Theme[] = [
     name: "kiddy-fun",
     label: "奇趣粉藍",
     cssVars: {
-      dark: {
+      dark: { // Define dark as a copy of light
         background: "0 0% 98%",
         foreground: "238 37% 37%",
         card: "0 0% 100%",
@@ -178,13 +178,37 @@ export const themes: Theme[] = [
         "sidebar-accent": "342 84% 63%",
         "sidebar-accent-foreground": "0 0% 100%",
       },
+      light: {
+        background: "0 0% 98%",
+        foreground: "238 37% 37%",
+        card: "0 0% 100%",
+        "card-foreground": "238 37% 37%",
+        popover: "0 0% 100%",
+        "popover-foreground": "238 37% 37%",
+        primary: "342 84% 63%",
+        "primary-foreground": "0 0% 100%",
+        secondary: "206 81% 66%",
+        "secondary-foreground": "0 0% 100%",
+        muted: "0 0% 96%",
+        "muted-foreground": "238 20% 45%",
+        accent: "342 84% 63%",
+        "accent-foreground": "0 0% 100%",
+        destructive: "0 72% 51%",
+        "destructive-foreground": "0 0% 100%",
+        border: "0 0% 90%",
+        input: "0 0% 88%",
+        ring: "342 84% 63%",
+        "sidebar-foreground": "238 37% 37%",
+        "sidebar-accent": "342 84% 63%",
+        "sidebar-accent-foreground": "0 0% 100%",
+      }
     },
   },
   {
     name: "summer-joy",
     label: "夏木樂 (白/珊瑚紅)",
      cssVars: {
-      dark: {
+      dark: { // Define dark as a copy of light
         background: "0 0% 96.5%",
         foreground: "215 25% 27%",
         card: "0 0% 100%",
@@ -418,7 +442,7 @@ export const themes: Theme[] = [
     name: "warm-yellow",
     label: "暖陽黃",
     cssVars: {
-      dark: {
+      dark: { // Define dark as a copy of light
         background: "38 60% 94%",
         foreground: "38 20% 25%",
         card: "38 60% 94%",

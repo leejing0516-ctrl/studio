@@ -20,18 +20,21 @@ export default function RootLayout({
   const appIconUrl = platformConfig?.appIconUrl || DEFAULT_APP_ICON_URL;
 
   const activeThemeColors = useMemo(() => {
-    // 1. Prioritize customTheme if it exists. This is the source of truth.
-    if (platformConfig?.customTheme && Object.keys(platformConfig.customTheme).length > 0) {
-        return platformConfig.customTheme;
+    const themeName = platformConfig?.theme || 'default';
+    const selectedTheme = themes.find(t => t.name === themeName);
+    
+    // Prioritize light theme if it exists for the selected theme, otherwise fallback to dark
+    if (selectedTheme?.cssVars.light) {
+      return selectedTheme.cssVars.light;
+    }
+    if (selectedTheme?.cssVars.dark) {
+      return selectedTheme.cssVars.dark;
     }
     
-    // 2. If no customTheme, find the theme by its name in the default list.
-    const themeName = platformConfig?.theme || 'default';
-    const selectedTheme = themes.find(t => t.name === themeName) || themes.find(t => t.name === 'default');
+    // Fallback to the very first default theme's dark variables if nothing matches
+    return themes[0].cssVars.dark;
+  }, [platformConfig?.theme]);
 
-    // 3. All themes are dark by default in themes.ts
-    return selectedTheme!.cssVars.dark;
-  }, [platformConfig?.theme, platformConfig?.customTheme]);
 
   const dashboardCardsConfig = platformConfig?.dashboardCards;
 

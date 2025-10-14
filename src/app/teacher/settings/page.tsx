@@ -27,6 +27,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { PlatformConfig, CustomTheme } from "@/lib/types";
 
 const ThemeColorPreview = ({ theme }: { theme: Theme }) => {
+    // Determine which cssVars to use. Prioritize light, fallback to dark.
     const themeVars = theme.cssVars.light || theme.cssVars.dark;
     return (
         <div className="flex items-center gap-2">
@@ -134,6 +135,8 @@ export default function TeacherSettingsPage() {
         setIsSavingSettings(true);
         
         try {
+            const selectedTheme = availableThemes.find(t => t.name === selectedThemeName);
+            
             const dataToUpdate: Partial<PlatformConfig> = {
                 logoUrl: logoUrl,
                 appIconUrl: appIconUrl,
@@ -143,6 +146,8 @@ export default function TeacherSettingsPage() {
                 marketCloseHour: Number(marketCloseHour),
                 sponsorLogoUrls: sponsorLogoUrls,
                 theme: selectedThemeName,
+                // Ensure customTheme is updated correctly
+                customTheme: selectedTheme ? (selectedTheme.cssVars.light || selectedTheme.cssVars.dark) : undefined,
                 buKeXingQiuDescription: buKeXingQiuDescription,
                 dailyRewardJackpotChance: Number(dailyRewardJackpotChance) / 100,
                 dailyRewardJackpotMin: Number(dailyRewardJackpotMin),
