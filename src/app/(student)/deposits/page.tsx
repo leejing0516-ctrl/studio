@@ -72,6 +72,11 @@ export default function DepositsPage() {
         toast({ title: "金額錯誤", description: "存款金額必須是 100 的倍數。", variant: "destructive" });
         return;
     }
+    // Front-end check
+    if (currentStudent.points < amount) {
+        toast({ title: "定存失敗", description: `您的點數不足。目前只有 ${Math.round(currentStudent.points).toLocaleString()} 點。`, variant: "destructive" });
+        return;
+    }
     
     setIsSubmitting(true);
 
@@ -86,6 +91,7 @@ export default function DepositsPage() {
 
             const latestStudentData = studentDoc.data() as Student;
 
+            // Back-end check inside transaction
             if (latestStudentData.points < amount) {
                 throw new Error(`您的點數不足。目前只有 ${Math.round(latestStudentData.points).toLocaleString()} 點。`);
             }
