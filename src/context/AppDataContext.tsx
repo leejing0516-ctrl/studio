@@ -1,11 +1,14 @@
 
+
 "use client";
 
-import { createContext, useState, ReactNode, useEffect, useCallback } from 'react';
+import { createContext, useState, ReactNode, useEffect, useCallback, useContext } from 'react';
 import type { Student, Reward, Class, Teacher, Stock, PlatformConfig } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { collection, doc, runTransaction as firestoreRunTransaction, Transaction, query, onSnapshot, Unsubscribe, setDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { isAfter, startOfDay, differenceInDays } from 'date-fns';
+import { StudentDataContext } from './StudentDataContext';
+import { useToast } from '@/hooks/use-toast';
 
 type SetStateActionWithFunction<S> = S | ((prevState: S) => S);
 
@@ -65,54 +68,34 @@ type LoadingStates = {
     config: boolean;
 }
 
-// This new setter function ONLY writes to Firestore. It does not touch local state.
 const createSetter = <T extends { _docId?: string; id?: any }>(
   collectionName: string,
-  currentState: T[],
-  useIdAsDocId: boolean = false
 ) => {
   return async (action: SetStateActionWithFunction<T[]>) => {
+    const currentState = (defaultState as any)[collectionName] as T[]; // This is a placeholder, as we don't have access to the state here.
     const newState = typeof action === 'function' ? action(currentState) : action;
     const batch = writeBatch(db);
     
-    const oldStateMap = new Map(currentState.map(item => [useIdAsDocId ? item.id : item._docId, item]));
-    const newStateMap = new Map(newState.map(item => [useIdAsDocId ? item.id : item._docId, item]));
-
-    // Deletions
-    oldStateMap.forEach((oldItem, key) => {
-      if (!newStateMap.has(key)) {
-        const docId = useIdAsDocId ? oldItem.id : oldItem._docId;
-        if (docId) {
-          const ref = doc(db, collectionName, docId);
-          batch.delete(ref);
-        }
-      }
-    });
-
-    // Additions and Updates
+    // NOTE: This simple version just adds/updates all items.
+    // A more complex diffing logic was removed to prevent loops.
     for (const newItem of newState) {
-      const key = useIdAsDocId ? newItem.id : newItem._docId;
-      const oldItem = oldStateMap.get(key);
-      const docId = key;
-
+      const docId = useIdAsDocId(collectionName) ? newItem.id : newItem._docId;
       if (!docId) {
-        // This is a new item without a client-side generated ID, let Firestore generate one
-        const { _docId, ...itemData } = newItem;
-        const newRef = doc(collection(db, collectionName));
-        batch.set(newRef, itemData);
+        console.warn(`Item in ${collectionName} is missing a document ID.`, newItem);
         continue;
       }
-      
-      if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(newItem)) {
-        const { _docId, ...itemData } = newItem;
-        const ref = doc(db, collectionName, docId);
-        batch.set(ref, itemData, { merge: true });
-      }
+      const { _docId, ...itemData } = newItem;
+      const ref = doc(db, collectionName, docId);
+      batch.set(ref, itemData, { merge: true });
     }
 
     await batch.commit();
   };
 };
+
+const useIdAsDocId = (collectionName: string) => {
+  return ['stocks', 'classes'].includes(collectionName);
+}
 
 export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [students, setStudentsState] = useState<Student[]>([]);
@@ -123,6 +106,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [platformConfig, setPlatformConfigState] = useState<PlatformConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMarketOpen, setIsMarketOpen] = useState(false);
+  const { setStudentData } = useContext(StudentDataContext);
+  const { toast } = useToast();
 
   const [loadingStates, setLoadingStates] = useState<LoadingStates>({
       students: true,
@@ -146,16 +131,48 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     return () => clearInterval(marketInterval);
   }, [platformConfig]);
   
-  const setStudents = createSetter<Student>('students', students);
-  const setTeachers = createSetter<Teacher>('teachers', teachers);
-  const setRewards = createSetter<Reward>('rewards', rewards);
-  const setStocks = createSetter<Stock>('stocks', stocks, true);
-  const setClasses = createSetter<Class>('classes', classes, true);
-
   const setPlatformConfig = async (dataToUpdate: Partial<PlatformConfig>) => {
       const configRef = doc(db, 'config', 'main');
       await setDoc(configRef, dataToUpdate, { merge: true });
   };
+
+  const createSetterWithBatch = <T extends { _docId?: string, id?: any }>(collectionName: string) => {
+    return async (action: (prevState: T[]) => T[]) => {
+      const currentData = (collectionName === 'students' ? students : 
+                           collectionName === 'teachers' ? teachers : 
+                           collectionName === 'classes' ? classes : 
+                           collectionName === 'rewards' ? rewards : stocks) as T[];
+      const newData = action(currentData);
+      
+      const batch = writeBatch(db);
+      const useId = useIdAsDocId(collectionName);
+
+      const oldMap = new Map(currentData.map(item => [useId ? item.id : item._docId, item]));
+      const newMap = new Map(newData.map(item => [useId ? item.id : item._docId, item]));
+      
+      oldMap.forEach((_, key) => {
+        if (!newMap.has(key)) {
+          batch.delete(doc(db, collectionName, key));
+        }
+      });
+      
+      newMap.forEach((newItem, key) => {
+        const oldItem = oldMap.get(key);
+        if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(newItem)) {
+           const { _docId, ...itemData } = newItem;
+           batch.set(doc(db, collectionName, key), itemData, { merge: true });
+        }
+      });
+      
+      await batch.commit();
+    };
+  };
+
+  const setStudents = createSetterWithBatch<Student>('students');
+  const setTeachers = createSetterWithBatch<Teacher>('teachers');
+  const setRewards = createSetterWithBatch<Reward>('rewards');
+  const setStocks = createSetterWithBatch<Stock>('stocks');
+  const setClasses = createSetterWithBatch<Class>('classes');
   
   // Effect for daily financial processing (interest, loans, etc.)
   useEffect(() => {
@@ -297,6 +314,27 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 });
             });
             setter(data);
+
+            const userRole = localStorage.getItem('userRole');
+            if (userRole === 'student') {
+                const storedClassId = localStorage.getItem('studentClassId');
+                const storedStudentId = localStorage.getItem('studentId');
+                const storedPassword = localStorage.getItem('studentPassword');
+
+                if (collectionName === 'students' && storedClassId && storedStudentId && storedPassword) {
+                    const foundStudent = (data as Student[]).find(s => s.classId === storedClassId && s.id === storedStudentId);
+                    if (foundStudent && foundStudent.password === storedPassword) {
+                         setStudentData({ student: foundStudent });
+                    } else {
+                        // This indicates a mismatch, could trigger logout in layout
+                        setStudentData({ student: null });
+                         toast({ title: "驗證失敗", description: "您的登入資訊已過期或不正確，請重新登入。", variant: "destructive" });
+                         localStorage.clear();
+                         window.location.href = '/';
+                    }
+                }
+            }
+
             setLoadingStates(prev => ({...prev, [stateKey]: false}));
         }, (error) => {
             console.error(`Error fetching real-time ${collectionName}:`, error);
@@ -335,7 +373,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       subscriptions.forEach(unsub => unsub());
     };
-  }, []);
+  }, [setStudentData, toast]);
 
   return (
     <AppDataContext.Provider value={{ 

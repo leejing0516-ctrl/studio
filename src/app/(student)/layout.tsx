@@ -93,29 +93,16 @@ export default function StudentLayout({
   }, [router, setStudentData]);
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || !students.length) return;
 
     const userRole = localStorage.getItem('userRole');
     const storedClassId = localStorage.getItem('studentClassId');
     const storedStudentId = localStorage.getItem('studentId');
-    const storedPassword = localStorage.getItem('studentPassword');
     
-    if (userRole !== 'student' || !storedClassId || !storedStudentId || !storedPassword) {
+    if (userRole !== 'student' || !storedClassId || !storedStudentId) {
       handleLogout();
-      return;
     }
-    
-    const foundStudent = students.find(s => s.classId === storedClassId && s.id === storedStudentId);
-    
-    if (foundStudent && foundStudent.password === storedPassword) {
-        if (JSON.stringify(foundStudent) !== JSON.stringify(studentData.student)) {
-            setStudentData({ student: foundStudent });
-        }
-    } else {
-        toast({ title: "驗證失敗", description: "您的登入資訊已過期或不正確，請重新登入。", variant: "destructive" });
-        handleLogout();
-    }
-  }, [isLoading, studentData.student?._docId, setStudentData, handleLogout, toast, students]);
+  }, [isLoading, students, handleLogout]);
 
   useEffect(() => {
     if (!student) {
@@ -418,5 +405,3 @@ export default function StudentLayout({
     </>
   );
 }
-
-    
