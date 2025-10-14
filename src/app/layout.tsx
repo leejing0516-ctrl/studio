@@ -1,28 +1,21 @@
 
+"use client";
+
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from "@/context/Providers";
 import { themes } from "@/lib/themes";
 import { DEFAULT_APP_ICON_URL } from "@/lib/config";
 import type { CustomTheme } from "@/lib/types";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { useContext, useEffect } from "react";
+import { AppDataContext } from "@/context/AppDataContext";
 
-// This is now a Server Component
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  let platformConfig = null;
-  try {
-    const configDoc = await getDoc(doc(db, "config", "main"));
-    if (configDoc.exists()) {
-      platformConfig = configDoc.data();
-    }
-  } catch (error) {
-    console.error("Failed to fetch platform config on server:", error);
-  }
+  const { platformConfig } = useContext(AppDataContext);
 
   const appIconUrl = platformConfig?.appIconUrl || DEFAULT_APP_ICON_URL;
   const themeName = platformConfig?.theme || 'default';
@@ -35,11 +28,19 @@ export default async function RootLayout({
     const theme = themes.find(t => t.name === themeName) || themes.find(t => t.name === 'default')!;
     vars = theme.cssVars.dark;
   }
-  const cssText = Object.entries(vars)
+  
+  const cssText = vars ? Object.entries(vars)
     .map(([key, value]) => `--${key}: ${value};`)
-    .join('\n');
+    .join('\n') : '';
     
   const themeVars = `:root {\n${cssText}\n}`;
+
+  useEffect(() => {
+    const styleElement = document.getElementById('dynamic-theme-styles');
+    if (styleElement) {
+      styleElement.innerHTML = themeVars;
+    }
+  }, [themeVars]);
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -55,7 +56,7 @@ export default async function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter&display=swap"
           rel="stylesheet"
         />
-        <style dangerouslySetInnerHTML={{ __html: themeVars }} />
+        <style id="dynamic-theme-styles" dangerouslySetInnerHTML={{ __html: themeVars }} />
       </head>
       <body className="font-body antialiased">
         <Providers>
