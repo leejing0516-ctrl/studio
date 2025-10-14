@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { createContext, useState, ReactNode, useEffect, useCallback, useContext } from 'react';
@@ -67,31 +66,6 @@ type LoadingStates = {
     stocks: boolean;
     config: boolean;
 }
-
-const createSetter = <T extends { _docId?: string; id?: any }>(
-  collectionName: string,
-) => {
-  return async (action: SetStateActionWithFunction<T[]>) => {
-    const currentState = (defaultState as any)[collectionName] as T[]; // This is a placeholder, as we don't have access to the state here.
-    const newState = typeof action === 'function' ? action(currentState) : action;
-    const batch = writeBatch(db);
-    
-    // NOTE: This simple version just adds/updates all items.
-    // A more complex diffing logic was removed to prevent loops.
-    for (const newItem of newState) {
-      const docId = useIdAsDocId(collectionName) ? newItem.id : newItem._docId;
-      if (!docId) {
-        console.warn(`Item in ${collectionName} is missing a document ID.`, newItem);
-        continue;
-      }
-      const { _docId, ...itemData } = newItem;
-      const ref = doc(db, collectionName, docId);
-      batch.set(ref, itemData, { merge: true });
-    }
-
-    await batch.commit();
-  };
-};
 
 const useIdAsDocId = (collectionName: string) => {
   return ['stocks', 'classes'].includes(collectionName);

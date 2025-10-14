@@ -92,17 +92,15 @@ export default function StudentLayout({
     router.push('/');
   }, [router, setStudentData]);
 
-  useEffect(() => {
-    if (isLoading || !students.length) return;
 
+  useEffect(() => {
+    if (isLoading) return;
     const userRole = localStorage.getItem('userRole');
-    const storedClassId = localStorage.getItem('studentClassId');
-    const storedStudentId = localStorage.getItem('studentId');
-    
-    if (userRole !== 'student' || !storedClassId || !storedStudentId) {
-      handleLogout();
+    if (userRole !== 'student') {
+        handleLogout();
     }
-  }, [isLoading, students, handleLogout]);
+  }, [isLoading, handleLogout]);
+
 
   useEffect(() => {
     if (!student) {
