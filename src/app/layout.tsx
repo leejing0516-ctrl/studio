@@ -22,7 +22,6 @@ export default function RootLayout({
   // Correctly determine the active theme's CSS variables
   const activeTheme = (() => {
     // ALWAYS prioritize the explicitly saved customTheme object.
-    // The settings page now ensures this object is always up-to-date with the selected theme.
     if (platformConfig?.customTheme) {
       return platformConfig.customTheme;
     }
@@ -31,7 +30,7 @@ export default function RootLayout({
     if (platformConfig?.theme) {
       const selectedTheme = themes.find(t => t.name === platformConfig.theme);
       if (selectedTheme) {
-        return selectedTheme.cssVars.light || selectedTheme.cssVars.dark;
+        return selectedTheme.cssVars.dark; // Default to dark if light is not available
       }
     }
     // Absolute fallback to the hardcoded default theme.
@@ -69,7 +68,6 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter&display=swap"
           rel="stylesheet"
         />
-        {/* Directly render the style tag in the head */}
         <style dangerouslySetInnerHTML={{ __html: themeStyle }} />
       </head>
       <body className="font-body antialiased">

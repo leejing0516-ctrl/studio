@@ -137,8 +137,7 @@ export default function TeacherSettingsPage() {
             let customThemeData: CustomTheme | undefined = undefined;
 
             if (selectedTheme) {
-                // IMPORTANT: Always save the resolved CSS variables to customTheme
-                // This ensures the layout always has a single source of truth.
+                // Determine whether to use light or dark vars. Default to dark.
                 customThemeData = selectedTheme.cssVars.light || selectedTheme.cssVars.dark;
             }
 
