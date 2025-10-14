@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useContext, useEffect } from "react";
@@ -20,20 +19,49 @@ import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
 import { Textarea } from "@/components/ui/textarea";
 
-const cardFields = {
+const initialCardFields = {
     totalPoints: { title: "目前點數", description: "可用於交易或兌換獎勵" },
-    portfolioValue: { title: "投資價值", description: "本月 +5.2%" },
+    portfolioValue: { title: "投資價值", description: "謹慎理財，信用至上" },
     fixedDeposits: { title: "定存點數", description: "目前進行中的定期存款" },
-    buKeXingQiu: { title: "布可星球", description: "你在閱讀世界中的榮譽等級" },
-    currentLoan: { title: "目前貸款", description: "需在期限內償還" },
     totalAssets: { title: "總資產", description: "點數 + 投資 + 定存" },
     classRank: { title: "班級排名", description: "班級前 {percentile}%" },
     schoolRank: { title: "全校排名", description: "全校前 {percentile}%" },
     myGroups: { title: "我的分組", description: "您尚未被分派到任何小組。" },
+    buKeXingQiu: { title: "布可星球", description: "你在閱讀世界中的榮譽等級" },
     myPet: { title: "我的寵物", description: "您的點數越多，牠就會越強大！" },
     pointsTrend: { title: "最近七日點數趨勢", description: "您最近七天每日從老師那裡獲得的點數紀錄。" },
+    currentLoan: { title: "目前貸款", description: "需在期限內償還" },
 };
 
+type CardFieldKeys = keyof typeof initialCardFields;
+
+
+const EditorCard = ({ cardKey, cardLabel, texts, onChange }: { cardKey: CardFieldKeys, cardLabel: string, texts: {title: string, description: string}, onChange: (key: CardFieldKeys, field: 'title' | 'description', value: string) => void }) => (
+    <Card className="flex-1 min-w-[280px]">
+        <CardHeader>
+            <CardTitle className="text-lg">{cardLabel}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+            <div className="space-y-2">
+                <Label htmlFor={`title-${cardKey}`}>標題文字</Label>
+                <Input 
+                    id={`title-${cardKey}`}
+                    value={texts.title}
+                    onChange={(e) => onChange(cardKey, 'title', e.target.value)}
+                />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor={`desc-${cardKey}`}>說明文字</Label>
+                <Textarea 
+                    id={`desc-${cardKey}`}
+                    value={texts.description}
+                    onChange={(e) => onChange(cardKey, 'description', e.target.value)}
+                    rows={2}
+                />
+            </div>
+        </CardContent>
+    </Card>
+);
 
 export default function TeacherDashboardEditorPage() {
     const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
@@ -41,7 +69,7 @@ export default function TeacherDashboardEditorPage() {
     const router = useRouter();
     
     const [isSaving, setIsSaving] = useState(false);
-    const [cardTexts, setCardTexts] = useState<typeof cardFields>({} as typeof cardFields);
+    const [cardTexts, setCardTexts] = useState(initialCardFields);
 
     useEffect(() => {
         const role = localStorage.getItem('teacherRole');
@@ -53,19 +81,19 @@ export default function TeacherDashboardEditorPage() {
 
         if (platformConfig?.dashboardCards) {
             const newCardTexts: any = {};
-            for (const key in cardFields) {
-                newCardTexts[key] = {
-                    title: platformConfig.dashboardCards[key as keyof typeof cardFields]?.title || cardFields[key as keyof typeof cardFields].title,
-                    description: platformConfig.dashboardCards[key as keyof typeof cardFields]?.description || cardFields[key as keyof typeof cardFields].description,
+            for (const key in initialCardFields) {
+                newCardTexts[key as CardFieldKeys] = {
+                    title: platformConfig.dashboardCards[key as CardFieldKeys]?.title || initialCardFields[key as CardFieldKeys].title,
+                    description: platformConfig.dashboardCards[key as CardFieldKeys]?.description || initialCardFields[key as CardFieldKeys].description,
                 };
             }
             setCardTexts(newCardTexts);
         } else {
-             setCardTexts(cardFields);
+             setCardTexts(initialCardFields);
         }
     }, [platformConfig, router, toast]);
 
-    const handleTextChange = (cardKey: keyof typeof cardFields, field: 'title' | 'description', value: string) => {
+    const handleTextChange = (cardKey: CardFieldKeys, field: 'title' | 'description', value: string) => {
         setCardTexts(prev => ({
             ...prev,
             [cardKey]: {
@@ -99,35 +127,42 @@ export default function TeacherDashboardEditorPage() {
                         **注意**：部分說明文字包含 `{` `}` 符號（例如：{'{percentile}'}），這些是系統會自動替換的變數，請保留它們。
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                    {Object.entries(cardTexts).map(([key, value]) => (
-                        <Card key={key} className="p-4 bg-muted/50">
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor={`title-${key}`}>標題文字</Label>
-                                    <Input 
-                                        id={`title-${key}`}
-                                        value={value.title}
-                                        onChange={(e) => handleTextChange(key as keyof typeof cardFields, 'title', e.target.value)}
-                                    />
-                                </div>
-                                 <div className="space-y-2">
-                                    <Label htmlFor={`desc-${key}`}>說明文字</Label>
-                                    <Textarea 
-                                        id={`desc-${key}`}
-                                        value={value.description}
-                                        onChange={(e) => handleTextChange(key as keyof typeof cardFields, 'description', e.target.value)}
-                                        rows={2}
-                                    />
-                                </div>
-                             </div>
-                        </Card>
-                    ))}
+                <CardContent className="space-y-8">
+                    {/* Top Row Cards */}
+                    <section>
+                        <h3 className="text-xl font-semibold mb-4 border-b pb-2">頂部資訊卡 (4個)</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <EditorCard cardKey="totalPoints" cardLabel="目前點數卡片" texts={cardTexts.totalPoints} onChange={handleTextChange} />
+                            <EditorCard cardKey="portfolioValue" cardLabel="投資價值卡片" texts={cardTexts.portfolioValue} onChange={handleTextChange} />
+                            <EditorCard cardKey="fixedDeposits" cardLabel="定存點數卡片" texts={cardTexts.fixedDeposits} onChange={handleTextChange} />
+                            <EditorCard cardKey="totalAssets" cardLabel="總資產/目前貸款卡片" texts={cardTexts.totalAssets} onChange={handleTextChange} />
+                        </div>
+                    </section>
+                    
+                    {/* Middle Row Cards */}
+                    <section>
+                        <h3 className="text-xl font-semibold mb-4 border-b pb-2">中間資訊卡 (4個)</h3>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <EditorCard cardKey="classRank" cardLabel="班級排名卡片" texts={cardTexts.classRank} onChange={handleTextChange} />
+                            <EditorCard cardKey="schoolRank" cardLabel="全校排名卡片" texts={cardTexts.schoolRank} onChange={handleTextChange} />
+                            <EditorCard cardKey="myGroups" cardLabel="我的分組卡片" texts={cardTexts.myGroups} onChange={handleTextChange} />
+                            <EditorCard cardKey="buKeXingQiu" cardLabel="布可星球卡片" texts={cardTexts.buKeXingQiu} onChange={handleTextChange} />
+                        </div>
+                    </section>
+
+                    {/* Bottom Row Cards */}
+                     <section>
+                        <h3 className="text-xl font-semibold mb-4 border-b pb-2">底部資訊卡 (2個)</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <EditorCard cardKey="myPet" cardLabel="我的寵物卡片" texts={cardTexts.myPet} onChange={handleTextChange} />
+                           <EditorCard cardKey="pointsTrend" cardLabel="點數趨勢卡片" texts={cardTexts.pointsTrend} onChange={handleTextChange} />
+                        </div>
+                    </section>
                 </CardContent>
-                <CardFooter className="flex justify-end">
+                <CardFooter className="flex justify-end sticky bottom-0 bg-background/80 backdrop-blur-sm py-4">
                     <Button onClick={handleSave} disabled={isSaving}>
                         {isSaving && <Loader2 className="mr-2 animate-spin" />}
-                        儲存文字內容
+                        儲存所有變更
                     </Button>
                 </CardFooter>
             </Card>
