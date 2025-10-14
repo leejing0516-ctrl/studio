@@ -115,7 +115,7 @@ export default function StudentLayout({
         toast({ title: "驗證失敗", description: "您的登入資訊已過期或不正確，請重新登入。", variant: "destructive" });
         handleLogout();
     }
-  }, [isLoading, students, studentData.student, setStudentData, handleLogout, toast]);
+  }, [isLoading, studentData.student?._docId, setStudentData, handleLogout, toast, students]);
 
   useEffect(() => {
     if (!student) {
@@ -418,3 +418,5 @@ export default function StudentLayout({
     </>
   );
 }
+
+    
