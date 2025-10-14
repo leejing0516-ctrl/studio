@@ -54,33 +54,6 @@ export default {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
-        chart: {
-          '1': 'hsl(var(--chart-1))',
-          '2': 'hsl(var(--chart-2))',
-          '3': 'hsl(var(--chart-3))',
-          '4': 'hsl(var(--chart-4))',
-          '5': 'hsl(var(--chart-5))',
-        },
-        'reward-card-school': {
-          DEFAULT: 'hsl(var(--reward-card-school))',
-          foreground: 'hsl(var(--reward-card-school-foreground))',
-        },
-        'reward-card-class': {
-          DEFAULT: 'hsl(var(--reward-card-class))',
-          foreground: 'hsl(var(--reward-card-class-foreground))',
-        },
-        'bu-ke-xing-qiu-card': {
-            DEFAULT: 'hsl(var(--bu-ke-xing-qiu-card-background))',
-            foreground: 'hsl(var(--bu-ke-xing-qiu-card-foreground))',
-        },
-        'my-pet-card': {
-            DEFAULT: 'hsl(var(--my-pet-card-background))',
-            foreground: 'hsl(var(--my-pet-card-foreground))',
-        },
-        'points-trend-card': {
-            DEFAULT: 'hsl(var(--points-trend-card-background))',
-            foreground: 'hsl(var(--points-trend-card-foreground))',
-        },
         sidebar: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--sidebar-foreground))',
@@ -89,11 +62,6 @@ export default {
           border: 'hsl(var(--sidebar-border))',
           ring: 'hsl(var(--sidebar-ring))',
         },
-      },
-       fontSize: {
-        'card-title': 'var(--card-title-size)',
-        'card-value': 'var(--card-value-size)',
-        'card-description': 'var(--card-description-size)',
       },
       borderRadius: {
         lg: 'var(--radius)',

@@ -23,7 +23,7 @@ import { resizeImage, fileToDataUrl } from "@/lib/image-utils";
 import { DEFAULT_LOGO_URL, DEFAULT_APP_ICON_URL } from "@/lib/config";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import type { PlatformConfig } from "@/lib/types";
+import type { PlatformConfig, CustomTheme } from "@/lib/types";
 
 const ThemeColorPreview = ({ theme }: { theme: Theme }) => (
     <div className="flex items-center gap-2">
@@ -144,11 +144,8 @@ export default function TeacherSettingsPage() {
                 dailyRewardStandardChance: Number(dailyRewardStandardChance) / 100,
                 dailyRewardStandardMin: Number(dailyRewardStandardMin),
                 dailyRewardStandardMax: Number(dailyRewardStandardMax),
+                customTheme: customThemeData
             };
-
-            if (customThemeData) {
-                dataToUpdate.customTheme = customThemeData;
-            }
             
             await setPlatformConfig(dataToUpdate);
 

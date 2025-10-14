@@ -32,26 +32,33 @@ const chartConfig: ChartConfig = {
 const DashboardCard = ({ cardKey, title, value, description, icon: Icon }: { cardKey: keyof DashboardCardConfig, title: string, value: string | number, description: string, icon: React.ElementType }) => {
     const { platformConfig } = useContext(AppDataContext);
     const cardConfig = platformConfig?.dashboardCards?.[cardKey];
+    
+    if (!cardConfig) return null;
 
-    const cardStyle = cardConfig ? {
+    const cardStyle = {
         backgroundColor: hslToHex(cardConfig.backgroundColor),
         color: hslToHex(cardConfig.textColor),
-    } : {};
+    };
 
-    const iconColor = cardConfig ? hslToHex(cardConfig.textColor) : 'hsl(var(--muted-foreground))';
+    const iconColor = hslToHex(cardConfig.textColor);
 
+    const fontSizes = {
+        title: platformConfig.dashboardCards.cardTitleSize || '0.875rem',
+        value: platformConfig.dashboardCards.cardValueSize || '1.5rem',
+        description: platformConfig.dashboardCards.cardDescriptionSize || '0.75rem',
+    }
 
     return (
         <Card style={cardStyle}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium" style={{color: cardStyle.color, opacity: 0.9}}>{title}</CardTitle>
+            <CardTitle className="font-medium" style={{color: cardStyle.color, opacity: 0.9, fontSize: fontSizes.title }}>{title}</CardTitle>
             <Icon className="h-4 w-4" style={{ color: iconColor, opacity: 0.8 }} />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" style={{color: cardStyle.color}}>
+            <div className="font-bold" style={{color: cardStyle.color, fontSize: fontSizes.value}}>
               {value}
             </div>
-            <p className="text-xs" style={{color: cardStyle.color, opacity: 0.9}}>{description}</p>
+            <p style={{color: cardStyle.color, opacity: 0.9, fontSize: fontSizes.description}}>{description}</p>
           </CardContent>
         </Card>
     );
@@ -264,13 +271,18 @@ export default function StudentDashboardPage() {
             icon={PiggyBank}
         />
         {totalLoanAmount > 0 ? (
-            <DashboardCard 
-                cardKey="currentLoan"
-                title={cardConfig.currentLoan?.title || '目前貸款'}
-                value={Math.round(totalLoanAmount).toLocaleString()}
-                description={cardConfig.currentLoan?.description || '需在期限內償還'}
-                icon={Landmark}
-            />
+           <Card style={{ backgroundColor: '#dc2626', color: '#fef2f2' }}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="font-medium" style={{ fontSize: cardConfig.cardTitleSize || '0.875rem' }}>目前貸款</CardTitle>
+                    <Landmark className="h-4 w-4" />
+                </CardHeader>
+                <CardContent>
+                    <div className="font-bold" style={{ fontSize: cardConfig.cardValueSize || '1.5rem' }}>
+                    {Math.round(totalLoanAmount).toLocaleString()}
+                    </div>
+                    <p className="text-xs" style={{ opacity: 0.9, fontSize: cardConfig.cardDescriptionSize || '0.75rem' }}>需在期限內償還</p>
+                </CardContent>
+            </Card>
         ) : (
             <DashboardCard 
                 cardKey="totalAssets"
@@ -313,8 +325,8 @@ export default function StudentDashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         <Card className="md:col-span-2" style={petCardStyle}>
             <CardHeader>
-                <CardTitle className="flex items-center gap-2" style={{color: petCardStyle.color}}><Bone /> {cardConfig.myPet?.title || '我的寵物'}</CardTitle>
-                <CardDescription style={{color: petCardStyle.color, opacity: 0.8}}>{cardConfig.myPet?.description || '您的點數越多，牠就會越強大！'}</CardDescription>
+                <CardTitle className="flex items-center gap-2" style={{color: petCardStyle.color, fontSize: cardConfig.cardTitleSize}}><Bone /> {cardConfig.myPet?.title || '我的寵物'}</CardTitle>
+                <CardDescription style={{color: petCardStyle.color, opacity: 0.8, fontSize: cardConfig.cardDescriptionSize}}>{cardConfig.myPet?.description || '您的點數越多，牠就會越強大！'}</CardDescription>
             </CardHeader>
             <CardContent>
                 <StudentPet student={currentStudent} />
@@ -322,8 +334,8 @@ export default function StudentDashboardPage() {
         </Card>
         <Card className="md:col-span-3" style={trendCardStyle}>
           <CardHeader>
-            <CardTitle style={{color: trendCardStyle.color}}>{cardConfig.pointsTrend?.title || '最近七日點數趨勢'}</CardTitle>
-            <CardDescription style={{color: trendCardStyle.color, opacity: 0.8}}>{cardConfig.pointsTrend?.description || '您最近七天每日從老師那裡獲得的點數紀錄。'}</CardDescription>
+            <CardTitle style={{color: trendCardStyle.color, fontSize: cardConfig.cardTitleSize}}>{cardConfig.pointsTrend?.title || '最近七日點數趨勢'}</CardTitle>
+            <CardDescription style={{color: trendCardStyle.color, opacity: 0.8, fontSize: cardConfig.cardDescriptionSize}}>{cardConfig.pointsTrend?.description || '您最近七天每日從老師那裡獲得的點數紀錄。'}</CardDescription>
           </CardHeader>
           <CardContent>
              <div className="overflow-x-auto">

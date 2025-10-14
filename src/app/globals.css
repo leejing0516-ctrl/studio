@@ -33,9 +33,9 @@
     --chart-4: 215.4 16.3% 46.9%;
     --chart-5: 220 20% 70%;
 
-    --card-title-size: 0.875rem; /* 14px */
-    --card-value-size: 1.5rem; /* 24px */
-    --card-description-size: 0.75rem; /* 12px */
+    --card-title-size: 0.875rem;
+    --card-value-size: 1.5rem;
+    --card-description-size: 0.75rem;
 
     --card-title-foreground: 210 40% 98%;
     --card-value-foreground: 210 40% 98%;
@@ -71,14 +71,5 @@
   }
   body {
     @apply bg-background text-foreground;
-  }
-  .text-card-title {
-    font-size: var(--card-title-size);
-  }
-  .text-card-value {
-    font-size: var(--card-value-size);
-  }
-  .text-card-description {
-    font-size: var(--card-description-size);
   }
 }

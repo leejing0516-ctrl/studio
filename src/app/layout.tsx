@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Providers } from "@/context/Providers";
 import { themes } from "@/lib/themes";
 import { DEFAULT_APP_ICON_URL } from "@/lib/config";
-import type { CustomTheme } from "@/lib/types";
+import type { CustomTheme, DashboardCardConfig } from "@/lib/types";
 import { useContext, useEffect } from "react";
 import { AppDataContext } from "@/context/AppDataContext";
 
@@ -18,24 +18,27 @@ export default function RootLayout({
   const { platformConfig } = useContext(AppDataContext);
 
   const appIconUrl = platformConfig?.appIconUrl || DEFAULT_APP_ICON_URL;
-  const themeName = platformConfig?.theme || 'default';
-  const customTheme = platformConfig?.customTheme;
-
-  let activeTheme: CustomTheme;
-  if (themeName === 'custom' && customTheme) {
-    activeTheme = customTheme;
-  } else {
-    activeTheme = themes.find(t => t.name === themeName)?.cssVars.dark 
-      || themes.find(t => t.name === 'default')!.cssVars.dark;
-  }
   
-  const cssVariables = activeTheme 
-    ? Object.entries(activeTheme)
-        .map(([key, value]) => `--${key}: ${value};`)
-        .join('\n') 
-    : '';
+  // Directly use the saved custom theme if it exists, otherwise fall back to default theme CSS variables.
+  const activeTheme = platformConfig?.customTheme 
+    || themes.find(t => t.name === 'default')!.cssVars.dark;
+  
+  const dashboardCardsConfig = platformConfig?.dashboardCards;
+
+  const cssVariables = Object.entries(activeTheme)
+    .map(([key, value]) => `--${key}: ${value};`)
+    .join('\n');
     
-  const themeStyle = `:root {\n${cssVariables}\n}`;
+  let cardSizeVariables = '';
+  if (dashboardCardsConfig) {
+    cardSizeVariables = `
+      --card-title-size: ${dashboardCardsConfig.cardTitleSize || '0.875rem'};
+      --card-value-size: ${dashboardCardsConfig.cardValueSize || '1.5rem'};
+      --card-description-size: ${dashboardCardsConfig.cardDescriptionSize || '0.75rem'};
+    `;
+  }
+    
+  const themeStyle = `:root {\n${cssVariables}\n${cardSizeVariables}\n}`;
 
   return (
     <html lang="en" suppressHydrationWarning>

@@ -227,7 +227,10 @@ export type DashboardCardConfig = {
     description: string;
     backgroundColor: string;
     textColor: string;
-  };
+  } | string;
+  cardTitleSize: string;
+  cardValueSize: string;
+  cardDescriptionSize: string;
 }
 
 export type PlatformConfig = {
