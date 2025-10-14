@@ -39,6 +39,7 @@ import {
   FileEdit,
   Mail,
   BookUp,
+  Users
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -224,13 +225,14 @@ export default function TeacherLayout({
 
   const navItems = [
     { href: "/teacher/dashboard", label: "班級與點數管理", icon: LayoutDashboard, roles: ['admin', 'teacher', 'subject_teacher'] },
-    { href: "/teacher/bu-ke-xing-qiu", label: "布可星球", icon: BookUp, roles: ['admin'] },
+    { href: "/teacher/class-rankings", label: "班級排名", icon: Users, roles: ['admin', 'teacher', 'subject_teacher'] },
     { href: "/teacher/rankings", label: "全校排名", icon: Trophy, roles: ['admin'] },
     { href: "/teacher/announcements", label: "公告管理", icon: Megaphone, roles: ['admin', 'teacher', 'subject_teacher'] },
     { href: "/teacher/feedback", label: "意見信箱", icon: Mail, roles: ['admin'], hasNew: hasNewFeedback },
     { href: "/teacher/rewards", label: "獎勵管理", icon: Gift, roles: ['admin', 'teacher'] },
     { href: "/teacher/challenges", label: "挑戰管理", icon: Flag, roles: ['admin', 'teacher', 'subject_teacher'] },
     { href: "/teacher/habits", label: "習慣審核", icon: Repeat, roles: ['admin', 'teacher'] },
+    { href: "/teacher/bu-ke-xing-qiu", label: "布可星球", icon: BookUp, roles: ['admin'] },
     { href: "/teacher/pets", label: "寵物管理", icon: Bone, roles: ['admin'] },
     { href: "/teacher/stocks", label: "股票管理", icon: LineChart, roles: ['admin'] },
     { href: "/teacher/fundraising", label: "募資管理", icon: HeartHandshake, roles: ['admin'] },
@@ -396,4 +398,3 @@ export default function TeacherLayout({
   );
 }
 
-    
