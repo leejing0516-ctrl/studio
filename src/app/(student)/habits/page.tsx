@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useContext, useMemo } from "react";
-import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -18,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
-import { PlusCircle, Repeat, Target, Clock, Coins, Check, AlertTriangle, BadgeCheck, CircleOff, Trash2, Goal, ImageOff, Notebook, Eye } from "lucide-react";
+import { PlusCircle, Repeat, Target, Clock, Coins, Check, AlertTriangle, BadgeCheck, CircleOff, Trash2, Goal, Notebook, Eye } from "lucide-react";
 import { addDays, format, isAfter, startOfDay, differenceInDays, isSameDay, isValid } from "date-fns";
 import type { StudentHabit, HabitCheckIn } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
@@ -413,4 +412,5 @@ export default function HabitsPage() {
       </Dialog>
     </div>
   );
-}
+
+    
