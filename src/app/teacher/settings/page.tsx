@@ -124,7 +124,7 @@ export default function TeacherSettingsPage() {
         setIsSavingSettings(true);
         
         try {
-            await setPlatformConfig({
+            const dataToUpdate: Partial<PlatformConfig> = {
                 ...platformConfig,
                 logoUrl: logoUrl,
                 appIconUrl: appIconUrl,
@@ -134,7 +134,6 @@ export default function TeacherSettingsPage() {
                 marketCloseHour: Number(marketCloseHour),
                 sponsorLogoUrls: sponsorLogoUrls,
                 theme: selectedTheme,
-                customTheme: selectedTheme === 'custom' ? platformConfig?.customTheme : undefined,
                 buKeXingQiuDescription: buKeXingQiuDescription,
                 dailyRewardJackpotChance: Number(dailyRewardJackpotChance) / 100,
                 dailyRewardJackpotMin: Number(dailyRewardJackpotMin),
@@ -142,7 +141,15 @@ export default function TeacherSettingsPage() {
                 dailyRewardStandardChance: Number(dailyRewardStandardChance) / 100,
                 dailyRewardStandardMin: Number(dailyRewardStandardMin),
                 dailyRewardStandardMax: Number(dailyRewardStandardMax),
-            });
+            };
+
+            if (selectedTheme === 'custom') {
+                dataToUpdate.customTheme = platformConfig?.customTheme;
+            } else {
+                delete (dataToUpdate as any).customTheme;
+            }
+            
+            await setPlatformConfig(dataToUpdate);
 
             toast({ title: "設定已儲存", description: "平台設定已成功更新。" });
         } catch (error: any) {
