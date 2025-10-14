@@ -159,6 +159,8 @@ export default function TeacherDashboardEditorPage() {
 
         if (platformConfig) {
              setCardConfig({ ...initialCardConfig, ...platformConfig.dashboardCards });
+        } else {
+             setCardConfig(initialCardConfig);
         }
     }, [platformConfig, router, toast]);
 
