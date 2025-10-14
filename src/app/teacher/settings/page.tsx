@@ -26,14 +26,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { PlatformConfig, CustomTheme } from "@/lib/types";
 
-const ThemeColorPreview = ({ theme }: { theme: Theme }) => (
-    <div className="flex items-center gap-2">
-        <div className="h-4 w-4 rounded-full" style={{ backgroundColor: `hsl(${theme.cssVars.dark.background})`, border: '1px solid hsl(var(--border))' }} />
-        <div className="h-4 w-4 rounded-full" style={{ backgroundColor: `hsl(${theme.cssVars.dark.primary})` }} />
-        <div className="h-4 w-4 rounded-full" style={{ backgroundColor: `hsl(${theme.cssVars.dark.secondary})` }} />
-        <div className="h-4 w-4 rounded-full" style={{ backgroundColor: `hsl(${theme.cssVars.dark.accent})` }} />
-    </div>
-);
+const ThemeColorPreview = ({ theme }: { theme: Theme }) => {
+    const themeVars = theme.cssVars.light || theme.cssVars.dark;
+    return (
+        <div className="flex items-center gap-2">
+            <div className="h-4 w-4 rounded-full" style={{ backgroundColor: `hsl(${themeVars.background})`, border: '1px solid hsl(var(--border))' }} />
+            <div className="h-4 w-4 rounded-full" style={{ backgroundColor: `hsl(${themeVars.primary})` }} />
+            <div className="h-4 w-4 rounded-full" style={{ backgroundColor: `hsl(${themeVars.secondary})` }} />
+            <div className="h-4 w-4 rounded-full" style={{ backgroundColor: `hsl(${themeVars.accent})` }} />
+        </div>
+    );
+};
 
 
 export default function TeacherSettingsPage() {
@@ -163,23 +166,6 @@ export default function TeacherSettingsPage() {
             setIsSavingSettings(false);
         }
     };
-    
-     useEffect(() => {
-        const themeConfig = availableThemes.find(t => t.name === selectedThemeName);
-        if (themeConfig) {
-            // Check if it's a light theme based on name or a property
-            const isLightTheme = themeConfig.name.includes('red') || themeConfig.name.includes('joy') || themeConfig.name.includes('pink') || themeConfig.name.includes('yellow');
-            const themeToApply = isLightTheme && themeConfig.cssVars.light ? themeConfig.cssVars.light : themeConfig.cssVars.dark;
-
-            const root = document.documentElement;
-            Object.entries(themeToApply).forEach(([key, value]) => {
-                if (!key.startsWith('chart-') && !key.startsWith('card-')) {
-                     root.style.setProperty(`--${key}`, value as string);
-                }
-            });
-        }
-    }, [selectedThemeName, availableThemes]);
-
 
     return (
         <div className="space-y-6 animate-in fade-in-0 duration-500">
