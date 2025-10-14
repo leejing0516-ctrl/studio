@@ -25,9 +25,11 @@ import {
 } from "@/components/ui/select";
 import { PiggyBank, Banknote, CalendarClock, ChevronsRight, BadgePercent, ShieldCheck } from "lucide-react";
 import { addDays, format, isAfter, startOfDay } from "date-fns";
-import type { FixedDeposit } from "@/lib/types";
+import type { FixedDeposit, Student } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { doc, Transaction } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const depositDurations = [
   { value: 7, label: "7 天" },
@@ -37,13 +39,17 @@ const depositDurations = [
 
 export default function DepositsPage() {
   const { studentData } = useContext(StudentDataContext);
-  const { setStudents, platformConfig } = useContext(AppDataContext);
+  const { students, setStudents, platformConfig, runTransaction } = useContext(AppDataContext);
   const { toast } = useToast();
 
   const [amount, setAmount] = useState<number | "">("");
   const [duration, setDuration] = useState<number>(7);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const currentStudent = studentData.student;
+  const currentStudent = useMemo(() => 
+    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId)
+  , [students, studentData.student]);
+  
   const interestRate = platformConfig?.fixedDepositInterestRate || 0.01;
 
   const activeDeposits = useMemo(() => {
@@ -56,7 +62,7 @@ export default function DepositsPage() {
 
   const handleCreateDeposit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentStudent || !amount) return;
+    if (!currentStudent || !currentStudent._docId || !amount) return;
 
     if (amount <= 0) {
         toast({ title: "金額無效", description: "存款金額必須大於 0。", variant: "destructive" });
@@ -66,35 +72,53 @@ export default function DepositsPage() {
         toast({ title: "金額錯誤", description: "存款金額必須是 100 的倍數。", variant: "destructive" });
         return;
     }
-    if (currentStudent.points < amount) {
-        toast({ title: "點數不足", description: `您的點數不足 ${amount.toLocaleString()} 點。`, variant: "destructive" });
-        return;
-    }
-
-    const startDate = new Date();
-    const newDeposit: FixedDeposit = {
-        id: `dep-${Date.now()}-${Math.random()}`,
-        amount: amount,
-        startDate: startDate.toISOString(),
-        maturityDate: addDays(startDate, duration).toISOString(),
-        status: 'active',
-        interestRate: interestRate,
-        interestEarned: 0,
-    };
     
-    await setStudents(prevStudents => prevStudents.map(s => {
-        if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
-            return {
-                ...s,
-                points: s.points - amount,
-                fixedDeposits: [...(s.fixedDeposits || []), newDeposit],
-            };
-        }
-        return s;
-    }));
+    setIsSubmitting(true);
 
-    toast({ title: "定存已建立！", description: `您已成功存入 ${amount.toLocaleString()} 點，為期 ${duration} 天。`});
-    setAmount("");
+    try {
+        await runTransaction(async (transaction: Transaction) => {
+            const studentRef = doc(db, "students", currentStudent._docId!);
+            const studentDoc = await transaction.get(studentRef);
+
+            if (!studentDoc.exists()) {
+                throw new Error("找不到您的學生資料。");
+            }
+
+            const latestStudentData = studentDoc.data() as Student;
+
+            if (latestStudentData.points < amount) {
+                throw new Error(`您的點數不足。目前只有 ${Math.round(latestStudentData.points).toLocaleString()} 點。`);
+            }
+
+            const startDate = new Date();
+            const newDeposit: FixedDeposit = {
+                id: `dep-${Date.now()}-${Math.random()}`,
+                amount: amount as number,
+                startDate: startDate.toISOString(),
+                maturityDate: addDays(startDate, duration).toISOString(),
+                status: 'active',
+                interestRate: interestRate,
+                interestEarned: 0,
+            };
+
+            const updatedPoints = latestStudentData.points - (amount as number);
+            const updatedDeposits = [...(latestStudentData.fixedDeposits || []), newDeposit];
+
+            transaction.update(studentRef, {
+                points: updatedPoints,
+                fixedDeposits: updatedDeposits,
+            });
+        });
+
+        toast({ title: "定存已建立！", description: `您已成功存入 ${amount.toLocaleString()} 點，為期 ${duration} 天。`});
+        setAmount("");
+
+    } catch (error: any) {
+        console.error("Failed to create fixed deposit:", error);
+        toast({ title: "定存失敗", description: error.message, variant: "destructive" });
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   return (
@@ -119,11 +143,12 @@ export default function DepositsPage() {
                         step="100"
                         min="100"
                         required 
+                        disabled={isSubmitting}
                     />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="duration">存款天期</Label>
-                    <Select onValueChange={(value) => setDuration(Number(value))} defaultValue={String(duration)}>
+                    <Select onValueChange={(value) => setDuration(Number(value))} defaultValue={String(duration)} disabled={isSubmitting}>
                         <SelectTrigger id="duration">
                             <SelectValue placeholder="選擇存款天數" />
                         </SelectTrigger>
@@ -138,13 +163,15 @@ export default function DepositsPage() {
                     <Card className="bg-muted/50 p-4 text-sm">
                          <CardDescription>預估收益</CardDescription>
                          <p className="font-semibold">
-                           到期後，您預計可獲得 <span className="text-primary font-bold">{Math.floor(amount * interestRate * duration).toLocaleString()}</span> 點利息。
+                           到期後，您預計可獲得 <span className="text-primary font-bold">{Math.floor((amount as number) * interestRate * duration).toLocaleString()}</span> 點利息。
                          </p>
                     </Card>
                 )}
             </CardContent>
             <CardFooter>
-                <Button className="w-full" type="submit">確認存入</Button>
+                <Button className="w-full" type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? '處理中...' : '確認存入'}
+                </Button>
             </CardFooter>
         </form>
       </Card>
