@@ -12,7 +12,6 @@ import { User, School, ArrowRight, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AppDataContext } from '@/context/AppDataContext';
-import { Providers } from "@/context/Providers";
 import type { Student, Teacher } from '@/lib/types';
 
 function LoginPageContent() {
@@ -270,10 +269,9 @@ function LoginPageContent() {
   );
 }
 
+
 export default function HomePage() {
-  return (
-    <Providers>
-      <LoginPageContent />
-    </Providers>
-  );
+  // We no longer wrap with Providers here. 
+  // LoginPageContent will get its data from the RootLayout's context.
+  return <LoginPageContent />;
 }

@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -56,7 +57,6 @@ import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
 import Logo from "@/components/logo";
-import { Providers } from "@/context/Providers";
 
 function TeacherLayoutContent({
   children,
@@ -385,9 +385,5 @@ export default function TeacherLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <Providers>
-      <TeacherLayoutContent>{children}</TeacherLayoutContent>
-    </Providers>
-  )
+  return <TeacherLayoutContent>{children}</TeacherLayoutContent>;
 }

@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -59,7 +60,7 @@ import { Separator } from "@/components/ui/separator";
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { Providers } from "@/context/Providers";
+import { Loader2 } from "lucide-react";
 
 function StudentLayoutContent({
   children,
@@ -403,9 +404,5 @@ export default function StudentLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <Providers>
-      <StudentLayoutContent>{children}</StudentLayoutContent>
-    </Providers>
-  )
+  return <StudentLayoutContent>{children}</StudentLayoutContent>;
 }
