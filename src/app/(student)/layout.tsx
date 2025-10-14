@@ -81,7 +81,10 @@ function StudentLayoutContent({
   const [hasNewAnnouncements, setHasNewAnnouncements] = useState(false);
   const [hasNewPointHistory, setHasNewPointHistory] = useState(false);
 
-  const student = useMemo(() => studentData.student, [studentData.student]);
+  const student = useMemo(() => {
+     if (isLoading || !studentData.student?._docId) return studentData.student;
+     return students.find(s => s._docId === studentData.student!._docId) || studentData.student;
+  }, [studentData.student, students, isLoading]);
 
   const handleLogout = useCallback(() => {
     setStudentData({ student: null });
@@ -101,22 +104,18 @@ function StudentLayoutContent({
   }, [isLoading, handleLogout]);
 
   useEffect(() => {
-    const studentInContext = studentData.student;
-    if (!studentInContext) {
+    if (!student) {
       setHasNewAnnouncements(false);
       setHasNewPointHistory(false);
       return;
     }
 
-    // Find the latest version of the student from the main students array
-    const currentStudent = students.find(s => s._docId === studentInContext._docId) || studentInContext;
-
-    const lastViewTime = currentStudent.lastAnnouncementsView ? new Date(currentStudent.lastAnnouncementsView).getTime() : 0;
+    const lastViewTime = student.lastAnnouncementsView ? new Date(student.lastAnnouncementsView).getTime() : 0;
     
     const latestSchoolAnnouncementDate = (platformConfig?.announcements || [])
       .reduce((latest, ann) => Math.max(latest, new Date(ann.date).getTime()), 0);
 
-    const studentClass = classes.find(c => c.id === currentStudent.classId);
+    const studentClass = classes.find(c => c.id === student.classId);
     const latestClassAnnouncementDate = (studentClass?.announcements || [])
       .reduce((latest, ann) => Math.max(latest, new Date(ann.date).getTime()), 0);
 
@@ -126,8 +125,8 @@ function StudentLayoutContent({
       setHasNewAnnouncements(false);
     }
 
-    const lastPointHistoryView = currentStudent.lastPointHistoryView ? new Date(currentStudent.lastPointHistoryView).getTime() : 0;
-    const latestPointRecordDate = (currentStudent.pointHistory || [])
+    const lastPointHistoryView = student.lastPointHistoryView ? new Date(student.lastPointHistoryView).getTime() : 0;
+    const latestPointRecordDate = (student.pointHistory || [])
       .reduce((latest, record) => Math.max(latest, new Date(record.date).getTime()), 0);
 
     if (latestPointRecordDate > lastPointHistoryView) {
@@ -136,7 +135,7 @@ function StudentLayoutContent({
       setHasNewPointHistory(false);
     }
 
-  }, [studentData.student, students, platformConfig, classes]);
+  }, [student, platformConfig, classes]);
 
 
   const handleChangePassword = async () => {
