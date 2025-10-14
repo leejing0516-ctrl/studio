@@ -46,7 +46,6 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { resizeImage, fileToDataUrl } from "@/lib/image-utils";
 
 const HABIT_DURATION = 21;
 
@@ -62,8 +61,6 @@ export default function HabitsPage() {
   
   const [checkInHabit, setCheckInHabit] = useState<StudentHabit | null>(null);
   const [checkInNote, setCheckInNote] = useState("");
-  const [checkInImageFile, setCheckInImageFile] = useState<File | null>(null);
-  const [checkInImagePreview, setCheckInImagePreview] = useState<string | null>(null);
 
   const [viewingHabitHistory, setViewingHabitHistory] = useState<StudentHabit | null>(null);
 
@@ -113,41 +110,12 @@ export default function HabitsPage() {
     setHabitDescription("");
   };
   
-  const handleCheckInImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      try {
-        const resizedFile = await resizeImage(file, 1024, 1024);
-        setCheckInImageFile(resizedFile);
-        setCheckInImagePreview(URL.createObjectURL(resizedFile));
-      } catch (error) {
-        console.error("Image resize error:", error);
-        toast({
-          title: "圖片處理失敗",
-          description: "無法縮小圖片尺寸，請嘗試其他圖片。",
-          variant: "destructive",
-        });
-      }
-    }
-  };
-
   const handleConfirmCheckIn = async () => {
     if (!currentStudent || !checkInHabit) return;
-
-    let imageUrl: string | undefined = undefined;
-    if (checkInImageFile) {
-        try {
-            imageUrl = await fileToDataUrl(checkInImageFile);
-        } catch (error) {
-            toast({ title: "圖片上傳失敗", variant: "destructive" });
-            return;
-        }
-    }
 
     const newCheckIn: HabitCheckIn = {
       date: new Date().toISOString(),
       note: checkInNote,
-      imageUrl: imageUrl,
     };
     
     await setStudents(currentStudents => currentStudents.map(s => {
@@ -165,8 +133,6 @@ export default function HabitsPage() {
     toast({ title: "打卡成功！", description: "今天的習慣已完成，繼續保持！" });
     setCheckInHabit(null);
     setCheckInNote("");
-    setCheckInImageFile(null);
-    setCheckInImagePreview(null);
   };
   
   const handleDeleteHabit = async () => {
@@ -389,27 +355,9 @@ export default function HabitsPage() {
         <DialogContent className="sm:max-w-md">
             <DialogHeader>
                 <DialogTitle>今日打卡：{checkInHabit?.title}</DialogTitle>
-                <DialogDescription>記錄你今天的努力！上傳一張證明照片並寫下你的心得。</DialogDescription>
+                <DialogDescription>記錄你今天的努力！</DialogDescription>
             </DialogHeader>
             <div className="py-4 space-y-4">
-                 <div className="space-y-2">
-                    <Label>上傳證明照片（選填）</Label>
-                    <div className="flex items-center gap-4">
-                        <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center relative">
-                            {checkInImagePreview ? (
-                                <Image src={checkInImagePreview} alt="Check-in preview" fill className="object-cover rounded-md" />
-                            ) : (
-                                <ImageOff className="h-8 w-8 text-muted-foreground" />
-                            )}
-                        </div>
-                        <div>
-                            <Input id="checkin-image-upload" type="file" accept="image/*" onChange={handleCheckInImageChange} className="sr-only" />
-                             <Label htmlFor="checkin-image-upload" className={buttonVariants({ variant: "outline" })}>
-                                選擇檔案
-                            </Label>
-                        </div>
-                    </div>
-                </div>
                 <div className="space-y-2">
                     <Label htmlFor="checkin-note">心得筆記（選填）</Label>
                     <Textarea 
@@ -444,15 +392,12 @@ export default function HabitsPage() {
                                 {isValid(new Date(checkIn.date)) ? format(new Date(checkIn.date), 'yyyy年MM月dd日') : '無效日期'}
                             </p>
                             <div className="flex gap-4 items-start">
-                                {checkIn.imageUrl && (
-                                     <Image src={checkIn.imageUrl} alt={`Check-in for ${checkIn.date}`} width={128} height={128} className="rounded-md object-cover w-32 h-32 shrink-0"/>
-                                )}
                                 {checkIn.note ? (
                                     <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md flex-1">
                                         <p>{checkIn.note}</p>
                                     </div>
                                 ) : (
-                                    !checkIn.imageUrl && <p className="text-sm text-muted-foreground">這天只留下了打卡紀錄。</p>
+                                    <p className="text-sm text-muted-foreground">這天只留下了打卡紀錄。</p>
                                 )}
                             </div>
                             {index < (viewingHabitHistory?.checkIns || []).length - 1 && <Separator className="mt-6"/>}
