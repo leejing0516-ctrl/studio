@@ -72,26 +72,6 @@ export default {
           DEFAULT: 'hsl(var(--reward-card-class))',
           foreground: 'hsl(var(--reward-card-class-foreground))',
         },
-        'class-rank-card': {
-          DEFAULT: 'hsl(var(--class-rank-card-background))',
-          foreground: 'hsl(var(--class-rank-card-foreground))',
-        },
-        'school-rank-card': {
-            DEFAULT: 'hsl(var(--school-rank-card-background))',
-            foreground: 'hsl(var(--school-rank-card-foreground))',
-        },
-        'my-groups-card': {
-            DEFAULT: 'hsl(var(--my-groups-card-background))',
-            foreground: 'hsl(var(--my-groups-card-foreground))',
-        },
-        'my-pet-card': {
-            DEFAULT: 'hsl(var(--my-pet-card-background))',
-            foreground: 'hsl(var(--my-pet-card-foreground))',
-        },
-        'points-trend-card': {
-            DEFAULT: 'hsl(var(--points-trend-card-background))',
-            foreground: 'hsl(var(--points-trend-card-foreground))',
-        },
         'bu-ke-xing-qiu-card': {
             DEFAULT: 'hsl(var(--bu-ke-xing-qiu-card-background))',
             foreground: 'hsl(var(--bu-ke-xing-qiu-card-foreground))',

@@ -47,18 +47,6 @@ const defaultThemeColors: CustomTheme = {
     "chart-4": "300 80% 60%",
     "reward-card-school": "25 95% 55%",
     "reward-card-class": "140 70% 40%",
-    "class-rank-card-background": "0 0% 100%",
-    "class-rank-card-foreground": "222.2 84% 4.9%",
-    "school-rank-card-background": "0 0% 100%",
-    "school-rank-card-foreground": "222.2 84% 4.9%",
-    "my-groups-card-background": "0 0% 100%",
-    "my-groups-card-foreground": "222.2 84% 4.9%",
-    "my-pet-card-background": "0 0% 100%",
-    "my-pet-card-foreground": "222.2 84% 4.9%",
-    "points-trend-card-background": "0 0% 100%",
-    "points-trend-card-foreground": "222.2 84% 4.9%",
-    "bu-ke-xing-qiu-card-background": "220 20% 70%",
-    "bu-ke-xing-qiu-card-foreground": "220 20% 10%",
     "card-title-foreground": "210 40% 98%",
     "card-value-foreground": "210 40% 98%",
     "card-description-foreground": "210 40% 90%",
@@ -67,6 +55,8 @@ const defaultThemeColors: CustomTheme = {
     "card-description-size": "0.75rem",
     "reward-card-school-foreground": "210 40% 98%",
     "reward-card-class-foreground": "210 40% 98%",
+    "bu-ke-xing-qiu-card-background": "220 20% 70%",
+    "bu-ke-xing-qiu-card-foreground": "220 20% 10%",
 };
 
 const hslToHex = (h: number, s: number, l: number): string => {
@@ -187,20 +177,15 @@ const chartColorOptions = [
     { key: "chart-2", label: "儀表板卡片 2 (投資價值)" },
     { key: "chart-3", label: "儀表板卡片 3 (定存點數)" },
     { key: "chart-4", label: "儀表板卡片 4 (總資產)" },
+    { key: "chart-5", label: "儀表板卡片 5 (排名/分組等)" },
 ];
 
-const dashboardCardOptions = [
-    { keyBackground: "class-rank-card-background", keyForeground: "class-rank-card-foreground", label: "班級排名卡片" },
-    { keyBackground: "school-rank-card-background", keyForeground: "school-rank-card-foreground", label: "全校排名卡片" },
-    { keyBackground: "my-groups-card-background", keyForeground: "my-groups-card-foreground", label: "我的分組卡片" },
-    { keyBackground: "my-pet-card-background", keyForeground: "my-pet-card-foreground", label: "我的寵物卡片" },
-    { keyBackground: "points-trend-card-background", keyForeground: "points-trend-card-foreground", label: "點數趨勢卡片" },
-    { keyBackground: "bu-ke-xing-qiu-card-background", keyForeground: "bu-ke-xing-qiu-card-foreground", label: "布可星球卡片" },
-];
 
 const specialCardOptions = [
     { keyBackground: "reward-card-school", keyForeground: "reward-card-school-foreground", label: "學校獎勵卡片" },
     { keyBackground: "reward-card-class", keyForeground: "reward-card-class-foreground", label: "班級獎勵卡片" },
+    { keyBackground: "bu-ke-xing-qiu-card-background", keyForeground: "bu-ke-xing-qiu-card-foreground", label: "布可星球卡片" },
+
 ];
 
 const cardTextOptions = [
@@ -316,8 +301,8 @@ export default function TeacherThemeEditorPage() {
                     </Card>
                      <Card>
                         <CardHeader>
-                             <h3 className="text-lg font-semibold">儀表板頂部卡片</h3>
-                             <CardDescription>設定儀表板最上方四張數據卡片的背景顏色。</CardDescription>
+                             <h3 className="text-lg font-semibold">儀表板卡片</h3>
+                             <CardDescription>設定儀表板數據卡片的背景顏色。</CardDescription>
                         </CardHeader>
                         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
                              {chartColorOptions.map(({ key, label }) => (
@@ -328,33 +313,6 @@ export default function TeacherThemeEditorPage() {
                                     value={customColors[key] || defaultThemeColors[key as keyof typeof defaultThemeColors] || ''}
                                     onChange={handleValueChange}
                                 />
-                            ))}
-                        </CardContent>
-                    </Card>
-                     <Card>
-                        <CardHeader>
-                             <h3 className="text-lg font-semibold">儀表板下方卡片</h3>
-                             <CardDescription>分別設定儀表板下方區塊各張卡片的背景與文字顏色。</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            {dashboardCardOptions.map(({ keyBackground, keyForeground, label }) => (
-                                <div key={keyBackground} className="p-4 border rounded-md">
-                                    <h4 className="font-medium mb-4">{label}</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <ColorInput 
-                                            colorKey={keyBackground} 
-                                            label="背景顏色" 
-                                            value={customColors[keyBackground] || defaultThemeColors[keyBackground as keyof typeof defaultThemeColors] || ''}
-                                            onChange={handleValueChange}
-                                        />
-                                        <ColorInput 
-                                            colorKey={keyForeground} 
-                                            label="文字顏色" 
-                                            value={customColors[keyForeground] || defaultThemeColors[keyForeground as keyof typeof defaultThemeColors] || ''}
-                                            onChange={handleValueChange}
-                                        />
-                                    </div>
-                                </div>
                             ))}
                         </CardContent>
                     </Card>
