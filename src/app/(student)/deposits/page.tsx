@@ -169,7 +169,7 @@ export default function DepositsPage() {
                 )}
             </CardContent>
             <CardFooter>
-                <Button className="w-full" type="submit" disabled={isSubmitting}>
+                <Button className="w-full" type="submit" disabled={isSubmitting || !amount}>
                     {isSubmitting ? '處理中...' : '確認存入'}
                 </Button>
             </CardFooter>
