@@ -204,6 +204,7 @@ const GroupManagementDialog = ({
     );
 };
 
+
 export default function TeacherDashboardPage() {
     const { 
         students, setStudents,
@@ -1181,7 +1182,7 @@ export default function TeacherDashboardPage() {
                                                     {role !== 'subject_teacher' && (
                                                         <>
                                                             <Button variant="ghost" size="icon" onClick={() => { setStudentToEdit(student); setIsEditStudentDialogOpen(true); }}><Edit className="h-4 w-4"/></Button>
-                                                            <Button variant="ghost" size="icon" onClick={() => { setStudentToResetPassword(student); setIsResetPasswordDialogOpen(true); }}><KeyRound className="h-4 w-4"/></Button>
+                                                            <Button variant="ghost" size="icon" onClick={()={() => { setStudentToResetPassword(student); setIsResetPasswordDialogOpen(true); }}><KeyRound className="h-4 w-4"/></Button>
                                                             <AlertDialog>
                                                                 <AlertDialogTrigger asChild>
                                                                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4"/></Button>
@@ -1986,5 +1987,3 @@ export default function TeacherDashboardPage() {
         </div>
     )
 }
-
-    
