@@ -15,6 +15,8 @@ import StudentPet from "@/components/student-pet";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import DailyReward from "./DailyReward";
+import { hslToHex } from '@/lib/utils';
+
 
 const chartConfig: ChartConfig = {
   points: {
@@ -27,11 +29,39 @@ const chartConfig: ChartConfig = {
   },
 } satisfies ChartConfig
 
+const DashboardCard = ({ cardKey, title, value, description, icon: Icon }: { cardKey: keyof DashboardCardConfig, title: string, value: string | number, description: string, icon: React.ElementType }) => {
+    const { platformConfig } = useContext(AppDataContext);
+    const cardConfig = platformConfig?.dashboardCards?.[cardKey];
+
+    const cardStyle = cardConfig ? {
+        backgroundColor: hslToHex(cardConfig.backgroundColor),
+        color: hslToHex(cardConfig.textColor),
+    } : {};
+
+    const iconColor = cardConfig ? hslToHex(cardConfig.textColor) : 'hsl(var(--muted-foreground))';
+
+
+    return (
+        <Card style={cardStyle}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium" style={{color: cardStyle.color, opacity: 0.9}}>{title}</CardTitle>
+            <Icon className="h-4 w-4" style={{ color: iconColor, opacity: 0.8 }} />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" style={{color: cardStyle.color}}>
+              {value}
+            </div>
+            <p className="text-xs" style={{color: cardStyle.color, opacity: 0.9}}>{description}</p>
+          </CardContent>
+        </Card>
+    );
+};
+
 export default function StudentDashboardPage() {
   const { studentData } = useContext(StudentDataContext);
   const { students, stocks: marketStocks, classes, teachers, platformConfig } = useContext(AppDataContext);
 
-  const cardTexts = useMemo(() => platformConfig?.dashboardCards || {}, [platformConfig]);
+  const cardConfig = useMemo(() => platformConfig?.dashboardCards || {}, [platformConfig]);
   
   const currentStudent = useMemo(() => 
     students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId)
@@ -186,9 +216,21 @@ export default function StudentDashboardPage() {
 
   const totalAssets = totalPoints + portfolioValue + totalDepositAmount - totalLoanAmount;
 
-  if (!currentStudent) {
+  if (!currentStudent || !cardConfig) {
     return <div>載入中...</div>;
   }
+  
+  const petCardConfig = cardConfig.myPet;
+  const petCardStyle = petCardConfig ? {
+    backgroundColor: hslToHex(petCardConfig.backgroundColor),
+    color: hslToHex(petCardConfig.textColor),
+  } : {};
+  
+  const trendCardConfig = cardConfig.pointsTrend;
+  const trendCardStyle = trendCardConfig ? {
+    backgroundColor: hslToHex(trendCardConfig.backgroundColor),
+    color: hslToHex(trendCardConfig.textColor),
+  } : {};
 
   return (
     <div className="grid gap-6 animate-in fade-in-0 duration-500">
@@ -200,141 +242,97 @@ export default function StudentDashboardPage() {
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-chart-1 text-card-foreground">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-card-title">{cardTexts.totalPoints?.title || '目前點數'}</CardTitle>
-            <Coins className="h-4 w-4 text-current/80" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-card-value font-bold">
-              {Math.round(totalPoints).toLocaleString()}
-            </div>
-            <p className="text-card-description">{cardTexts.totalPoints?.description || '可用於交易或兌換獎勵'}</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-chart-2 text-card-foreground">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-card-title">{cardTexts.portfolioValue?.title || '投資價值'}</CardTitle>
-            <BarChartIcon className="h-4 w-4 text-current/80" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-card-value font-bold">${Math.round(portfolioValue).toLocaleString()}</div>
-            <p className="text-card-description">{cardTexts.portfolioValue?.description || '本月 +5.2%'}</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-chart-3 text-card-foreground">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-card-title">{cardTexts.fixedDeposits?.title || '定存點數'}</CardTitle>
-                <PiggyBank className="h-4 w-4 text-current/80" />
-            </CardHeader>
-            <CardContent>
-                <div className="text-card-value font-bold">
-                {Math.round(totalDepositAmount).toLocaleString()}
-                </div>
-                <p className="text-card-description">{cardTexts.fixedDeposits?.description || '目前進行中的定期存款'}</p>
-            </CardContent>
-        </Card>
-         {totalLoanAmount > 0 ? (
-          <Card className="bg-chart-4 text-card-foreground">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-card-title">{cardTexts.currentLoan?.title || '目前貸款'}</CardTitle>
-              <Landmark className="h-4 w-4" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-card-value font-bold">
-                {Math.round(totalLoanAmount).toLocaleString()}
-              </div>
-              <p className="text-card-description">{cardTexts.currentLoan?.description || '需在期限內償還'}</p>
-            </CardContent>
-          </Card>
+        <DashboardCard 
+            cardKey="totalPoints"
+            title={cardConfig.totalPoints?.title || '目前點數'}
+            value={totalPoints.toLocaleString()}
+            description={cardConfig.totalPoints?.description || '可用於交易或兌換獎勵'}
+            icon={Coins}
+        />
+        <DashboardCard 
+            cardKey="portfolioValue"
+            title={cardConfig.portfolioValue?.title || '投資價值'}
+            value={`$${Math.round(portfolioValue).toLocaleString()}`}
+            description={cardConfig.portfolioValue?.description || '本月 +5.2%'}
+            icon={BarChartIcon}
+        />
+         <DashboardCard 
+            cardKey="fixedDeposits"
+            title={cardConfig.fixedDeposits?.title || '定存點數'}
+            value={Math.round(totalDepositAmount).toLocaleString()}
+            description={cardConfig.fixedDeposits?.description || '目前進行中的定期存款'}
+            icon={PiggyBank}
+        />
+        {totalLoanAmount > 0 ? (
+            <DashboardCard 
+                cardKey="currentLoan"
+                title={cardConfig.currentLoan?.title || '目前貸款'}
+                value={Math.round(totalLoanAmount).toLocaleString()}
+                description={cardConfig.currentLoan?.description || '需在期限內償還'}
+                icon={Landmark}
+            />
         ) : (
-            <Card className="bg-chart-4 text-card-foreground">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-card-title">{cardTexts.totalAssets?.title || '總資產'}</CardTitle>
-                <Wallet className="h-4 w-4 text-current/80" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-card-value font-bold">${Math.round(totalAssets).toLocaleString()}</div>
-                <p className="text-card-description">{cardTexts.totalAssets?.description || '點數 + 投資 + 定存'}</p>
-              </CardContent>
-            </Card>
+            <DashboardCard 
+                cardKey="totalAssets"
+                title={cardConfig.totalAssets?.title || '總資產'}
+                value={`$${Math.round(totalAssets).toLocaleString()}`}
+                description={cardConfig.totalAssets?.description || '點數 + 投資 + 定存'}
+                icon={Wallet}
+            />
         )}
-        <Card className="bg-chart-5 text-card-foreground">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-card-title">{cardTexts.classRank?.title || '班級排名'}</CardTitle>
-                <Trophy className="h-4 w-4 text-current/80" />
-            </CardHeader>
-            <CardContent>
-                <div className="text-card-value font-bold">#{classRank}</div>
-                <p className="text-card-description">{(cardTexts.classRank?.description || "班級前 {percentile}%").replace('{percentile}', String(100 - Math.floor(classPercentile)))}</p>
-            </CardContent>
-        </Card>
-        <Card className="bg-chart-5 text-card-foreground">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-card-title">{cardTexts.schoolRank?.title || '全校排名'}</CardTitle>
-                <Globe className="h-4 w-4 text-current/80" />
-            </CardHeader>
-            <CardContent>
-                <div className="text-card-value font-bold">#{schoolRank}</div>
-                <p className="text-card-description">{(cardTexts.schoolRank?.description || "全校前 {percentile}%").replace('{percentile}', String(100 - Math.floor(schoolPercentile)))}</p>
-            </CardContent>
-        </Card>
-         <Card className="bg-chart-5 text-card-foreground">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-card-title">{cardTexts.myGroups?.title || '我的分組'}</CardTitle>
-            <Users className="h-4 w-4 text-current/80" />
-          </CardHeader>
-          <CardContent>
-             {studentGroups.length > 0 ? (
-                <div className="space-y-2 text-sm">
-                    {studentGroups.map((group, index) => (
-                        <p key={index}>
-                           在 <span className="font-semibold">{group.teacherName}</span> 的課堂中，您是 <span className="font-semibold">{group.groupName}</span> 的成員。
-                        </p>
-                    ))}
-                </div>
-            ) : (
-                <p className="text-sm">{cardTexts.myGroups?.description || '您尚未被分派到任何小組。'}</p>
-            )}
-          </CardContent>
-        </Card>
-        <Card className="bg-bu-ke-xing-qiu-card text-bu-ke-xing-qiu-card-foreground">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-card-title">{cardTexts.buKeXingQiu?.title || '布可星球'}</CardTitle>
-                <Star className="h-4 w-4 text-current/80" />
-            </CardHeader>
-            <CardContent>
-                <div className="text-card-value">
-                Lv. {currentStudent.buKeLevel || 1}
-                </div>
-                <p className="text-card-description">{cardTexts.buKeXingQiu?.description || '你在閱讀世界中的榮譽等級'}</p>
-            </CardContent>
-        </Card>
+        <DashboardCard 
+            cardKey="classRank"
+            title={cardConfig.classRank?.title || '班級排名'}
+            value={`#${classRank}`}
+            description={(cardConfig.classRank?.description || "班級前 {percentile}%").replace('{percentile}', String(100 - Math.floor(classPercentile)))}
+            icon={Trophy}
+        />
+        <DashboardCard 
+            cardKey="schoolRank"
+            title={cardConfig.schoolRank?.title || '全校排名'}
+            value={`#${schoolRank}`}
+            description={(cardConfig.schoolRank?.description || "全校前 {percentile}%").replace('{percentile}', String(100 - Math.floor(schoolPercentile)))}
+            icon={Globe}
+        />
+        <DashboardCard 
+            cardKey="myGroups"
+            title={cardConfig.myGroups?.title || '我的分組'}
+            value={studentGroups.length > 0 ? studentGroups.map(g=>g.groupName).join(', ') : 'N/A'}
+            description={studentGroups.length > 0 ? `於 ${studentGroups.map(g=>g.teacherName).join(', ')} 的課堂中` : (cardConfig.myGroups?.description || '您尚未被分派到任何小組。')}
+            icon={Users}
+        />
+        <DashboardCard 
+            cardKey="buKeXingQiu"
+            title={cardConfig.buKeXingQiu?.title || '布可星球'}
+            value={`Lv. ${currentStudent.buKeLevel || 1}`}
+            description={cardConfig.buKeXingQiu?.description || '你在閱讀世界中的榮譽等級'}
+            icon={Star}
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-        <Card className="md:col-span-2 bg-my-pet-card text-my-pet-card-foreground">
+        <Card className="md:col-span-2" style={petCardStyle}>
             <CardHeader>
-                <CardTitle className="text-card-title flex items-center gap-2"><Bone /> {cardTexts.myPet?.title || '我的寵物'}</CardTitle>
-                <CardDescription className="text-current/80">{cardTexts.myPet?.description || '您的點數越多，牠就會越強大！'}</CardDescription>
+                <CardTitle className="flex items-center gap-2" style={{color: petCardStyle.color}}><Bone /> {cardConfig.myPet?.title || '我的寵物'}</CardTitle>
+                <CardDescription style={{color: petCardStyle.color, opacity: 0.8}}>{cardConfig.myPet?.description || '您的點數越多，牠就會越強大！'}</CardDescription>
             </CardHeader>
             <CardContent>
                 <StudentPet student={currentStudent} />
             </CardContent>
         </Card>
-        <Card className="md:col-span-3 bg-points-trend-card text-points-trend-card-foreground">
+        <Card className="md:col-span-3" style={trendCardStyle}>
           <CardHeader>
-            <CardTitle className="text-card-title">{cardTexts.pointsTrend?.title || '最近七日點數趨勢'}</CardTitle>
-            <CardDescription className="text-current/80">{cardTexts.pointsTrend?.description || '您最近七天每日從老師那裡獲得的點數紀錄。'}</CardDescription>
+            <CardTitle style={{color: trendCardStyle.color}}>{cardConfig.pointsTrend?.title || '最近七日點數趨勢'}</CardTitle>
+            <CardDescription style={{color: trendCardStyle.color, opacity: 0.8}}>{cardConfig.pointsTrend?.description || '您最近七天每日從老師那裡獲得的點數紀錄。'}</CardDescription>
           </CardHeader>
           <CardContent>
              <div className="overflow-x-auto">
                 <ChartContainer config={chartConfig} className="h-[250px] w-full min-w-[300px]">
                     <BarChart accessibilityLayer data={pointsData} margin={{ left: -20, right: 10, top:10, bottom: 0}}>
-                        <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => value} />
+                        <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => value} stroke={trendCardStyle.color} />
                         <YAxis tickLine={false} axisLine={false} tickMargin={8} domain={[0, 'dataMax + 10']} hide />
                         <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
-                        <Bar dataKey="points" fill="hsl(var(--accent))" radius={4} />
+                        <Bar dataKey="points" fill={platformConfig?.customTheme?.['accent'] ? hslToHex(platformConfig.customTheme['accent']) : 'hsl(var(--accent))'} radius={4} />
                     </BarChart>
                 </ChartContainer>
             </div>

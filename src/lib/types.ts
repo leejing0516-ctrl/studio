@@ -1,4 +1,5 @@
 
+
 export type Feedback = {
   id: string;
   studentId: string;
@@ -220,8 +221,13 @@ export type CustomTheme = {
   [key: string]: string;
 };
 
-export type DashboardCardTexts = {
-  [key: string]: { title?: string; description?: string };
+export type DashboardCardConfig = {
+  [key: string]: { 
+    title: string; 
+    description: string;
+    backgroundColor: string;
+    textColor: string;
+  };
 }
 
 export type PlatformConfig = {
@@ -247,7 +253,7 @@ export type PlatformConfig = {
     stockMarketNews?: Announcement[];
     stockMarqueeMessages?: string[];
     petStages?: PetStage[];
-    dashboardCards?: DashboardCardTexts;
+    dashboardCards?: DashboardCardConfig;
     buKeXingQiuDescription?: string;
     dailyRewardJackpotChance?: number;
     dailyRewardJackpotMin?: number;

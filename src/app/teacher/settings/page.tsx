@@ -22,9 +22,8 @@ import { themes, type Theme } from "@/lib/themes";
 import { resizeImage, fileToDataUrl } from "@/lib/image-utils";
 import { DEFAULT_LOGO_URL, DEFAULT_APP_ICON_URL } from "@/lib/config";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import type { CustomTheme } from "@/lib/types";
+import type { PlatformConfig } from "@/lib/types";
 
 const ThemeColorPreview = ({ theme }: { theme: Theme }) => (
     <div className="flex items-center gap-2">
@@ -126,6 +125,9 @@ export default function TeacherSettingsPage() {
         setIsSavingSettings(true);
         
         try {
+            const themeConfig = themes.find(t => t.name === selectedTheme);
+            const customThemeData = themeConfig ? themeConfig.cssVars.dark : undefined;
+
             const dataToUpdate: Partial<PlatformConfig> = {
                 logoUrl: logoUrl,
                 appIconUrl: appIconUrl,
@@ -135,7 +137,6 @@ export default function TeacherSettingsPage() {
                 marketCloseHour: Number(marketCloseHour),
                 sponsorLogoUrls: sponsorLogoUrls,
                 theme: selectedTheme,
-                customTheme: themes.find(t => t.name === selectedTheme)?.cssVars.dark,
                 buKeXingQiuDescription: buKeXingQiuDescription,
                 dailyRewardJackpotChance: Number(dailyRewardJackpotChance) / 100,
                 dailyRewardJackpotMin: Number(dailyRewardJackpotMin),
@@ -144,6 +145,10 @@ export default function TeacherSettingsPage() {
                 dailyRewardStandardMin: Number(dailyRewardStandardMin),
                 dailyRewardStandardMax: Number(dailyRewardStandardMax),
             };
+
+            if (customThemeData) {
+                dataToUpdate.customTheme = customThemeData;
+            }
             
             await setPlatformConfig(dataToUpdate);
 
@@ -177,7 +182,7 @@ export default function TeacherSettingsPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle>外觀設定</CardTitle>
-                            <CardDescription>選擇一個全域顏色主題，將會影響整個應用程式的視覺風格。</CardDescription>
+                            <CardDescription>選擇一個全域顏色主題，將會影響整個應用程式的通用視覺風格，例如按鈕、背景、選單等。</CardDescription>
                         </CardHeader>
                         <CardContent>
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
