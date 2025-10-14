@@ -31,8 +31,8 @@ import {
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
-  AlertDialogHeader,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
@@ -50,6 +50,159 @@ import { format, parseISO, subDays, isAfter } from "date-fns";
 import { Textarea } from "@/components/ui/textarea";
 
 const CONFIRM_DELETE_TEXT = "我確定要刪除";
+
+const GroupManagementDialog = ({ 
+    classData, 
+    teacherId,
+    students, 
+    onSave,
+    onClose,
+}: { 
+    classData: Class | undefined, 
+    teacherId: string,
+    students: Student[], 
+    onSave: (groups: ClassGroup[], studentAssignments: { studentId: string; groupId?: string }[]) => void,
+    onClose: () => void,
+}) => {
+    const [groups, setGroups] = useState<ClassGroup[]>([]);
+    const [studentAssignments, setStudentAssignments] = useState<{[studentId: string]: string | undefined}>({});
+    const [newGroupName, setNewGroupName] = useState('');
+
+    useEffect(() => {
+        if (classData && teacherId) {
+            setGroups(classData.groups?.[teacherId] || []);
+            const assignments: {[studentId: string]: string | undefined} = {};
+            students.forEach(s => {
+                if (s._docId) {
+                    assignments[s._docId] = s.groupId;
+                }
+            });
+            setStudentAssignments(assignments);
+        }
+    }, [classData, students, teacherId]);
+
+    const handleAddGroup = () => {
+        if (newGroupName.trim() === '') return;
+        setGroups([...groups, { id: `group-${Date.now()}`, name: newGroupName.trim() }]);
+        setNewGroupName('');
+    };
+
+    const handleRemoveGroup = (groupId: string) => {
+        setGroups(groups.filter(g => g.id !== groupId));
+        // Unassign students from the deleted group
+        const newAssignments = { ...studentAssignments };
+        Object.keys(newAssignments).forEach(studentId => {
+            if (newAssignments[studentId] === groupId) {
+                newAssignments[studentId] = undefined;
+            }
+        });
+        setStudentAssignments(newAssignments);
+    };
+    
+    const handleRenameGroup = (groupId: string, newName: string) => {
+        setGroups(groups.map(g => g.id === groupId ? { ...g, name: newName } : g));
+    };
+
+    const handleAssignStudent = (studentDocId: string, groupId: string) => {
+        setStudentAssignments({ ...studentAssignments, [studentDocId]: groupId === "unassigned" ? undefined : groupId });
+    };
+
+    const handleSaveChanges = () => {
+         const assignmentsArray = Object.keys(studentAssignments).map(studentDocId => ({
+            studentId: studentDocId,
+            groupId: studentAssignments[studentDocId]
+        }));
+        onSave(groups, assignmentsArray);
+    };
+
+    return (
+        <DialogContent className="max-w-4xl">
+            <DialogHeader>
+                <DialogTitle>管理我的分組 - {classData?.name}</DialogTitle>
+                <DialogDescription>在此建立您個人的小組，並將學生指派到對應的小組中。</DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-4 max-h-[60vh] overflow-y-auto">
+                <div className="md:col-span-1 space-y-4">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>小組列表</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                             <div className="flex gap-2">
+                                <Input 
+                                    value={newGroupName} 
+                                    onChange={e => setNewGroupName(e.target.value)}
+                                    placeholder="輸入新組名"
+                                />
+                                <Button onClick={handleAddGroup}>新增</Button>
+                            </div>
+                            <div className="space-y-2">
+                                {groups.map(group => (
+                                    <div key={group.id} className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                                        <Input 
+                                            value={group.name} 
+                                            onChange={e => handleRenameGroup(group.id, e.target.value)}
+                                            className="flex-1"
+                                        />
+                                        <Button variant="ghost" size="icon" onClick={() => handleRemoveGroup(group.id)}>
+                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+                <div className="md:col-span-2">
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>學生指派</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                             <ScrollArea className="h-72">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>學生姓名</TableHead>
+                                            <TableHead>指派分組</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {students.map(student => (
+                                            <TableRow key={student._docId}>
+                                                <TableCell>{student.name}</TableCell>
+                                                <TableCell>
+                                                    <Select
+                                                        value={studentAssignments[student._docId!] || 'unassigned'}
+                                                        onValueChange={(value) => handleAssignStudent(student._docId!, value)}
+                                                    >
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="未分組" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="unassigned">未分組</SelectItem>
+                                                            {groups.map(g => (
+                                                                <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                             </ScrollArea>
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+            <DialogFooter>
+                <Button variant="secondary" onClick={onClose}>取消</Button>
+                <Button onClick={handleSaveChanges}>儲存變更</Button>
+            </DialogFooter>
+        </DialogContent>
+    );
+};
 
 export default function TeacherDashboardPage() {
     const { 
@@ -913,7 +1066,8 @@ export default function TeacherDashboardPage() {
 
         try {
             await runTransaction(async (transaction) => {
-                const classRef = doc(db, 'classes', currentClass.id);
+                if (!currentClass._docId) throw new Error("Class document ID is missing.");
+                const classRef = doc(db, 'classes', currentClass._docId);
                 
                 const groupsUpdatePath = `groups.${teacherId}`;
                 transaction.update(classRef, { [groupsUpdatePath]: groups });
@@ -1584,7 +1738,7 @@ export default function TeacherDashboardPage() {
                                         <div className="overflow-x-auto">
                                             {rewardApprovalRequests.length > 0 ? (
                                                  <Table>
-                                                    <TableHeader><TableRow><TableHead>學生</TableHead><TableHead>獎勵名稱</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
+                                                    <TableHeader><TableRow><TableHead>學生</TableHead><TableHead>獎勵名称</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
                                                     <TableBody>
                                                         {rewardApprovalRequests.map(({student, rewardItem}) => (
                                                             <TableRow key={`${student._docId}-${rewardItem.redemptionId}`}>
@@ -1832,156 +1986,5 @@ export default function TeacherDashboardPage() {
         </div>
     )
 }
-
-const GroupManagementDialog = ({ 
-    classData, 
-    teacherId,
-    students, 
-    onSave,
-    onClose,
-}: { 
-    classData: Class | undefined, 
-    teacherId: string,
-    students: Student[], 
-    onSave: (groups: ClassGroup[], studentAssignments: { studentId: string; groupId?: string }[]) => void,
-    onClose: () => void,
-}) => {
-    const [groups, setGroups] = useState<ClassGroup[]>([]);
-    const [studentAssignments, setStudentAssignments] = useState<{[studentId: string]: string | undefined}>({});
-    const [newGroupName, setNewGroupName] = useState('');
-
-    useEffect(() => {
-        if (classData && teacherId) {
-            setGroups(classData.groups?.[teacherId] || []);
-            const assignments: {[studentId: string]: string | undefined} = {};
-            students.forEach(s => {
-                assignments[s._docId!] = s.groupId;
-            });
-            setStudentAssignments(assignments);
-        }
-    }, [classData, students, teacherId]);
-
-    const handleAddGroup = () => {
-        if (newGroupName.trim() === '') return;
-        setGroups([...groups, { id: `group-${Date.now()}`, name: newGroupName.trim() }]);
-        setNewGroupName('');
-    };
-
-    const handleRemoveGroup = (groupId: string) => {
-        setGroups(groups.filter(g => g.id !== groupId));
-        // Unassign students from the deleted group
-        const newAssignments = { ...studentAssignments };
-        Object.keys(newAssignments).forEach(studentId => {
-            if (newAssignments[studentId] === groupId) {
-                newAssignments[studentId] = undefined;
-            }
-        });
-        setStudentAssignments(newAssignments);
-    };
-    
-    const handleRenameGroup = (groupId: string, newName: string) => {
-        setGroups(groups.map(g => g.id === groupId ? { ...g, name: newName } : g));
-    };
-
-    const handleAssignStudent = (studentId: string, groupId: string) => {
-        setStudentAssignments({ ...studentAssignments, [studentId]: groupId === "unassigned" ? undefined : groupId });
-    };
-
-    const handleSaveChanges = () => {
-         const assignmentsArray = Object.keys(studentAssignments).map(studentId => ({
-            studentId: studentId,
-            groupId: studentAssignments[studentId]
-        }));
-        onSave(groups, assignmentsArray);
-    };
-
-    return (
-        <DialogContent className="max-w-4xl">
-            <DialogHeader>
-                <DialogTitle>管理我的分組 - {classData?.name}</DialogTitle>
-                <DialogDescription>在此建立您個人的小組，並將學生指派到對應的小組中。</DialogDescription>
-            </DialogHeader>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-4 max-h-[60vh] overflow-y-auto">
-                <div className="md:col-span-1 space-y-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>小組列表</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                             <div className="flex gap-2">
-                                <Input 
-                                    value={newGroupName} 
-                                    onChange={e => setNewGroupName(e.target.value)}
-                                    placeholder="輸入新組名"
-                                />
-                                <Button onClick={handleAddGroup}>新增</Button>
-                            </div>
-                            <div className="space-y-2">
-                                {groups.map(group => (
-                                    <div key={group.id} className="flex items-center gap-2 p-2 bg-muted rounded-md">
-                                        <Input 
-                                            value={group.name} 
-                                            onChange={e => handleRenameGroup(group.id, e.target.value)}
-                                            className="flex-1"
-                                        />
-                                        <Button variant="ghost" size="icon" onClick={() => handleRemoveGroup(group.id)}>
-                                            <Trash2 className="h-4 w-4 text-destructive" />
-                                        </Button>
-                                    </div>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-                <div className="md:col-span-2">
-                     <Card>
-                        <CardHeader>
-                            <CardTitle>學生指派</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                             <ScrollArea className="h-72">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>學生姓名</TableHead>
-                                            <TableHead>指派分組</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {students.map(student => (
-                                            <TableRow key={student._docId}>
-                                                <TableCell>{student.name}</TableCell>
-                                                <TableCell>
-                                                    <Select
-                                                        value={studentAssignments[student._docId!] || 'unassigned'}
-                                                        onValueChange={(value) => handleAssignStudent(student._docId!, value)}
-                                                    >
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="未分組" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="unassigned">未分組</SelectItem>
-                                                            {groups.map(g => (
-                                                                <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                             </ScrollArea>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
-            <DialogFooter>
-                <Button variant="secondary" onClick={onClose}>取消</Button>
-                <Button onClick={handleSaveChanges}>儲存變更</Button>
-            </DialogFooter>
-        </DialogContent>
-    );
-};
 
     
