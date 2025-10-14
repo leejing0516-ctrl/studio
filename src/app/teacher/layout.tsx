@@ -316,7 +316,7 @@ export default function TeacherLayout({
                 className="w-full justify-start gap-2 p-2 group-data-[collapsible=icon]:justify-center"
               >
                 <Avatar className="size-8">
-                  <AvatarImage src={`https://picsum.photos/seed/${'teacherName'}/100`} data-ai-hint="teacher avatar" />
+                  <AvatarImage src={`https://picsum.photos/seed/${teacherName}/100`} data-ai-hint="teacher avatar" />
                   <AvatarFallback>{teacherName?.slice(0, 2)}</AvatarFallback>
                 </Avatar>
                 <div className="text-left group-data-[collapsible=icon]:hidden">
@@ -396,5 +396,3 @@ export default function TeacherLayout({
     </>
   );
 }
-
-    
