@@ -1,3 +1,4 @@
+
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -6,6 +7,8 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function hslToHex(hslString: string): string {
+  if (!hslString || typeof hslString !== 'string') return '#000000'; // Safeguard
+
   const parts = hslString.trim().split(" ").map(s => s.replace('%', ''));
   if (parts.length !== 3) return '#000000';
   

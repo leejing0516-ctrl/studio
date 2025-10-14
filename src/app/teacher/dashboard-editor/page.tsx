@@ -83,10 +83,10 @@ const EditorCard = ({
     icon: React.ElementType
 }) => {
 
-    const cardStyles = {
+    const cardStyles = cardConfig ? {
       backgroundColor: hslToHex(cardConfig.backgroundColor),
       color: hslToHex(cardConfig.textColor)
-    };
+    } : {};
 
     return (
         <Card className="flex-1 min-w-[320px] flex flex-col">
@@ -157,8 +157,8 @@ export default function TeacherDashboardEditorPage() {
             return;
         }
 
-        if (platformConfig?.dashboardCards) {
-             setCardConfig(prev => ({...initialCardConfig, ...platformConfig.dashboardCards}));
+        if (platformConfig) {
+             setCardConfig({ ...initialCardConfig, ...platformConfig.dashboardCards });
         }
     }, [platformConfig, router, toast]);
 
