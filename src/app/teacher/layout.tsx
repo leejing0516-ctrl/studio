@@ -238,7 +238,6 @@ export default function TeacherLayout({
     { href: "/teacher/fundraising", label: "募資管理", icon: HeartHandshake, roles: ['admin'] },
     { href: "/teacher/home-editor", label: "首頁編輯", icon: Home, roles: ['admin'] },
     { href: "/teacher/dashboard-editor", label: "儀表編輯", icon: FileEdit, roles: ['admin'] },
-    { href: "/teacher/theme-editor", label: "主題編輯", icon: Palette, roles: ['admin'] },
     { href: "/teacher/settings", label: "平台設定", icon: Settings, roles: ['admin'] },
     { href: "/teacher/manual", label: "操作手冊", icon: BookUser, roles: ['admin', 'teacher', 'subject_teacher'] },
   ];
