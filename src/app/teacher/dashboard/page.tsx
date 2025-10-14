@@ -51,6 +51,162 @@ import { Textarea } from "@/components/ui/textarea";
 
 const CONFIRM_DELETE_TEXT = "我確定要刪除";
 
+const GroupManagementDialog = ({
+    isOpen,
+    onClose,
+    classGroups,
+    studentsInClass,
+    onSave,
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    classGroups: ClassGroup[];
+    studentsInClass: Student[];
+    onSave: (groups: ClassGroup[], updatedStudentAssignments: { studentId: string, groupId?: string }[]) => void;
+}) => {
+    const [groups, setGroups] = useState<ClassGroup[]>([]);
+    const [newGroupName, setNewGroupName] = useState('');
+    const [studentGroupAssignments, setStudentGroupAssignments] = useState<{ [studentDocId: string]: string }>({});
+
+    useEffect(() => {
+        if (isOpen) {
+            setGroups(classGroups);
+            const initialAssignments: { [studentDocId: string]: string } = {};
+            studentsInClass.forEach(student => {
+                if (student.groupId && student._docId) {
+                    initialAssignments[student._docId] = student.groupId;
+                }
+            });
+            setStudentGroupAssignments(initialAssignments);
+        }
+    }, [isOpen, classGroups, studentsInClass]);
+
+    const handleAddGroup = () => {
+        if (newGroupName.trim()) {
+            const newGroup = { id: `group-${Date.now()}`, name: newGroupName.trim() };
+            setGroups([...groups, newGroup]);
+            setNewGroupName('');
+        }
+    };
+
+    const handleRemoveGroup = (groupId: string) => {
+        setGroups(groups.filter(g => g.id !== groupId));
+        // Unassign students from the deleted group
+        const updatedAssignments = { ...studentGroupAssignments };
+        Object.keys(updatedAssignments).forEach(studentDocId => {
+            if (updatedAssignments[studentDocId] === groupId) {
+                delete updatedAssignments[studentDocId];
+            }
+        });
+        setStudentGroupAssignments(updatedAssignments);
+    };
+
+    const handleStudentAssignmentChange = (studentDocId: string, groupId: string) => {
+        setStudentGroupAssignments(prev => ({
+            ...prev,
+            [studentDocId]: groupId === 'unassigned' ? '' : groupId
+        }));
+    };
+
+    const handleSaveChanges = () => {
+        const updatedStudentAssignments = studentsInClass.map(student => {
+            const newGroupId = studentGroupAssignments[student._docId!];
+            return {
+                studentId: student._docId!,
+                groupId: newGroupId || undefined,
+            };
+        });
+        onSave(groups, updatedStudentAssignments);
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="max-w-4xl">
+                <DialogHeader>
+                    <DialogTitle>管理我的分組</DialogTitle>
+                    <DialogDescription>在此建立您個人的小組，並將學生指派到對應的小組中。</DialogDescription>
+                </DialogHeader>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-4 max-h-[60vh] overflow-y-auto">
+                    <div className="md:col-span-1 space-y-4">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>小組列表</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                                <div className="flex gap-2">
+                                    <Input
+                                        placeholder="輸入新組名"
+                                        value={newGroupName}
+                                        onChange={(e) => setNewGroupName(e.target.value)}
+                                    />
+                                    <Button onClick={handleAddGroup}>新增</Button>
+                                </div>
+                                <div className="space-y-2 pt-2">
+                                    {groups.map(group => (
+                                        <div key={group.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-md">
+                                            <span>{group.name}</span>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleRemoveGroup(group.id)}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                    <div className="md:col-span-2">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>學生指派</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <ScrollArea className="h-72">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>學生姓名</TableHead>
+                                                <TableHead>指派分組</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {studentsInClass.map(student => (
+                                                <TableRow key={student._docId}>
+                                                    <TableCell>{student.name}</TableCell>
+                                                    <TableCell>
+                                                        <Select
+                                                            value={studentGroupAssignments[student._docId!] || 'unassigned'}
+                                                            onValueChange={(value) => handleStudentAssignmentChange(student._docId!, value)}
+                                                        >
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="未分組" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="unassigned">未分組</SelectItem>
+                                                                {groups.map(group => (
+                                                                    <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </ScrollArea>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="secondary" onClick={onClose}>取消</Button>
+                    <Button onClick={handleSaveChanges}>儲存變更</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+
 export default function TeacherDashboardPage() {
     const { 
         students, setStudents,
@@ -1609,77 +1765,13 @@ export default function TeacherDashboardPage() {
                 )}
             </Tabs>
             
-            <Dialog open={isGroupManagementDialogOpen} onOpenChange={setIsGroupManagementDialogOpen}>
-                <DialogContent className="max-w-4xl">
-                    <DialogHeader>
-                        <DialogTitle>管理我的分組 - {currentClass?.name}</DialogTitle>
-                        <DialogDescription>在此建立您個人的小組，並將學生指派到對應的小組中。</DialogDescription>
-                    </DialogHeader>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-4 max-h-[60vh] overflow-y-auto">
-                        <div className="md:col-span-1 space-y-4">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>小組列表</CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-2">
-                                    <div className="flex gap-2">
-                                        <Input 
-                                            placeholder="輸入新組名"
-                                        />
-                                        <Button>新增</Button>
-                                    </div>
-                                    <div className="space-y-2">
-                                      {/* Groups will be mapped here */}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
-                        <div className="md:col-span-2">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>學生指派</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <ScrollArea className="h-72">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>學生姓名</TableHead>
-                                                    <TableHead>指派分組</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {studentsInClass.map(student => (
-                                                    <TableRow key={student._docId}>
-                                                        <TableCell>{student.name}</TableCell>
-                                                        <TableCell>
-                                                            <Select
-                                                                value={student.groupId || 'unassigned'}
-                                                            >
-                                                                <SelectTrigger>
-                                                                    <SelectValue placeholder="未分組" />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    <SelectItem value="unassigned">未分組</SelectItem>
-                                                                    {/* Group options will be mapped here */}
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </ScrollArea>
-                                </CardContent>
-                            </Card>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="secondary" onClick={() => setIsGroupManagementDialogOpen(false)}>取消</Button>
-                        <Button>儲存變更</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <GroupManagementDialog 
+                isOpen={isGroupManagementDialogOpen}
+                onClose={() => setIsGroupManagementDialogOpen(false)}
+                classGroups={currentTeacherGroups}
+                studentsInClass={studentsInClass}
+                onSave={handleSaveGroups}
+            />
 
             <Dialog open={isAddStudentDialogOpen} onOpenChange={setIsAddStudentDialogOpen}>
                  <DialogContent>
