@@ -1,4 +1,3 @@
-
 "use client";
 
 import "./globals.css";
@@ -34,8 +33,8 @@ export default function RootLayout({
     }
     
     // Fallback to the very first default theme's dark variables if nothing matches
-    const defaultTheme = availableThemes.find(t => t.name === 'makeup-pink') || availableThemes[0];
-    return defaultTheme.cssVars.light || defaultTheme.cssVars.dark;
+    const fallbackTheme = availableThemes[0];
+    return fallbackTheme.cssVars.light || fallbackTheme.cssVars.dark;
   }, [platformConfig?.theme, availableThemes]);
 
 
