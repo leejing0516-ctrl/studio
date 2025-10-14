@@ -35,26 +35,6 @@ const ThemeColorPreview = ({ theme }: { theme: Theme }) => (
     </div>
 );
 
-const ColorPicker = ({ label, value, onChange }: { label: string, value: string, onChange: (value: string) => void }) => {
-    // Basic validation for HSL format
-    const isValidHsl = /^(\d{1,3})\s+(\d{1,3})%\s+(\d{1,3})%$/.test(value);
-
-    return (
-        <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-md border" style={{ backgroundColor: `hsl(${value})` }} />
-            <div className="flex-1">
-                <Label className="text-xs">{label}</Label>
-                <Input
-                    value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                    className={`h-8 text-xs ${!isValidHsl ? 'border-red-500' : ''}`}
-                    placeholder="e.g., 222 47% 11%"
-                />
-            </div>
-        </div>
-    );
-};
-
 
 export default function TeacherSettingsPage() {
     const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
@@ -82,7 +62,6 @@ export default function TeacherSettingsPage() {
 
     const [sponsorLogoUrls, setSponsorLogoUrls] = useState<(string | null)[]>([]);
     const [selectedTheme, setSelectedTheme] = useState<string>("default");
-    const [currentCustomTheme, setCurrentCustomTheme] = useState<CustomTheme | null>(null);
 
     useEffect(() => {
         const role = localStorage.getItem('teacherRole');
@@ -101,9 +80,6 @@ export default function TeacherSettingsPage() {
             setMarketCloseHour(platformConfig.marketCloseHour ?? 14);
             setSponsorLogoUrls(platformConfig.sponsorLogoUrls || [null, null, null, null]);
             setSelectedTheme(platformConfig.theme || "default");
-            
-            const themeConfig = themes.find(t => t.name === (platformConfig.theme || 'default'))?.cssVars.dark;
-            setCurrentCustomTheme(platformConfig.customTheme || themeConfig || themes.find(t => t.name === 'default')!.cssVars.dark);
             
             const defaultBuKeDescription = "「布可星球」是你閱讀成就的殿堂！你在這裡挖掘的每一點能量、每一本書，都是你知識宇宙擴張的證明。\n每個月底，校長會將你「本月挖掘的能量」按照一定的比例，轉換成可以在平台中使用的「點數」，作為對你努力閱讀的實質獎勵。繼續閱讀，讓你的星球更加璀璨吧！";
             setBuKeXingQiuDescription(platformConfig.buKeXingQiuDescription || defaultBuKeDescription);
@@ -159,6 +135,7 @@ export default function TeacherSettingsPage() {
                 marketCloseHour: Number(marketCloseHour),
                 sponsorLogoUrls: sponsorLogoUrls,
                 theme: selectedTheme,
+                customTheme: themes.find(t => t.name === selectedTheme)?.cssVars.dark,
                 buKeXingQiuDescription: buKeXingQiuDescription,
                 dailyRewardJackpotChance: Number(dailyRewardJackpotChance) / 100,
                 dailyRewardJackpotMin: Number(dailyRewardJackpotMin),
@@ -167,12 +144,6 @@ export default function TeacherSettingsPage() {
                 dailyRewardStandardMin: Number(dailyRewardStandardMin),
                 dailyRewardStandardMax: Number(dailyRewardStandardMax),
             };
-
-            if (selectedTheme === 'custom' && currentCustomTheme) {
-                 dataToUpdate.customTheme = currentCustomTheme;
-            } else {
-                 dataToUpdate.customTheme = themes.find(t => t.name === selectedTheme)?.cssVars.dark;
-            }
             
             await setPlatformConfig(dataToUpdate);
 
@@ -186,26 +157,14 @@ export default function TeacherSettingsPage() {
     };
     
     useEffect(() => {
-        const themeToApply = selectedTheme === 'custom' 
-            ? currentCustomTheme
-            : themes.find(t => t.name === selectedTheme)?.cssVars.dark;
-            
+        const themeToApply = themes.find(t => t.name === selectedTheme)?.cssVars.dark;
         if (themeToApply) {
             Object.entries(themeToApply).forEach(([key, value]) => {
                 document.documentElement.style.setProperty(`--${key}`, value as string);
             });
         }
-    }, [selectedTheme, currentCustomTheme]);
+    }, [selectedTheme]);
 
-    const handleThemeSelectionChange = (themeName: string) => {
-        setSelectedTheme(themeName);
-        if (themeName !== 'custom') {
-            const themeConfig = themes.find(t => t.name === themeName)?.cssVars.dark;
-            if (themeConfig) {
-                setCurrentCustomTheme(themeConfig);
-            }
-        }
-    }
 
     return (
         <div className="space-y-6 animate-in fade-in-0 duration-500">
@@ -215,17 +174,16 @@ export default function TeacherSettingsPage() {
                     <CardDescription>管理平台的核心金融參數、外觀主題與相關圖示。</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-8">
-
                     <Card>
                         <CardHeader>
                             <CardTitle>外觀設定</CardTitle>
-                            <CardDescription>自訂平台的視覺風格、顏色主題與卡片顏色。</CardDescription>
+                            <CardDescription>選擇一個全域顏色主題，將會影響整個應用程式的視覺風格。</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <CardContent>
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <Label className="font-semibold">選擇基礎顏色主題</Label>
-                                    <RadioGroup value={selectedTheme} onValueChange={handleThemeSelectionChange} className="p-4 rounded-lg border grid grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
+                                     <RadioGroup value={selectedTheme} onValueChange={setSelectedTheme} className="p-4 rounded-lg border grid grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
                                         {themes.map((theme) => (
                                             <div key={theme.name} className="flex items-center space-x-2">
                                                 <RadioGroupItem value={theme.name} id={`theme-${theme.name}`} />
@@ -237,18 +195,6 @@ export default function TeacherSettingsPage() {
                                         ))}
                                     </RadioGroup>
                                 </div>
-                                {currentCustomTheme && (
-                                    <div>
-                                        <Label className="font-semibold">儀表板卡片顏色</Label>
-                                        <div className="p-4 rounded-lg border grid grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
-                                            <ColorPicker label="點數卡片" value={currentCustomTheme['chart-1']} onChange={v => setCurrentCustomTheme({...currentCustomTheme, 'chart-1': v})}/>
-                                            <ColorPicker label="投資卡片" value={currentCustomTheme['chart-2']} onChange={v => setCurrentCustomTheme({...currentCustomTheme, 'chart-2': v})}/>
-                                            <ColorPicker label="定存卡片" value={currentCustomTheme['chart-3']} onChange={v => setCurrentCustomTheme({...currentCustomTheme, 'chart-3': v})}/>
-                                            <ColorPicker label="資產卡片" value={currentCustomTheme['chart-4']} onChange={v => setCurrentCustomTheme({...currentCustomTheme, 'chart-4': v})}/>
-                                            <ColorPicker label="排名卡片" value={currentCustomTheme['chart-5']} onChange={v => setCurrentCustomTheme({...currentCustomTheme, 'chart-5': v})}/>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         </CardContent>
                     </Card>

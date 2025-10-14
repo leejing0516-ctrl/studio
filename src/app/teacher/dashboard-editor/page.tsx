@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useContext, useEffect } from "react";
@@ -18,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
 import { Textarea } from "@/components/ui/textarea";
+import type { CustomTheme } from "@/lib/types";
 
 const initialCardFields = {
     totalPoints: { title: "目前點數", description: "可用於交易或兌換獎勵" },
@@ -35,9 +37,41 @@ const initialCardFields = {
 
 type CardFieldKeys = keyof typeof initialCardFields;
 
+const ColorPicker = ({ label, value, onChange }: { label: string, value: string, onChange: (value: string) => void }) => {
+    const isValidHsl = /^(\d{1,3})\s+(\d{1,3})%\s+(\d{1,3})%$/.test(value);
+    return (
+        <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-md border" style={{ backgroundColor: `hsl(${value})` }} />
+            <div className="flex-1">
+                <Label className="text-xs">{label}</Label>
+                <Input
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    className={`h-8 text-xs ${!isValidHsl ? 'border-red-500' : ''}`}
+                    placeholder="e.g., 222 47% 11%"
+                />
+            </div>
+        </div>
+    );
+};
 
-const EditorCard = ({ cardKey, cardLabel, texts, onChange }: { cardKey: CardFieldKeys, cardLabel: string, texts: {title: string, description: string}, onChange: (key: CardFieldKeys, field: 'title' | 'description', value: string) => void }) => (
-    <Card className="flex-1 min-w-[280px]">
+
+const EditorCard = ({ 
+    cardKey, 
+    cardLabel, 
+    texts, 
+    colors,
+    onTextChange,
+    onColorChange,
+}: { 
+    cardKey: CardFieldKeys, 
+    cardLabel: string, 
+    texts: {title: string, description: string}, 
+    colors: { bg: string, value: string, description: string },
+    onTextChange: (key: CardFieldKeys, field: 'title' | 'description', value: string) => void,
+    onColorChange: (key: 'card-value-foreground' | 'card-description-foreground' | 'bu-ke-xing-qiu-card-background' | 'my-pet-card-background' | 'points-trend-card-background', value: string) => void,
+}) => (
+    <Card className="flex-1 min-w-[320px] flex flex-col">
         <CardHeader>
             <CardTitle className="text-lg">{cardLabel}</CardTitle>
         </CardHeader>
@@ -47,7 +81,7 @@ const EditorCard = ({ cardKey, cardLabel, texts, onChange }: { cardKey: CardFiel
                 <Input 
                     id={`title-${cardKey}`}
                     value={texts.title}
-                    onChange={(e) => onChange(cardKey, 'title', e.target.value)}
+                    onChange={(e) => onTextChange(cardKey, 'title', e.target.value)}
                 />
             </div>
             <div className="space-y-2">
@@ -55,11 +89,15 @@ const EditorCard = ({ cardKey, cardLabel, texts, onChange }: { cardKey: CardFiel
                 <Textarea 
                     id={`desc-${cardKey}`}
                     value={texts.description}
-                    onChange={(e) => onChange(cardKey, 'description', e.target.value)}
+                    onChange={(e) => onTextChange(cardKey, 'description', e.target.value)}
                     rows={2}
                 />
             </div>
         </CardContent>
+        <CardFooter className="mt-auto grid grid-cols-2 gap-4 pt-4">
+            <ColorPicker label="數值顏色" value={colors.value} onChange={(v) => onColorChange('card-value-foreground', v)} />
+            <ColorPicker label="描述顏色" value={colors.description} onChange={(v) => onColorChange('card-description-foreground', v)} />
+        </CardFooter>
     </Card>
 );
 
@@ -70,6 +108,7 @@ export default function TeacherDashboardEditorPage() {
     
     const [isSaving, setIsSaving] = useState(false);
     const [cardTexts, setCardTexts] = useState(initialCardFields);
+    const [customTheme, setCustomTheme] = useState<CustomTheme | null>(null);
 
     useEffect(() => {
         const role = localStorage.getItem('teacherRole');
@@ -79,17 +118,11 @@ export default function TeacherDashboardEditorPage() {
             return;
         }
 
-        if (platformConfig?.dashboardCards) {
-            const newCardTexts: any = {};
-            for (const key in initialCardFields) {
-                newCardTexts[key as CardFieldKeys] = {
-                    title: platformConfig.dashboardCards[key as CardFieldKeys]?.title || initialCardFields[key as CardFieldKeys].title,
-                    description: platformConfig.dashboardCards[key as CardFieldKeys]?.description || initialCardFields[key as CardFieldKeys].description,
-                };
-            }
-            setCardTexts(newCardTexts);
-        } else {
-             setCardTexts(initialCardFields);
+        if (platformConfig) {
+             setCardTexts(platformConfig.dashboardCards || initialCardFields);
+             if (platformConfig.customTheme) {
+                setCustomTheme(platformConfig.customTheme);
+             }
         }
     }, [platformConfig, router, toast]);
 
@@ -102,60 +135,75 @@ export default function TeacherDashboardEditorPage() {
             }
         }));
     };
+    
+    const handleColorChange = (key: keyof CustomTheme, value: string) => {
+        setCustomTheme(prev => ({
+            ...(prev as CustomTheme),
+            [key]: value
+        }));
+    };
 
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            await setPlatformConfig({ dashboardCards: cardTexts });
-            toast({ title: "儲存成功", description: "儀表板卡片文字已更新。" });
+            await setPlatformConfig({ 
+                dashboardCards: cardTexts,
+                customTheme: customTheme || undefined
+            });
+            toast({ title: "儲存成功", description: "儀表板卡片設定已更新。" });
         } catch (error: any) {
-            console.error("Error saving dashboard card texts:", error);
+            console.error("Error saving dashboard settings:", error);
             toast({ title: "儲存失敗", description: error.message || "發生未知錯誤。", variant: "destructive" });
         } finally {
             setIsSaving(false);
         }
     };
+    
+    if (!customTheme) {
+        return (
+             <div className="flex items-center justify-center h-full">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 animate-in fade-in-0 duration-500">
             <Card>
                 <CardHeader>
-                    <CardTitle>儀表板卡片文字編輯</CardTitle>
+                    <CardTitle>儀表板卡片編輯</CardTitle>
                     <CardDescription>
-                        您可以在此自訂學生儀表板上所有資訊卡片的標題與說明文字。
+                        您可以在此自訂學生儀表板上所有資訊卡片的標題、說明文字與顏色。
                         <br/>
                         **注意**：部分說明文字包含 `{` `}` 符號（例如：{'{percentile}'}），這些是系統會自動替換的變數，請保留它們。
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-8">
-                    {/* Top Row Cards */}
                     <section>
                         <h3 className="text-xl font-semibold mb-4 border-b pb-2">頂部資訊卡 (4個)</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <EditorCard cardKey="totalPoints" cardLabel="目前點數卡片" texts={cardTexts.totalPoints} onChange={handleTextChange} />
-                            <EditorCard cardKey="portfolioValue" cardLabel="投資價值卡片" texts={cardTexts.portfolioValue} onChange={handleTextChange} />
-                            <EditorCard cardKey="fixedDeposits" cardLabel="定存點數卡片" texts={cardTexts.fixedDeposits} onChange={handleTextChange} />
-                            <EditorCard cardKey="totalAssets" cardLabel="總資產/目前貸款卡片" texts={cardTexts.totalAssets} onChange={handleTextChange} />
+                        <div className="flex flex-wrap gap-6">
+                            <EditorCard cardKey="totalPoints" cardLabel="目前點數卡片" texts={cardTexts.totalPoints} colors={{bg: customTheme['chart-1'], value: customTheme['card-value-foreground'], description: customTheme['card-description-foreground']}} onTextChange={handleTextChange} onColorChange={handleColorChange} />
+                            <EditorCard cardKey="portfolioValue" cardLabel="投資價值卡片" texts={cardTexts.portfolioValue} colors={{bg: customTheme['chart-2'], value: customTheme['card-value-foreground'], description: customTheme['card-description-foreground']}} onTextChange={handleTextChange} onColorChange={handleColorChange} />
+                            <EditorCard cardKey="fixedDeposits" cardLabel="定存點數卡片" texts={cardTexts.fixedDeposits} colors={{bg: customTheme['chart-3'], value: customTheme['card-value-foreground'], description: customTheme['card-description-foreground']}} onTextChange={handleTextChange} onColorChange={handleColorChange} />
+                            <EditorCard cardKey="totalAssets" cardLabel="總資產/目前貸款卡片" texts={cardTexts.totalAssets} colors={{bg: customTheme['chart-4'], value: customTheme['card-value-foreground'], description: customTheme['card-description-foreground']}} onTextChange={handleTextChange} onColorChange={handleColorChange} />
                         </div>
                     </section>
                     
-                    {/* Middle Row Cards */}
                     <section>
                         <h3 className="text-xl font-semibold mb-4 border-b pb-2">中間資訊卡 (4個)</h3>
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <EditorCard cardKey="classRank" cardLabel="班級排名卡片" texts={cardTexts.classRank} onChange={handleTextChange} />
-                            <EditorCard cardKey="schoolRank" cardLabel="全校排名卡片" texts={cardTexts.schoolRank} onChange={handleTextChange} />
-                            <EditorCard cardKey="myGroups" cardLabel="我的分組卡片" texts={cardTexts.myGroups} onChange={handleTextChange} />
-                            <EditorCard cardKey="buKeXingQiu" cardLabel="布可星球卡片" texts={cardTexts.buKeXingQiu} onChange={handleTextChange} />
+                         <div className="flex flex-wrap gap-6">
+                            <EditorCard cardKey="classRank" cardLabel="班級排名卡片" texts={cardTexts.classRank} colors={{bg: customTheme['chart-5'], value: customTheme['card-value-foreground'], description: customTheme['card-description-foreground']}} onTextChange={handleTextChange} onColorChange={handleColorChange} />
+                            <EditorCard cardKey="schoolRank" cardLabel="全校排名卡片" texts={cardTexts.schoolRank} colors={{bg: customTheme['chart-5'], value: customTheme['card-value-foreground'], description: customTheme['card-description-foreground']}} onTextChange={handleTextChange} onColorChange={handleColorChange} />
+                            <EditorCard cardKey="myGroups" cardLabel="我的分組卡片" texts={cardTexts.myGroups} colors={{bg: customTheme['chart-5'], value: customTheme['card-value-foreground'], description: customTheme['card-description-foreground']}} onTextChange={handleTextChange} onColorChange={handleColorChange} />
+                            <EditorCard cardKey="buKeXingQiu" cardLabel="布可星球卡片" texts={cardTexts.buKeXingQiu} colors={{bg: customTheme['bu-ke-xing-qiu-card-background'], value: customTheme['card-value-foreground'], description: customTheme['card-description-foreground']}} onTextChange={handleTextChange} onColorChange={handleColorChange} />
                         </div>
                     </section>
 
-                    {/* Bottom Row Cards */}
                      <section>
                         <h3 className="text-xl font-semibold mb-4 border-b pb-2">底部資訊卡 (2個)</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                           <EditorCard cardKey="myPet" cardLabel="我的寵物卡片" texts={cardTexts.myPet} onChange={handleTextChange} />
-                           <EditorCard cardKey="pointsTrend" cardLabel="點數趨勢卡片" texts={cardTexts.pointsTrend} onChange={handleTextChange} />
+                        <div className="flex flex-wrap gap-6">
+                           <EditorCard cardKey="myPet" cardLabel="我的寵物卡片" texts={cardTexts.myPet} colors={{bg: customTheme['my-pet-card-background'], value: customTheme['my-pet-card-foreground'], description: customTheme['card-description-foreground']}} onTextChange={handleTextChange} onColorChange={handleColorChange} />
+                           <EditorCard cardKey="pointsTrend" cardLabel="點數趨勢卡片" texts={cardTexts.pointsTrend} colors={{bg: customTheme['points-trend-card-background'], value: customTheme['points-trend-card-foreground'], description: customTheme['card-description-foreground']}} onTextChange={handleTextChange} onColorChange={handleColorChange} />
                         </div>
                     </section>
                 </CardContent>
