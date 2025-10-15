@@ -80,13 +80,13 @@ export default function TeacherSettingsPage() {
         }
 
         if (platformConfig) {
-            setLogoUrl(platformConfig.logoUrl || DEFAULT_LOGO_URL);
-            setAppIconUrl(platformConfig.appIconUrl || DEFAULT_APP_ICON_URL);
+            setLogoUrl(platformConfig.logoUrl || 'https://i.ibb.co/3M4x2g9/Virtual-Bank-Logo-Final.png');
+            setAppIconUrl(platformConfig.appIconUrl || 'https://i.ibb.co/3M4x2g9/Virtual-Bank-Logo-Final.png');
             setFixedDepositRate((platformConfig.fixedDepositInterestRate || 0) * 100);
             setLoanInterestRate((platformConfig.loanInterestRate || 0) * 100);
             setMarketOpenHour(platformConfig.marketOpenHour ?? 9);
             setMarketCloseHour(platformConfig.marketCloseHour ?? 14);
-            setSponsorLogoUrls(platformConfig.sponsorLogoUrls || [null, null, null, null]);
+            setSponsorLogoUrls(platformConfig.sponsorLogoUrls || ["https://i.imgur.com/b93h2v1.png", "https://i.imgur.com/i4jP7wY.png", "https://i.imgur.com/NG3D4hJ.png", "https://i.imgur.com/XNqOGr2.png"]);
             setSelectedThemeName(platformConfig.theme || "makeup-pink");
             
             const defaultBuKeDescription = "「布可星球」是你閱讀成就的殿堂！你在這裡挖掘的每一點能量、每一本書，都是你知識宇宙擴張的證明。\n每個月底，校長會將你「本月挖掘的能量」按照一定的比例，轉換成可以在平台中使用的「點數」，作為對你努力閱讀的實質獎勵。繼續閱讀，讓你的星球更加璀璨吧！";

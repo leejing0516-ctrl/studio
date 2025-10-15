@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AppDataContext } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
 import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
+import { DEFAULT_LOGO_URL } from '@/lib/config';
 
 
 function LoginPageContent() {
@@ -137,41 +138,39 @@ function LoginPageContent() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 font-body">
       <header className="mb-8 text-center animate-in fade-in slide-in-from-top duration-700">
-        {platformConfig?.homeIllustrationUrl && (
-            <div className="relative h-48 w-1/2 max-w-md mx-auto mb-4">
-                <Image 
-                    src={platformConfig.homeIllustrationUrl}
-                    alt="首頁插圖"
-                    fill
-                    className="object-contain"
-                    priority
-                />
-            </div>
-        )}
-        <h1 className="text-4xl md:text-5xl font-bold font-headline text-foreground">
-          {platformConfig?.homeTitle || '歡迎來到南梓實小虛擬銀行'}
+        <div className="relative h-32 w-48 mx-auto mb-2">
+            <Image 
+                src={platformConfig?.homeIllustrationUrl || DEFAULT_LOGO_URL}
+                alt="Virtual Bank"
+                fill
+                className="object-contain"
+                priority
+            />
+        </div>
+        <h1 className="text-4xl md:text-5xl font-bold tracking-wider text-foreground">
+          {platformConfig?.homeTitle || '南梓實小虛擬銀行'}
         </h1>
         <p className="text-lg text-muted-foreground mt-2 max-w-2xl mx-auto">
-          {platformConfig?.homeSubtitle || '您通往金融素養的門戶，在這裡學習金錢知識既有回報又充滿樂趣！'}
+          {platformConfig?.homeSubtitle || '為每一個努力的你,獻上更值得的未來。'}
         </p>
       </header>
 
       <div className="w-full max-w-4xl space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
         <div className="grid md:grid-cols-2 gap-8">
-            <Card className="hover:shadow-lg hover:border-primary transition-all duration-300 transform hover:-translate-y-1">
+            <Card className="hover:shadow-lg transition-shadow duration-300">
             <form onSubmit={handleStudentLogin}>
                 <CardHeader>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
-                    <div className="p-3 bg-primary/10 rounded-full">
-                    <User className="h-8 w-8 text-primary" />
-                    </div>
-                    <CardTitle className="text-2xl">學生登入</CardTitle>
-                </div>
-                <CardDescription>
-                    選擇您的班級，並使用老師提供的編號和密碼登入。
-                </CardDescription>
+                  <div className="flex items-center gap-4 mb-2">
+                      <div className="p-3 bg-primary/10 rounded-full">
+                      <User className="h-6 w-6 text-primary" />
+                      </div>
+                      <CardTitle className="text-2xl font-semibold">學生登入</CardTitle>
+                  </div>
+                  <CardDescription>
+                      選擇您的班級，並使用老師提供的編號和密碼登入。
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -212,7 +211,7 @@ function LoginPageContent() {
                 </div>
                 </CardContent>
                 <CardFooter>
-                <Button type="submit" className="w-full" disabled={isFormDisabled}>
+                <Button type="submit" className="w-full text-base py-6" disabled={isFormDisabled}>
                     {isLoggingIn ? <Loader2 className="animate-spin mr-2" /> : <ArrowRight className="mr-2 h-4 w-4" />}
                     {isLoggingIn ? "登入中..." : "登入"}
                 </Button>
@@ -220,20 +219,20 @@ function LoginPageContent() {
             </form>
             </Card>
             
-            <Card className="hover:shadow-lg hover:border-accent transition-all duration-300 transform hover:-translate-y-1">
+            <Card className="hover:shadow-lg transition-shadow duration-300">
             <form onSubmit={handleTeacherLogin}>
                 <CardHeader>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
-                    <div className="p-3 bg-accent/10 rounded-full">
-                    <School className="h-8 w-8 text-accent" />
-                    </div>
-                    <CardTitle className="text-2xl">老師/校長入口</CardTitle>
-                </div>
-                <CardDescription>
-                    管理您的教室、獎勵學生點數、為獎勵商店補貨以及管理學生名單。
-                </CardDescription>
+                  <div className="flex items-center gap-4 mb-2">
+                      <div className="p-3 bg-primary/10 rounded-full">
+                      <School className="h-6 w-6 text-primary" />
+                      </div>
+                      <CardTitle className="text-2xl font-semibold">老師/校長入口</CardTitle>
+                  </div>
+                  <CardDescription>
+                      管理您的教室、獎勵學生點數、為獎勵商店補貨以及管理學生名單。
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 pt-8">
                     <div className="space-y-2">
                     <Label htmlFor="teacher-id-select">教師帳號</Label>
                     <Select onValueChange={(value) => setSelectedTeacherId(value)} value={selectedTeacherId} disabled={isFormDisabled}>
@@ -260,8 +259,8 @@ function LoginPageContent() {
                     />
                     </div>
                 </CardContent>
-                <CardFooter>
-                <Button type="submit" className="w-full" variant="outline" disabled={isFormDisabled}>
+                <CardFooter className="pt-12">
+                <Button type="submit" className="w-full text-base py-6" variant="secondary" disabled={isFormDisabled}>
                     {isLoggingIn ? <Loader2 className="animate-spin mr-2" /> : <ArrowRight className="mr-2 h-4 w-4" />}
                     {isLoggingIn ? "登入中..." : "以老師身份進入"}
                 </Button>
@@ -270,13 +269,13 @@ function LoginPageContent() {
             </Card>
         </div>
       </div>
-      <footer className="text-center mt-8 text-muted-foreground text-sm">
+      <footer className="text-center mt-12 text-muted-foreground text-sm">
         {platformConfig?.sponsorLogoUrls && platformConfig.sponsorLogoUrls.some(url => url) ? (
             <div className="flex flex-col items-center gap-4">
                 <span className="text-xs">贊助單位</span>
                 <div className="flex flex-wrap justify-center items-center gap-8">
                     {platformConfig.sponsorLogoUrls.map((url, index) => url && (
-                        <div key={index} className="relative h-12 w-36">
+                        <div key={index} className="relative h-12 w-32">
                             <Image 
                                 src={url}
                                 alt={`Sponsor Logo ${index + 1}`}
@@ -287,9 +286,7 @@ function LoginPageContent() {
                     ))}
                 </div>
             </div>
-        ) : (
-            <p>&copy; {new Date().getFullYear()} 南梓實小虛擬銀行. 版權所有。</p>
-        )}
+        ) : null}
       </footer>
     </div>
   );

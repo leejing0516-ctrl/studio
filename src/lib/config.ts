@@ -1,3 +1,4 @@
+
 /**
  * This file contains configurable settings for the application.
  *
@@ -11,7 +12,7 @@
  * To change the logo, simply replace the content of this string
  * with the new image URL.
  */
-;
+export const DEFAULT_LOGO_URL = 'https://i.ibb.co/3M4x2g9/Virtual-Bank-Logo-Final.png';
 
 
 /**
@@ -21,3 +22,4 @@
  * To change the icon, replace the content of this string with the new image URL.
  * For best results, use a square image with a resolution of at least 512x512 pixels.
  */
+export const DEFAULT_APP_ICON_URL = 'https://i.ibb.co/3M4x2g9/Virtual-Bank-Logo-Final.png';
