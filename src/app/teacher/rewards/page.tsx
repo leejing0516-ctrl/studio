@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import {
   Card,
@@ -38,15 +38,17 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { AppDataContext } from "@/context/AppDataContext";
+import { useSchoolStore } from "@/store/useSchoolStore";
+import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { resizeImage, fileToDataUrl } from "@/lib/image-utils";
 
 export default function TeacherRewardsPage() {
     const { 
-        rewards, setRewards, 
+        rewards,
         isLoading, teachers
-    } = useContext(AppDataContext);
+    } = useSchoolStore();
+    const { setPlatformConfig } = useAuth();
 
     const { toast } = useToast();
 
@@ -74,17 +76,17 @@ export default function TeacherRewardsPage() {
     }, []);
 
     const allClassRewards = useMemo(() => {
-        return rewards.filter(r => r.scope === 'class');
+        return (rewards || []).filter(r => r.scope === 'class');
     }, [rewards]);
     
     const schoolRewards = useMemo(() => {
-        return rewards.filter(r => r.scope === 'school');
+        return (rewards || []).filter(r => r.scope === 'school');
     }, [rewards]);
     
     const teacherRewards = useMemo(() => {
         if (!role || !teacherId) return [];
         if (role === 'admin') return [];
-        return rewards.filter(r => r.providerId === teacherId);
+        return (rewards || []).filter(r => r.providerId === teacherId);
     }, [rewards, role, teacherId]);
 
     const handleRewardImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -134,7 +136,7 @@ export default function TeacherRewardsPage() {
             providerId: rewardScope === 'school' ? 'school_admin' : teacherId!,
         };
         
-        await setRewards(current => [...current, newReward]);
+        await setPlatformConfig({ rewards: [...(rewards || []), newReward] });
         setIsAddRewardDialogOpen(false);
         toast({
             title: "已新增獎勵",
@@ -177,7 +179,7 @@ export default function TeacherRewardsPage() {
             image: imageUrl
         };
         
-        await setRewards(current => current.map(r => r.id === updatedReward.id ? updatedReward : r));
+        await setPlatformConfig({ rewards: (rewards || []).map(r => r.id === updatedReward.id ? updatedReward : r) });
         setIsEditRewardDialogOpen(false);
         setEditingReward(null);
         toast({
@@ -192,7 +194,7 @@ export default function TeacherRewardsPage() {
 
     const handleConfirmDeleteReward = async () => {
         if (!rewardToDelete) return;
-        await setRewards(current => current.filter(r => r.id !== rewardToDelete!.id));
+        await setPlatformConfig({ rewards: (rewards || []).filter(r => r.id !== rewardToDelete!.id) });
         toast({
             title: "已刪除獎勵",
             description: `已成功刪除獎勵「${rewardToDelete.name}」。`,
@@ -209,7 +211,7 @@ export default function TeacherRewardsPage() {
         )
     }
 
-    const RewardsTable = ({ rewards, isReadOnly = false }: { rewards: Reward[], isReadOnly?: boolean }) => (
+    const RewardsTable = ({ rewards: tableRewards, isReadOnly = false }: { rewards: Reward[], isReadOnly?: boolean }) => (
         <div className="overflow-x-auto">
             <Table>
                 <TableHeader>
@@ -222,7 +224,7 @@ export default function TeacherRewardsPage() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {rewards.length > 0 ? rewards.map((reward) => (
+                    {tableRewards.length > 0 ? tableRewards.map((reward) => (
                         <TableRow key={reward.id}>
                             <TableCell className="flex items-center gap-4">
                                 <Image src={reward.image} alt={reward.name} width={64} height={64} className="rounded-md object-cover" />
@@ -239,7 +241,7 @@ export default function TeacherRewardsPage() {
                             </TableCell>
                             <TableCell>{reward.stock}</TableCell>
                             {isReadOnly && (
-                                <TableCell>{teachers.find(t => t.id === reward.providerId)?.name || '學校'}</TableCell>
+                                <TableCell>{(teachers || []).find(t => t.id === reward.providerId)?.name || '學校'}</TableCell>
                             )}
                             <TableCell className="text-right">
                                  <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleEditRewardClick(reward)} disabled={isReadOnly}>
