@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -37,7 +37,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
-import { AppDataContext } from "@/context/AppDataContext";
+import { useSchoolStore } from "@/store/useSchoolStore";
 import { subMonths, format, isSameDay, startOfDay, formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
@@ -93,16 +93,27 @@ export default function StocksPage() {
   const [tradeShares, setTradeShares] = useState(0);
   const { toast } = useToast();
   const { student: currentStudent, setStudents } = useAuth();
-  const { stocks: marketStocks, isMarketOpen, platformConfig } = useContext(AppDataContext);
+  const { stocks: marketStocks, config: platformConfig } = useSchoolStore();
   
   const studentHolding = selectedStock ? currentStudent?.portfolio.find(item => item.ticker === selectedStock.ticker) : null;
   
+  const isMarketOpen = useMemo(() => {
+    if (!platformConfig) return false;
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // Sunday is 0, Saturday is 6
+    const currentHour = now.getHours();
+    const openHour = platformConfig.marketOpenHour ?? 9;
+    const closeHour = platformConfig.marketCloseHour ?? 14;
+
+    return dayOfWeek >= 1 && dayOfWeek <= 5 && currentHour >= openHour && currentHour < closeHour;
+  }, [platformConfig]);
+
   const stockMarketNews = useMemo(() => {
     return (platformConfig?.stockMarketNews || []).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [platformConfig]);
 
   const portfolioHistory = useMemo(() => {
-    if (!currentStudent) return [];
+    if (!currentStudent || !marketStocks) return [];
 
     const history = Array.from({ length: 6 }).map((_, i) => {
         const date = subMonths(new Date(), 5 - i);
@@ -316,7 +327,7 @@ export default function StocksPage() {
                     </TableRow>
                     </TableHeader>
                     <TableBody>
-                    {marketStocks.map((stock) => (
+                    {(marketStocks || []).map((stock) => (
                         <TableRow key={stock.ticker}>
                         <TableCell>
                             <div className="font-medium">{stock.ticker}</div>
@@ -475,3 +486,5 @@ export default function StocksPage() {
     </>
   );
 }
+
+    
