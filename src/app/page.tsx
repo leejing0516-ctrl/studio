@@ -29,7 +29,7 @@ export default function LoginPage() {
   const { toast } = useToast();
   
   const { classes, students, teachers, config: platformConfig } = useSchoolStore();
-  const { isLoading: isAuthLoading } = useAuth();
+  const { isLoading: isAuthLoading, setAuthInfo } = useAuth();
   
   const sortedTeachers = useMemo(() => {
     if (!teachers) return [];
@@ -57,8 +57,7 @@ export default function LoginPage() {
         if (foundStudent) {
             if (foundStudent.password === studentPassword) {
                 toast({ title: "登入成功！", description: `歡迎回來，${foundStudent.name}！`});
-                localStorage.setItem('userRole', 'student');
-                localStorage.setItem('studentDocId', foundStudent._docId!);
+                setAuthInfo({ role: 'student', docId: foundStudent._docId! });
                 router.push('/dashboard');
             } else {
                 throw new Error("密碼不正確");
@@ -95,8 +94,8 @@ export default function LoginPage() {
 
         if (teacherPassword === correctPassword) {
             toast({ title: "登入成功！", description: `歡迎回來，${teacher.name}！` });
-            localStorage.setItem('userRole', 'teacher');
-            localStorage.setItem('teacherDocId', teacher._docId!);
+            setAuthInfo({ role: 'teacher', docId: teacher._docId! });
+            // Store other teacher info for direct access in teacher layout
             localStorage.setItem('teacherId', teacher.id);
             localStorage.setItem('teacherName', teacher.name);
             localStorage.setItem('teacherClassIds', JSON.stringify(teacher.classIds || []));

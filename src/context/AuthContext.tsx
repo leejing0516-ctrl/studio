@@ -16,10 +16,11 @@ interface AuthContextType {
   student: Student | null;
   teacher: Teacher | null;
   handleLogout: () => void;
+  setAuthInfo: (info: { role: 'student' | 'teacher'; docId: string }) => void;
   setStudents: (updater: (prev: Student[]) => Student[]) => Promise<void>;
   setTeachers: (updater: (prev: Teacher[]) => Teacher[]) => Promise<void>;
   setPlatformConfig: (updates: Partial<PlatformConfig>) => Promise<void>;
-  isLoading: boolean; // This will now primarily reflect auth state check, not data sync
+  isLoading: boolean;
   runTransaction: (updateFunction: (transaction: any) => Promise<any>) => Promise<void>;
 }
 
@@ -45,16 +46,32 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   const teacher = teachers.find(t => t._docId === teacherDocId) || null;
 
   useEffect(() => {
-    // This effect now only runs once on the client to check localStorage.
-    // It assumes the Zustand store is already hydrated by StoreHydration component.
     const storedRole = localStorage.getItem('userRole') as 'student' | 'teacher' | null;
     const storedStudentDocId = localStorage.getItem('studentDocId');
     const storedTeacherDocId = localStorage.getItem('teacherDocId');
 
     setRole(storedRole);
-    setStudentDocId(storedStudentDocId);
-    setTeacherDocId(storedTeacherDocId);
-    setIsAuthLoading(false); // Auth check is complete
+    if (storedRole === 'student') {
+        setStudentDocId(storedStudentDocId);
+    } else if (storedRole === 'teacher') {
+        setTeacherDocId(storedTeacherDocId);
+    }
+    setIsAuthLoading(false);
+  }, []);
+
+  const setAuthInfo = useCallback((info: { role: 'student' | 'teacher'; docId: string }) => {
+    localStorage.setItem('userRole', info.role);
+    if (info.role === 'student') {
+        localStorage.setItem('studentDocId', info.docId);
+        setRole('student');
+        setStudentDocId(info.docId);
+        setTeacherDocId(null);
+    } else {
+        localStorage.setItem('teacherDocId', info.docId);
+        setRole('teacher');
+        setTeacherDocId(info.docId);
+        setStudentDocId(null);
+    }
   }, []);
 
   const handleLogout = useCallback(() => {
@@ -145,7 +162,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
                 description: error.message || "在執行資料庫交易時發生錯誤。",
                 variant: "destructive",
             });
-            throw error; // Re-throw for component-level handling if needed
+            throw error;
         }
     }, [toast]);
 
@@ -156,6 +173,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     student,
     teacher,
     handleLogout,
+    setAuthInfo,
     setStudents: setStudentsWithDbUpdate,
     setTeachers: setTeachersWithDbUpdate,
     setPlatformConfig: setPlatformConfigWithDbUpdate,
