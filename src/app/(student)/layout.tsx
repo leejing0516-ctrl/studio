@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -60,8 +61,6 @@ import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
-import { collection, onSnapshot, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 function StudentLayoutContent({
   children,
@@ -73,7 +72,8 @@ function StudentLayoutContent({
   const { studentData } = useContext(StudentDataContext);
   const { 
     platformConfig, 
-    classes 
+    classes,
+    students
   } = useContext(AppDataContext);
   const { toast } = useToast();
 
@@ -88,12 +88,13 @@ function StudentLayoutContent({
   
   const { setStudents } = useContext(AppDataContext);
 
-  const student = studentData.student;
+  const student = useMemo(() => {
+    return students.find(s => s._docId === studentData.student?._docId);
+  }, [students, studentData.student]);
   
   useEffect(() => {
     if (!student) return;
 
-    // Logic to check for new announcements
     const lastViewTime = student.lastAnnouncementsView ? new Date(student.lastAnnouncementsView).getTime() : 0;
     const latestSchoolAnnouncementDate = (platformConfig?.announcements || [])
       .reduce((latest, ann) => Math.max(latest, new Date(ann.date).getTime()), 0);
@@ -102,7 +103,6 @@ function StudentLayoutContent({
       .reduce((latest, ann) => Math.max(latest, new Date(ann.date).getTime()), 0);
     setHasNewAnnouncements(latestSchoolAnnouncementDate > lastViewTime || latestClassAnnouncementDate > lastViewTime);
 
-    // Logic to check for new point history
     const lastPointHistoryView = student.lastPointHistoryView ? new Date(student.lastPointHistoryView).getTime() : 0;
     const latestPointRecordDate = (student.pointHistory || [])
       .reduce((latest, record) => Math.max(latest, new Date(record.date).getTime()), 0);
@@ -155,7 +155,7 @@ function StudentLayoutContent({
     if (!student || !hasNewPointHistory || !student._docId) return;
     
     const now = new Date().toISOString();
-    setHasNewPointHistory(false); // Optimistic update
+    setHasNewPointHistory(false); 
 
     try {
         await setStudents(prevStudents => 
@@ -168,7 +168,7 @@ function StudentLayoutContent({
         );
     } catch (e) {
         console.error("Failed to update lastPointHistoryView:", e);
-        setHasNewPointHistory(true); // Revert optimistic update on failure
+        setHasNewPointHistory(true); 
         toast({ title: "錯誤", description: "無法更新通知狀態，請稍後再試。", variant: "destructive" });
     }
 }, [student, hasNewPointHistory, setStudents, toast]);
@@ -367,7 +367,7 @@ export default function StudentLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { setStudents, setStocks, setRewards, setClasses, setTeachers, setPlatformConfig, setIsLoading, isLoading } = useContext(AppDataContext);
+  const { fetchInitialData, isLoading, students } = useContext(AppDataContext);
   const { studentData, setStudentData } = useContext(StudentDataContext);
   const router = useRouter();
   const { toast } = useToast();
@@ -381,6 +381,11 @@ export default function StudentLayout({
   }, [router]);
 
   useEffect(() => {
+    const unsub = fetchInitialData();
+    return () => unsub();
+  }, [fetchInitialData]);
+
+  useEffect(() => {
     const studentId = localStorage.getItem('studentId');
     const classId = localStorage.getItem('studentClassId');
     const storedPassword = localStorage.getItem('studentPassword');
@@ -390,62 +395,22 @@ export default function StudentLayout({
       handleLogout();
       return;
     }
-
-    setIsLoading(true);
-
-    const unsubs: (() => void)[] = [];
-
-    // Single listener for the specific student document
-    const unsubStudent = onSnapshot(doc(db, "students", `${classId}-${studentId}`), (doc) => {
-        if (doc.exists()) {
-            const student = { ...doc.data(), _docId: doc.id } as Student;
-            if (student.password === storedPassword) {
-                setStudentData({ student });
-            } else {
-                toast({ title: "驗證失敗", description: "您的登入資訊已過期或不正確，請重新登入。", variant: "destructive" });
-                handleLogout();
-            }
+    
+    if (students.length > 0) {
+      const student = students.find(s => s.classId === classId && s.id === studentId);
+      if (student) {
+        if (student.password === storedPassword) {
+            setStudentData({ student });
         } else {
-            toast({ title: "找不到學生資料", description: "請重新登入。", variant: "destructive" });
+            toast({ title: "驗證失敗", description: "您的登入資訊已過期或不正確，請重新登入。", variant: "destructive" });
             handleLogout();
         }
-    }, (error) => {
-        console.error("Error fetching student data:", error);
-        toast({ title: "錯誤", description: "讀取學生資料時發生錯誤。", variant: "destructive" });
-        handleLogout();
-    });
-    unsubs.push(unsubStudent);
-
-    const collectionsToListen: { name: string, setter: (data: any) => void }[] = [
-        { name: 'students', setter: setStudents },
-        { name: 'classes', setter: setClasses },
-        { name: 'teachers', setter: setTeachers },
-        { name: 'rewards', setter: setRewards },
-        { name: 'stocks', setter: setStocks },
-    ];
-
-    collectionsToListen.forEach(c => {
-        const unsub = onSnapshot(collection(db, c.name), (snapshot) => {
-            c.setter(snapshot.docs.map(d => ({ ...d.data(), id: d.id, _docId: d.id })));
-        });
-        unsubs.push(unsub);
-    });
-    
-    const unsubConfig = onSnapshot(doc(db, 'config', 'main'), (doc) => {
-        if (doc.exists()) {
-            setPlatformConfig(doc.data() as PlatformConfig);
-        }
-    });
-    unsubs.push(unsubConfig);
-
-    const timer = setTimeout(() => setIsLoading(false), 1500);
-    unsubs.push(() => clearTimeout(timer));
-
-    return () => {
-      unsubs.forEach(unsub => unsub());
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      } else {
+         toast({ title: "找不到學生資料", description: "請重新登入。", variant: "destructive" });
+         handleLogout();
+      }
+    }
+  }, [students, handleLogout, toast, setStudentData]);
 
   if (isLoading || !studentData.student) {
       return (

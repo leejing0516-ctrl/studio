@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -56,9 +57,6 @@ import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
 import Logo from "@/components/logo";
-import { onSnapshot, collection, doc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import type { PlatformConfig, Teacher as TeacherType, Class as ClassType, Student, Reward, Stock } from "@/lib/types";
 
 function TeacherLayoutContent({
   children,
@@ -68,7 +66,11 @@ function TeacherLayoutContent({
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
-  const { teachers, setTeachers, platformConfig } = useContext(AppDataContext);
+  const { 
+    teachers, setTeachers, 
+    platformConfig,
+    isLoading
+  } = useContext(AppDataContext);
 
   const [teacherId, setTeacherId] = useState<string | null>(null);
   const [teacherName, setTeacherName] = useState<string | null>(null);
@@ -86,6 +88,7 @@ function TeacherLayoutContent({
     return (platformConfig?.feedback || []).some(f => !f.isRead);
   }, [platformConfig?.feedback]);
 
+
   const handleLogout = useCallback(() => {
     localStorage.removeItem('teacherName');
     localStorage.removeItem('teacherRole');
@@ -96,36 +99,40 @@ function TeacherLayoutContent({
     localStorage.removeItem('impersonator');
     router.push('/');
   }, [router]);
-  
-  useEffect(() => {
-    const storedTeacherId = localStorage.getItem('teacherId');
-    const storedPassword = localStorage.getItem('teacherPassword');
-    const userRole = localStorage.getItem('userRole');
 
-    if (userRole !== 'teacher' || !storedTeacherId || !storedPassword) {
+  useEffect(() => {
+    const userRole = localStorage.getItem('userRole');
+    const storedTeacherId = localStorage.getItem('teacherId');
+    const storedTeacherPassword = localStorage.getItem('teacherPassword');
+
+    if (userRole !== 'teacher' || !storedTeacherId || !storedTeacherPassword) {
       handleLogout();
       return;
     }
 
-    const teacher = teachers.find(t => t.id === storedTeacherId);
+    if (teachers.length > 0) {
+        const teacher = teachers.find(t => t.id === storedTeacherId);
 
-    if (teacher) {
-      const correctPassword = teacher.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
-      if (storedPassword === correctPassword) {
-        setTeacherId(teacher.id);
-        setTeacherName(teacher.name);
-        setTeacherRole(teacher.role);
-        setIsImpersonating(!!localStorage.getItem('impersonator'));
-        localStorage.setItem('teacherName', teacher.name);
-        localStorage.setItem('teacherRole', teacher.role);
-        localStorage.setItem('teacherClassIds', JSON.stringify(teacher.classIds || []));
-      } else {
-        toast({ title: "驗證失敗", description: "密碼不正確，請重新登入。", variant: "destructive" });
-        handleLogout();
-      }
+        if (teacher) {
+            const correctPassword = teacher.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
+            if (storedTeacherPassword === correctPassword) {
+                setTeacherId(teacher.id as string);
+                setTeacherName(teacher.name as string);
+                setTeacherRole(teacher.role as string);
+                setIsImpersonating(!!localStorage.getItem('impersonator'));
+                localStorage.setItem('teacherName', teacher.name as string);
+                localStorage.setItem('teacherRole', teacher.role as string);
+                localStorage.setItem('teacherClassIds', JSON.stringify(teacher.classIds || []));
+            } else {
+                toast({ title: "驗證失敗", description: "密碼不正確，請重新登入。", variant: "destructive" });
+                handleLogout();
+            }
+        } else {
+             toast({ title: "找不到帳號", description: "找不到您的教師帳號，請重新登入。", variant: "destructive" });
+             handleLogout();
+        }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teachers, platformConfig]);
+  }, [handleLogout, platformConfig?.teacherPassword, toast, teachers]);
 
   
   const handleStopImpersonating = () => {
@@ -149,9 +156,8 @@ function TeacherLayoutContent({
   }
 
   const handleChangePassword = async () => {
+     if (!teacherId) return;
     setIsSaving(true);
-    if (!teacherId) return;
-
     if (newPassword !== confirmPassword) {
         toast({ title: "密碼不符", description: "新密碼與確認密碼不相符。", variant: "destructive" });
         setIsSaving(false);
@@ -162,36 +168,29 @@ function TeacherLayoutContent({
         setIsSaving(false);
         return;
     }
+    const teacher = teachers.find(t => t.id === teacherId);
+    const correctPassword = teacher?.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
 
-    const teacherToUpdate = teachers.find(t => t.id === teacherId);
-    if (!teacherToUpdate) return;
-    
-    const storedPassword = teacherToUpdate.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
-    if (currentPassword !== storedPassword) {
-        toast({ title: "密碼錯誤", description: "您輸入的目前密碼不正確。", variant: "destructive" });
+    if (currentPassword !== correctPassword) {
+       toast({ title: "密碼錯誤", description: "您輸入的目前密碼不正確。", variant: "destructive" });
         setIsSaving(false);
         return;
     }
 
-    try {
+     try {
         await setTeachers(currentTeachers => currentTeachers.map(t => {
             if (t.id === teacherId) {
                 return { ...t, password: newPassword };
             }
             return t;
         }));
-        
         localStorage.setItem('teacherPassword', newPassword);
-
         toast({ title: "密碼已更新", description: "您的密碼已成功更新。" });
         setIsSettingsOpen(false);
-        setCurrentPassword("");
-        setNewPassword("");
-        setConfirmPassword("");
-    } catch(e) {
+    } catch (e) {
         toast({ title: "更新失敗", description: "更新密碼時發生錯誤。", variant: "destructive" });
     } finally {
-        setIsSaving(false);
+         setIsSaving(false);
     }
   }
 
@@ -226,7 +225,7 @@ function TeacherLayoutContent({
   };
 
 
-  if (!teacherName) {
+  if (isLoading || !teacherName) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <Loader2 className="mr-2 h-6 w-6 animate-spin" />
@@ -236,6 +235,7 @@ function TeacherLayoutContent({
   }
 
   return (
+    <>
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader>
@@ -318,14 +318,14 @@ function TeacherLayoutContent({
         </header>
         <main className="flex-1 p-4 md:p-6 overflow-x-hidden">{children}</main>
       </SidebarInset>
-    
+    </SidebarProvider>
 
     <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
             <DialogTitle>帳號設定</DialogTitle>
             <DialogDescription>
-                修改您的個人登入密碼。
+                {teacherRole === 'admin' ? '修改您的登入密碼。您也可以修改未來新教師註冊時的「預設密碼」。' : '修改您的個人登入密碼。'}
             </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -352,7 +352,7 @@ function TeacherLayoutContent({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-    </SidebarProvider>
+    </>
   );
 }
 
@@ -361,46 +361,12 @@ export default function TeacherLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { setStudents, setStocks, setRewards, setClasses, setTeachers, setPlatformConfig, setIsLoading, isLoading } = useContext(AppDataContext);
+  const { fetchInitialData, isLoading } = useContext(AppDataContext);
 
   useEffect(() => {
-    const userRole = localStorage.getItem('userRole');
-    const teacherId = localStorage.getItem('teacherId');
-    if (userRole !== 'teacher' || !teacherId) {
-      return;
-    }
-    
-    setIsLoading(true);
-
-    const collectionsToListen: { name: string, setter: (data: any) => void }[] = [
-        { name: 'students', setter: setStudents },
-        { name: 'classes', setter: setClasses },
-        { name: 'teachers', setter: setTeachers },
-        { name: 'rewards', setter: setRewards },
-        { name: 'stocks', setter: setStocks },
-    ];
-
-    const unsubs = collectionsToListen.map(c => {
-        return onSnapshot(collection(db, c.name), (snapshot) => {
-            c.setter(snapshot.docs.map(d => ({ ...d.data(), id: d.id, _docId: d.id })));
-        });
-    });
-    
-    const unsubConfig = onSnapshot(doc(db, 'config', 'main'), (doc) => {
-        if (doc.exists()) {
-            setPlatformConfig(doc.data() as PlatformConfig);
-        }
-    });
-    unsubs.push(unsubConfig);
-
-    const timer = setTimeout(() => setIsLoading(false), 1500);
-    unsubs.push(() => clearTimeout(timer));
-
-    return () => {
-      unsubs.forEach(unsub => unsub());
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const unsub = fetchInitialData();
+    return () => unsub();
+  }, [fetchInitialData]);
 
   if (isLoading) {
     return (

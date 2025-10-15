@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useContext, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -75,7 +76,7 @@ export default function HomePage() {
     fetchLoginData();
   }, [router, toast]);
 
-  const handleStudentLogin = useCallback(async (e: React.FormEvent) => {
+  const handleStudentLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoggingIn(true);
 
@@ -112,9 +113,9 @@ export default function HomePage() {
         });
         setIsLoggingIn(false);
     }
-  }, [classId, studentIdInput, studentPassword, router, toast]);
+  };
   
-  const handleTeacherLogin = useCallback(async (e: React.FormEvent) => {
+  const handleTeacherLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoggingIn(true);
     if (!selectedTeacherId || !teacherPassword) {
@@ -134,7 +135,7 @@ export default function HomePage() {
             toast({ title: "登入成功！", description: `歡迎回來，${teacher.name}！` });
             localStorage.setItem('userRole', 'teacher');
             localStorage.setItem('teacherId', selectedTeacherId);
-            localStorage.setItem('teacherPassword', teacherPassword);
+            localStorage.setItem('teacherPassword', teacherPassword); // Store the entered password
             router.push('/teacher/dashboard');
         } else {
             throw new Error("帳號或密碼不正確");
@@ -147,7 +148,7 @@ export default function HomePage() {
         });
         setIsLoggingIn(false);
     }
-  }, [selectedTeacherId, teacherPassword, localTeachers, platformConfig, router, toast]);
+  };
 
   const isFormDisabled = isLoggingIn || isLoading;
 

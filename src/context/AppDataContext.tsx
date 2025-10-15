@@ -1,10 +1,10 @@
+
 "use client";
 
-import { createContext, useState, ReactNode, useEffect, useCallback, useContext } from 'react';
+import { createContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import type { Student, Reward, Class, Teacher, Stock, PlatformConfig } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { collection, doc, runTransaction as firestoreRunTransaction, Transaction, query, onSnapshot, Unsubscribe, setDoc, writeBatch, deleteDoc, getDocs, where, addDoc } from 'firebase/firestore';
-import { isAfter, startOfDay, differenceInDays } from 'date-fns';
+import { collection, doc, runTransaction as firestoreRunTransaction, Transaction, writeBatch, deleteDoc } from 'firebase/firestore';
 
 type SetStateActionWithFunction<S> = S | ((prevState: S) => S);
 
@@ -25,6 +25,7 @@ interface AppDataContextType {
   setIsLoading: (loading: boolean) => void;
   isMarketOpen: boolean;
   runTransaction: (updateFunction: (transaction: Transaction) => Promise<any>) => Promise<any>;
+  fetchInitialData: () => () => void;
 }
 
 const defaultState: AppDataContextType = {
@@ -44,6 +45,7 @@ const defaultState: AppDataContextType = {
   setIsLoading: () => {},
   isMarketOpen: false,
   runTransaction: async () => {},
+  fetchInitialData: () => () => {},
 };
 
 export const AppDataContext = createContext<AppDataContextType>(defaultState);
@@ -58,7 +60,7 @@ const checkMarketOpen = (config: PlatformConfig | null) => {
 };
 
 const useIdAsDocId = (collectionName: string) => {
-  return ['stocks', 'classes'].includes(collectionName);
+  return ['stocks', 'classes', 'rewards'].includes(collectionName);
 }
 
 export const AppDataProvider = ({ children }: { children: ReactNode }) => {
@@ -74,23 +76,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const handleRunTransaction = useCallback(async (updateFunction: (transaction: Transaction) => Promise<any>) => {
     return firestoreRunTransaction(db, updateFunction);
   }, []);
-
-  useEffect(() => {
-    setIsMarketOpen(checkMarketOpen(platformConfig));
-    const marketInterval = setInterval(() => {
-      setIsMarketOpen(checkMarketOpen(platformConfig));
-    }, 60000);
-    return () => clearInterval(marketInterval);
-  }, [platformConfig]);
   
-  const setPlatformConfig = async (dataToUpdate: Partial<PlatformConfig>) => {
-      const configRef = doc(db, 'config', 'main');
-      await setDoc(configRef, dataToUpdate, { merge: true });
-      // Optimistic update
-      setPlatformConfigState(prev => ({ ...(prev || {id: 'main'}), ...dataToUpdate }));
-  };
-
-  const createSetterWithBatch = <T extends { _docId?: string, id?: any }>(
+  const createSetterWithBatch = <T extends { _docId?: string; id?: any }>(
     collectionName: string,
     stateSetter: React.Dispatch<React.SetStateAction<T[]>>,
     currentState: T[]
@@ -109,7 +96,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       
       oldMap.forEach((_, key) => {
         if (!newMap.has(key)) {
-          batch.delete(doc(db, collectionName, key));
+            if (key) batch.delete(doc(db, collectionName, key));
         }
       });
       
@@ -118,10 +105,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(newItem)) {
            const { _docId, ...itemData } = newItem;
            const docId = useId ? newItem.id : key;
-           if (!docId) {
-             console.error(`Missing docId for item in ${collectionName}:`, newItem);
-             return;
-           }
+           if (!docId) return;
            const docRef = doc(db, collectionName, docId);
            batch.set(docRef, itemData, { merge: true });
         }
@@ -135,6 +119,55 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       }
     };
   };
+
+  const setPlatformConfig = async (dataToUpdate: Partial<PlatformConfig>) => {
+      const configRef = doc(db, 'config', 'main');
+      await firestoreRunTransaction(db, async (transaction) => {
+          transaction.set(configRef, dataToUpdate, { merge: true });
+      });
+  };
+
+  const fetchInitialData = useCallback(() => {
+    const collectionsToListen: { name: string, setter: React.Dispatch<React.SetStateAction<any>> }[] = [
+        { name: 'students', setter: setStudentsState },
+        { name: 'classes', setter: setClassesState },
+        { name: 'teachers', setter: setTeachersState },
+        { name: 'rewards', setter: setRewardsState },
+        { name: 'stocks', setter: setStocksState },
+    ];
+
+    const unsubs = collectionsToListen.map(c => {
+        return onSnapshot(collection(db, c.name), (snapshot) => {
+            c.setter(snapshot.docs.map(d => {
+                const data = d.data();
+                const docId = c.name === 'students' ? `${data.classId}-${data.id}` : d.id;
+                return { ...data, id: data.id || d.id, _docId: docId };
+            }));
+        });
+    });
+    
+    const unsubConfig = onSnapshot(doc(db, 'config', 'main'), (doc) => {
+        if (doc.exists()) {
+            setPlatformConfigState(doc.data() as PlatformConfig);
+        }
+    });
+    unsubs.push(unsubConfig);
+
+    const timer = setTimeout(() => setIsLoading(false), 1500);
+    unsubs.push(() => clearTimeout(timer));
+
+    return () => {
+      unsubs.forEach(unsub => unsub());
+    };
+  }, []);
+
+  useEffect(() => {
+    setIsMarketOpen(checkMarketOpen(platformConfig));
+    const marketInterval = setInterval(() => {
+      setIsMarketOpen(checkMarketOpen(platformConfig));
+    }, 60000);
+    return () => clearInterval(marketInterval);
+  }, [platformConfig]);
 
   return (
     <AppDataContext.Provider value={{ 
@@ -154,6 +187,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         setIsLoading,
         isMarketOpen,
         runTransaction: handleRunTransaction,
+        fetchInitialData,
     }}>
       {children}
     </AppDataContext.Provider>
