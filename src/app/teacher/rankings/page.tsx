@@ -50,7 +50,7 @@ export default function TeacherRankingsPage() {
                 .filter(l => l.status === 'active' || l.status === 'overdue')
                 .reduce((acc, loan) => acc + loan.amount, 0);
 
-            const totalAssets = student.points + portfolioValue + totalFixedDeposits - totalLoans;
+            const totalAssets = (student.points || 0) + portfolioValue + totalFixedDeposits - totalLoans;
             
             return { ...student, totalAssets, portfolioValue, totalFixedDeposits, totalLoans };
         });
