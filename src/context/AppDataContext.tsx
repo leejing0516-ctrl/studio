@@ -4,7 +4,7 @@
 import { createContext, useState, ReactNode, useCallback } from 'react';
 import type { Student, Reward, Class, Teacher, Stock, PlatformConfig } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { doc, runTransaction as firestoreRunTransaction, Transaction, writeBatch, setDoc } from 'firebase/firestore';
+import { doc, runTransaction as firestoreRunTransaction, Transaction, writeBatch, setDoc, deleteDoc } from 'firebase/firestore';
 
 type SetStateActionWithFunction<S> = S | ((prevState: S) => S);
 
@@ -99,11 +99,7 @@ const createSetterWithBatch = <T extends { _docId?: string; id?: any }>(
       if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(newItem)) {
          const { _docId, ...itemData } = newItem;
          const docRef = doc(db, collectionName, key);
-         if (oldItem) {
-           batch.update(docRef, itemData);
-         } else {
-           batch.set(docRef, itemData);
-         }
+         batch.set(docRef, itemData, { merge: true });
          hasChanges = true;
       }
     });

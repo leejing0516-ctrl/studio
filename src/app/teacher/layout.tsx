@@ -2,8 +2,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import React, { useState, useContext, useMemo } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import React, { useEffect, useState, useContext, useCallback, useMemo, useRef } from "react";
 import {
   SidebarProvider,
   Sidebar,
@@ -70,15 +70,16 @@ function TeacherLayoutContent({
     platformConfig,
     teachers,
     setTeachers,
+    isLoading: isAppLoading,
   } = useContext(AppDataContext);
-  const { teacher, isLoading, handleLogout } = useAuth();
+  const { teacher, isLoading: isAuthLoading, handleLogout } = useAuth();
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-
+  
   const isImpersonating = useMemo(() => typeof window !== 'undefined' && !!localStorage.getItem('impersonator'), []);
 
   const hasNewFeedback = useMemo(() => {
@@ -172,7 +173,7 @@ function TeacherLayoutContent({
     subject_teacher: '科任教師'
   };
 
-  if (isLoading) {
+  if (isAppLoading || isAuthLoading) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <Loader2 className="mr-2 h-6 w-6 animate-spin" />
