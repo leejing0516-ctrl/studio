@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
@@ -15,7 +14,7 @@ import { useSchoolStore } from '@/store/useSchoolStore';
 import { syncAll } from "@/lib/firestoreFetchers";
 import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
 import { DEFAULT_LOGO_URL } from '@/lib/config';
-import { Student } from '@/lib/types';
+import type { Student } from '@/lib/types';
 
 function Providers({ children }: { children: React.ReactNode }) {
     const { setLoading, setConfig, setStudents, setTeachers, setClasses, students, classes: schoolClasses, teachers: schoolTeachers } = useSchoolStore();
@@ -24,7 +23,7 @@ function Providers({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         // This effect runs once on mount to fetch all initial data.
-        if(students.length || schoolClasses.length || schoolTeachers.length) {
+        if(students.length > 0 || schoolClasses.length > 0 || schoolTeachers.length > 0) {
           setIsSynced(true);
           return;
         }

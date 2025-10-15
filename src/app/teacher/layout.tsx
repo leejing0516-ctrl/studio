@@ -58,6 +58,7 @@ import { useSchoolStore } from "@/store/useSchoolStore";
 import { useAuth } from "@/context/AuthContext";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
 import Logo from "@/components/logo";
+import { syncAll } from "@/lib/firestoreFetchers";
 
 function TeacherLayoutContent({
   children,
@@ -311,14 +312,58 @@ function TeacherLayoutContent({
   );
 }
 
+
+function Providers({ children }: { children: React.ReactNode }) {
+    const { loading, setLoading, setConfig, setStudents, setTeachers, setClasses } = useSchoolStore();
+    const [error, setError] = useState<string | null>(null);
+    const [isSynced, setIsSynced] = useState(false);
+
+    useEffect(() => {
+        // This effect runs once on mount to fetch all initial data.
+        const sync = async () => {
+            setError(null);
+            setLoading(true);
+            try {
+                const { config, students, teachers, classes } = await syncAll();
+                setConfig(config);
+                setStudents(students);
+                setTeachers(teachers);
+                setClasses(classes);
+                setIsSynced(true);
+            } catch (e: any) {
+                setError(e?.message ?? "同步失敗");
+            } finally {
+                setLoading(false);
+            }
+        };
+        sync();
+    }, [setLoading, setConfig, setStudents, setTeachers, setClasses]);
+    
+    if (error) {
+        return <div className="flex h-screen w-full items-center justify-center text-destructive">資料同步失敗: {error}</div>;
+    }
+
+    if (loading || !isSynced) {
+         return (
+            <div className="flex h-screen w-full items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                正在同步資料...
+            </div>
+        );
+    }
+
+    return <>{children}</>;
+}
+
+
 export default function TeacherLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <AuthProvider>
-        <TeacherLayoutContent>{children}</TeacherLayoutContent>
-    </AuthProvider>
+    <Providers>
+      <TeacherLayoutContent>{children}</TeacherLayoutContent>
+    </Providers>
   );
 }

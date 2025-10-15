@@ -69,7 +69,6 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
   const { 
     config: platformConfig, 
     classes, 
-    students,
   } = useSchoolStore();
   const { student, isLoading: isAuthLoading, handleLogout, setStudents } = useAuth();
   
