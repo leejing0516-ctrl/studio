@@ -15,6 +15,7 @@ import { AppDataContext } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
 import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
 import { DEFAULT_LOGO_URL } from '@/lib/config';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 
 function LoginPageContent() {
@@ -140,7 +141,7 @@ function LoginPageContent() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 font-body">
       <header className="mb-8 text-center animate-in fade-in slide-in-from-top duration-700">
-        <div className="relative h-32 w-48 mx-auto mb-2">
+        <div className="relative h-24 w-48 md:h-32 mx-auto mb-2">
             <Image 
                 src={platformConfig?.homeIllustrationUrl || DEFAULT_LOGO_URL}
                 alt="Virtual Bank"
@@ -157,118 +158,110 @@ function LoginPageContent() {
         </p>
       </header>
 
-      <div className="w-full max-w-4xl space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
-        <div className="grid md:grid-cols-2 gap-8">
-            <Card className="hover:shadow-lg transition-shadow duration-300">
-            <form onSubmit={handleStudentLogin}>
-                <CardHeader>
-                  <div className="flex items-center gap-4 mb-2">
-                      <div className="p-3 bg-primary/10 rounded-full">
-                      <User className="h-6 w-6 text-primary" />
-                      </div>
-                      <CardTitle className="text-2xl font-semibold">學生登入</CardTitle>
-                  </div>
-                  <CardDescription>
-                      選擇您的班級，並使用老師提供的編號和密碼登入。
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                <div className="space-y-2">
-                    <Label htmlFor="class-select">班級</Label>
-                    <Select onValueChange={(value) => setClassId(value)} value={classId} disabled={isFormDisabled}>
-                        <SelectTrigger id="class-select">
-                            <SelectValue placeholder="請選擇班級" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {classes.map(c => (
-                                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="student-id">學生座號</Label>
-                    <Input 
-                    id="student-id" 
-                    placeholder="請輸入您的座號 (例如: S001)" 
-                    required 
-                    value={studentIdInput}
-                    onChange={(e) => setStudentIdInput(e.target.value)}
-                    disabled={isFormDisabled}
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="student-password">密碼</Label>
-                    <Input 
-                    id="student-password" 
-                    type="password" 
-                    placeholder="請輸入您的密碼" 
-                    required 
-                    value={studentPassword}
-                    onChange={(e) => setStudentPassword(e.target.value)}
-                    disabled={isFormDisabled}
-                    />
-                </div>
-                </CardContent>
-                <CardFooter>
-                <Button type="submit" className="w-full text-base py-6" disabled={isFormDisabled}>
-                    {isLoggingIn ? <Loader2 className="animate-spin mr-2" /> : <ArrowRight className="mr-2 h-4 w-4" />}
-                    {isLoggingIn ? "登入中..." : "登入"}
-                </Button>
-                </CardFooter>
-            </form>
-            </Card>
-            
-            <Card className="hover:shadow-lg transition-shadow duration-300">
-            <form onSubmit={handleTeacherLogin}>
-                <CardHeader>
-                  <div className="flex items-center gap-4 mb-2">
-                      <div className="p-3 bg-primary/10 rounded-full">
-                      <School className="h-6 w-6 text-primary" />
-                      </div>
-                      <CardTitle className="text-2xl font-semibold">老師/校長入口</CardTitle>
-                  </div>
-                  <CardDescription>
-                      管理您的教室、獎勵學生點數、為獎勵商店補貨以及管理學生名單。
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-8">
-                    <div className="space-y-2">
-                    <Label htmlFor="teacher-id-select">教師帳號</Label>
-                    <Select onValueChange={(value) => setSelectedTeacherId(value)} value={selectedTeacherId} disabled={isFormDisabled}>
-                        <SelectTrigger id="teacher-id-select">
-                            <SelectValue placeholder="請選擇您的帳號" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {sortedTeachers.map(t => (
-                                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    </div>
-                    <div className="space-y-2">
-                    <Label htmlFor="teacher-password">密碼</Label>
-                    <Input 
-                        id="teacher-password" 
-                        type="password" 
-                        placeholder="請輸入您的密碼" 
-                        required 
-                        value={teacherPassword}
-                        onChange={(e) => setTeacherPassword(e.target.value)}
-                        disabled={isFormDisabled}
-                    />
-                    </div>
-                </CardContent>
-                <CardFooter className="pt-12">
-                <Button type="submit" className="w-full text-base py-6" variant="secondary" disabled={isFormDisabled}>
-                    {isLoggingIn ? <Loader2 className="animate-spin mr-2" /> : <ArrowRight className="mr-2 h-4 w-4" />}
-                    {isLoggingIn ? "登入中..." : "以老師身份進入"}
-                </Button>
-                </CardFooter>
-            </form>
-            </Card>
-        </div>
-      </div>
+      <main className="w-full max-w-md animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
+        <Card className="hover:shadow-lg transition-shadow duration-300">
+            <Tabs defaultValue="student" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="student"><User className="mr-2 h-4 w-4"/>學生登入</TabsTrigger>
+                    <TabsTrigger value="teacher"><School className="mr-2 h-4 w-4"/>老師/校長</TabsTrigger>
+                </TabsList>
+                <TabsContent value="student">
+                     <form onSubmit={handleStudentLogin}>
+                        <CardHeader>
+                            <CardTitle>學生登入</CardTitle>
+                            <CardDescription>選擇班級，並使用老師提供的編號和密碼登入。</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="class-select">班級</Label>
+                                <Select onValueChange={setClassId} value={classId} disabled={isFormDisabled}>
+                                    <SelectTrigger id="class-select">
+                                        <SelectValue placeholder="請選擇班級" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {classes.map(c => (
+                                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="student-id">學生座號</Label>
+                                <Input 
+                                id="student-id" 
+                                placeholder="請輸入您的座號 (例如: S001)" 
+                                required 
+                                value={studentIdInput}
+                                onChange={(e) => setStudentIdInput(e.target.value)}
+                                disabled={isFormDisabled}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="student-password">密碼</Label>
+                                <Input 
+                                id="student-password" 
+                                type="password" 
+                                placeholder="請輸入您的密碼" 
+                                required 
+                                value={studentPassword}
+                                onChange={(e) => setStudentPassword(e.target.value)}
+                                disabled={isFormDisabled}
+                                />
+                            </div>
+                        </CardContent>
+                        <CardFooter>
+                            <Button type="submit" className="w-full text-base py-6" disabled={isFormDisabled}>
+                                {isLoggingIn ? <Loader2 className="animate-spin mr-2" /> : <ArrowRight className="mr-2 h-4 w-4" />}
+                                {isLoggingIn ? "登入中..." : "登入"}
+                            </Button>
+                        </CardFooter>
+                    </form>
+                </TabsContent>
+                <TabsContent value="teacher">
+                    <form onSubmit={handleTeacherLogin}>
+                        <CardHeader>
+                            <CardTitle>老師/校長入口</CardTitle>
+                            <CardDescription>選擇您的帳號並輸入密碼以進入管理後台。</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="teacher-id-select">教師帳號</Label>
+                                <Select onValueChange={setSelectedTeacherId} value={selectedTeacherId} disabled={isFormDisabled}>
+                                    <SelectTrigger id="teacher-id-select">
+                                        <SelectValue placeholder="請選擇您的帳號" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {sortedTeachers.map(t => (
+                                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="teacher-password">密碼</Label>
+                                <Input 
+                                    id="teacher-password" 
+                                    type="password" 
+                                    placeholder="請輸入您的密碼" 
+                                    required 
+                                    value={teacherPassword}
+                                    onChange={(e) => setTeacherPassword(e.target.value)}
+                                    disabled={isFormDisabled}
+                                />
+                            </div>
+                        </CardContent>
+                        <CardFooter>
+                             <Button type="submit" className="w-full text-base py-6" disabled={isFormDisabled}>
+                                {isLoggingIn ? <Loader2 className="animate-spin mr-2" /> : <ArrowRight className="mr-2 h-4 w-4" />}
+                                {isLoggingIn ? "登入中..." : "以老師身份進入"}
+                            </Button>
+                        </CardFooter>
+                    </form>
+                </TabsContent>
+            </Tabs>
+        </Card>
+      </main>
+
       <footer className="text-center mt-12 text-muted-foreground text-sm">
         {platformConfig?.sponsorLogoUrls && platformConfig.sponsorLogoUrls.some(url => url) ? (
             <div className="flex flex-col items-center gap-4">
@@ -295,4 +288,3 @@ function LoginPageContent() {
 export default function HomePage() {
   return <LoginPageContent />;
 }
-
