@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,8 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { StudentDataContext } from "@/context/StudentDataContext";
-import { AppDataContext } from "@/context/AppDataContext";
+import { useAuth } from "@/context/AuthContext";
+import { useSchoolStore } from "@/store/useSchoolStore";
 import { Calendar as CalendarIcon, Landmark, AlertTriangle, CheckCircle, Hourglass, Info } from "lucide-react";
 import { format, addDays, startOfDay } from "date-fns";
 import type { Loan, Teacher, PlatformConfig } from "@/lib/types";
@@ -31,8 +31,8 @@ import { Badge } from "@/components/ui/badge";
 const LOAN_LIMIT = 500;
 
 export default function LoansPage() {
-  const { studentData } = useContext(StudentDataContext);
-  const { students, setStudents, platformConfig, setPlatformConfig, teachers, setTeachers } = useContext(AppDataContext);
+  const { student: currentStudent, setStudents, setPlatformConfig, setTeachers } = useAuth();
+  const { platformConfig, teachers } = useSchoolStore();
   const { toast } = useToast();
 
   const [loanAmount, setLoanAmount] = useState<number | "">(100);
@@ -41,10 +41,6 @@ export default function LoansPage() {
   const [isConfirmRepayOpen, setIsConfirmRepayOpen] = useState(false);
   const [loanToRepay, setLoanToRepay] = useState<Loan | null>(null);
 
-  const currentStudent = useMemo(() => 
-    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId) || studentData.student
-  , [students, studentData.student]);
-  
   const activeLoan = useMemo(() => currentStudent?.loans?.find(l => l.status === 'active' || l.status === 'overdue'), [currentStudent]);
   const pendingLoan = useMemo(() => currentStudent?.loans?.find(l => l.status === 'pending'), [currentStudent]);
   const loanInterestRate = platformConfig?.loanInterestRate || 0.005; // Default 0.5% daily interest
@@ -293,3 +289,5 @@ export default function LoansPage() {
     </div>
   );
 }
+
+    
