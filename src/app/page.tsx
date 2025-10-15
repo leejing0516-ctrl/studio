@@ -14,10 +14,9 @@ import type { Student, Teacher, Class, PlatformConfig } from '@/lib/types';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
-import { AppDataContext } from '@/context/AppDataContext';
 
 
-function LoginPageContent() {
+export default function HomePage() {
   const [studentIdInput, setStudentIdInput] = useState('');
   const [studentPassword, setStudentPassword] = useState('');
   const [classId, setClassId] = useState('');
@@ -317,10 +316,4 @@ function LoginPageContent() {
       </footer>
     </div>
   );
-}
-
-export default function HomePage() {
-  // This outer component now does nothing but render the content.
-  // No providers are wrapped here.
-  return <LoginPageContent />;
 }

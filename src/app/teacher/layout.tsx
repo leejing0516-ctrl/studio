@@ -68,7 +68,7 @@ function TeacherLayoutContent({
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
-  const { teachers, setTeachers, platformConfig, setPlatformConfig, isLoading } = useContext(AppDataContext);
+  const { teachers, setTeachers, platformConfig } = useContext(AppDataContext);
 
   const [teacherId, setTeacherId] = useState<string | null>(null);
   const [teacherName, setTeacherName] = useState<string | null>(null);
@@ -86,7 +86,6 @@ function TeacherLayoutContent({
     return (platformConfig?.feedback || []).some(f => !f.isRead);
   }, [platformConfig?.feedback]);
 
-
   const handleLogout = useCallback(() => {
     localStorage.removeItem('teacherName');
     localStorage.removeItem('teacherRole');
@@ -97,43 +96,36 @@ function TeacherLayoutContent({
     localStorage.removeItem('impersonator');
     router.push('/');
   }, [router]);
-
+  
   useEffect(() => {
-    const userRole = localStorage.getItem('userRole');
     const storedTeacherId = localStorage.getItem('teacherId');
-    const storedTeacherPassword = localStorage.getItem('teacherPassword');
+    const storedPassword = localStorage.getItem('teacherPassword');
+    const userRole = localStorage.getItem('userRole');
 
-    if (userRole !== 'teacher' || !storedTeacherId || !storedTeacherPassword) {
+    if (userRole !== 'teacher' || !storedTeacherId || !storedPassword) {
       handleLogout();
       return;
     }
-    
-    // The main data loading is now in the layout provider.
-    // This effect just syncs local state from localStorage and the global context.
+
     const teacher = teachers.find(t => t.id === storedTeacherId);
 
     if (teacher) {
-        const correctPassword = teacher.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
-        if (storedTeacherPassword === correctPassword) {
-            setTeacherId(teacher.id);
-            setTeacherName(teacher.name);
-            setTeacherRole(teacher.role);
-            setIsImpersonating(!!localStorage.getItem('impersonator'));
-
-            localStorage.setItem('teacherName', teacher.name);
-            localStorage.setItem('teacherRole', teacher.role);
-            localStorage.setItem('teacherClassIds', JSON.stringify(teacher.classIds || []));
-        } else {
-             if (!isLoading) { // Prevent firing on initial load before context is ready
-                toast({ title: "驗證失敗", description: "密碼不正確，請重新登入。", variant: "destructive" });
-                handleLogout();
-             }
-        }
-    } else if (!isLoading && teachers.length > 0) {
-        toast({ title: "找不到帳號", description: "找不到您的教師帳號，請重新登入。", variant: "destructive" });
+      const correctPassword = teacher.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
+      if (storedPassword === correctPassword) {
+        setTeacherId(teacher.id);
+        setTeacherName(teacher.name);
+        setTeacherRole(teacher.role);
+        setIsImpersonating(!!localStorage.getItem('impersonator'));
+        localStorage.setItem('teacherName', teacher.name);
+        localStorage.setItem('teacherRole', teacher.role);
+        localStorage.setItem('teacherClassIds', JSON.stringify(teacher.classIds || []));
+      } else {
+        toast({ title: "驗證失敗", description: "密碼不正確，請重新登入。", variant: "destructive" });
         handleLogout();
+      }
     }
-  }, [handleLogout, platformConfig?.teacherPassword, toast, teachers, isLoading]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teachers, platformConfig]);
 
   
   const handleStopImpersonating = () => {
@@ -234,7 +226,7 @@ function TeacherLayoutContent({
   };
 
 
-  if (isLoading || !teacherName) {
+  if (!teacherName) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <Loader2 className="mr-2 h-6 w-6 animate-spin" />
@@ -369,38 +361,55 @@ export default function TeacherLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { setStudents, setStocks, setRewards, setClasses, setTeachers, setPlatformConfig, setIsLoading } = useContext(AppDataContext);
+  const { setStudents, setStocks, setRewards, setClasses, setTeachers, setPlatformConfig, setIsLoading, isLoading } = useContext(AppDataContext);
 
   useEffect(() => {
+    const userRole = localStorage.getItem('userRole');
+    const teacherId = localStorage.getItem('teacherId');
+    if (userRole !== 'teacher' || !teacherId) {
+      return;
+    }
+    
     setIsLoading(true);
-    const collectionsToListen: { name: string, setter: (data: any) => void, type: 'collection' | 'doc' }[] = [
-      { name: 'config', setter: setPlatformConfig, type: 'doc' },
-      { name: 'students', setter: setStudents, type: 'collection' },
-      { name: 'teachers', setter: setTeachers, type: 'collection' },
-      { name: 'classes', setter: setClasses, type: 'collection' },
-      { name: 'rewards', setter: setRewards, type: 'collection' },
-      { name: 'stocks', setter: setStocks, type: 'collection' },
+
+    const collectionsToListen: { name: string, setter: (data: any) => void }[] = [
+        { name: 'students', setter: setStudents },
+        { name: 'classes', setter: setClasses },
+        { name: 'teachers', setter: setTeachers },
+        { name: 'rewards', setter: setRewards },
+        { name: 'stocks', setter: setStocks },
     ];
 
-    const unsubscribes = collectionsToListen.map(({ name, setter, type }) => {
-      if (type === 'doc') {
-        return onSnapshot(doc(db, name, 'main'), (docSnap) => {
-          setter(docSnap.data() as any);
+    const unsubs = collectionsToListen.map(c => {
+        return onSnapshot(collection(db, c.name), (snapshot) => {
+            c.setter(snapshot.docs.map(d => ({ ...d.data(), id: d.id, _docId: d.id })));
         });
-      }
-      return onSnapshot(collection(db, name), (snapshot) => {
-        const data = snapshot.docs.map(d => ({ ...d.data(), id: d.id, _docId: d.id }));
-        setter(data as any);
-      });
     });
+    
+    const unsubConfig = onSnapshot(doc(db, 'config', 'main'), (doc) => {
+        if (doc.exists()) {
+            setPlatformConfig(doc.data() as PlatformConfig);
+        }
+    });
+    unsubs.push(unsubConfig);
 
     const timer = setTimeout(() => setIsLoading(false), 1500);
+    unsubs.push(() => clearTimeout(timer));
 
     return () => {
-      unsubscribes.forEach(unsub => unsub());
-      clearTimeout(timer);
+      unsubs.forEach(unsub => unsub());
     };
-  }, [setStudents, setStocks, setRewards, setClasses, setTeachers, setPlatformConfig, setIsLoading]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (isLoading) {
+    return (
+        <div className="flex h-screen w-full items-center justify-center">
+            <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+            載入資料中...
+        </div>
+    );
+  }
 
   return <TeacherLayoutContent>{children}</TeacherLayoutContent>;
 }

@@ -53,7 +53,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import type { Student, PointRecord, PlatformConfig, Class as ClassType } from "@/lib/types";
+import type { Student, PointRecord, PlatformConfig, Class as ClassType, Reward, Stock, Teacher } from "@/lib/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { formatDistanceToNow } from "date-fns";
@@ -70,12 +70,8 @@ function StudentLayoutContent({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { studentData, setStudentData } = useContext(StudentDataContext);
+  const { studentData } = useContext(StudentDataContext);
   const { 
-    setStudents,
-    setPlatformConfig,
-    setClasses,
-    isLoading, 
     platformConfig, 
     classes 
   } = useContext(AppDataContext);
@@ -86,17 +82,11 @@ function StudentLayoutContent({
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  
   const [hasNewAnnouncements, setHasNewAnnouncements] = useState(false);
   const [hasNewPointHistory, setHasNewPointHistory] = useState(false);
-
-  const handleLogout = useCallback(() => {
-    setStudentData({ student: null });
-    localStorage.removeItem('studentClassId');
-    localStorage.removeItem('studentId');
-    localStorage.removeItem('studentPassword');
-    localStorage.removeItem('userRole');
-    router.push('/');
-  }, [router, setStudentData]);
+  
+  const { setStudents } = useContext(AppDataContext);
 
   const student = studentData.student;
   
@@ -201,14 +191,6 @@ function StudentLayoutContent({
   const pointHistory = useMemo(() => {
     return student?.pointHistory?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
   }, [student?.pointHistory]);
-
-  if (isLoading || !student) {
-      return (
-        <div className="flex h-screen w-full items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      );
-  }
   
   const NotificationItem = ({ record }: { record: PointRecord }) => {
     const isPositive = record.points > 0;
@@ -288,7 +270,13 @@ function StudentLayoutContent({
                 <Settings className="mr-2 size-4" />
                 <span>設定</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleLogout}>
+              <DropdownMenuItem onClick={() => {
+                  localStorage.removeItem('studentClassId');
+                  localStorage.removeItem('studentId');
+                  localStorage.removeItem('studentPassword');
+                  localStorage.removeItem('userRole');
+                  router.push('/');
+              }}>
                 <LogOut className="mr-2 size-4" />
                 <span>登出</span>
               </DropdownMenuItem>
@@ -379,8 +367,8 @@ export default function StudentLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { setStudents, setStocks, setRewards, setClasses, setTeachers, setPlatformConfig, setIsLoading, fetchInitialData } = useContext(AppDataContext);
-  const { setStudentData } = useContext(StudentDataContext);
+  const { setStudents, setStocks, setRewards, setClasses, setTeachers, setPlatformConfig, setIsLoading, isLoading } = useContext(AppDataContext);
+  const { studentData, setStudentData } = useContext(StudentDataContext);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -405,6 +393,8 @@ export default function StudentLayout({
 
     setIsLoading(true);
 
+    const unsubs: (() => void)[] = [];
+
     // Single listener for the specific student document
     const unsubStudent = onSnapshot(doc(db, "students", `${classId}-${studentId}`), (doc) => {
         if (doc.exists()) {
@@ -419,30 +409,51 @@ export default function StudentLayout({
             toast({ title: "找不到學生資料", description: "請重新登入。", variant: "destructive" });
             handleLogout();
         }
-        // We might not be fully "done" loading here, but the primary user data is loaded.
-        // Other listeners will fill in the rest.
     }, (error) => {
         console.error("Error fetching student data:", error);
         toast({ title: "錯誤", description: "讀取學生資料時發生錯誤。", variant: "destructive" });
         handleLogout();
     });
+    unsubs.push(unsubStudent);
 
-    // Listeners for other collections
-    const unsubConfig = onSnapshot(doc(db, "config", "main"), (doc) => setPlatformConfig(doc.data() as PlatformConfig));
-    const unsubClasses = onSnapshot(collection(db, "classes"), (snap) => setClasses(snap.docs.map(d => ({ ...d.data(), id: d.id, _docId: d.id })) as ClassType[]));
-    const unsubStudents = onSnapshot(collection(db, "students"), (snap) => setStudents(snap.docs.map(d => ({ ...d.data(), _docId: d.id })) as Student[]));
+    const collectionsToListen: { name: string, setter: (data: any) => void }[] = [
+        { name: 'students', setter: setStudents },
+        { name: 'classes', setter: setClasses },
+        { name: 'teachers', setter: setTeachers },
+        { name: 'rewards', setter: setRewards },
+        { name: 'stocks', setter: setStocks },
+    ];
 
-    // Combine all unsubscribes
-    const unsubAll = [unsubStudent, unsubConfig, unsubClasses, unsubStudents];
+    collectionsToListen.forEach(c => {
+        const unsub = onSnapshot(collection(db, c.name), (snapshot) => {
+            c.setter(snapshot.docs.map(d => ({ ...d.data(), id: d.id, _docId: d.id })));
+        });
+        unsubs.push(unsub);
+    });
+    
+    const unsubConfig = onSnapshot(doc(db, 'config', 'main'), (doc) => {
+        if (doc.exists()) {
+            setPlatformConfig(doc.data() as PlatformConfig);
+        }
+    });
+    unsubs.push(unsubConfig);
 
-    // Mark loading as false after a short delay to allow all initial data to arrive.
     const timer = setTimeout(() => setIsLoading(false), 1500);
+    unsubs.push(() => clearTimeout(timer));
 
     return () => {
-      unsubAll.forEach(unsub => unsub());
-      clearTimeout(timer);
+      unsubs.forEach(unsub => unsub());
     };
-  }, [setClasses, setIsLoading, setPlatformConfig, setStudentData, setStudents, setTeachers, handleLogout, toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (isLoading || !studentData.student) {
+      return (
+        <div className="flex h-screen w-full items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      );
+  }
 
   return <StudentLayoutContent>{children}</StudentLayoutContent>;
 }

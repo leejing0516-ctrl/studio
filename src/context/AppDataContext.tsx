@@ -25,7 +25,6 @@ interface AppDataContextType {
   setIsLoading: (loading: boolean) => void;
   isMarketOpen: boolean;
   runTransaction: (updateFunction: (transaction: Transaction) => Promise<any>) => Promise<any>;
-  fetchInitialData: () => Promise<void>;
 }
 
 const defaultState: AppDataContextType = {
@@ -45,7 +44,6 @@ const defaultState: AppDataContextType = {
   setIsLoading: () => {},
   isMarketOpen: false,
   runTransaction: async () => {},
-  fetchInitialData: async () => {},
 };
 
 export const AppDataContext = createContext<AppDataContextType>(defaultState);
@@ -73,11 +71,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isMarketOpen, setIsMarketOpen] = useState(false);
 
-  const fetchInitialData = useCallback(async () => {
-    // This function can be kept for manual refetching if needed,
-    // but the primary data loading is now handled by useEffect in layouts.
-  }, []);
-
   const handleRunTransaction = useCallback(async (updateFunction: (transaction: Transaction) => Promise<any>) => {
     return firestoreRunTransaction(db, updateFunction);
   }, []);
@@ -103,13 +96,15 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     currentState: T[]
   ) => {
     return async (action: SetStateActionWithFunction<T[]>) => {
-      const newData = typeof action === 'function' ? action(currentState) : action;
+      const oldData = currentState;
+      const newData = typeof action === 'function' ? action(oldData) : action;
+      
       stateSetter(newData); // Optimistic update
       
       const batch = writeBatch(db);
       const useId = useIdAsDocId(collectionName);
 
-      const oldMap = new Map(currentState.map(item => [useId ? item.id : item._docId, item]));
+      const oldMap = new Map(oldData.map(item => [useId ? item.id : item._docId, item]));
       const newMap = new Map(newData.map(item => [useId ? item.id : item._docId, item]));
       
       oldMap.forEach((_, key) => {
@@ -136,7 +131,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         await batch.commit();
       } catch (error) {
         console.error(`Batch update for ${collectionName} failed:`, error);
-        stateSetter(currentState);
+        stateSetter(oldData); // Revert on failure
       }
     };
   };
@@ -159,7 +154,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         setIsLoading,
         isMarketOpen,
         runTransaction: handleRunTransaction,
-        fetchInitialData,
     }}>
       {children}
     </AppDataContext.Provider>
