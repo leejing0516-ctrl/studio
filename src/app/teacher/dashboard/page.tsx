@@ -239,7 +239,9 @@ export default function TeacherDashboardPage() {
                                     <TableHead>姓名</TableHead>
                                     <TableHead>分組</TableHead>
                                     <TableHead className="text-right">目前點數</TableHead>
-                                    <TableHead className="w-[250px]" colSpan={2}>個別操作</TableHead>
+                                    <TableHead className="w-[150px]">調整點數</TableHead>
+                                    <TableHead className="w-[200px]">理由 (選填)</TableHead>
+                                    <TableHead className="text-right w-[80px]">操作</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -261,8 +263,11 @@ export default function TeacherDashboardPage() {
                                         <TableCell>{student.name}</TableCell>
                                         <TableCell>{teacherGroups.find(g => g.id === student.groupId)?.name || '未分組'}</TableCell>
                                         <TableCell className="text-right font-medium">{Math.round(student.points).toLocaleString()}</TableCell>
-                                        <TableCell className="w-[150px]">
-                                            <Input type="number" value={points[student.id] || ''} onChange={e => handlePointChange(student.id, e.target.value)} placeholder="點數 (例如: 50, -5)" />
+                                        <TableCell>
+                                            <Input type="number" value={points[student.id] || ''} onChange={e => handlePointChange(student.id, e.target.value)} placeholder="例如: 50, -5" />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Input value={reason[student.id] || ''} onChange={e => handleReasonChange(student.id, e.target.value)} placeholder="例如: 上課表現優良" />
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <Button size="sm" onClick={() => handleIndividualSubmit(student)} disabled={points[student.id] === '' || points[student.id] === undefined}>執行</Button>
@@ -270,7 +275,7 @@ export default function TeacherDashboardPage() {
                                     </TableRow>
                                 )) : (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="h-24 text-center">這個班級目前沒有學生。</TableCell>
+                                        <TableCell colSpan={7} className="h-24 text-center">這個班級目前沒有學生。</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
