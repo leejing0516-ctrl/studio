@@ -1,11 +1,11 @@
 
 "use client";
 
-import { useState, useContext, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
-import { AppDataContext } from "@/context/AppDataContext";
+import { useSchoolStore } from "@/store/useSchoolStore";
 import { useToast } from "@/hooks/use-toast";
 import type { Challenge, StudentChallenge } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,14 +16,14 @@ import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
 export default function ChallengesPage() {
-    const { student: currentStudent, setStudents, teachers } = useAuth();
-    const { platformConfig } = useContext(AppDataContext);
+    const { student: currentStudent, setStudents } = useAuth();
+    const { config: platformConfig, teachers } = useSchoolStore();
     const { toast } = useToast();
 
     const { availableClassChallenges, availableSchoolChallenges, myChallenges } = useMemo(() => {
         if (!currentStudent) return { availableClassChallenges: [], availableSchoolChallenges: [], myChallenges: [] };
         
-        const teacherForClass = teachers.find(t => t.classId === currentStudent.classId);
+        const teacherForClass = teachers.find(t => t.classIds?.includes(currentStudent.classId));
         const allChallenges = platformConfig?.challenges || [];
 
         const studentChallengeIds = (currentStudent.challenges || []).map(c => c.challengeId);
@@ -33,7 +33,11 @@ export default function ChallengesPage() {
                 .filter(challenge => {
                     if (studentChallengeIds.includes(challenge.id)) return false; 
                     if (scope === 'school') return challenge.scope === 'school';
-                    if (scope === 'class') return challenge.scope === 'class' && challenge.providerId === teacherForClass?.id;
+                    if (scope === 'class') {
+                        // A class challenge is available if it's provided by any teacher associated with the student's class.
+                        const provider = teachers.find(t => t.id === challenge.providerId);
+                        return provider?.classIds?.includes(currentStudent.classId);
+                    }
                     return false;
                 })
         }
@@ -147,7 +151,7 @@ export default function ChallengesPage() {
                     </Button>
                 )}
                 {studentChallenge.status === 'completed' && (
-                    <Button variant="outline" disabled className="text-success border-success/50">
+                    <Button variant="outline" disabled className="text-green-600 border-green-600/50">
                         <CheckCircle className="mr-2" />
                         已完成
                     </Button>
