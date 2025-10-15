@@ -4,7 +4,7 @@
 import React, { createContext, useContext, PropsWithChildren, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSchoolStore } from '@/store/useSchoolStore';
-import type { Student, Teacher, PlatformConfig } from '@/lib/types';
+import type { Student, Teacher, PlatformConfig, ClassInfo } from '@/lib/types';
 import { doc, setDoc, writeBatch, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -19,6 +19,7 @@ interface AuthContextType {
   setAuthInfo: (info: { role: 'student' | 'teacher'; docId: string }) => void;
   setStudents: (updater: (prev: Student[]) => Student[]) => Promise<void>;
   setTeachers: (updater: (prev: Teacher[]) => Teacher[]) => Promise<void>;
+  setClasses: (updater: (prev: ClassInfo[]) => ClassInfo[]) => Promise<void>;
   setPlatformConfig: (updates: Partial<PlatformConfig>) => Promise<void>;
   isLoading: boolean;
   runTransaction: (updateFunction: (transaction: any) => Promise<any>) => Promise<void>;
@@ -35,9 +36,10 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   const { toast } = useToast();
   
   const { 
-    students, teachers, config, 
+    students, teachers, classes, config, 
     setStudents: setStoreStudents, 
     setTeachers: setStoreTeachers, 
+    setClasses: setStoreClasses,
     setConfig: setStoreConfig,
     loading: isStoreLoading,
   } = useSchoolStore();
@@ -137,6 +139,31 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       }
   }, [teachers, setStoreTeachers, toast]);
   
+  const setClassesWithDbUpdate = useCallback(async (updater: (prev: ClassInfo[]) => ClassInfo[]) => {
+      const oldClasses = classes;
+      const newClasses = updater(oldClasses);
+      setStoreClasses(newClasses); // Optimistic update
+      
+      try {
+        const batch = writeBatch(db);
+        newClasses.forEach((classInfo) => {
+            const oldClass = oldClasses.find(c => c._docId === classInfo._docId);
+            if (!oldClass || JSON.stringify(classInfo) !== JSON.stringify(oldClass)) {
+                if (classInfo._docId) {
+                    const ref = doc(db, "classes", classInfo._docId);
+                    const { _docId, ...classData } = classInfo;
+                    batch.set(ref, classData, { merge: true });
+                }
+            }
+        });
+        await batch.commit();
+      } catch (error: any) {
+        setStoreClasses(oldClasses); // Revert
+        toast({ title: "班級資料更新失敗", variant: "destructive" });
+        throw error;
+      }
+  }, [classes, setStoreClasses, toast]);
+
   const setPlatformConfigWithDbUpdate = useCallback(async (updates: Partial<PlatformConfig>) => {
       const oldConfig = config;
       const newConfig = { ...oldConfig, ...updates } as PlatformConfig;
@@ -176,6 +203,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     setAuthInfo,
     setStudents: setStudentsWithDbUpdate,
     setTeachers: setTeachersWithDbUpdate,
+    setClasses: setClassesWithDbUpdate,
     setPlatformConfig: setPlatformConfigWithDbUpdate,
     isLoading: isAuthLoading || isStoreLoading,
     runTransaction: runTransactionWithToast,

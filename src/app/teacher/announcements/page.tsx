@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useContext, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -21,7 +20,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Teacher, Class, Announcement } from "@/lib/types";
+import type { Announcement } from "@/lib/types";
 import { PlusCircle, Edit, Trash2, Loader2, School, GraduationCap, Megaphone } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
@@ -37,7 +36,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { AppDataContext } from "@/context/AppDataContext";
+import { useSchoolStore } from "@/store/useSchoolStore";
+import { useAuth } from "@/context/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { Separator } from "@/components/ui/separator";
@@ -45,9 +45,11 @@ import { Separator } from "@/components/ui/separator";
 
 export default function TeacherAnnouncementsPage() {
     const { 
-        classes, setClasses,
-        isLoading, platformConfig, setPlatformConfig 
-    } = useContext(AppDataContext);
+        classes,
+        config: platformConfig,
+        loading: isLoading
+    } = useSchoolStore();
+    const { setClasses, setPlatformConfig } = useAuth();
 
     const { toast } = useToast();
 
