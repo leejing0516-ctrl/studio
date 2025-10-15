@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useContext, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   Card,
@@ -17,10 +17,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, ImageOff, UploadCloud, Trash2, Coins, Wand2, GripVertical } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
 import type { PetStage } from "@/lib/types";
 import { resizeImage, fileToDataUrl } from "@/lib/image-utils";
+import { useSchoolStore } from "@/store/useSchoolStore";
+import { useAuth } from "@/context/AuthContext";
 
 const defaultPetStages: PetStage[] = [
   {
@@ -51,7 +52,8 @@ const defaultPetStages: PetStage[] = [
 
 
 export default function TeacherPetsPage() {
-    const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
+    const { config: platformConfig } = useSchoolStore();
+    const { setPlatformConfig } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
     
@@ -244,3 +246,5 @@ export default function TeacherPetsPage() {
         </div>
     );
 }
+
+    
