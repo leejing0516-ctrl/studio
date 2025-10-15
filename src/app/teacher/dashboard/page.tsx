@@ -189,11 +189,12 @@ export default function TeacherDashboardPage() {
                     
                     <Card className="bg-muted/50">
                         <CardHeader>
-                             <CardTitle className="text-lg">批次操作</CardTitle>
+                             <CardTitle className="text-lg">發送/扣除點數</CardTitle>
+                             <CardDescription>獎勵或扣除學生的點數。輸入正數為發送，負數為扣除。</CardDescription>
                         </CardHeader>
                         <CardContent className="grid md:grid-cols-4 gap-4 items-end">
                             <div className="md:col-span-1 space-y-2">
-                                <Label htmlFor="batch-target">目標</Label>
+                                <Label htmlFor="batch-target">批次操作: 選擇目標</Label>
                                 <Select value={batchTarget} onValueChange={setBatchTarget}>
                                     <SelectTrigger id="batch-target">
                                         <SelectValue />
@@ -206,15 +207,15 @@ export default function TeacherDashboardPage() {
                                 </Select>
                             </div>
                             <div className="md:col-span-1 space-y-2">
-                                <Label htmlFor="batch-points">點數 (+/-)</Label>
-                                <Input id="batch-points" type="number" placeholder="例如: 50 或 -50" value={batchPoints} onChange={e => setBatchPoints(e.target.value === '' ? '' : Number(e.target.value))} />
+                                <Label htmlFor="batch-points">點數</Label>
+                                <Input id="batch-points" type="number" placeholder="例如: 50, -5" value={batchPoints} onChange={e => setBatchPoints(e.target.value === '' ? '' : Number(e.target.value))} />
                             </div>
                             <div className="md:col-span-1 space-y-2">
-                                <Label htmlFor="batch-reason">理由</Label>
+                                <Label htmlFor="batch-reason">理由 (選填)</Label>
                                 <Input id="batch-reason" placeholder="例如: 小組競賽獲勝" value={batchReason} onChange={e => setBatchReason(e.target.value)} />
                             </div>
                             <div className="md:col-span-1">
-                                <Button className="w-full" onClick={handleBatchSubmit}>執行批次操作</Button>
+                                <Button className="w-full" onClick={handleBatchSubmit}>執行</Button>
                             </div>
                         </CardContent>
                     </Card>
@@ -237,10 +238,9 @@ export default function TeacherDashboardPage() {
                                         />
                                     </TableHead>
                                     <TableHead>姓名</TableHead>
+                                    <TableHead>分組</TableHead>
                                     <TableHead className="text-right">目前點數</TableHead>
-                                    <TableHead className="w-[120px]">調整點數</TableHead>
-                                    <TableHead>理由</TableHead>
-                                    <TableHead className="text-right w-[100px]">操作</TableHead>
+                                    <TableHead className="w-[250px]" colSpan={2}>個別操作</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -260,12 +260,10 @@ export default function TeacherDashboardPage() {
                                             />
                                         </TableCell>
                                         <TableCell>{student.name}</TableCell>
+                                        <TableCell>{teacherGroups.find(g => g.id === student.groupId)?.name || '未分組'}</TableCell>
                                         <TableCell className="text-right font-medium">{Math.round(student.points).toLocaleString()}</TableCell>
-                                        <TableCell>
-                                            <Input type="number" value={points[student.id] || ''} onChange={e => handlePointChange(student.id, e.target.value)} placeholder="+/-" />
-                                        </TableCell>
-                                        <TableCell>
-                                            <Input value={reason[student.id] || ''} onChange={e => handleReasonChange(student.id, e.target.value)} placeholder="點數調整理由" />
+                                        <TableCell className="w-[150px]">
+                                            <Input type="number" value={points[student.id] || ''} onChange={e => handlePointChange(student.id, e.target.value)} placeholder="點數 (例如: 50, -5)" />
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <Button size="sm" onClick={() => handleIndividualSubmit(student)} disabled={points[student.id] === '' || points[student.id] === undefined}>執行</Button>
@@ -283,6 +281,5 @@ export default function TeacherDashboardPage() {
             </Card>
         </div>
     );
-}
 
     
