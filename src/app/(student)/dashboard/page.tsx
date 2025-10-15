@@ -114,7 +114,7 @@ export default function StudentDashboardPage() {
 
 
   const portfolioValue = useMemo(() => {
-    if (!currentStudent) return 0;
+    if (!currentStudent || !marketStocks) return 0;
     return (currentStudent.portfolio || []).reduce((acc, item) => {
         const marketInfo = marketStocks.find(s => s.ticker === item.ticker);
         const currentValue = marketInfo ? marketInfo.price * item.shares : 0;
@@ -138,7 +138,7 @@ export default function StudentDashboardPage() {
 
 
   const { classRank, classPercentile } = useMemo(() => {
-    if (!currentStudent) return { classRank: 0, classPercentile: 0 };
+    if (!currentStudent || !students || !marketStocks) return { classRank: 0, classPercentile: 0 };
     
     const studentsInClass = students.filter(s => s.classId === currentStudent.classId);
     if (studentsInClass.length === 0) return { classRank: 0, classPercentile: 0 };
@@ -169,7 +169,7 @@ export default function StudentDashboardPage() {
   }, [students, currentStudent, marketStocks]);
 
   const { schoolRank, schoolPercentile } = useMemo(() => {
-    if (!currentStudent || students.length === 0) return { schoolRank: 0, schoolPercentile: 0 };
+    if (!currentStudent || !students || !marketStocks) return { schoolRank: 0, schoolPercentile: 0 };
     
     const studentsWithAssets = students.map(student => {
       const studentPortfolioValue = (student.portfolio || []).reduce((acc, item) => {
