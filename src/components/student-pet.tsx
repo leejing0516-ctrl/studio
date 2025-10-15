@@ -1,22 +1,16 @@
-
 "use client";
 
-import { useState, useMemo, useContext, useEffect, useCallback } from 'react';
+import { useMemo } from 'react';
 import Image from 'next/image';
 import type { Student, PetStage } from '@/lib/types';
-import { Button } from './ui/button';
-import { AppDataContext } from '@/context/AppDataContext';
-import { useAuth } from '@/context/AuthContext';
-import { Wand2, Loader2, Star } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useSchoolStore } from '@/store/useSchoolStore';
+import { Star } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 
 
 const StudentPet = ({ student }: { student: Student }) => {
-    const { platformConfig } = useContext(AppDataContext);
-    const { setStudents } = useAuth();
-    const { toast } = useToast();
+    const { config: platformConfig } = useSchoolStore();
 
     const petStages = useMemo(() => platformConfig?.petStages || [], [platformConfig]);
 
