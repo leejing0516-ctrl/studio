@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -16,7 +16,6 @@ import { Input } from "@/components/ui/input";
 import { Loader2, Percent, ImageOff, UploadCloud, Trash2, Clock, Gift, AppWindow, Smartphone, Palette } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
 import { themes as defaultThemes, type Theme } from "@/lib/themes";
 import { resizeImage, fileToDataUrl } from "@/lib/image-utils";
@@ -24,6 +23,8 @@ import { DEFAULT_LOGO_URL, DEFAULT_APP_ICON_URL } from "@/lib/config";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { PlatformConfig, CustomTheme } from "@/lib/types";
+import { useAuth } from "@/context/AuthContext";
+import { useSchoolStore } from "@/store/useSchoolStore";
 
 const ThemeColorPreview = ({ theme }: { theme: Theme }) => {
     // Determine which cssVars to use. Prioritize light, fallback to dark.
@@ -40,7 +41,8 @@ const ThemeColorPreview = ({ theme }: { theme: Theme }) => {
 
 
 export default function TeacherSettingsPage() {
-    const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
+    const { config: platformConfig } = useSchoolStore();
+    const { setPlatformConfig } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
 
