@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useContext } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -11,13 +11,12 @@ import { Label } from "@/components/ui/label";
 import { User, School, ArrowRight, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Student, Teacher, Class, PlatformConfig } from '@/lib/types';
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import type { Student, Teacher, Class } from '@/lib/types';
+import { AppDataContext } from '@/context/AppDataContext';
 import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
 
 
-export default function HomePage() {
+function LoginPageContent() {
   const [studentIdInput, setStudentIdInput] = useState('');
   const [studentPassword, setStudentPassword] = useState('');
   const [classId, setClassId] = useState('');
@@ -29,19 +28,16 @@ export default function HomePage() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const [localClasses, setLocalClasses] = useState<Class[]>([]);
-  const [localTeachers, setLocalTeachers] = useState<Teacher[]>([]);
-  const [platformConfig, setPlatformConfig] = useState<PlatformConfig | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { students, teachers, classes, platformConfig, isLoading } = useContext(AppDataContext);
 
   const sortedTeachers = useMemo(() => {
-    return [...localTeachers].sort((a, b) => {
+    return [...teachers].sort((a, b) => {
         if (a.sortOrder && b.sortOrder) return a.sortOrder - b.sortOrder;
         if (a.sortOrder) return -1;
         if (b.sortOrder) return 1;
         return (a.id || '').localeCompare(b.id || '');
     });
-  }, [localTeachers]);
+  }, [teachers]);
 
   useEffect(() => {
     const userRole = localStorage.getItem('userRole');
@@ -52,29 +48,7 @@ export default function HomePage() {
         router.replace('/teacher/dashboard');
         return;
     }
-
-    const fetchLoginData = async () => {
-        setIsLoading(true);
-        try {
-            const [classesSnap, teachersSnap, configDoc] = await Promise.all([
-                getDocs(collection(db, "classes")),
-                getDocs(collection(db, "teachers")),
-                getDoc(doc(db, 'config', 'main'))
-            ]);
-            setLocalClasses(classesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Class[]);
-            setLocalTeachers(teachersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Teacher[]);
-            if (configDoc.exists()) {
-                setPlatformConfig(configDoc.data() as PlatformConfig);
-            }
-        } catch (e) {
-            console.error("Failed to fetch login data", e);
-            toast({ title: "錯誤", description: "無法載入班級與教師資料，請重新整理頁面。", variant: "destructive" });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-    fetchLoginData();
-  }, [router, toast]);
+  }, [router]);
 
   const handleStudentLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,11 +61,9 @@ export default function HomePage() {
     }
     
     try {
-        const studentRef = doc(db, 'students', `${classId}-${studentIdInput}`);
-        const studentDoc = await getDoc(studentRef);
+        const foundStudent = students.find(s => s.classId === classId && s.id === studentIdInput);
 
-        if (studentDoc.exists()) {
-            const foundStudent = studentDoc.data() as Student;
+        if (foundStudent) {
             if (foundStudent.password === studentPassword) {
                 toast({ title: "登入成功！", description: `歡迎回來，${foundStudent.name}！`});
                 localStorage.setItem('userRole', 'student');
@@ -125,7 +97,7 @@ export default function HomePage() {
     }
 
     try {
-        const teacher = localTeachers.find(t => t.id === selectedTeacherId);
+        const teacher = teachers.find(t => t.id === selectedTeacherId);
         if (!teacher) {
             throw new Error("找不到教師帳號");
         }
@@ -205,7 +177,7 @@ export default function HomePage() {
                             <SelectValue placeholder="請選擇班級" />
                         </SelectTrigger>
                         <SelectContent>
-                            {localClasses.map(c => (
+                            {classes.map(c => (
                                 <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                             ))}
                         </SelectContent>
@@ -317,4 +289,8 @@ export default function HomePage() {
       </footer>
     </div>
   );
+}
+
+export default function HomePage() {
+  return <LoginPageContent />;
 }

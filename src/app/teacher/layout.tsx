@@ -361,21 +361,5 @@ export default function TeacherLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { fetchInitialData, isLoading } = useContext(AppDataContext);
-
-  useEffect(() => {
-    const unsub = fetchInitialData();
-    return () => unsub();
-  }, [fetchInitialData]);
-
-  if (isLoading) {
-    return (
-        <div className="flex h-screen w-full items-center justify-center">
-            <Loader2 className="mr-2 h-6 w-6 animate-spin" />
-            載入資料中...
-        </div>
-    );
-  }
-
   return <TeacherLayoutContent>{children}</TeacherLayoutContent>;
 }

@@ -9,8 +9,7 @@ import type { CustomTheme } from "@/lib/types";
 import { useState, useMemo, useEffect } from "react";
 import { onSnapshot, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { AppDataProvider } from "@/context/AppDataContext";
-import { StudentDataProvider } from "@/context/StudentDataContext";
+import { Providers } from "@/context/Providers";
 
 function StyleInjector() {
   const [themeName, setThemeName] = useState('makeup-pink');
@@ -83,11 +82,9 @@ export default function RootLayout({
         <StyleInjector />
       </head>
       <body className="font-body antialiased">
-          <StudentDataProvider>
-            <AppDataProvider>
-              {children}
-            </AppDataProvider>
-          </StudentDataProvider>
+          <Providers>
+            {children}
+          </Providers>
           <Toaster />
       </body>
     </html>
