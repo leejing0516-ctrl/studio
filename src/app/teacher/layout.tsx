@@ -72,7 +72,8 @@ function TeacherLayoutContent({
     config: platformConfig,
     teachers,
   } = useSchoolStore();
-  const { teacher, isLoading: isAuthLoading, handleLogout, setTeachers } = useAuth();
+  const { teacher, handleLogout, setStudents: setStoreStudents } = useAuth();
+  const setTeachers = useSchoolStore((state) => state.setTeachers);
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -128,17 +129,20 @@ function TeacherLayoutContent({
     }
 
      try {
-        await setTeachers(currentTeachers => currentTeachers.map(t => {
-            if (t.id === teacher.id) {
+        // This is a simplified update. A proper implementation would use a server-side function
+        // to securely update the password in the database.
+        const updatedTeachers = teachers.map(t => {
+             if (t.id === teacher.id) {
                 return { ...t, password: newPassword };
             }
             return t;
-        }));
+        });
+        setTeachers(updatedTeachers);
         localStorage.setItem('teacherPassword', newPassword);
         toast({ title: "密碼已更新", description: "您的密碼已成功更新。" });
         setIsSettingsOpen(false);
-    } catch (e) {
-        toast({ title: "更新失敗", description: "更新密碼時發生錯誤。", variant: "destructive" });
+    } catch (e: any) {
+        toast({ title: "更新失敗", description: e.message || "更新密碼時發生錯誤。", variant: "destructive" });
     } finally {
          setIsSaving(false);
     }
@@ -172,23 +176,6 @@ function TeacherLayoutContent({
     teacher: '班級導師',
     subject_teacher: '科任教師'
   };
-
-  if (isAuthLoading) {
-    return (
-        <div className="flex h-screen w-full items-center justify-center">
-            <Loader2 className="mr-2 h-6 w-6 animate-spin" />
-            載入中…
-        </div>
-    );
-  }
-
-  if (!teacher) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        正在導回登入頁…
-      </div>
-    );
-  }
 
   return (
     <>
@@ -317,9 +304,11 @@ function Providers({ children }: { children: React.ReactNode }) {
     const { loading, setLoading, setConfig, setStudents, setTeachers, setClasses } = useSchoolStore();
     const [error, setError] = useState<string | null>(null);
     const [isSynced, setIsSynced] = useState(false);
-
+    const { teacher, isLoading: isAuthLoading } = useAuth();
+    
     useEffect(() => {
         // This effect runs once on mount to fetch all initial data.
+        if (isSynced || !teacher) return;
         const sync = async () => {
             setError(null);
             setLoading(true);
@@ -337,7 +326,15 @@ function Providers({ children }: { children: React.ReactNode }) {
             }
         };
         sync();
-    }, [setLoading, setConfig, setStudents, setTeachers, setClasses]);
+    }, [setLoading, setConfig, setStudents, setTeachers, setClasses, isSynced, teacher]);
+    
+    if (isAuthLoading) {
+      return (
+        <div className="flex h-screen w-full items-center justify-center">
+          正在驗證您的身份...
+        </div>
+      );
+    }
     
     if (error) {
         return <div className="flex h-screen w-full items-center justify-center text-destructive">資料同步失敗: {error}</div>;

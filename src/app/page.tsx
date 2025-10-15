@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -11,13 +11,13 @@ import { Label } from "@/components/ui/label";
 import { User, School, ArrowRight, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AppDataContext } from "@/context/AppDataContext";
 import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
 import { DEFAULT_LOGO_URL } from '@/lib/config';
 import type { Student } from '@/lib/types';
+import { useSchoolStore } from '@/store/useSchoolStore';
+import { syncAll } from '@/lib/firestoreFetchers';
 
-
-export default function LoginPage() {
+function LoginPageContent() {
   const [studentIdInput, setStudentIdInput] = useState('');
   const [studentPassword, setStudentPassword] = useState('');
   const [classId, setClassId] = useState('');
@@ -29,7 +29,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const { classes, students, teachers, platformConfig, isLoading } = useContext(AppDataContext);
+  const { classes, students, teachers, config: platformConfig } = useSchoolStore();
   
   const sortedTeachers = useMemo(() => {
     if (!teachers) return [];
@@ -40,16 +40,6 @@ export default function LoginPage() {
         return (a.id || '').localeCompare(b.id || '');
     });
   }, [teachers]);
-
-  useEffect(() => {
-    const userRole = localStorage.getItem('userRole');
-    if (userRole === 'student') {
-        router.replace('/dashboard');
-    } else if (userRole === 'teacher') {
-        router.replace('/teacher/dashboard');
-    }
-  }, [router]);
-
 
   const handleStudentLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,11 +55,11 @@ export default function LoginPage() {
         const foundStudent = students.find(s => s.classId === classId && s.id === studentIdInput);
 
         if (foundStudent) {
-            const studentWithPassword = foundStudent as Student;
-            if (studentWithPassword.password === studentPassword) {
+            if (foundStudent.password === studentPassword) {
                 toast({ title: "登入成功！", description: `歡迎回來，${foundStudent.name}！`});
                 localStorage.setItem('userRole', 'student');
                 localStorage.setItem('studentClassId', classId);
+                localStorage.setItem('studentDocId', foundStudent._docId!);
                 localStorage.setItem('studentId', studentIdInput);
                 localStorage.setItem('studentPassword', studentPassword);
                 router.push('/dashboard');
@@ -79,10 +69,10 @@ export default function LoginPage() {
         } else {
              throw new Error("找不到學生資料");
         }
-    } catch (error) {
+    } catch (error: any) {
         toast({
             title: "登入失敗",
-            description: "您輸入的班級、學號或密碼不正確。",
+            description: error.message || "您輸入的班級、學號或密碼不正確。",
             variant: "destructive",
         });
         setIsLoggingIn(false);
@@ -109,34 +99,21 @@ export default function LoginPage() {
             toast({ title: "登入成功！", description: `歡迎回來，${teacher.name}！` });
             localStorage.setItem('userRole', 'teacher');
             localStorage.setItem('teacherId', selectedTeacherId);
-            localStorage.setItem('teacherName', teacher.name);
-            localStorage.setItem('teacherClassIds', JSON.stringify(teacher.classIds || []));
-            localStorage.setItem('teacherRole', teacher.role);
+            localStorage.setItem('teacherDocId', teacher._docId!);
             localStorage.setItem('teacherPassword', teacherPassword); 
             router.push('/teacher/dashboard');
         } else {
             throw new Error("帳號或密碼不正確");
         }
-    } catch (error) {
+    } catch (error: any) {
          toast({
             title: "登入失敗",
-            description: "您輸入的帳號或密碼不正確。",
+            description: error.message || "您輸入的帳號或密碼不正確。",
             variant: "destructive",
         });
         setIsLoggingIn(false);
     }
   };
-
-  const isFormDisabled = isLoggingIn || isLoading;
-
-  if (isLoading) {
-    return (
-        <div className="flex h-screen w-full items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin" />
-            正在連接伺服器...
-        </div>
-    );
-  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 font-body">
@@ -168,7 +145,7 @@ export default function LoginPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                   <Label htmlFor="class-select">班級</Label>
-                  <Select onValueChange={setClassId} value={classId} disabled={isFormDisabled}>
+                  <Select onValueChange={setClassId} value={classId} disabled={isLoggingIn}>
                       <SelectTrigger id="class-select">
                           <SelectValue placeholder="請選擇班級" />
                       </SelectTrigger>
@@ -187,7 +164,7 @@ export default function LoginPage() {
                   required 
                   value={studentIdInput}
                   onChange={(e) => setStudentIdInput(e.target.value)}
-                  disabled={isFormDisabled}
+                  disabled={isLoggingIn}
                 />
               </div>
               <div className="space-y-2">
@@ -199,12 +176,12 @@ export default function LoginPage() {
                   required 
                   value={studentPassword}
                   onChange={(e) => setStudentPassword(e.target.value)}
-                  disabled={isFormDisabled}
+                  disabled={isLoggingIn}
                 />
               </div>
             </CardContent>
             <CardFooter>
-              <Button type="submit" className="w-full text-base py-6" disabled={isFormDisabled}>
+              <Button type="submit" className="w-full text-base py-6" disabled={isLoggingIn}>
                   {isLoggingIn ? <Loader2 className="animate-spin mr-2" /> : <ArrowRight className="mr-2 h-4 w-4" />}
                   {isLoggingIn ? "登入中..." : "登入"}
               </Button>
@@ -221,7 +198,7 @@ export default function LoginPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                     <Label htmlFor="teacher-id-select">教師帳號</Label>
-                    <Select onValueChange={setSelectedTeacherId} value={selectedTeacherId} disabled={isFormDisabled}>
+                    <Select onValueChange={setSelectedTeacherId} value={selectedTeacherId} disabled={isLoggingIn}>
                         <SelectTrigger id="teacher-id-select">
                             <SelectValue placeholder="請選擇您的帳號" />
                         </SelectTrigger>
@@ -241,12 +218,12 @@ export default function LoginPage() {
                     required 
                     value={teacherPassword}
                     onChange={(e) => setTeacherPassword(e.target.value)}
-                    disabled={isFormDisabled}
+                    disabled={isLoggingIn}
                   />
                 </div>
               </CardContent>
               <CardFooter>
-                  <Button type="submit" className="w-full text-base py-6" disabled={isFormDisabled}>
+                  <Button type="submit" className="w-full text-base py-6" disabled={isLoggingIn}>
                     {isLoggingIn ? <Loader2 className="animate-spin mr-2" /> : <ArrowRight className="mr-2 h-4 w-4" />}
                     {isLoggingIn ? "以老師身份進入" : "以老師身份進入"}
                 </Button>
@@ -276,4 +253,56 @@ export default function LoginPage() {
       </footer>
     </div>
   );
+}
+
+
+export default function LoginPage() {
+    const { loading, setLoading, setConfig, setStudents, setTeachers, setClasses } = useSchoolStore();
+    const [error, setError] = useState<string | null>(null);
+    const router = useRouter();
+
+    useEffect(() => {
+        // Redirect if already logged in
+        const userRole = localStorage.getItem('userRole');
+        if (userRole === 'student') {
+            router.replace('/dashboard');
+            return;
+        } else if (userRole === 'teacher') {
+            router.replace('/teacher/dashboard');
+            return;
+        }
+        
+        // If not logged in, sync data
+        const sync = async () => {
+            setError(null);
+            setLoading(true);
+            try {
+                const { config, students, teachers, classes } = await syncAll();
+                setConfig(config);
+                setStudents(students);
+                setTeachers(teachers);
+                setClasses(classes);
+            } catch (e: any) {
+                setError(e?.message ?? "同步失敗");
+            } finally {
+                setLoading(false);
+            }
+        };
+        sync();
+    }, [setLoading, setConfig, setStudents, setTeachers, setClasses, router]);
+    
+    if (loading) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                正在同步全校資料...
+            </div>
+        );
+    }
+    
+    if (error) {
+        return <div className="flex h-screen w-full items-center justify-center text-destructive">資料同步失敗: {error}</div>;
+    }
+
+    return <LoginPageContent />;
 }

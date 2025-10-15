@@ -3,12 +3,12 @@ import {
   collection, doc, getDoc, getDocs, query, where,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { ConfigMain, Student, Teacher, ClassInfo } from "./types";
+import { PlatformConfig, Student, Teacher, ClassInfo } from "./types";
 
-export async function fetchConfigMain(): Promise<ConfigMain> {
+export async function fetchConfigMain(): Promise<PlatformConfig> {
   const snap = await getDoc(doc(db, "config", "main"));
   if (!snap.exists()) throw new Error("config/main 不存在");
-  return { ...(snap.data() as ConfigMain) };
+  return { ...(snap.data() as PlatformConfig) };
 }
 
 export async function fetchAllStudents(): Promise<Student[]> {

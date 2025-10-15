@@ -2,8 +2,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import React, { useContext, useState, useMemo, useCallback } from "react";
+import { usePathname } from "next/navigation";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import {
   SidebarProvider,
   Sidebar,
@@ -36,7 +36,8 @@ import {
   Repeat,
   Globe,
   Smile,
-  BookUp
+  BookUp,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,8 +48,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AppDataContext } from "@/context/AppDataContext";
-import { StudentDataContext } from "@/context/StudentDataContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -59,30 +58,22 @@ import { Separator } from "@/components/ui/separator";
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
+import { useSchoolStore } from "@/store/useSchoolStore";
+import { syncAll } from "@/lib/firestoreFetchers";
 
-
-export default function StudentLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function StudentLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const { toast } = useToast();
   
-  const { 
-    platformConfig, 
-    classes, 
-    setStudents 
-  } = useContext(AppDataContext);
-  const { studentData, setStudentData } = useContext(StudentDataContext);
+  const { config: platformConfig, classes } = useSchoolStore();
+  const { student, handleLogout, setStudents } = useAuth();
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  
-  const student = studentData?.student;
 
   const hasNewAnnouncements = useMemo(() => {
     if (!student) return false;
@@ -102,12 +93,6 @@ export default function StudentLayout({
       .reduce((latest, record) => Math.max(latest, new Date(record.date).getTime()), 0);
     return latestPointRecordDate > lastPointHistoryView;
   }, [student]);
-
-  const handleLogout = () => {
-    localStorage.clear();
-    setStudentData({} as any);
-    router.replace("/");
-  };
 
   const handleChangePassword = async () => {
     if (!student || !student.id) return;
@@ -131,7 +116,7 @@ export default function StudentLayout({
 
     try {
         await setStudents(prev => prev.map(s => {
-            if (s.id === student.id && s.classId === student.classId) {
+            if (s._docId === student._docId) {
                 return { ...s, password: newPassword };
             }
             return s;
@@ -142,8 +127,8 @@ export default function StudentLayout({
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
-    } catch(e) {
-        toast({ title: "更新失敗", description: "更新密碼時發生錯誤。", variant: "destructive" });
+    } catch(e: any) {
+        toast({ title: "更新失敗", description: e.message || "更新密碼時發生錯誤。", variant: "destructive" });
     } finally {
         setIsSaving(false);
     }
@@ -156,7 +141,7 @@ export default function StudentLayout({
 
     try {
         await setStudents(prev => prev.map(s => {
-            if (s.id === student.id && s.classId === student.classId) {
+            if (s._docId === student._docId) {
                 return { ...s, lastPointHistoryView: now };
             }
             return s;
@@ -206,14 +191,6 @@ export default function StudentLayout({
             </div>
         </div>
     )
-  }
-
-  if (!student) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        正在載入或導回登入頁…
-      </div>
-    );
   }
 
   return (
@@ -355,5 +332,70 @@ export default function StudentLayout({
       </DialogContent>
     </Dialog>
     </SidebarProvider>
+  );
+}
+
+function Providers({ children }: { children: React.ReactNode }) {
+    const { loading, setLoading, setConfig, setStudents, setTeachers, setClasses } = useSchoolStore();
+    const [error, setError] = useState<string | null>(null);
+    const [isSynced, setIsSynced] = useState(false);
+    const { student, isLoading: isAuthLoading } = useAuth();
+    
+    useEffect(() => {
+        // This effect runs once on mount to fetch all initial data.
+        if (isSynced || !student) return;
+        const sync = async () => {
+            setError(null);
+            setLoading(true);
+            try {
+                const { config, students, teachers, classes } = await syncAll();
+                setConfig(config);
+                setStudents(students);
+                setTeachers(teachers);
+                setClasses(classes);
+                setIsSynced(true);
+            } catch (e: any) {
+                setError(e?.message ?? "同步失敗");
+            } finally {
+                setLoading(false);
+            }
+        };
+        sync();
+    }, [setLoading, setConfig, setStudents, setTeachers, setClasses, isSynced, student]);
+    
+    if (isAuthLoading) {
+      return (
+        <div className="flex h-screen w-full items-center justify-center">
+          正在驗證您的身份...
+        </div>
+      );
+    }
+    
+    if (error) {
+        return <div className="flex h-screen w-full items-center justify-center text-destructive">資料同步失敗: {error}</div>;
+    }
+
+    if (loading || !isSynced) {
+         return (
+            <div className="flex h-screen w-full items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                正在同步資料...
+            </div>
+        );
+    }
+
+    return <>{children}</>;
+}
+
+
+export default function StudentLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <Providers>
+      <StudentLayoutContent>{children}</StudentLayoutContent>
+    </Providers>
   );
 }
