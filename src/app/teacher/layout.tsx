@@ -55,13 +55,13 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useSchoolStore } from "@/store/useSchoolStore";
-import { useAuth, AuthProvider } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
 import Logo from "@/components/logo";
-import { syncAll } from "@/lib/firestoreFetchers";
 
-function TeacherLayoutContent({ children }: { children: React.ReactNode; }) {
+export default function TeacherLayout({ children }: { children: React.ReactNode; }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { toast } = useToast();
   
   const { 
@@ -78,6 +78,13 @@ function TeacherLayoutContent({ children }: { children: React.ReactNode; }) {
   
   const isImpersonating = useMemo(() => typeof window !== 'undefined' && !!localStorage.getItem('impersonator'), []);
 
+  // Auth check
+  useEffect(() => {
+    if (!isLoading && !teacher) {
+      handleLogout();
+    }
+  }, [isLoading, teacher, handleLogout]);
+
   const hasNewFeedback = useMemo(() => {
     return (platformConfig?.feedback || []).some(f => !f.isRead);
   }, [platformConfig?.feedback]);
@@ -91,6 +98,11 @@ function TeacherLayoutContent({ children }: { children: React.ReactNode; }) {
     }
     
     const originalAdmin = teachers.find(t => t.id === originalAdminId);
+    if (!originalAdmin) {
+       toast({ title: "返回失敗", description: "找不到原始管理員帳號資料。", variant: "destructive" });
+       handleLogout();
+       return;
+    }
     const correctPassword = originalAdmin?.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
 
     localStorage.setItem('userRole', 'teacher');
@@ -133,7 +145,7 @@ function TeacherLayoutContent({ children }: { children: React.ReactNode; }) {
             }
             return t;
         }));
-        localStorage.setItem('teacherPassword', newPassword);
+        
         toast({ title: "密碼已更新", description: "您的密碼已成功更新。" });
         setIsSettingsOpen(false);
     } catch (e: any) {
@@ -176,7 +188,7 @@ function TeacherLayoutContent({ children }: { children: React.ReactNode; }) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin" />
-          驗證身份中...
+          正在載入教師資料...
       </div>
     );
   }
@@ -300,57 +312,5 @@ function TeacherLayoutContent({ children }: { children: React.ReactNode; }) {
       </DialogContent>
     </Dialog>
     </>
-  );
-}
-
-
-function Providers({ children }: { children: React.ReactNode }) {
-    const { setLoading, setConfig, setStudents, setTeachers, setClasses } = useSchoolStore();
-    const [error, setError] = useState<string | null>(null);
-    const [isSynced, setIsSynced] = useState(false);
-    
-    useEffect(() => {
-        if (isSynced) return;
-        const sync = async () => {
-            setError(null);
-            setLoading(true);
-            try {
-                const { config, students, teachers, classes } = await syncAll();
-                setConfig(config);
-                setStudents(students);
-                setTeachers(teachers);
-                setClasses(classes);
-                setIsSynced(true);
-            } catch (e: any) {
-                setError(e?.message ?? "同步失敗");
-            } finally {
-                setLoading(false);
-            }
-        };
-        sync();
-    }, [setLoading, setConfig, setStudents, setTeachers, setClasses, isSynced]);
-    
-    if (!isSynced) {
-         return (
-            <div className="flex h-screen w-full items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin" />
-                正在同步資料...
-            </div>
-        );
-    }
-    
-    if (error) {
-        return <div className="flex h-screen w-full items-center justify-center text-destructive">資料同步失敗: {error}</div>;
-    }
-
-    return <AuthProvider>{children}</AuthProvider>;
-}
-
-
-export default function TeacherLayout({ children }: { children: React.ReactNode; }) {
-  return (
-    <Providers>
-      <TeacherLayoutContent>{children}</TeacherLayoutContent>
-    </Providers>
   );
 }

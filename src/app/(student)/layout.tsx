@@ -2,8 +2,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import React, { useState, useContext, useMemo, useCallback } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   SidebarProvider,
   Sidebar,
@@ -33,7 +33,8 @@ import {
   Mail,
   HeartHandshake,
   Repeat,
-  BookUp
+  BookUp,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,16 +49,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { StudentDataContext } from "@/context/StudentDataContext";
 import type { PointRecord } from "@/lib/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { AppDataContext } from "@/context/AppDataContext";
 import { Separator } from "@/components/ui/separator";
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/context/AuthContext';
-
+import { useSchoolStore } from "@/store/useSchoolStore";
 
 export default function StudentLayout({
   children,
@@ -65,40 +64,46 @@ export default function StudentLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { studentData, isLoading } = useContext(StudentDataContext);
-  const { handleLogout, setStudents } = useAuth();
+  const router = useRouter();
+  const { student, isLoading, handleLogout, setStudents } = useAuth();
   const { toast } = useToast();
   
-  const { classes, platformConfig } = useContext(AppDataContext);
+  const { classes, config: platformConfig } = useSchoolStore();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const { student: currentStudent } = studentData;
 
   const hasNewAnnouncements = useMemo(() => {
-    if (!currentStudent) return false;
-    const lastViewTime = currentStudent.lastAnnouncementsView ? new Date(currentStudent.lastAnnouncementsView).getTime() : 0;
+    if (!student) return false;
+    const lastViewTime = student.lastAnnouncementsView ? new Date(student.lastAnnouncementsView).getTime() : 0;
     const latestSchoolAnnouncementDate = (platformConfig?.announcements || [])
       .reduce((latest, ann) => Math.max(latest, new Date(ann.date).getTime()), 0);
-    const studentClass = classes.find(c => c.id === currentStudent.classId);
+    const studentClass = classes.find(c => c.id === student.classId);
     const latestClassAnnouncementDate = (studentClass?.announcements || [])
       .reduce((latest, ann) => Math.max(latest, new Date(ann.date).getTime()), 0);
     return latestSchoolAnnouncementDate > lastViewTime || latestClassAnnouncementDate > lastViewTime;
-  }, [currentStudent, platformConfig, classes]);
+  }, [student, platformConfig, classes]);
 
   const hasNewPointHistory = useMemo(() => {
-     if (!currentStudent) return false;
-    const lastPointHistoryView = currentStudent.lastPointHistoryView ? new Date(currentStudent.lastPointHistoryView).getTime() : 0;
-    const latestPointRecordDate = (currentStudent.pointHistory || [])
+     if (!student) return false;
+    const lastPointHistoryView = student.lastPointHistoryView ? new Date(student.lastPointHistoryView).getTime() : 0;
+    const latestPointRecordDate = (student.pointHistory || [])
       .reduce((latest, record) => Math.max(latest, new Date(record.date).getTime()), 0);
     return latestPointRecordDate > lastPointHistoryView;
-  }, [currentStudent]);
+  }, [student]);
+  
+  // Auth check
+  useEffect(() => {
+    if (!isLoading && !student) {
+      handleLogout();
+    }
+  }, [isLoading, student, handleLogout]);
 
   const handleChangePassword = async () => {
-    if (!currentStudent) return;
+    if (!student) return;
     setIsSaving(true);
 
     if (newPassword !== confirmPassword) {
@@ -111,14 +116,14 @@ export default function StudentLayout({
         setIsSaving(false);
         return;
     }
-    if (currentStudent.password !== currentPassword) {
+    if (student.password !== currentPassword) {
         toast({ title: "密碼錯誤", description: "您輸入的目前密碼不正確。", variant: "destructive" });
         setIsSaving(false);
         return;
     }
 
     try {
-        await setStudents((prev) => prev.map(s => s._docId === currentStudent._docId ? { ...s, password: newPassword } : s));
+        await setStudents((prev) => prev.map(s => s._docId === student._docId ? { ...s, password: newPassword } : s));
         toast({ title: "密碼已更新", description: "您的密碼已成功更新。" });
         setIsSettingsOpen(false);
         setCurrentPassword("");
@@ -132,15 +137,15 @@ export default function StudentLayout({
   };
 
   const handleOpenNotifications = useCallback(async () => {
-    if (!currentStudent || !hasNewPointHistory) return;
+    if (!student || !hasNewPointHistory) return;
     
     try {
-        await setStudents((prev) => prev.map(s => s._docId === currentStudent._docId ? { ...s, lastPointHistoryView: new Date().toISOString() } : s));
+        await setStudents((prev) => prev.map(s => s._docId === student._docId ? { ...s, lastPointHistoryView: new Date().toISOString() } : s));
     } catch (e) {
         console.error("Failed to update lastPointHistoryView:", e);
         toast({ title: "錯誤", description: "無法更新通知狀態，請稍後再試。", variant: "destructive" });
     }
-}, [currentStudent, hasNewPointHistory, setStudents, toast]);
+}, [student, hasNewPointHistory, setStudents, toast]);
 
   const navItems = [
     { href: "/dashboard", label: "儀表板", icon: LayoutDashboard },
@@ -158,8 +163,8 @@ export default function StudentLayout({
   ];
   
   const pointHistory = useMemo(() => {
-    return currentStudent?.pointHistory?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
-  }, [currentStudent?.pointHistory]);
+    return student?.pointHistory?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
+  }, [student?.pointHistory]);
   
   const NotificationItem = ({ record }: { record: PointRecord }) => {
     const isPositive = record.points > 0;
@@ -183,10 +188,11 @@ export default function StudentLayout({
     )
   }
 
-  if (isLoading || !currentStudent) {
+  if (isLoading || !student) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
-          ...載入中
+          <Loader2 className="h-8 w-8 animate-spin" />
+          正在載入學生資料...
       </div>
     );
   }
@@ -230,11 +236,11 @@ export default function StudentLayout({
                 className="w-full justify-start gap-2 p-2 group-data-[collapsible=icon]:justify-center"
               >
                 <Avatar className="size-8">
-                  <AvatarImage src={currentStudent.avatar} data-ai-hint="student avatar" />
-                  <AvatarFallback>{currentStudent.name.slice(0, 2)}</AvatarFallback>
+                  <AvatarImage src={student.avatar} data-ai-hint="student avatar" />
+                  <AvatarFallback>{student.name.slice(0, 2)}</AvatarFallback>
                 </Avatar>
                 <div className="text-left group-data-[collapsible=icon]:hidden">
-                  <p className="font-semibold text-lg">{currentStudent.name}</p>
+                  <p className="font-semibold text-lg">{student.name}</p>
                   <p className="text-xs text-muted-foreground">學生</p>
                 </div>
                 <ChevronDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />

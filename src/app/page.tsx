@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext, useMemo } from 'react';
+import { useState, useMemo, useContext } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -10,10 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { User, School, ArrowRight, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { AppDataContext } from "@/context/AppDataContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
 import { DEFAULT_LOGO_URL } from '@/lib/config';
+import { useSchoolStore } from '@/store/useSchoolStore';
+import { useAuth } from '@/context/AuthContext';
 
 export default function LoginPage() {
   const [studentIdInput, setStudentIdInput] = useState('');
@@ -27,7 +28,8 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const { classes, students, teachers, platformConfig } = useContext(AppDataContext);
+  const { classes, students, teachers, config: platformConfig } = useSchoolStore();
+  const { isLoading: isAuthLoading } = useAuth();
   
   const sortedTeachers = useMemo(() => {
     if (!teachers) return [];
@@ -115,6 +117,15 @@ export default function LoginPage() {
   };
   
   const { homeIllustrationUrl, homeTitle, homeSubtitle, sponsorLogoUrls } = platformConfig || {};
+
+  if (isAuthLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        正在與雲端同步資料...
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 font-body">

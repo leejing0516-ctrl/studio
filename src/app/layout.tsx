@@ -3,17 +3,15 @@
 
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
-import { AppDataProvider } from "@/context/AppDataContext";
-import { StudentDataProvider } from "@/context/StudentDataContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { themes, type Theme } from "@/lib/themes";
 import { DEFAULT_APP_ICON_URL } from "@/lib/config";
 import type { CustomTheme } from "@/lib/types";
-import { useContext, useMemo } from "react";
-import { AppDataContext } from "@/context/AppDataContext";
+import { useMemo } from "react";
+import { useSchoolStore } from "@/store/useSchoolStore";
 
 function StyleInjector() {
-  const { platformConfig } = useContext(AppDataContext);
+  const { config: platformConfig } = useSchoolStore();
 
   const themeName = platformConfig?.theme || 'default';
   const appIconUrl = platformConfig?.appIconUrl || DEFAULT_APP_ICON_URL;
@@ -76,15 +74,11 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <AppDataProvider>
-          <AuthProvider>
-            <StudentDataProvider>
-              <StyleInjector />
-              {children}
-              <Toaster />
-            </StudentDataProvider>
-          </AuthProvider>
-        </AppDataProvider>
+        <AuthProvider>
+          <StyleInjector />
+          {children}
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );
