@@ -6,29 +6,23 @@ import { Toaster } from "@/components/ui/toaster";
 import { themes, type Theme } from "@/lib/themes";
 import { DEFAULT_APP_ICON_URL } from "@/lib/config";
 import type { CustomTheme } from "@/lib/types";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useContext } from "react";
 import { onSnapshot, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Providers } from "@/context/Providers";
+import { AppDataContext } from "@/context/AppDataContext";
+
 
 function StyleInjector() {
-  const [themeName, setThemeName] = useState('makeup-pink');
-  const [appIconUrl, setAppIconUrl] = useState(DEFAULT_APP_ICON_URL);
+  const { platformConfig } = useContext(AppDataContext);
 
-  useEffect(() => {
-    const unsub = onSnapshot(doc(db, "config", "main"), (doc) => {
-      if (doc.exists()) {
-        const config = doc.data();
-        setThemeName(config.theme || 'makeup-pink');
-        setAppIconUrl(config.appIconUrl || DEFAULT_APP_ICON_URL);
-      }
-    });
-    return () => unsub();
-  }, []);
+  const themeName = platformConfig?.theme || 'makeup-pink';
+  const appIconUrl = platformConfig?.appIconUrl || DEFAULT_APP_ICON_URL;
 
   const activeTheme = useMemo(() => {
-    return themes.find(t => t.name === themeName) || themes.find(t => t.name === 'makeup-pink');
-  }, [themeName]);
+    const availableThemes = [...themes, ...(platformConfig?.customThemes || [])];
+    return availableThemes.find(t => t.name === themeName) || themes.find(t => t.name === 'makeup-pink');
+  }, [themeName, platformConfig?.customThemes]);
 
   const themeCss = useMemo(() => {
     if (!activeTheme) return "";
@@ -79,10 +73,10 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter&display=swap"
           rel="stylesheet"
         />
-        <StyleInjector />
       </head>
       <body className="font-body antialiased">
           <Providers>
+            <StyleInjector />
             {children}
           </Providers>
           <Toaster />

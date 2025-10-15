@@ -11,9 +11,8 @@ import { Label } from "@/components/ui/label";
 import { User, School, ArrowRight, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Student, Teacher, Class } from '@/lib/types';
 import { AppDataContext } from '@/context/AppDataContext';
-import { AuthContext } from '@/context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
 
 
@@ -29,10 +28,12 @@ function LoginPageContent() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const { classes, platformConfig, isLoading: isAppLoading } = useContext(AppDataContext);
-  const { students, teachers, isLoading: isAuthLoading } = useContext(AuthContext);
+  const { classes, students, teachers, platformConfig, isLoading: isAppLoading } = useContext(AppDataContext);
+  const { student, teacher, isLoading: isAuthLoading } = useAuth();
+
 
   const sortedTeachers = useMemo(() => {
+    if (!teachers) return [];
     return [...teachers].sort((a, b) => {
         if (a.sortOrder && b.sortOrder) return a.sortOrder - b.sortOrder;
         if (a.sortOrder) return -1;
@@ -42,15 +43,15 @@ function LoginPageContent() {
   }, [teachers]);
 
   useEffect(() => {
-    const userRole = localStorage.getItem('userRole');
-    if (userRole === 'student') {
+    if (!isAuthLoading) {
+      if (student) {
         router.replace('/dashboard');
-        return;
-    } else if (userRole === 'teacher') {
+      } else if (teacher) {
         router.replace('/teacher/dashboard');
-        return;
+      }
     }
-  }, [router]);
+  }, [isAuthLoading, student, teacher, router]);
+
 
   const handleStudentLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,7 +128,7 @@ function LoginPageContent() {
   const isLoading = isAppLoading || isAuthLoading;
   const isFormDisabled = isLoggingIn || isLoading;
 
-  if (isLoading) {
+  if (isLoading || student || teacher) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -297,3 +298,4 @@ function LoginPageContent() {
 export default function HomePage() {
   return <LoginPageContent />;
 }
+

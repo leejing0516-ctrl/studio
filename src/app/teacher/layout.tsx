@@ -69,9 +69,11 @@ function TeacherLayoutContent({
   const { toast } = useToast();
   const { 
     platformConfig,
+    teachers,
+    setTeachers,
     isLoading: isAppLoading,
   } = useContext(AppDataContext);
-  const { teacher, teachers, setTeachers, isLoading: isAuthLoading } = useAuth();
+  const { teacher, isLoading: isAuthLoading } = useAuth();
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -79,7 +81,7 @@ function TeacherLayoutContent({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  const isImpersonating = useMemo(() => !!localStorage.getItem('impersonator'), []);
+  const isImpersonating = useMemo(() => typeof window !== 'undefined' && !!localStorage.getItem('impersonator'), []);
 
   const hasNewFeedback = useMemo(() => {
     return (platformConfig?.feedback || []).some(f => !f.isRead);
@@ -99,10 +101,6 @@ function TeacherLayoutContent({
   useEffect(() => {
     if (!isAuthLoading && !teacher) {
         handleLogout();
-    } else if (teacher) {
-        localStorage.setItem('teacherName', teacher.name);
-        localStorage.setItem('teacherRole', teacher.role);
-        localStorage.setItem('teacherClassIds', JSON.stringify(teacher.classIds || []));
     }
   }, [isAuthLoading, teacher, handleLogout]);
 

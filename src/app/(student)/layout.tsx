@@ -52,7 +52,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import type { Student, PointRecord, PlatformConfig, Class as ClassType, Reward, Stock, Teacher } from "@/lib/types";
+import type { Student, PointRecord } from "@/lib/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { formatDistanceToNow } from "date-fns";
@@ -65,8 +65,8 @@ import { AppDataContext } from "@/context/AppDataContext";
 function StudentLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { student, setStudents, isLoading } = useAuth();
-  const { platformConfig, classes } = useContext(AppDataContext);
+  const { student, isLoading } = useAuth();
+  const { platformConfig, classes, setStudents } = useContext(AppDataContext);
   const { toast } = useToast();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -366,6 +366,5 @@ export default function StudentLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // The main logic is now in StudentLayoutContent, protected by useAuth hook.
   return <StudentLayoutContent>{children}</StudentLayoutContent>;
 }
