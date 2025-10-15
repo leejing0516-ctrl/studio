@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import {
   Card,
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { AppDataContext } from "@/context/AppDataContext";
+import { useSchoolStore } from "@/store/useSchoolStore";
 import { useAuth } from "@/context/AuthContext";
 import { HeartHandshake, Users, Info, Coins, Timer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -75,8 +75,8 @@ const Countdown = ({ to }: { to: string }) => {
 
 
 export default function FundraisingPage() {
-  const { platformConfig, setPlatformConfig, classes } = useContext(AppDataContext);
-  const { student: currentStudent, setStudents } = useAuth();
+  const { config: platformConfig, classes } = useSchoolStore();
+  const { student: currentStudent, setStudents, setPlatformConfig } = useAuth();
   const { toast } = useToast();
 
   const [isDonateDialogOpen, setIsDonateDialogOpen] = useState(false);
@@ -137,7 +137,7 @@ export default function FundraisingPage() {
                 };
                 if (updatedProject.currentAmount >= updatedProject.goal) {
                     updatedProject.status = 'completed';
-                    toast({ title: "目標達成！", description: `恭喜「${updatedProject.title}」專案成功達標！感謝您的貢獻！` });
+                    toast({ title: "目標達成！", description: `恭喜「${"updatedProject.title"}」專案成功達標！感謝您的貢獻！` });
                 }
                 return updatedProject;
             }
@@ -278,7 +278,7 @@ export default function FundraisingPage() {
                              <div key={donation.studentId + donation.date} className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <Avatar className="h-8 w-8">
-                                        <AvatarImage src={`https://picsum.photos/seed/${donation.studentId}/100`} />
+                                        <AvatarImage src={`https://picsum.photos/seed/${"donation.studentId"}/100`} />
                                         <AvatarFallback>{donation.studentName.slice(0,2)}</AvatarFallback>
                                     </Avatar>
                                     <div>
