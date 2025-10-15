@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -16,16 +16,18 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button";
-import { Loader2, Trash2, Mail } from "lucide-react";
+import { Trash2, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { AppDataContext } from "@/context/AppDataContext";
+import { useSchoolStore } from "@/store/useSchoolStore";
+import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import type { Feedback } from "@/lib/types";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 
 export default function TeacherFeedbackPage() {
-    const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
+    const { config: platformConfig, classes } = useSchoolStore();
+    const { setPlatformConfig } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
 
@@ -84,7 +86,7 @@ export default function TeacherFeedbackPage() {
                                             <div className="flex items-center gap-4 text-left">
                                                 {!feedback.isRead && <Badge>新訊息</Badge>}
                                                 <span className={feedback.isRead ? "font-normal" : "font-bold"}>
-                                                    來自 {feedback.studentName} ({feedback.classId}) 的訊息
+                                                    來自 {feedback.studentName} ({classes.find(c => c.id === feedback.classId)?.name || '未知班級'}) 的訊息
                                                 </span>
                                             </div>
                                             <span className="text-sm text-muted-foreground font-normal pr-4">
