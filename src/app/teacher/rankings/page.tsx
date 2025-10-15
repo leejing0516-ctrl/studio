@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -21,43 +21,55 @@ import { Coins, Trophy, PiggyBank, Landmark, LineChart, Loader2 } from "lucide-r
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { Student } from "@/lib/types";
 
+type StudentWithAssets = Student & {
+    totalAssets: number;
+    portfolioValue: number;
+    totalFixedDeposits: number;
+    totalLoans: number;
+};
+
 export default function TeacherRankingsPage() {
-    const { students, stocks, classes, loading: isLoading } = useSchoolStore();
+    const { students, stocks, classes, loading: isStoreLoading } = useSchoolStore();
+    const [listedStudents, setListedStudents] = useState<StudentWithAssets[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const listedStudents = useMemo(() => {
-        if (isLoading || !stocks || !classes) return []; // Wait for data to be loaded
-
-        // Use a Map to ensure each student is unique based on _docId, taking the last entry.
-        const uniqueStudentsMap = new Map<string, Student>();
-        students.forEach(student => {
-            if (student._docId) {
-                uniqueStudentsMap.set(student._docId, student);
-            }
-        });
-        const uniqueStudents = Array.from(uniqueStudentsMap.values());
-
-        const studentsWithAssets = uniqueStudents.map(student => {
-            const portfolioValue = (student.portfolio || []).reduce((acc, item) => {
-                const marketInfo = stocks.find(s => s.ticker === item.ticker);
-                return acc + (marketInfo ? marketInfo.price * item.shares : 0);
-            }, 0);
-
-            const totalFixedDeposits = (student.fixedDeposits || [])
-                .filter(d => d.status === 'active')
-                .reduce((acc, deposit) => acc + deposit.amount, 0);
-
-            const totalLoans = (student.loans || [])
-                .filter(l => l.status === 'active' || l.status === 'overdue')
-                .reduce((acc, loan) => acc + loan.amount, 0);
-
-            const totalAssets = (student.points || 0) + portfolioValue + totalFixedDeposits - totalLoans;
+    useEffect(() => {
+        if (!isStoreLoading && students.length > 0 && stocks.length > 0 && classes.length > 0) {
             
-            return { ...student, totalAssets, portfolioValue, totalFixedDeposits, totalLoans };
-        });
+            const uniqueStudentsMap = new Map<string, Student>();
+            students.forEach(student => {
+                if (student._docId) {
+                    uniqueStudentsMap.set(student._docId, student);
+                }
+            });
+            const uniqueStudents = Array.from(uniqueStudentsMap.values());
 
-        // Sort by total assets descending
-        return studentsWithAssets.sort((a, b) => b.totalAssets - a.totalAssets);
-    }, [students, stocks, classes, isLoading]);
+            const studentsWithAssets = uniqueStudents.map(student => {
+                const portfolioValue = (student.portfolio || []).reduce((acc, item) => {
+                    const marketInfo = stocks.find(s => s.ticker === item.ticker);
+                    return acc + (marketInfo ? marketInfo.price * item.shares : 0);
+                }, 0);
+
+                const totalFixedDeposits = (student.fixedDeposits || [])
+                    .filter(d => d.status === 'active')
+                    .reduce((acc, deposit) => acc + deposit.amount, 0);
+
+                const totalLoans = (student.loans || [])
+                    .filter(l => l.status === 'active' || l.status === 'overdue')
+                    .reduce((acc, loan) => acc + loan.amount, 0);
+
+                const totalAssets = (student.points || 0) + portfolioValue + totalFixedDeposits - totalLoans;
+                
+                return { ...student, totalAssets, portfolioValue, totalFixedDeposits, totalLoans };
+            });
+
+            const sortedStudents = studentsWithAssets.sort((a, b) => b.totalAssets - a.totalAssets);
+            setListedStudents(sortedStudents);
+            setIsLoading(false);
+        } else if (!isStoreLoading) {
+            setIsLoading(false);
+        }
+    }, [isStoreLoading, students, stocks, classes]);
 
     if (isLoading) {
         return (
