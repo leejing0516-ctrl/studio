@@ -1,28 +1,46 @@
 
 "use client";
 
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, PropsWithChildren, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { StudentDataContext } from './StudentDataContext';
+import { AppDataContext } from './AppDataContext';
 
 interface AuthContextType {
-  // Functions to be added here
+  student: any;
+  teacher: any;
+  setStudents: (updater: (prev: any[]) => any[]) => Promise<void>;
+  runTransaction: (updateFunction: (transaction: any) => Promise<any>) => Promise<any>;
+  teachers: any[];
 }
 
-const AuthContext = createContext<AuthContextType>({});
+const AuthContext = createContext<AuthContextType>({
+  student: null,
+  teacher: null,
+  setStudents: async () => {},
+  runTransaction: async () => {},
+  teachers: [],
+});
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+export const AuthProvider = ({ children }: PropsWithChildren) => {
   const router = useRouter();
-  const { setStudentData } = useContext(StudentDataContext);
+  const { studentData, setStudentData } = useContext(StudentDataContext);
+  const { students, setStudents, runTransaction, teachers } = useContext(AppDataContext);
 
-  const handleLogout = () => {
-    localStorage.clear();
-    setStudentData({} as any); // Clear student data on logout
-    router.replace('/');
-  };
+  const student = useMemo(() => {
+    if (studentData?.student) {
+        return students.find(s => s.id === studentData.student.id && s.classId === studentData.student.classId) || studentData.student;
+    }
+    return null;
+  }, [studentData, students]);
+
 
   const value = {
-    handleLogout,
+    student,
+    teacher: studentData?.teacher,
+    setStudents,
+    runTransaction,
+    teachers,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

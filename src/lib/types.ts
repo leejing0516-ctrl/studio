@@ -105,14 +105,29 @@ export type AvatarCustomization = {
 }
 
 export type Student = {
-  id: string;        // doc id，例如 6A-S001
+  id: string;
   _docId?: string;
   name: string;
-  classId: string;   // 例如 "6A"
-  password?: string; // 你們目前簡化驗證用
+  classId: string;
+  password?: string;
   points: number;
   pointHistory: PointRecord[];
-  // 其它欄位...
+  portfolio: PortfolioItem[];
+  redeemedRewards: RedeemedRewardItem[];
+  loans?: Loan[];
+  fixedDeposits?: FixedDeposit[];
+  challenges?: StudentChallenge[];
+  habits?: StudentHabit[];
+  lastAnnouncementsView?: string;
+  lastPointHistoryView?: string;
+  lastDailyReward?: string; // YYYY-MM-DD
+  readingEnergy?: number;
+  buKeMonth?: number;
+  buKeEnergyThisMonth?: number;
+  buKeBooksThisMonth?: number;
+  buKeLevel?: number;
+  buKeTotalEnergy?: number;
+  buKeTotalBooks?: number;
   [k: string]: any;
 };
 
@@ -163,19 +178,24 @@ export type ClassGroup = {
 }
 
 export type ClassInfo = {
-  id: string;        // doc id，例如 "6A"
+  id: string;
   _docId?: string;
-  name: string;      // 顯示名稱
-  announcements?: any[];
+  name: string;
+  announcements?: Announcement[];
+  groups?: {
+    [teacherId: string]: ClassGroup[];
+  }
   [k: string]: any;
 };
 
 export type Teacher = {
-  id: string;        // doc id，例如 "principal"、"teacher6A"
+  id: string;
   _docId?: string;
   name: string;
   role: "admin" | "teacher" | "subject_teacher" | string;
   password?: string;
+  classIds: string[];
+  pointBalance: number;
   [k: string]: any;
 };
 
@@ -226,8 +246,31 @@ export type PlatformConfig = {
   challenges: Challenge[];
   stocks: Stock[];
   announcements: Announcement[];
+  stockMarketNews: Announcement[];
+  stockMarqueeMessages: string[];
   petStages: PetStage[];
-  // 允許擴充
+  feedback: Feedback[];
+  fundraisingProjects: FundraisingProject[];
+  homeTitle: string;
+  homeSubtitle: string;
+  homeIllustrationUrl: string;
+  logoUrl: string;
+  appIconUrl: string;
+  sponsorLogoUrls: string[];
+  teacherPassword?: string;
+  theme?: string;
+  customTheme?: CustomTheme;
+  customThemes?: Theme[];
+  marketOpenHour?: number;
+  marketCloseHour?: number;
+  dashboardCards?: DashboardCardConfig;
+  buKeXingQiuDescription?: string;
+  dailyRewardJackpotChance?: number;
+  dailyRewardJackpotMin?: number;
+  dailyRewardJackpotMax?: number;
+  dailyRewardStandardChance?: number;
+  dailyRewardStandardMin?: number;
+  dailyRewardStandardMax?: number;
   [k: string]: any;
 };
 

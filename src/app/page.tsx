@@ -29,7 +29,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const { classes, students, teachers, platformConfig } = useContext(AppDataContext);
+  const { classes, students, teachers, platformConfig, isLoading } = useContext(AppDataContext);
   
   const sortedTeachers = useMemo(() => {
     if (!teachers) return [];
@@ -127,9 +127,9 @@ export default function LoginPage() {
     }
   };
 
-  const isFormDisabled = isLoggingIn || !platformConfig;
+  const isFormDisabled = isLoggingIn || isLoading;
 
-  if (!platformConfig) {
+  if (isLoading) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin" />

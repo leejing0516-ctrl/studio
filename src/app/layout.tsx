@@ -3,23 +3,28 @@
 
 import "./globals.css";
 import { AppDataProvider } from "@/context/AppDataContext";
+import { StudentDataProvider } from "@/context/StudentDataContext";
+import { AuthProvider } from "@/context/AuthContext";
 import { Toaster } from "@/components/ui/toaster";
 import { themes, type Theme } from "@/lib/themes";
 import { DEFAULT_APP_ICON_URL } from "@/lib/config";
 import type { CustomTheme } from "@/lib/types";
-import { useMemo } from "react";
-import { useSchoolStore } from "@/store/useSchoolStore";
+import { useContext, useMemo } from "react";
+import { AppDataContext } from "@/context/AppDataContext";
 
 function StyleInjector() {
-  const platformConfig = useSchoolStore(state => state.config);
+  const { platformConfig } = useContext(AppDataContext);
 
-  const themeName = platformConfig?.theme || 'makeup-pink';
+  const themeName = platformConfig?.theme || 'default';
   const appIconUrl = platformConfig?.appIconUrl || DEFAULT_APP_ICON_URL;
 
+  const availableThemes = useMemo(() => {
+    return [...themes, ...(platformConfig?.customThemes || [])];
+  }, [platformConfig?.customThemes]);
+
   const activeTheme = useMemo(() => {
-    const availableThemes = [...themes, ...(platformConfig?.customThemes || [])];
-    return availableThemes.find(t => t.name === themeName) || themes.find(t => t.name === 'makeup-pink');
-  }, [themeName, platformConfig?.customThemes]);
+    return availableThemes.find(t => t.name === themeName) || themes[0];
+  }, [themeName, availableThemes]);
 
   const themeCss = useMemo(() => {
     if (!activeTheme) return "";
@@ -45,6 +50,7 @@ function StyleInjector() {
   return (
     <>
       <style>{themeCss}</style>
+      <link rel="icon" href={appIconUrl} sizes="any" />
       <link rel="apple-touch-icon" href={appIconUrl} />
     </>
   );
@@ -55,7 +61,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -66,15 +71,21 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Inter&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap"
           rel="stylesheet"
         />
-        <StyleInjector />
+        <AppDataProvider>
+          <StyleInjector />
+        </AppDataProvider>
       </head>
       <body className="font-body antialiased">
         <AppDataProvider>
-          {children}
-          <Toaster />
+          <StudentDataProvider>
+            <AuthProvider>
+              {children}
+              <Toaster />
+            </AuthProvider>
+          </StudentDataProvider>
         </AppDataProvider>
       </body>
     </html>
