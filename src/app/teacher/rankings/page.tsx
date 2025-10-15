@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -34,7 +35,7 @@ export default function TeacherRankingsPage() {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (!isStoreLoading && students.length > 0 && stocks.length > 0 && classes.length > 0) {
+        if (!isStoreLoading && students && stocks && classes) {
             
             const uniqueStudentsMap = new Map<string, Student>();
             students.forEach(student => {
