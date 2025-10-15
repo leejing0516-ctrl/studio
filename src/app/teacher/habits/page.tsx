@@ -1,8 +1,7 @@
 
 "use client";
 
-import { useState, useContext, useEffect, useMemo } from "react";
-import Image from "next/image";
+import { useState, useEffect, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -35,7 +34,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { AppDataContext } from "@/context/AppDataContext";
 import { format, formatDistanceToNow, addDays, startOfDay, differenceInDays, isAfter, isValid } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { Progress } from "@/components/ui/progress";
@@ -44,16 +42,20 @@ import { useRouter } from "next/navigation";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { useSchoolStore } from "@/store/useSchoolStore";
+import { useAuth } from "@/context/AuthContext";
+import { doc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const HABIT_DURATION = 21;
 
 export default function TeacherHabitsPage() {
-    const { students, setStudents, classes, isLoading, runTransaction } = useContext(AppDataContext);
+    const { students, classes, loading: isLoading } = useSchoolStore();
+    const { setStudents, runTransaction, teacher } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
 
     const [role, setRole] = useState<string | null>(null);
-    const [teacherId, setTeacherId] = useState<string | null>(null);
     const [teacherClassIds, setTeacherClassIds] = useState<string[]>([]);
     
     const [pointsToAward, setPointsToAward] = useState<{ [key: string]: number | '' }>({});
@@ -65,7 +67,6 @@ export default function TeacherHabitsPage() {
 
     useEffect(() => {
         const storedRole = localStorage.getItem('teacherRole');
-        const storedTeacherId = localStorage.getItem('teacherId');
         const storedClassIdsStr = localStorage.getItem('teacherClassIds');
         if (storedRole !== 'admin' && storedRole !== 'teacher') {
             toast({ title: "權限不足", description: "只有校長或班級導師才能存取此頁面。", variant: "destructive" });
@@ -73,7 +74,6 @@ export default function TeacherHabitsPage() {
             return;
         }
         setRole(storedRole);
-        setTeacherId(storedTeacherId);
          if (storedClassIdsStr && storedClassIdsStr !== 'undefined') {
             const ids = JSON.parse(storedClassIdsStr);
             setTeacherClassIds(ids);
@@ -155,7 +155,7 @@ export default function TeacherHabitsPage() {
     };
     
     const handleAwardHabitPoints = async (student: Student, habit: StudentHabit) => {
-        if (!habit || habit.points <= 0 || !teacherId) {
+        if (!habit || habit.points <= 0 || !teacher) {
             toast({ title: "無效的操作", description: "該習慣沒有設定有效的獎勵點數。", variant: "destructive" });
             return;
         }
@@ -164,9 +164,12 @@ export default function TeacherHabitsPage() {
         
         try {
             await runTransaction(async (transaction) => {
+                if (!student._docId) throw new Error("找不到學生文檔ID");
+
                 const configRef = doc(db, 'config', 'main');
                 const configDoc = await transaction.get(configRef);
-                const currentSchoolFunds = (configDoc.data()?.schoolFunds || 0) as number;
+                const platformConfig = configDoc.data();
+                const currentSchoolFunds = (platformConfig?.schoolFunds || 0) as number;
 
                 if (currentSchoolFunds < pointsToAward) {
                     throw new Error("學校總資金不足以支付此習慣獎勵。");
@@ -174,17 +177,17 @@ export default function TeacherHabitsPage() {
                 
                 transaction.update(configRef, { schoolFunds: currentSchoolFunds - pointsToAward });
 
-                const studentRef = doc(db, 'students', `${student.classId}-${student.id}`);
+                const studentRef = doc(db, "students", student._docId);
                 const studentDoc = await transaction.get(studentRef);
                 if (!studentDoc.exists()) throw new Error("找不到學生資料");
-                const studentData = studentDoc.data();
+                const studentData = studentDoc.data() as Student;
 
                 const today = new Date().toISOString();
-                const newHistory = [...(studentData.pointHistory || []), { points: pointsToAward, date: today, reason: `完成習慣: ${habit.title}`, teacherId: teacherId }];
+                const newHistory = [...(studentData.pointHistory || []), { points: pointsToAward, date: today, reason: `完成習慣: ${habit.title}`, teacherId: teacher.id }];
                 const updatedHabits = (studentData.habits || []).map(h => h.id === habit.id ? { ...h, status: 'completed' as const } : h);
 
                 transaction.update(studentRef, {
-                    points: studentData.points + pointsToAward,
+                    points: (studentData.points || 0) + pointsToAward,
                     pointHistory: newHistory,
                     habits: updatedHabits,
                 });
@@ -389,5 +392,3 @@ export default function TeacherHabitsPage() {
         </div>
     );
 }
-
-    
