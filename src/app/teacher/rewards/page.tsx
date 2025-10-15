@@ -76,8 +76,8 @@ export default function TeacherRewardsPage() {
     }, []);
 
     const allClassRewards = useMemo(() => {
-        return (rewards || []).filter(r => r.scope === 'class');
-    }, [rewards]);
+        return (rewards || []).filter(r => r.scope === 'class' && teachers.some(t => t.id === r.providerId));
+    }, [rewards, teachers]);
     
     const schoolRewards = useMemo(() => {
         return (rewards || []).filter(r => r.scope === 'school');
@@ -458,5 +458,3 @@ export default function TeacherRewardsPage() {
         </div>
     );
 }
-
-    
