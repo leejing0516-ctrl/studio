@@ -368,3 +368,5 @@ export default function StudentLayout({
 }) {
   return <StudentLayoutContent>{children}</StudentLayoutContent>;
 }
+
+    

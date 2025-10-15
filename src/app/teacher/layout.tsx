@@ -332,3 +332,5 @@ export default function TeacherLayout({
 }) {
   return <TeacherLayoutContent>{children}</TeacherLayoutContent>;
 }
+
+    
