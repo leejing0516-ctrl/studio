@@ -41,7 +41,7 @@ function DataInitializer() {
 
     const unsubs = collectionsToListen.map(c => {
         return onSnapshot(collection(db, c.name), (snapshot) => {
-            c.setter(snapshot.docs.map(d => ({ ...d.data(), _docId: d.id })));
+            c.setter(snapshot.docs.map(d => ({ ...d.data(), _docId: d.id } as any)));
         });
     });
     

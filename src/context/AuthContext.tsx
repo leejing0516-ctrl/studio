@@ -1,38 +1,57 @@
 
 "use client";
 
-import { createContext, useState, ReactNode, useEffect, useMemo, useContext } from 'react';
+import { createContext, useState, ReactNode, useEffect, useMemo, useContext, useCallback } from 'react';
 import type { Student, Teacher } from '@/lib/types';
 import { AppDataContext } from './AppDataContext';
+import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
+import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
   student: Student | null;
   teacher: Teacher | null;
   isLoading: boolean;
+  handleLogout: () => void;
 }
 
 export const AuthContext = createContext<AuthContextType>({
   student: null,
   teacher: null,
   isLoading: true,
+  handleLogout: () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-    const { students, teachers } = useContext(AppDataContext);
+    const { students, teachers, platformConfig, isLoading: isAppDataLoading } = useContext(AppDataContext);
     const [student, setStudent] = useState<Student | null>(null);
     const [teacher, setTeacher] = useState<Teacher | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const router = useRouter();
+    
+    const handleLogout = useCallback(() => {
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('studentClassId');
+        localStorage.removeItem('studentId');
+        localStorage.removeItem('studentPassword');
+        localStorage.removeItem('teacherId');
+        localStorage.removeItem('teacherName');
+        localStorage.removeItem('teacherClassIds');
+        localStorage.removeItem('teacherRole');
+        localStorage.removeItem('teacherPassword');
+        localStorage.removeItem('impersonator');
+        setStudent(null);
+        setTeacher(null);
+        router.replace('/');
+    }, [router]);
 
     useEffect(() => {
-        const userRole = localStorage.getItem('userRole');
-        
-        // This effect should only run when the raw data from AppDataContext changes.
-        if (students.length === 0 && teachers.length === 0) {
-            // Data is not ready yet.
+        if (isAppDataLoading) {
             setIsLoading(true);
             return;
         }
 
+        const userRole = localStorage.getItem('userRole');
+        
         if (userRole === 'student') {
             const studentId = localStorage.getItem('studentId');
             const classId = localStorage.getItem('studentClassId');
@@ -43,17 +62,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setStudent(currentStudent);
             } else {
                 setStudent(null);
+                if (studentId) handleLogout(); // Logout if credentials don't match
             }
             setTeacher(null);
         } else if (userRole === 'teacher') {
             const teacherId = localStorage.getItem('teacherId');
             const storedPassword = localStorage.getItem('teacherPassword');
             const currentTeacher = teachers.find(t => t.id === teacherId);
+            const correctPassword = currentTeacher?.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
 
-            if (currentTeacher && (currentTeacher.password === storedPassword || "001" === storedPassword)) {
+            if (currentTeacher && storedPassword === correctPassword) {
                 setTeacher(currentTeacher);
             } else {
                 setTeacher(null);
+                if (teacherId) handleLogout(); // Logout if credentials don't match
             }
             setStudent(null);
         } else {
@@ -63,13 +85,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         setIsLoading(false);
 
-    }, [students, teachers]);
+    }, [isAppDataLoading, students, teachers, platformConfig, handleLogout]);
 
     const value = useMemo(() => ({
         student,
         teacher,
         isLoading,
-    }), [student, teacher, isLoading]);
+        handleLogout,
+    }), [student, teacher, isLoading, handleLogout]);
 
     return (
         <AuthContext.Provider value={value}>

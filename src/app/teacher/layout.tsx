@@ -2,8 +2,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import React, { useEffect, useState, useContext, useCallback, useMemo, useRef } from "react";
+import { usePathname } from "next/navigation";
+import React, { useState, useContext, useMemo } from "react";
 import {
   SidebarProvider,
   Sidebar,
@@ -65,14 +65,13 @@ function TeacherLayoutContent({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const { toast } = useToast();
   const { 
     platformConfig,
     teachers,
     setTeachers,
   } = useContext(AppDataContext);
-  const { teacher, isLoading } = useAuth();
+  const { teacher, isLoading, handleLogout } = useAuth();
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -80,30 +79,11 @@ function TeacherLayoutContent({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  const logoutOnce = useRef(false);
   const isImpersonating = useMemo(() => typeof window !== 'undefined' && !!localStorage.getItem('impersonator'), []);
 
   const hasNewFeedback = useMemo(() => {
     return (platformConfig?.feedback || []).some(f => !f.isRead);
   }, [platformConfig?.feedback]);
-
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem('teacherName');
-    localStorage.removeItem('teacherRole');
-    localStorage.removeItem('teacherClassIds');
-    localStorage.removeItem('teacherId');
-    localStorage.removeItem('teacherPassword');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('impersonator');
-    router.replace('/');
-  }, [router]);
-
-  useEffect(() => {
-    if (!isLoading && !teacher && !logoutOnce.current) {
-        logoutOnce.current = true;
-        handleLogout();
-    }
-  }, [isLoading, teacher, handleLogout]);
 
   const handleStopImpersonating = () => {
     const originalAdminId = localStorage.getItem('impersonator');

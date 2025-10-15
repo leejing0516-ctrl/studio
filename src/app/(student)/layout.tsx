@@ -2,9 +2,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useContext, useEffect, useState, useMemo, useCallback, useRef } from "react";
-import Image from "next/image";
+import { usePathname } from "next/navigation";
+import { useContext, useState, useMemo, useCallback, useRef } from "react";
 import {
   SidebarProvider,
   Sidebar,
@@ -52,7 +51,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import type { Student, PointRecord } from "@/lib/types";
+import type { PointRecord } from "@/lib/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { formatDistanceToNow } from "date-fns";
@@ -64,8 +63,7 @@ import { AppDataContext } from "@/context/AppDataContext";
 
 function StudentLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { student, isLoading } = useAuth();
+  const { student, isLoading, handleLogout } = useAuth();
   const { platformConfig, classes, setStudents } = useContext(AppDataContext);
   const { toast } = useToast();
 
@@ -75,42 +73,25 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   
-  const [hasNewAnnouncements, setHasNewAnnouncements] = useState(false);
-  const [hasNewPointHistory, setHasNewPointHistory] = useState(false);
-  const redirectOnce = useRef(false);
-
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem('studentClassId');
-    localStorage.removeItem('studentId');
-    localStorage.removeItem('studentPassword');
-    localStorage.removeItem('userRole');
-    router.replace('/');
-  }, [router]);
-
-  useEffect(() => {
-    if (!isLoading && !student && !redirectOnce.current) {
-        redirectOnce.current = true;
-        handleLogout();
-    }
-  }, [isLoading, student, handleLogout]);
-  
-  useEffect(() => {
-    if (!student) return;
-
+  const hasNewAnnouncements = useMemo(() => {
+    if (!student) return false;
     const lastViewTime = student.lastAnnouncementsView ? new Date(student.lastAnnouncementsView).getTime() : 0;
     const latestSchoolAnnouncementDate = (platformConfig?.announcements || [])
       .reduce((latest, ann) => Math.max(latest, new Date(ann.date).getTime()), 0);
     const studentClass = classes.find(c => c.id === student.classId);
     const latestClassAnnouncementDate = (studentClass?.announcements || [])
       .reduce((latest, ann) => Math.max(latest, new Date(ann.date).getTime()), 0);
-    setHasNewAnnouncements(latestSchoolAnnouncementDate > lastViewTime || latestClassAnnouncementDate > lastViewTime);
+    return latestSchoolAnnouncementDate > lastViewTime || latestClassAnnouncementDate > lastViewTime;
+  }, [student, platformConfig, classes]);
 
+  const hasNewPointHistory = useMemo(() => {
+     if (!student) return false;
     const lastPointHistoryView = student.lastPointHistoryView ? new Date(student.lastPointHistoryView).getTime() : 0;
     const latestPointRecordDate = (student.pointHistory || [])
       .reduce((latest, record) => Math.max(latest, new Date(record.date).getTime()), 0);
-    setHasNewPointHistory(latestPointRecordDate > lastPointHistoryView);
+    return latestPointRecordDate > lastPointHistoryView;
+  }, [student]);
 
-  }, [student, platformConfig, classes]);
 
   const handleChangePassword = async () => {
     if (!student || !student._docId) return;
@@ -156,7 +137,6 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
     if (!student || !hasNewPointHistory || !student._docId) return;
     
     const now = new Date().toISOString();
-    setHasNewPointHistory(false); 
 
     try {
         await setStudents(prevStudents => 
@@ -169,7 +149,6 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
         );
     } catch (e) {
         console.error("Failed to update lastPointHistoryView:", e);
-        setHasNewPointHistory(true); 
         toast({ title: "錯誤", description: "無法更新通知狀態，請稍後再試。", variant: "destructive" });
     }
 }, [student, hasNewPointHistory, setStudents, toast]);

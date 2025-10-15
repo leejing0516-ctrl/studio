@@ -28,9 +28,8 @@ function LoginPageContent() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const { classes, students, teachers, platformConfig } = useContext(AppDataContext);
-  const { student, teacher, isLoading } = useAuth();
-
+  const { classes, students, teachers, platformConfig, isLoading: isAppDataLoading } = useContext(AppDataContext);
+  const { student, teacher, isLoading: isAuthLoading } = useAuth();
 
   const sortedTeachers = useMemo(() => {
     if (!teachers) return [];
@@ -43,14 +42,14 @@ function LoginPageContent() {
   }, [teachers]);
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!isAuthLoading) {
       if (student) {
         router.replace('/dashboard');
       } else if (teacher) {
         router.replace('/teacher/dashboard');
       }
     }
-  }, [isLoading, student, teacher, router]);
+  }, [isAuthLoading, student, teacher, router]);
 
 
   const handleStudentLogin = async (e: React.FormEvent) => {
@@ -73,7 +72,7 @@ function LoginPageContent() {
                 localStorage.setItem('studentClassId', classId);
                 localStorage.setItem('studentId', studentIdInput);
                 localStorage.setItem('studentPassword', studentPassword);
-                window.location.href = '/dashboard';
+                router.push('/dashboard');
             } else {
                 throw new Error("密碼不正確");
             }
@@ -114,7 +113,7 @@ function LoginPageContent() {
             localStorage.setItem('teacherClassIds', JSON.stringify(teacher.classIds || []));
             localStorage.setItem('teacherRole', teacher.role);
             localStorage.setItem('teacherPassword', teacherPassword); 
-            window.location.href = '/teacher/dashboard';
+            router.push('/teacher/dashboard');
         } else {
             throw new Error("帳號或密碼不正確");
         }
@@ -128,12 +127,14 @@ function LoginPageContent() {
     }
   };
 
+  const isLoading = isAppDataLoading || isAuthLoading;
   const isFormDisabled = isLoggingIn || isLoading;
 
   if (isLoading || student || teacher) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
+         載入中或正在重新導向...
       </div>
     );
   }
