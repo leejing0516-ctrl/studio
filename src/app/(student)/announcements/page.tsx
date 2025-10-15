@@ -1,11 +1,11 @@
 
 "use client";
 
-import { useContext, useMemo, useEffect } from "react";
+import { useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Megaphone, GraduationCap } from "lucide-react";
 import { format } from "date-fns";
-import { AppDataContext } from "@/context/AppDataContext";
+import { useSchoolStore } from "@/store/useSchoolStore";
 import { useAuth } from "@/context/AuthContext";
 import { Separator } from "@/components/ui/separator";
 import type { Announcement, Student } from "@/lib/types";
@@ -29,7 +29,7 @@ const AnnouncementList = ({ announcements }: { announcements: Announcement[] }) 
 
 
 export default function AnnouncementsPage() {
-    const { platformConfig, classes } = useContext(AppDataContext);
+    const { config: platformConfig, classes } = useSchoolStore();
     const { student, setStudents } = useAuth();
 
     const schoolAnnouncements = useMemo(() => {

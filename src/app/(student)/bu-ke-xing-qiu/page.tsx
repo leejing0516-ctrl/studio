@@ -1,7 +1,6 @@
 
 "use client";
 
-import { useContext } from "react";
 import Link from "next/link";
 import {
   Card,
@@ -12,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { BookUp, Library, Star, TrendingUp, Gem, ExternalLink } from "lucide-react";
-import { AppDataContext } from "@/context/AppDataContext";
+import { useSchoolStore } from "@/store/useSchoolStore";
 
 const StatCard = ({
   title,
@@ -36,7 +35,7 @@ const StatCard = ({
 
 export default function BuKeXingQiuPage() {
   const { student } = useAuth();
-  const { platformConfig } = useContext(AppDataContext);
+  const { config: platformConfig } = useSchoolStore();
 
   const currentStudent = student;
 
