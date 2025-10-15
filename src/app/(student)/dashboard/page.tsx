@@ -72,7 +72,7 @@ export default function StudentDashboardPage() {
   
   const currentStudent = student;
 
-  const totalPoints = Math.round(currentStudent?.points || 0);
+  const totalPoints = Math.round(Number(currentStudent?.points || 0));
 
   const pointsData = useMemo(() => {
     if (!currentStudent) return [];
@@ -156,7 +156,7 @@ export default function StudentDashboardPage() {
         .filter(l => l.status === 'active' || l.status === 'overdue')
         .reduce((acc, l) => acc + l.amount, 0);
         
-      const totalAssets = (student.points || 0) + studentPortfolioValue + studentTotalDeposits - studentTotalLoans;
+      const totalAssets = (Number(student.points) || 0) + studentPortfolioValue + studentTotalDeposits - studentTotalLoans;
       return { ...student, totalAssets };
     });
 
@@ -183,7 +183,7 @@ export default function StudentDashboardPage() {
       const studentTotalLoans = (student.loans || [])
         .filter(l => l.status === 'active' || l.status === 'overdue')
         .reduce((acc, l) => acc + l.amount, 0);
-      const totalAssets = (student.points || 0) + studentPortfolioValue + studentTotalDeposits - studentTotalLoans;
+      const totalAssets = (Number(student.points) || 0) + studentPortfolioValue + studentTotalDeposits - studentTotalLoans;
       return { ...student, totalAssets };
     });
 

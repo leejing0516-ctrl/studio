@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -71,7 +72,7 @@ export default function TeacherDashboardPage() {
             await updateAllStudents(currentStudents => 
                 currentStudents.map(s => {
                     if (s._docId === student._docId) {
-                        const newPoints = (s.points || 0) + Number(pointsToUpdate);
+                        const newPoints = (Number(s.points) || 0) + Number(pointsToUpdate);
                         const newRecord: PointRecord = {
                             points: Number(pointsToUpdate),
                             date: new Date().toISOString(),
@@ -127,7 +128,7 @@ export default function TeacherDashboardPage() {
             await updateAllStudents(currentStudents => 
                 currentStudents.map(s => {
                     if (targetStudentIds.includes(s.id) && s.classId === selectedClassId) {
-                        const newPoints = (s.points || 0) + Number(batchPoints);
+                        const newPoints = (Number(s.points) || 0) + Number(batchPoints);
                         const newRecord: PointRecord = {
                             points: Number(batchPoints),
                             date: new Date().toISOString(),
@@ -262,7 +263,7 @@ export default function TeacherDashboardPage() {
                                         </TableCell>
                                         <TableCell>{student.name}</TableCell>
                                         <TableCell>{teacherGroups.find(g => g.id === student.groupId)?.name || '未分組'}</TableCell>
-                                        <TableCell className="text-right font-medium">{Math.round(student.points).toLocaleString()}</TableCell>
+                                        <TableCell className="text-right font-medium">{Math.round(Number(student.points || 0)).toLocaleString()}</TableCell>
                                         <TableCell>
                                             <Input type="number" value={points[student.id] || ''} onChange={e => handlePointChange(student.id, e.target.value)} placeholder="例如: 50, -5" />
                                         </TableCell>
