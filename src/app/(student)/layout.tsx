@@ -109,7 +109,7 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
     const lastPointHistoryView = student.lastPointHistoryView ? new Date(student.lastPointHistoryView).getTime() : 0;
     const latestPointRecordDate = (student.pointHistory || [])
       .reduce((latest, record) => Math.max(latest, new Date(record.date).getTime()), 0);
-    setHasNewPointHistory(latestPointRecordDate > lastPointHistoryView);
+    setHasNewPointHistory(latestPointRecordDate > lastViewTime);
 
   }, [student, platformConfig, classes]);
 
