@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useContext, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -15,11 +15,12 @@ import { Input } from "@/components/ui/input";
 import { Loader2, Coins, BarChart, PiggyBank, Wallet, Trophy, Globe, Users, Star, Bone, LineChart } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
 import { Textarea } from "@/components/ui/textarea";
 import type { DashboardCardConfig } from "@/lib/types";
 import { hslToHex, hexToHsl } from '@/lib/utils';
+import { useAuth } from "@/context/AuthContext";
+import { useSchoolStore } from "@/store/useSchoolStore";
 
 const initialCardConfig: Partial<DashboardCardConfig> = {
     totalPoints: { title: "目前點數", description: "可用於交易或兌換獎勵", backgroundColor: "222.2 47.4% 11.2%", textColor: "210 40% 98%" },
@@ -148,7 +149,8 @@ const EditorCard = ({
 };
 
 export default function TeacherDashboardEditorPage() {
-    const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
+    const { setPlatformConfig } = useAuth();
+    const { config: platformConfig } = useSchoolStore();
     const { toast } = useToast();
     const router = useRouter();
     
@@ -363,3 +365,5 @@ export default function TeacherDashboardEditorPage() {
         </div>
     );
 }
+
+    

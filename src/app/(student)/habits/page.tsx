@@ -15,8 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { StudentDataContext } from "@/context/StudentDataContext";
-import { AppDataContext } from "@/context/AppDataContext";
+import { useAuth } from "@/context/AuthContext";
+import { useSchoolStore } from "@/store/useSchoolStore";
 import { PlusCircle, Repeat, Target, Clock, Coins, Check, AlertTriangle, BadgeCheck, CircleOff, Trash2, Goal, Notebook, Eye } from "lucide-react";
 import { addDays, format, isAfter, startOfDay, differenceInDays, isSameDay, isValid } from "date-fns";
 import type { StudentHabit, HabitCheckIn } from "@/lib/types";
@@ -49,8 +49,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 const HABIT_DURATION = 21;
 
 export default function HabitsPage() {
-  const { studentData } = useContext(StudentDataContext);
-  const { setStudents } = useContext(AppDataContext);
+  const { student: currentStudent, setStudents } = useAuth();
   const { toast } = useToast();
 
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
@@ -62,8 +61,6 @@ export default function HabitsPage() {
   const [checkInNote, setCheckInNote] = useState("");
 
   const [viewingHabitHistory, setViewingHabitHistory] = useState<StudentHabit | null>(null);
-
-  const currentStudent = studentData.student;
 
   const studentHabits = useMemo(() => {
     return (currentStudent?.habits || []).sort((a,b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
@@ -412,7 +409,5 @@ export default function HabitsPage() {
       </Dialog>
     </div>
   );
-
-    
 
     
