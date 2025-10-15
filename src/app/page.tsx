@@ -12,7 +12,7 @@ import { User, School, ArrowRight, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSchoolStore } from '@/store/useSchoolStore';
-import { useSyncAll } from "@/hooks/useSyncAll";
+import { syncAll } from "@/lib/firestoreFetchers";
 import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
 import { DEFAULT_LOGO_URL } from '@/lib/config';
 
@@ -28,7 +28,7 @@ function LoginPageContent() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const { classes, students, teachers, config: platformConfig, loading: isAppDataLoading } = useSchoolStore();
+  const { classes, students, teachers, config: platformConfig } = useSchoolStore();
   
   const sortedTeachers = useMemo(() => {
     if (!teachers) return [];
@@ -125,16 +125,7 @@ function LoginPageContent() {
     }
   };
 
-  const isFormDisabled = isLoggingIn || isAppDataLoading;
-
-  if (isAppDataLoading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-         正在同步初始資料...
-      </div>
-    );
-  }
+  const isFormDisabled = isLoggingIn;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 font-body">
@@ -278,14 +269,41 @@ function LoginPageContent() {
 
 
 function Providers({ children }: { children: React.ReactNode }) {
-    const { syncNow, error } = useSyncAll();
+    const { setLoading, setConfig, setStudents, setTeachers, setClasses } = useSchoolStore();
+    const [error, setError] = useState<string | null>(null);
+    const [isSynced, setIsSynced] = useState(false);
 
     useEffect(() => {
-        syncNow();
-    }, [syncNow]);
+        const sync = async () => {
+            setError(null);
+            setLoading(true);
+            try {
+                const { config, students, teachers, classes } = await syncAll();
+                setConfig(config);
+                setStudents(students);
+                setTeachers(teachers);
+                setClasses(classes);
+                setIsSynced(true);
+            } catch (e: any) {
+                setError(e?.message ?? "同步失敗");
+            } finally {
+                setLoading(false);
+            }
+        };
+        sync();
+    }, [setLoading, setConfig, setStudents, setTeachers, setClasses]);
 
     if (error) {
         return <div className="flex h-screen w-full items-center justify-center text-destructive">資料同步失敗: {error}</div>;
+    }
+
+    if (!isSynced) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                正在同步初始資料...
+            </div>
+        );
     }
 
     return <>{children}</>;

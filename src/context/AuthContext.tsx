@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
@@ -6,13 +5,13 @@ import { useRouter } from 'next/navigation';
 import { useSchoolStore } from '@/store/useSchoolStore';
 import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
 import type { Student, Teacher } from '@/lib/types';
-import { useSyncAll } from '@/hooks/useSyncAll';
 
 interface AuthContextType {
   student: Student | null;
   teacher: Teacher | null;
   isLoading: boolean;
   handleLogout: () => void;
+  setStudents: (updater: (prev: Student[]) => Student[]) => Promise<void>; // Add this
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -20,14 +19,15 @@ const AuthContext = createContext<AuthContextType>({
   teacher: null,
   isLoading: true,
   handleLogout: () => {},
+  setStudents: async () => {}, // Add this
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
-  const { students, teachers, config: platformConfig, loading: isAppLoading } = useSchoolStore();
+  const { students, teachers, config: platformConfig, loading: isAppLoading, setStudents: setStoreStudents } = useSchoolStore();
   const [student, setStudent] = useState<Student | null>(null);
   const [teacher, setTeacher] = useState<Teacher | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(true);
 
   const handleLogout = useCallback(() => {
     localStorage.clear();
@@ -35,6 +35,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setTeacher(null);
     router.replace('/');
   }, [router]);
+  
+  // This is a temporary solution to allow setStudents to be called from the Auth context consumer
+  // The correct long-term solution is to move all data modification logic to a separate service/hook layer.
+  const setStudentsProxy = async (updater: (prev: Student[]) => Student[]) => {
+      const currentStudents = useSchoolStore.getState().students;
+      const newStudents = updater(currentStudents);
+      setStoreStudents(newStudents);
+      // Here you would also add the logic to persist the changes to Firebase
+      // For now, it just updates the Zustand store.
+  };
 
   useEffect(() => {
     if (isAppLoading) return;
@@ -56,7 +66,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (currentStudent && currentStudent.password === storedPassword) {
           setStudent(currentStudent);
         } else {
-          throw new Error('Student not found or password mismatch');
+           setStudent(null);
+          // throw new Error('Student not found or password mismatch');
         }
       } else if (userRole === 'teacher') {
         const teacherId = localStorage.getItem('teacherId');
@@ -72,18 +83,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (currentTeacher && storedPassword === correctPassword) {
           setTeacher(currentTeacher);
         } else {
-          throw new Error('Teacher not found or password mismatch');
+          setTeacher(null);
+          // throw new Error('Teacher not found or password mismatch');
         }
+      } else {
+          setStudent(null);
+          setTeacher(null);
       }
     } catch (error) {
-      // Any error in auth validation leads to logout
       handleLogout();
     } finally {
-      setIsLoading(false);
+      setAuthLoading(false);
     }
   }, [isAppLoading, students, teachers, platformConfig, handleLogout]);
 
-  const value = { student, teacher, isLoading: isAppLoading || isLoading, handleLogout };
+  const value = { student, teacher, isLoading: isAppLoading || authLoading, handleLogout, setStudents: setStudentsProxy };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

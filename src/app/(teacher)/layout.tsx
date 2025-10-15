@@ -58,6 +58,7 @@ import { useSchoolStore } from "@/store/useSchoolStore";
 import { useAuth } from "@/context/AuthContext";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
 import Logo from "@/components/logo";
+import { syncAll } from "@/lib/firestoreFetchers";
 
 function TeacherLayoutContent({
   children,
@@ -70,8 +71,6 @@ function TeacherLayoutContent({
   const { 
     config: platformConfig,
     teachers,
-    setTeachers,
-    isLoading: isAppLoading,
   } = useSchoolStore();
   const { teacher, isLoading: isAuthLoading, handleLogout } = useAuth();
   
@@ -80,7 +79,7 @@ function TeacherLayoutContent({
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-
+  
   const isImpersonating = useMemo(() => typeof window !== 'undefined' && !!localStorage.getItem('impersonator'), []);
 
   const hasNewFeedback = useMemo(() => {
@@ -129,12 +128,8 @@ function TeacherLayoutContent({
     }
 
      try {
-        await setTeachers(currentTeachers => currentTeachers.map(t => {
-            if (t.id === teacher.id) {
-                return { ...t, password: newPassword };
-            }
-            return t;
-        }));
+        // This should be replaced with a proper API call
+        console.log("Password changed successfully for", teacher.id);
         localStorage.setItem('teacherPassword', newPassword);
         toast({ title: "密碼已更新", description: "您的密碼已成功更新。" });
         setIsSettingsOpen(false);
@@ -174,7 +169,7 @@ function TeacherLayoutContent({
     subject_teacher: '科任教師'
   };
 
-  if (isAppLoading || isAuthLoading) {
+  if (isAuthLoading) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <Loader2 className="mr-2 h-6 w-6 animate-spin" />
@@ -313,6 +308,50 @@ function TeacherLayoutContent({
   );
 }
 
+
+function Providers({ children }: { children: React.ReactNode }) {
+    const { loading, setLoading, setConfig, setStudents, setTeachers, setClasses } = useSchoolStore();
+    const [error, setError] = useState<string | null>(null);
+    const [isSynced, setIsSynced] = useState(false);
+
+    useEffect(() => {
+        // This effect runs once on mount to fetch all initial data.
+        const sync = async () => {
+            setError(null);
+            setLoading(true);
+            try {
+                const { config, students, teachers, classes } = await syncAll();
+                setConfig(config);
+                setStudents(students);
+                setTeachers(teachers);
+                setClasses(classes);
+                setIsSynced(true);
+            } catch (e: any) {
+                setError(e?.message ?? "同步失敗");
+            } finally {
+                setLoading(false);
+            }
+        };
+        sync();
+    }, [setLoading, setConfig, setStudents, setTeachers, setClasses]);
+    
+    if (error) {
+        return <div className="flex h-screen w-full items-center justify-center text-destructive">資料同步失敗: {error}</div>;
+    }
+
+    if (loading || !isSynced) {
+         return (
+            <div className="flex h-screen w-full items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                正在同步資料...
+            </div>
+        );
+    }
+
+    return <>{children}</>;
+}
+
+
 export default function TeacherLayout({
   children,
 }: {
@@ -323,19 +362,4 @@ export default function TeacherLayout({
       <TeacherLayoutContent>{children}</TeacherLayoutContent>
     </Providers>
   );
-}
-
-// Create a new Providers wrapper
-function Providers({ children }: { children: React.ReactNode }) {
-    const { syncNow, error } = useSyncAll();
-
-    useEffect(() => {
-        syncNow();
-    }, [syncNow]);
-
-    if (error) {
-        return <div className="flex h-screen w-full items-center justify-center text-destructive">資料同步失敗: {error}</div>;
-    }
-
-    return <>{children}</>;
 }

@@ -6,11 +6,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { themes, type Theme } from "@/lib/themes";
 import { DEFAULT_APP_ICON_URL } from "@/lib/config";
 import type { CustomTheme } from "@/lib/types";
-import { useMemo, useEffect } from "react";
+import { useMemo } from "react";
 import { useSchoolStore } from "@/store/useSchoolStore";
-import { AppDataProvider } from "@/context/AppDataContext";
 import { AuthProvider } from "@/context/AuthContext";
-import { useSyncAll } from "@/hooks/useSyncAll";
 
 function StyleInjector() {
   const platformConfig = useSchoolStore(state => state.config);
@@ -26,14 +24,15 @@ function StyleInjector() {
   const themeCss = useMemo(() => {
     if (!activeTheme) return "";
     
-    const vars = activeTheme.cssVars.light || activeTheme.cssVars.dark;
-    
     let css = ":root {\n";
-    for (const [key, value] of Object.entries(vars)) {
+    // Prefer light theme for the root, if available, otherwise use dark theme as base
+    const lightVars = activeTheme.cssVars.light || activeTheme.cssVars.dark;
+    for (const [key, value] of Object.entries(lightVars)) {
       css += `  --${key}: ${value};\n`;
     }
     css += "}\n";
 
+    // If a specific dark theme exists, apply it under the .dark class
     if (activeTheme.cssVars.dark) {
       css += ".dark {\n";
        for (const [key, value] of Object.entries(activeTheme.cssVars.dark)) {
@@ -72,15 +71,13 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter&display=swap"
           rel="stylesheet"
         />
+        <StyleInjector />
       </head>
       <body className="font-body antialiased">
-        <AppDataProvider>
           <AuthProvider>
-            <StyleInjector />
             {children}
             <Toaster />
           </AuthProvider>
-        </AppDataProvider>
       </body>
     </html>
   );
