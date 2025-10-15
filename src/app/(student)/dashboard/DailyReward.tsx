@@ -1,10 +1,10 @@
 
 "use client";
 
-import { useState, useContext, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { AppDataContext } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
+import { useSchoolStore } from '@/store/useSchoolStore';
 import { Gift, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import type { Student, PointRecord } from "@/lib/types";
@@ -12,8 +12,8 @@ import { startOfDay, formatISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
 const DailyReward = () => {
-    const { student, setStudents } = useAuth();
-    const { setPlatformConfig, platformConfig } = useContext(AppDataContext);
+    const { student, setStudents, setPlatformConfig } = useAuth();
+    const { config: platformConfig } = useSchoolStore();
     const { toast } = useToast();
 
     const [isClaiming, setIsClaiming] = useState(false);

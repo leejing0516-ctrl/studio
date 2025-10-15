@@ -1,12 +1,12 @@
 
 "use client";
 
-import { useContext, useMemo } from "react";
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Coins, Trophy, Wallet, BarChart as BarChartIcon, Landmark, Users, Globe, PiggyBank, Bone, BookUp, Star } from "lucide-react";
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Bar, BarChart, XAxis, YAxis } from "recharts"
-import { AppDataContext } from "@/context/AppDataContext";
+import { useSchoolStore } from "@/store/useSchoolStore";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { subDays, format, parseISO, startOfDay, isWithinInterval } from "date-fns";
@@ -30,7 +30,7 @@ const chartConfig: ChartConfig = {
 } satisfies ChartConfig
 
 const DashboardCard = ({ cardKey, title, value, description, icon: Icon }: { cardKey: keyof DashboardCardConfig, title: string, value: string | number, description: string, icon: React.ElementType }) => {
-    const { platformConfig } = useContext(AppDataContext);
+    const { config: platformConfig } = useSchoolStore();
     const cardConfig = platformConfig?.dashboardCards?.[cardKey];
     
     if (!cardConfig || typeof cardConfig === 'string') return null;
@@ -66,7 +66,7 @@ const DashboardCard = ({ cardKey, title, value, description, icon: Icon }: { car
 
 export default function StudentDashboardPage() {
   const { student } = useAuth();
-  const { students, stocks: marketStocks, classes, teachers, platformConfig } = useContext(AppDataContext);
+  const { students, stocks: marketStocks, classes, teachers, config: platformConfig } = useSchoolStore();
 
   const cardConfig = useMemo(() => platformConfig?.dashboardCards || {}, [platformConfig]);
   
