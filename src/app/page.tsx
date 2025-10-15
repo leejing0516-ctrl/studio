@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect, useContext } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -11,8 +11,8 @@ import { Label } from "@/components/ui/label";
 import { User, School, ArrowRight, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AppDataContext } from '@/context/AppDataContext';
-import { useAuth } from '@/context/AuthContext';
+import { useSchoolStore } from '@/store/useSchoolStore';
+import { useSyncAll } from "@/hooks/useSyncAll";
 import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
 import { DEFAULT_LOGO_URL } from '@/lib/config';
 
@@ -28,8 +28,12 @@ function LoginPageContent() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const { classes, students, teachers, platformConfig, isLoading: isAppDataLoading } = useContext(AppDataContext);
-  const { student, teacher, isLoading: isAuthLoading } = useAuth();
+  const { classes, students, teachers, config: platformConfig, loading: isAppDataLoading } = useSchoolStore();
+  const { syncNow, error: syncError } = useSyncAll();
+
+  useEffect(() => {
+    syncNow();
+  }, [syncNow]);
 
   const sortedTeachers = useMemo(() => {
     if (!teachers) return [];
@@ -42,14 +46,13 @@ function LoginPageContent() {
   }, [teachers]);
 
   useEffect(() => {
-    if (!isAuthLoading) {
-      if (student) {
+    const userRole = localStorage.getItem('userRole');
+    if (userRole === 'student') {
         router.replace('/dashboard');
-      } else if (teacher) {
+    } else if (userRole === 'teacher') {
         router.replace('/teacher/dashboard');
-      }
     }
-  }, [isAuthLoading, student, teacher, router]);
+  }, [router]);
 
 
   const handleStudentLogin = async (e: React.FormEvent) => {
@@ -127,14 +130,22 @@ function LoginPageContent() {
     }
   };
 
-  const isLoading = isAppDataLoading || isAuthLoading;
+  const isLoading = isAppDataLoading;
   const isFormDisabled = isLoggingIn || isLoading;
 
-  if (isLoading || student || teacher) {
+  if (isLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
-         載入中或正在重新導向...
+         正在同步初始資料...
+      </div>
+    );
+  }
+  
+  if (syncError) {
+     return (
+      <div className="flex h-screen w-full items-center justify-center text-red-500">
+        資料同步失敗: {syncError}
       </div>
     );
   }

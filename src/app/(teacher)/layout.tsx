@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import React, { useEffect, useState, useContext, useCallback, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import {
   SidebarProvider,
   Sidebar,
@@ -54,10 +54,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { AppDataContext } from "@/context/AppDataContext";
-import { useAuth } from "@/context/AuthContext";
+import { useSchoolStore } from "@/store/useSchoolStore";
+import { useSyncAll } from "@/hooks/useSyncAll";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
 import Logo from "@/components/logo";
+import type { Teacher } from "@/lib/types";
 
 function TeacherLayoutContent({
   children,
@@ -67,13 +68,17 @@ function TeacherLayoutContent({
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
+  
   const { 
-    platformConfig,
+    config: platformConfig,
     teachers,
     setTeachers,
-    isLoading: isAppLoading,
-  } = useContext(AppDataContext);
-  const { teacher, isLoading: isAuthLoading } = useAuth();
+    loading: isAppDataLoading,
+  } = useSchoolStore();
+  const { syncNow, error: syncError } = useSyncAll();
+  
+  const [teacher, setTeacher] = useState<Teacher | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -81,12 +86,9 @@ function TeacherLayoutContent({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  const logoutOnce = useRef(false);
-  const isImpersonating = useMemo(() => typeof window !== 'undefined' && !!localStorage.getItem('impersonator'), []);
-
-  const hasNewFeedback = useMemo(() => {
-    return (platformConfig?.feedback || []).some(f => !f.isRead);
-  }, [platformConfig?.feedback]);
+  useEffect(() => {
+    syncNow();
+  }, [syncNow]);
 
   const handleLogout = useCallback(() => {
     localStorage.removeItem('teacherName');
@@ -96,15 +98,38 @@ function TeacherLayoutContent({
     localStorage.removeItem('teacherPassword');
     localStorage.removeItem('userRole');
     localStorage.removeItem('impersonator');
+    setTeacher(null);
     router.replace('/');
   }, [router]);
-
+  
   useEffect(() => {
-    if (!isAuthLoading && !teacher && !logoutOnce.current) {
-        logoutOnce.current = true;
-        handleLogout();
+    if (isAppDataLoading) return;
+
+    const userRole = localStorage.getItem('userRole');
+    const teacherId = localStorage.getItem('teacherId');
+    const storedPassword = localStorage.getItem('teacherPassword');
+
+    if (userRole !== 'teacher' || !teacherId || !storedPassword) {
+      handleLogout();
+      return;
     }
-  }, [isAuthLoading, teacher, handleLogout]);
+
+    const currentTeacher = teachers.find(t => t.id === teacherId);
+    const correctPassword = currentTeacher?.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
+
+    if (currentTeacher && storedPassword === correctPassword) {
+      setTeacher(currentTeacher);
+    } else {
+      handleLogout();
+    }
+    setIsAuthLoading(false);
+  }, [isAppDataLoading, teachers, platformConfig, handleLogout]);
+
+  const isImpersonating = useMemo(() => typeof window !== 'undefined' && !!localStorage.getItem('impersonator'), []);
+
+  const hasNewFeedback = useMemo(() => {
+    return (platformConfig?.feedback || []).some(f => !f.isRead);
+  }, [platformConfig?.feedback]);
 
   const handleStopImpersonating = () => {
     const originalAdminId = localStorage.getItem('impersonator');
@@ -148,12 +173,13 @@ function TeacherLayoutContent({
     }
 
      try {
-        await setTeachers(currentTeachers => currentTeachers.map(t => {
+        const updatedTeachers = teachers.map(t => {
             if (t.id === teacher.id) {
                 return { ...t, password: newPassword };
             }
             return t;
-        }));
+        });
+        setTeachers(updatedTeachers);
         localStorage.setItem('teacherPassword', newPassword);
         toast({ title: "密碼已更新", description: "您的密碼已成功更新。" });
         setIsSettingsOpen(false);
@@ -193,7 +219,7 @@ function TeacherLayoutContent({
     subject_teacher: '科任教師'
   };
 
-  if (isAppLoading || isAuthLoading) {
+  if (isAppDataLoading || isAuthLoading) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <Loader2 className="mr-2 h-6 w-6 animate-spin" />

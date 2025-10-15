@@ -2,8 +2,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useContext, useState, useMemo, useCallback, useRef } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import React, { useContext, useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
   SidebarProvider,
   Sidebar,
@@ -51,27 +51,68 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import type { PointRecord } from "@/lib/types";
+import type { PointRecord, Student } from "@/lib/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
-import { AppDataContext } from "@/context/AppDataContext";
+import { useSchoolStore } from "@/store/useSchoolStore";
+import { useSyncAll } from "@/hooks/useSyncAll";
 
 function StudentLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { student, isLoading, handleLogout } = useAuth();
-  const { platformConfig, classes, setStudents } = useContext(AppDataContext);
+  const router = useRouter();
   const { toast } = useToast();
+  
+  const { config: platformConfig, classes, students, setStudents: setAllStudents } = useSchoolStore();
+  const { loading: isAppDataLoading, syncNow, error: syncError } = useSyncAll();
+  
+  const [student, setStudent] = useState<Student | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    syncNow();
+  }, [syncNow]);
+  
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('studentClassId');
+    localStorage.removeItem('studentId');
+    localStorage.removeItem('studentPassword');
+    setStudent(null);
+    router.replace('/');
+  }, [router]);
+
+  useEffect(() => {
+    if (isAppDataLoading) return;
+
+    const userRole = localStorage.getItem('userRole');
+    const studentId = localStorage.getItem('studentId');
+    const classId = localStorage.getItem('studentClassId');
+    const storedPassword = localStorage.getItem('studentPassword');
+    
+    if (userRole !== 'student' || !studentId || !classId || !storedPassword) {
+      handleLogout();
+      return;
+    }
+
+    const currentStudent = students.find(s => s.classId === classId && s.id === studentId);
+
+    if (currentStudent && currentStudent.password === storedPassword) {
+      setStudent(currentStudent);
+    } else {
+      handleLogout();
+    }
+    setIsAuthLoading(false);
+  }, [isAppDataLoading, students, handleLogout]);
   
   const hasNewAnnouncements = useMemo(() => {
     if (!student) return false;
@@ -94,7 +135,7 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
 
 
   const handleChangePassword = async () => {
-    if (!student || !student._docId) return;
+    if (!student || !student.id) return;
     setIsSaving(true);
 
     if (newPassword !== confirmPassword) {
@@ -114,12 +155,13 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
     }
 
     try {
-        await setStudents(currentStudents => currentStudents.map(s => {
-            if (s._docId === student._docId) {
+        const updatedStudents = students.map(s => {
+            if (s.id === student.id && s.classId === student.classId) {
                 return { ...s, password: newPassword };
             }
             return s;
-        }));
+        });
+        setAllStudents(updatedStudents); // Update via Zustand
         localStorage.setItem('studentPassword', newPassword);
         toast({ title: "密碼已更新", description: "您的密碼已成功更新。" });
         setIsSettingsOpen(false);
@@ -134,24 +176,23 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
   };
 
   const handleOpenNotifications = useCallback(async () => {
-    if (!student || !hasNewPointHistory || !student._docId) return;
+    if (!student || !hasNewPointHistory || !student.id) return;
     
     const now = new Date().toISOString();
 
     try {
-        await setStudents(prevStudents => 
-            prevStudents.map(s => {
-                if (s._docId === student._docId) {
-                    return { ...s, lastPointHistoryView: now };
-                }
-                return s;
-            })
-        );
+        const updatedStudents = students.map(s => {
+            if (s.id === student.id && s.classId === student.classId) {
+                return { ...s, lastPointHistoryView: now };
+            }
+            return s;
+        });
+        setAllStudents(updatedStudents); // Update via Zustand
     } catch (e) {
         console.error("Failed to update lastPointHistoryView:", e);
         toast({ title: "錯誤", description: "無法更新通知狀態，請稍後再試。", variant: "destructive" });
     }
-}, [student, hasNewPointHistory, setStudents, toast]);
+}, [student, hasNewPointHistory, students, setAllStudents, toast]);
 
   const navItems = [
     { href: "/dashboard", label: "儀表板", icon: LayoutDashboard },
@@ -194,7 +235,7 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (isLoading) {
+  if (isAppDataLoading || isAuthLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />

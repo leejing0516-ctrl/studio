@@ -6,13 +6,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { themes, type Theme } from "@/lib/themes";
 import { DEFAULT_APP_ICON_URL } from "@/lib/config";
 import type { CustomTheme } from "@/lib/types";
-import { useMemo, useContext } from "react";
-import { Providers } from "@/context/Providers";
-import { AppDataContext } from "@/context/AppDataContext";
-
+import { useMemo } from "react";
+import { useSchoolStore } from "@/store/useSchoolStore";
 
 function StyleInjector() {
-  const { platformConfig } = useContext(AppDataContext);
+  const platformConfig = useSchoolStore(state => state.config);
 
   const themeName = platformConfig?.theme || 'makeup-pink';
   const appIconUrl = platformConfig?.appIconUrl || DEFAULT_APP_ICON_URL;
@@ -73,10 +71,8 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-          <Providers>
-            <StyleInjector />
-            {children}
-          </Providers>
+          <StyleInjector />
+          {children}
           <Toaster />
       </body>
     </html>
