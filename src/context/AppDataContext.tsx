@@ -4,7 +4,7 @@
 import { createContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import type { Student, Reward, Class, Teacher, Stock, PlatformConfig } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { collection, doc, runTransaction as firestoreRunTransaction, Transaction, writeBatch, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, runTransaction as firestoreRunTransaction, Transaction, writeBatch, deleteDoc } from 'firebase/firestore';
 
 type SetStateActionWithFunction<S> = S | ((prevState: S) => S);
 
@@ -73,9 +73,9 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isMarketOpen, setIsMarketOpen] = useState(false);
 
-  const handleRunTransaction = useCallback(async (updateFunction: (transaction: Transaction) => Promise<any>) => {
+  const handleRunTransaction = async (updateFunction: (transaction: Transaction) => Promise<any>) => {
     return firestoreRunTransaction(db, updateFunction);
-  }, []);
+  };
   
   const createSetterWithBatch = <T extends { _docId?: string; id?: any }>(
     collectionName: string,
@@ -127,7 +127,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       });
   };
 
-  const fetchInitialData = useCallback(() => {
+  const fetchInitialData = () => {
     const collectionsToListen: { name: string, setter: React.Dispatch<React.SetStateAction<any>> }[] = [
         { name: 'students', setter: setStudentsState },
         { name: 'classes', setter: setClassesState },
@@ -159,7 +159,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       unsubs.forEach(unsub => unsub());
     };
-  }, []);
+  };
 
   useEffect(() => {
     setIsMarketOpen(checkMarketOpen(platformConfig));
