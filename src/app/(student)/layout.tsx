@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import {
   SidebarProvider,
   Sidebar,
@@ -338,3 +338,5 @@ export default function StudentLayout({
     </SidebarProvider>
   );
 }
+
+    
