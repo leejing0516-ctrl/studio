@@ -2,13 +2,13 @@
 "use client";
 
 import "./globals.css";
+import { AppDataProvider } from "@/context/AppDataContext";
 import { Toaster } from "@/components/ui/toaster";
 import { themes, type Theme } from "@/lib/themes";
 import { DEFAULT_APP_ICON_URL } from "@/lib/config";
 import type { CustomTheme } from "@/lib/types";
 import { useMemo } from "react";
 import { useSchoolStore } from "@/store/useSchoolStore";
-import { AuthProvider } from "@/context/AuthContext";
 
 function StyleInjector() {
   const platformConfig = useSchoolStore(state => state.config);
@@ -72,10 +72,10 @@ export default function RootLayout({
         <StyleInjector />
       </head>
       <body className="font-body antialiased">
-          <AuthProvider>
-            {children}
-            <Toaster />
-          </AuthProvider>
+        <AppDataProvider>
+          {children}
+          <Toaster />
+        </AppDataProvider>
       </body>
     </html>
   );

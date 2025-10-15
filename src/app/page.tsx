@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useContext, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -10,61 +11,13 @@ import { Label } from "@/components/ui/label";
 import { User, School, ArrowRight, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useSchoolStore } from '@/store/useSchoolStore';
-import { syncAll } from "@/lib/firestoreFetchers";
+import { AppDataContext } from "@/context/AppDataContext";
 import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
 import { DEFAULT_LOGO_URL } from '@/lib/config';
 import type { Student } from '@/lib/types';
 
-function Providers({ children }: { children: React.ReactNode }) {
-    const { setLoading, setConfig, setStudents, setTeachers, setClasses, students, classes: schoolClasses, teachers: schoolTeachers } = useSchoolStore();
-    const [error, setError] = useState<string | null>(null);
-    const [isSynced, setIsSynced] = useState(false);
 
-    useEffect(() => {
-        // This effect runs once on mount to fetch all initial data.
-        if(students.length > 0 || schoolClasses.length > 0 || schoolTeachers.length > 0) {
-          setIsSynced(true);
-          return;
-        }
-
-        const sync = async () => {
-            setError(null);
-            setLoading(true);
-            try {
-                const { config, students, teachers, classes } = await syncAll();
-                setConfig(config);
-                setStudents(students);
-                setTeachers(teachers);
-                setClasses(classes);
-                setIsSynced(true);
-            } catch (e: any) {
-                setError(e?.message ?? "同步失敗");
-            } finally {
-                setLoading(false);
-            }
-        };
-        sync();
-    }, [setLoading, setConfig, setStudents, setTeachers, setClasses, students, schoolClasses, schoolTeachers]);
-    
-    if (error) {
-        return <div className="flex h-screen w-full items-center justify-center text-destructive">資料同步失敗: {error}</div>;
-    }
-
-    if (!isSynced) {
-         return (
-            <div className="flex h-screen w-full items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin" />
-                正在同步初始資料...
-            </div>
-        );
-    }
-
-    return <>{children}</>;
-}
-
-
-function LoginPageContent() {
+export default function LoginPage() {
   const [studentIdInput, setStudentIdInput] = useState('');
   const [studentPassword, setStudentPassword] = useState('');
   const [classId, setClassId] = useState('');
@@ -76,7 +29,7 @@ function LoginPageContent() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const { classes, students, teachers, config: platformConfig } = useSchoolStore();
+  const { classes, students, teachers, platformConfig } = useContext(AppDataContext);
   
   const sortedTeachers = useMemo(() => {
     if (!teachers) return [];
@@ -174,7 +127,16 @@ function LoginPageContent() {
     }
   };
 
-  const isFormDisabled = isLoggingIn;
+  const isFormDisabled = isLoggingIn || !platformConfig;
+
+  if (!platformConfig) {
+    return (
+        <div className="flex h-screen w-full items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            正在連接伺服器...
+        </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 font-body">
@@ -313,14 +275,5 @@ function LoginPageContent() {
         ) : null}
       </footer>
     </div>
-  );
-}
-
-
-export default function HomePage() {
-  return (
-    <Providers>
-        <LoginPageContent />
-    </Providers>
   );
 }
