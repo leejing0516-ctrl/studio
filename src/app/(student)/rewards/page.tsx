@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
-import { AppDataContext } from "@/context/AppDataContext";
+import { useSchoolStore } from "@/store/useSchoolStore";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -29,8 +29,10 @@ export default function RewardsPage() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isRedeeming, setIsRedeeming] = useState(false);
   const { toast } = useToast();
-  const { student, setStudents, teachers } = useAuth();
-  const { rewards, setRewards } = useContext(AppDataContext);
+  const { student, setStudents, setPlatformConfig } = useAuth();
+  const { config: platformConfig, teachers } = useSchoolStore();
+
+  const rewards = useMemo(() => platformConfig?.rewards || [], [platformConfig]);
 
   const { classRewards, schoolRewards } = useMemo(() => {
     if (!student) return { classRewards: [], schoolRewards: [] };
@@ -98,7 +100,7 @@ export default function RewardsPage() {
 
     try {
         await setStudents(prev => prev.map(s => {
-            if (s.id === student.id) {
+            if (s.id === student.id && s.classId === student.classId) {
                 if (s.points < selectedReward.cost) {
                     throw new Error("點數不足。");
                 }
@@ -120,7 +122,7 @@ export default function RewardsPage() {
             return s;
         }));
 
-        await setRewards(prev => prev.map(r => {
+        const updatedRewards = rewards.map(r => {
              if (r.id === selectedReward.id) {
                 if (r.stock <= 0) {
                     throw new Error("此獎勵已無庫存。");
@@ -128,7 +130,9 @@ export default function RewardsPage() {
                 return { ...r, stock: r.stock - 1 };
              }
              return r;
-        }));
+        });
+
+        await setPlatformConfig({ rewards: updatedRewards });
 
         toast({
             title: "兌換成功！",
