@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useContext, useMemo } from "react";
@@ -7,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Coins, Trophy, Wallet, BarChart as BarChartIcon, Landmark, Users, Globe, PiggyBank, Bone, BookUp, Star } from "lucide-react";
 import { ChartContainer, ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Bar, BarChart, XAxis, YAxis } from "recharts"
-import { StudentDataContext } from "@/context/StudentDataContext";
 import { AppDataContext } from "@/context/AppDataContext";
+import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { subDays, format, parseISO, startOfDay, isWithinInterval } from "date-fns";
 import StudentPet from "@/components/student-pet";
@@ -66,14 +65,12 @@ const DashboardCard = ({ cardKey, title, value, description, icon: Icon }: { car
 };
 
 export default function StudentDashboardPage() {
-  const { studentData } = useContext(StudentDataContext);
-  const { students, stocks: marketStocks, classes, teachers, platformConfig } = useContext(AppDataContext);
+  const { student, students } = useAuth();
+  const { stocks: marketStocks, classes, teachers, platformConfig } = useContext(AppDataContext);
 
   const cardConfig = useMemo(() => platformConfig?.dashboardCards || {}, [platformConfig]);
   
-  const currentStudent = useMemo(() => 
-    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId)
-  , [students, studentData.student]);
+  const currentStudent = student;
 
   const totalPoints = Math.round(currentStudent?.points || 0);
 

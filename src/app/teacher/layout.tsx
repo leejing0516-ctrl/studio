@@ -55,6 +55,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { AppDataContext } from "@/context/AppDataContext";
+import { useAuth } from "@/context/AuthContext";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
 import Logo from "@/components/logo";
 
@@ -67,14 +68,10 @@ function TeacherLayoutContent({
   const router = useRouter();
   const { toast } = useToast();
   const { 
-    teachers, setTeachers, 
     platformConfig,
-    isLoading
+    isLoading: isAppLoading,
   } = useContext(AppDataContext);
-
-  const [teacherId, setTeacherId] = useState<string | null>(null);
-  const [teacherName, setTeacherName] = useState<string | null>(null);
-  const [teacherRole, setTeacherRole] = useState<string | null>(null);
+  const { teacher, teachers, setTeachers, isLoading: isAuthLoading } = useAuth();
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -82,12 +79,11 @@ function TeacherLayoutContent({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  const [isImpersonating, setIsImpersonating] = useState(false);
+  const isImpersonating = useMemo(() => !!localStorage.getItem('impersonator'), []);
 
   const hasNewFeedback = useMemo(() => {
     return (platformConfig?.feedback || []).some(f => !f.isRead);
   }, [platformConfig?.feedback]);
-
 
   const handleLogout = useCallback(() => {
     localStorage.removeItem('teacherName');
@@ -101,40 +97,15 @@ function TeacherLayoutContent({
   }, [router]);
 
   useEffect(() => {
-    const userRole = localStorage.getItem('userRole');
-    const storedTeacherId = localStorage.getItem('teacherId');
-    const storedTeacherPassword = localStorage.getItem('teacherPassword');
-
-    if (userRole !== 'teacher' || !storedTeacherId || !storedTeacherPassword) {
-      handleLogout();
-      return;
+    if (!isAuthLoading && !teacher) {
+        handleLogout();
+    } else if (teacher) {
+        localStorage.setItem('teacherName', teacher.name);
+        localStorage.setItem('teacherRole', teacher.role);
+        localStorage.setItem('teacherClassIds', JSON.stringify(teacher.classIds || []));
     }
+  }, [isAuthLoading, teacher, handleLogout]);
 
-    if (teachers.length > 0) {
-        const teacher = teachers.find(t => t.id === storedTeacherId);
-
-        if (teacher) {
-            const correctPassword = teacher.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
-            if (storedTeacherPassword === correctPassword) {
-                setTeacherId(teacher.id as string);
-                setTeacherName(teacher.name as string);
-                setTeacherRole(teacher.role as string);
-                setIsImpersonating(!!localStorage.getItem('impersonator'));
-                localStorage.setItem('teacherName', teacher.name as string);
-                localStorage.setItem('teacherRole', teacher.role as string);
-                localStorage.setItem('teacherClassIds', JSON.stringify(teacher.classIds || []));
-            } else {
-                toast({ title: "驗證失敗", description: "密碼不正確，請重新登入。", variant: "destructive" });
-                handleLogout();
-            }
-        } else {
-             toast({ title: "找不到帳號", description: "找不到您的教師帳號，請重新登入。", variant: "destructive" });
-             handleLogout();
-        }
-    }
-  }, [teachers.length, router, toast, handleLogout, platformConfig?.teacherPassword]);
-
-  
   const handleStopImpersonating = () => {
     const originalAdminId = localStorage.getItem('impersonator');
     if (!originalAdminId) {
@@ -156,7 +127,7 @@ function TeacherLayoutContent({
   }
 
   const handleChangePassword = async () => {
-     if (!teacherId) return;
+     if (!teacher) return;
     setIsSaving(true);
     if (newPassword !== confirmPassword) {
         toast({ title: "密碼不符", description: "新密碼與確認密碼不相符。", variant: "destructive" });
@@ -168,7 +139,6 @@ function TeacherLayoutContent({
         setIsSaving(false);
         return;
     }
-    const teacher = teachers.find(t => t.id === teacherId);
     const correctPassword = teacher?.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
 
     if (currentPassword !== correctPassword) {
@@ -179,7 +149,7 @@ function TeacherLayoutContent({
 
      try {
         await setTeachers(currentTeachers => currentTeachers.map(t => {
-            if (t.id === teacherId) {
+            if (t.id === teacher.id) {
                 return { ...t, password: newPassword };
             }
             return t;
@@ -214,7 +184,8 @@ function TeacherLayoutContent({
     { href: "/teacher/manual", label: "操作手冊", icon: BookUser, roles: ['admin', 'teacher', 'subject_teacher'] },
   ];
   
-  const availableNavItems = navItems.filter(item => item.roles.includes(teacherRole || ''));
+  const teacherRole = teacher?.role;
+  const availableNavItems = navItems.filter(item => teacherRole && item.roles.includes(teacherRole));
   const currentNavItem = availableNavItems.find(item => pathname.startsWith(item.href));
 
 
@@ -225,7 +196,7 @@ function TeacherLayoutContent({
   };
 
 
-  if (isLoading || !teacherName) {
+  if (isAppLoading || isAuthLoading || !teacher) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <Loader2 className="mr-2 h-6 w-6 animate-spin" />
@@ -275,12 +246,12 @@ function TeacherLayoutContent({
                 className="w-full justify-start gap-2 p-2 group-data-[collapsible=icon]:justify-center"
               >
                 <Avatar className="size-8">
-                  <AvatarImage src={`https://picsum.photos/seed/${teacherName}/100`} data-ai-hint="teacher avatar" />
-                  <AvatarFallback>{teacherName?.slice(0, 2)}</AvatarFallback>
+                  <AvatarImage src={`https://picsum.photos/seed/${teacher.name}/100`} data-ai-hint="teacher avatar" />
+                  <AvatarFallback>{teacher.name?.slice(0, 2)}</AvatarFallback>
                 </Avatar>
                 <div className="text-left group-data-[collapsible=icon]:hidden">
-                  <p className="font-semibold text-lg">{teacherName}</p>
-                  <p className="text-xs text-muted-foreground">{roleNameMapping[teacherRole || ''] || '老師'}</p>
+                  <p className="font-semibold text-lg">{teacher.name}</p>
+                  <p className="text-xs text-muted-foreground">{roleNameMapping[teacher.role || ''] || '老師'}</p>
                 </div>
                 <ChevronDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
               </Button>
@@ -304,7 +275,7 @@ function TeacherLayoutContent({
         {isImpersonating && (
           <div className="sticky top-0 z-30 flex items-center justify-center gap-2 bg-yellow-400 p-2 text-center text-sm font-semibold text-yellow-900">
             <AlertTriangle className="h-4 w-4" />
-            <span>您正在以 {teacherName} 的身份模擬登入。</span>
+            <span>您正在以 {teacher.name} 的身份模擬登入。</span>
             <Button size="sm" variant="link" className="h-auto p-0 text-yellow-900 underline" onClick={handleStopImpersonating}>
               返回校長身份
             </Button>
@@ -325,7 +296,7 @@ function TeacherLayoutContent({
         <DialogHeader>
             <DialogTitle>帳號設定</DialogTitle>
             <DialogDescription>
-                {teacherRole === 'admin' ? '修改您的登入密碼。您也可以修改未來新教師註冊時的「預設密碼」。' : '修改您的個人登入密碼。'}
+                {teacher.role === 'admin' ? '修改您的登入密碼。您也可以修改未來新教師註冊時的「預設密碼」。' : '修改您的個人登入密碼。'}
             </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -361,14 +332,5 @@ export default function TeacherLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { fetchInitialData } = useContext(AppDataContext);
-
-  useEffect(() => {
-    const unsub = fetchInitialData();
-    return () => unsub();
-  }, [fetchInitialData]);
-
   return <TeacherLayoutContent>{children}</TeacherLayoutContent>;
 }
-
-    

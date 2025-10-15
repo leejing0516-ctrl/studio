@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Megaphone, GraduationCap } from "lucide-react";
 import { format } from "date-fns";
 import { AppDataContext } from "@/context/AppDataContext";
-import { StudentDataContext } from "@/context/StudentDataContext";
+import { useAuth } from "@/context/AuthContext";
 import { Separator } from "@/components/ui/separator";
 import type { Announcement, Student } from "@/lib/types";
 
@@ -29,8 +29,8 @@ const AnnouncementList = ({ announcements }: { announcements: Announcement[] }) 
 
 
 export default function AnnouncementsPage() {
-    const { platformConfig, classes, setStudents } = useContext(AppDataContext);
-    const { studentData } = useContext(StudentDataContext);
+    const { platformConfig, classes } = useContext(AppDataContext);
+    const { student, setStudents } = useAuth();
 
     const schoolAnnouncements = useMemo(() => {
         return (platformConfig?.announcements || [])
@@ -38,14 +38,13 @@ export default function AnnouncementsPage() {
     }, [platformConfig]);
 
     const classAnnouncements = useMemo(() => {
-        if (!studentData.student) return [];
-        const studentClass = classes.find(c => c.id === studentData.student!.classId);
+        if (!student) return [];
+        const studentClass = classes.find(c => c.id === student.classId);
         return (studentClass?.announcements || [])
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [classes, studentData.student]);
+    }, [classes, student]);
 
     useEffect(() => {
-        const student = studentData.student;
         if (!student) return;
 
         const lastViewTime = student.lastAnnouncementsView ? new Date(student.lastAnnouncementsView).getTime() : 0;
@@ -59,7 +58,6 @@ export default function AnnouncementsPage() {
 
         const hasNew = latestSchoolAnnouncementDate > lastViewTime || latestClassAnnouncementDate > lastViewTime;
 
-        // Only update if there are new announcements to be marked as read
         if (hasNew) {
             const now = new Date().toISOString();
             const updateStudentReadTime = async () => {
@@ -76,7 +74,7 @@ export default function AnnouncementsPage() {
             updateStudentReadTime();
         }
 
-    }, [studentData.student, setStudents, platformConfig, classes]);
+    }, [student, setStudents, platformConfig, classes]);
 
     return (
         <div className="animate-in fade-in-0 duration-500 space-y-8">

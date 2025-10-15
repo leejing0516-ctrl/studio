@@ -9,42 +9,30 @@ import { collection, onSnapshot, doc, runTransaction as firestoreRunTransaction,
 type SetStateActionWithFunction<S> = S | ((prevState: S) => S);
 
 interface AppDataContextType {
-  students: Student[];
-  setStudents: (action: SetStateActionWithFunction<Student[]>) => Promise<void>;
   rewards: Reward[];
   setRewards: (action: SetStateActionWithFunction<Reward[]>) => Promise<void>;
   stocks: Stock[];
   setStocks: (action: SetStateActionWithFunction<Stock[]>) => Promise<void>;
   classes: Class[];
   setClasses: (action: SetStateActionWithFunction<Class[]>) => Promise<void>;
-  teachers: Teacher[];
-  setTeachers: (action: SetStateActionWithFunction<Teacher[]>) => Promise<void>;
   platformConfig: PlatformConfig | null;
   setPlatformConfig: (dataToUpdate: Partial<PlatformConfig>) => Promise<void>;
   isLoading: boolean;
-  setIsLoading: (loading: boolean) => void;
   isMarketOpen: boolean;
-  runTransaction: (updateFunction: (transaction: Transaction) => Promise<any>) => Promise<any>;
   fetchInitialData: () => () => void;
 }
 
 const defaultState: AppDataContextType = {
-  students: [],
-  setStudents: async () => {},
   rewards: [],
   setRewards: async () => {},
   stocks: [],
   setStocks: async () => {},
   classes: [],
   setClasses: async () => {},
-  teachers: [],
-  setTeachers: async () => {},
   platformConfig: null,
   setPlatformConfig: async () => {},
   isLoading: true,
-  setIsLoading: () => {},
   isMarketOpen: false,
-  runTransaction: async () => {},
   fetchInitialData: () => () => {},
 };
 
@@ -64,18 +52,12 @@ const useIdAsDocId = (collectionName: string) => {
 }
 
 export const AppDataProvider = ({ children }: { children: ReactNode }) => {
-  const [students, setStudentsState] = useState<Student[]>([]);
   const [rewards, setRewardsState] = useState<Reward[]>([]);
   const [stocks, setStocksState] = useState<Stock[]>([]);
-  const [teachers, setTeachersState] = useState<Teacher[]>([]);
   const [classes, setClassesState] = useState<Class[]>([]);
   const [platformConfig, setPlatformConfigState] = useState<PlatformConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMarketOpen, setIsMarketOpen] = useState(false);
-
-  const handleRunTransaction = async (updateFunction: (transaction: Transaction) => Promise<any>) => {
-    return firestoreRunTransaction(db, updateFunction);
-  };
   
   const createSetterWithBatch = <T extends { _docId?: string; id?: any }>(
     collectionName: string,
@@ -127,22 +109,17 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       });
   };
 
-  const fetchInitialData = () => {
+  const fetchInitialData = useCallback(() => {
     const collectionsToListen: { name: string, setter: React.Dispatch<React.SetStateAction<any>> }[] = [
-        { name: 'students', setter: setStudentsState },
         { name: 'classes', setter: setClassesState },
-        { name: 'teachers', setter: setTeachersState },
         { name: 'rewards', setter: setRewardsState },
         { name: 'stocks', setter: setStocksState },
     ];
 
     const unsubs = collectionsToListen.map(c => {
         return onSnapshot(collection(db, c.name), (snapshot) => {
-            c.setter(snapshot.docs.map(d => {
-                const data = d.data();
-                const docId = c.name === 'students' ? `${data.classId}-${data.id}` : d.id;
-                return { ...data, id: data.id || d.id, _docId: docId };
-            }));
+            c.setter(snapshot.docs.map(d => ({ ...d.data(), id: d.id, _docId: d.id })));
+            setIsLoading(false);
         });
     });
     
@@ -150,16 +127,14 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         if (doc.exists()) {
             setPlatformConfigState(doc.data() as PlatformConfig);
         }
+        setIsLoading(false);
     });
     unsubs.push(unsubConfig);
-
-    const timer = setTimeout(() => setIsLoading(false), 1500);
-    unsubs.push(() => clearTimeout(timer));
 
     return () => {
       unsubs.forEach(unsub => unsub());
     };
-  };
+  }, []);
 
   useEffect(() => {
     setIsMarketOpen(checkMarketOpen(platformConfig));
@@ -171,22 +146,16 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AppDataContext.Provider value={{ 
-        students, 
-        setStudents: createSetterWithBatch('students', setStudentsState, students),
         rewards, 
         setRewards: createSetterWithBatch('rewards', setRewardsState, rewards),
         stocks,
         setStocks: createSetterWithBatch('stocks', setStocksState, stocks),
         classes, 
         setClasses: createSetterWithBatch('classes', setClassesState, classes),
-        teachers,
-        setTeachers: createSetterWithBatch('teachers', setTeachersState, teachers),
         platformConfig,
         setPlatformConfig,
         isLoading,
-        setIsLoading,
         isMarketOpen,
-        runTransaction: handleRunTransaction,
         fetchInitialData,
     }}>
       {children}

@@ -4,7 +4,7 @@
 import { useState, useContext, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { AppDataContext } from '@/context/AppDataContext';
-import { StudentDataContext } from '@/context/StudentDataContext';
+import { useAuth } from '@/context/AuthContext';
 import { Gift, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import type { Student, PointRecord } from "@/lib/types";
@@ -12,8 +12,8 @@ import { startOfDay, formatISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
 const DailyReward = () => {
-    const { studentData } = useContext(StudentDataContext);
-    const { setStudents, platformConfig, setPlatformConfig } = useContext(AppDataContext);
+    const { student, setStudents } = useAuth();
+    const { setPlatformConfig, platformConfig } = useContext(AppDataContext);
     const { toast } = useToast();
 
     const [isClaiming, setIsClaiming] = useState(false);
@@ -21,14 +21,13 @@ const DailyReward = () => {
     const [isResultDialogOpen, setIsResultDialogOpen] = useState(false);
 
     const todayStr = formatISO(startOfDay(new Date()), { representation: 'date' });
-    const canClaim = studentData.student?.lastDailyReward !== todayStr;
+    const canClaim = student?.lastDailyReward !== todayStr;
 
     const handleClaimReward = () => {
-        if (!studentData.student) return;
+        if (!student) return;
 
         setIsClaiming(true);
 
-        // --- Get reward settings from platformConfig ---
         const jackpotChance = platformConfig?.dailyRewardJackpotChance ?? 0.05;
         const jackpotMin = platformConfig?.dailyRewardJackpotMin ?? 100;
         const jackpotMax = platformConfig?.dailyRewardJackpotMax ?? 200;
@@ -37,31 +36,28 @@ const DailyReward = () => {
         const standardMin = platformConfig?.dailyRewardStandardMin ?? 10;
         const standardMax = platformConfig?.dailyRewardStandardMax ?? 50;
 
-        // --- Determine the reward ---
         const roll = Math.random();
         let pointsAwarded = 0;
         
-        if (roll < jackpotChance) { // Jackpot
+        if (roll < jackpotChance) { 
             pointsAwarded = Math.floor(Math.random() * (jackpotMax - jackpotMin + 1)) + jackpotMin;
-        } else if (roll < jackpotChance + standardChance) { // Standard reward
+        } else if (roll < jackpotChance + standardChance) { 
             pointsAwarded = Math.floor(Math.random() * (standardMax - standardMin + 1)) + standardMin;
-        } else { // No reward
+        } else {
             pointsAwarded = 0;
         }
         
-        // --- Show result to user IMMEDIATELY ---
         setRewardResult(pointsAwarded);
         setIsResultDialogOpen(true);
         setIsClaiming(false);
     };
 
     const handleDialogClose = useCallback(async (open: boolean) => {
-        if (!open && rewardResult !== null && studentData.student) {
-            const currentStudent = studentData.student;
+        if (!open && rewardResult !== null && student) {
+            const currentStudent = student;
             const pointsAwarded = rewardResult;
 
             if (pointsAwarded > 0) {
-                // Check if school has enough funds
                 const currentSchoolFunds = platformConfig?.schoolFunds || 0;
                 if (currentSchoolFunds < pointsAwarded) {
                     toast({
@@ -69,11 +65,10 @@ const DailyReward = () => {
                         description: "學校資金不足，無法發放今日獎勵！請通知校長。",
                         variant: "destructive"
                     });
-                    setRewardResult(null); // Reset for next time
+                    setRewardResult(null);
                     return;
                 }
 
-                // Deduct from school funds
                 await setPlatformConfig({
                     schoolFunds: currentSchoolFunds - pointsAwarded
                 });
@@ -99,7 +94,6 @@ const DailyReward = () => {
                     })
                 );
             } else {
-                 // Still mark as claimed even if no reward
                  await setStudents(prevStudents =>
                     prevStudents.map(s => {
                         if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
@@ -110,15 +104,14 @@ const DailyReward = () => {
                 );
             }
             
-            // Reset for the next time
             setRewardResult(null);
         }
         setIsResultDialogOpen(open);
-    }, [rewardResult, studentData.student, setStudents, setPlatformConfig, platformConfig, todayStr, toast]);
+    }, [rewardResult, student, setStudents, setPlatformConfig, platformConfig, todayStr, toast]);
 
 
     if (!canClaim) {
-        return null; // Don't show anything if they've already claimed today
+        return null;
     }
 
     return (

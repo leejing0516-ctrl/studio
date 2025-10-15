@@ -3,7 +3,6 @@
 
 import { useContext } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -11,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { StudentDataContext } from "@/context/StudentDataContext";
+import { useAuth } from "@/context/AuthContext";
 import { BookUp, Library, Star, TrendingUp, Gem, ExternalLink } from "lucide-react";
 import { AppDataContext } from "@/context/AppDataContext";
 
@@ -36,14 +35,10 @@ const StatCard = ({
 );
 
 export default function BuKeXingQiuPage() {
-  const { studentData } = useContext(StudentDataContext);
-  const { students, platformConfig } = useContext(AppDataContext);
+  const { student } = useAuth();
+  const { platformConfig } = useContext(AppDataContext);
 
-  const currentStudent = students.find(
-    (s) =>
-      s.id === studentData.student?.id &&
-      s.classId === studentData.student.classId
-  );
+  const currentStudent = student;
 
   if (!currentStudent) {
     return <div>載入中...</div>;

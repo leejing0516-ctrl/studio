@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Student, Teacher, Class } from '@/lib/types';
 import { AppDataContext } from '@/context/AppDataContext';
+import { AuthContext } from '@/context/AuthContext';
 import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
 
 
@@ -28,7 +29,8 @@ function LoginPageContent() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const { students, teachers, classes, platformConfig, isLoading } = useContext(AppDataContext);
+  const { classes, platformConfig, isLoading: isAppLoading } = useContext(AppDataContext);
+  const { students, teachers, isLoading: isAuthLoading } = useContext(AuthContext);
 
   const sortedTeachers = useMemo(() => {
     return [...teachers].sort((a, b) => {
@@ -122,6 +124,7 @@ function LoginPageContent() {
     }
   };
 
+  const isLoading = isAppLoading || isAuthLoading;
   const isFormDisabled = isLoggingIn || isLoading;
 
   if (isLoading) {

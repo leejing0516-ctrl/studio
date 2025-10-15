@@ -18,7 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { StudentDataContext } from "@/context/StudentDataContext";
+import { useAuth } from "@/context/AuthContext";
 import { AppDataContext } from "@/context/AppDataContext";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -29,15 +29,12 @@ export default function RewardsPage() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isRedeeming, setIsRedeeming] = useState(false);
   const { toast } = useToast();
-  const { studentData } = useContext(StudentDataContext);
-  const { rewards, teachers, setStudents, setRewards } = useContext(AppDataContext);
+  const { student, setStudents, teachers } = useAuth();
+  const { rewards, setRewards } = useContext(AppDataContext);
 
-  const student = studentData.student;
-  
   const { classRewards, schoolRewards } = useMemo(() => {
     if (!student) return { classRewards: [], schoolRewards: [] };
     
-    // Find all teachers associated with the student's class
     const teachersForClass = teachers.filter(t => Array.isArray(t.classIds) && t.classIds.includes(student.classId));
     const teacherIdsForClass = teachersForClass.map(t => t.id);
 
@@ -244,5 +241,3 @@ export default function RewardsPage() {
     </>
   );
 }
-
-    

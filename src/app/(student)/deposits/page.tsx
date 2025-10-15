@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { StudentDataContext } from "@/context/StudentDataContext";
+import { useAuth } from "@/context/AuthContext";
 import { AppDataContext } from "@/context/AppDataContext";
 import {
   Select,
@@ -38,17 +38,13 @@ const depositDurations = [
 ];
 
 export default function DepositsPage() {
-  const { studentData } = useContext(StudentDataContext);
-  const { students, setStudents, platformConfig, runTransaction } = useContext(AppDataContext);
+  const { student: currentStudent, setStudents, runTransaction } = useAuth();
+  const { platformConfig } = useContext(AppDataContext);
   const { toast } = useToast();
 
   const [amount, setAmount] = useState<number | "">("");
   const [duration, setDuration] = useState<number>(7);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const currentStudent = useMemo(() => 
-    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId)
-  , [students, studentData.student]);
   
   const interestRate = platformConfig?.fixedDepositInterestRate || 0.01;
 
@@ -72,7 +68,6 @@ export default function DepositsPage() {
         toast({ title: "金額錯誤", description: "存款金額必須是 100 的倍數。", variant: "destructive" });
         return;
     }
-    // Front-end check
     if (currentStudent.points < amount) {
         toast({ title: "定存失敗", description: `您的點數不足。目前只有 ${Math.round(currentStudent.points).toLocaleString()} 點。`, variant: "destructive" });
         return;
@@ -91,7 +86,6 @@ export default function DepositsPage() {
 
             const latestStudentData = studentDoc.data() as Student;
 
-            // Back-end check inside transaction
             if (latestStudentData.points < amount) {
                 throw new Error(`您的點數不足。目前只有 ${Math.round(latestStudentData.points).toLocaleString()} 點。`);
             }

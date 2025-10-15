@@ -48,8 +48,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { StudentDataContext } from "@/context/StudentDataContext";
-import { AppDataContext } from "@/context/AppDataContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,20 +59,14 @@ import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { AppDataContext } from "@/context/AppDataContext";
 
-function StudentLayoutContent({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function StudentLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { studentData } = useContext(StudentDataContext);
-  const { 
-    platformConfig, 
-    classes,
-    students
-  } = useContext(AppDataContext);
+  const { student, setStudents, isLoading } = useAuth();
+  const { platformConfig, classes } = useContext(AppDataContext);
   const { toast } = useToast();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -85,12 +77,12 @@ function StudentLayoutContent({
   
   const [hasNewAnnouncements, setHasNewAnnouncements] = useState(false);
   const [hasNewPointHistory, setHasNewPointHistory] = useState(false);
-  
-  const { setStudents } = useContext(AppDataContext);
 
-  const student = useMemo(() => {
-    return students.find(s => s._docId === studentData.student?._docId);
-  }, [students, studentData.student]);
+  useEffect(() => {
+    if (!isLoading && !student) {
+      router.replace('/');
+    }
+  }, [isLoading, student, router]);
   
   useEffect(() => {
     if (!student) return;
@@ -109,7 +101,6 @@ function StudentLayoutContent({
     setHasNewPointHistory(latestPointRecordDate > lastPointHistoryView);
 
   }, [student, platformConfig, classes]);
-
 
   const handleChangePassword = async () => {
     if (!student || !student._docId) return;
@@ -212,6 +203,14 @@ function StudentLayoutContent({
             </div>
         </div>
     )
+  }
+
+  if (isLoading || !student) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
   return (
@@ -367,61 +366,6 @@ export default function StudentLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { students, isLoading, fetchInitialData } = useContext(AppDataContext);
-  const { studentData, setStudentData } = useContext(StudentDataContext);
-  const router = useRouter();
-  const { toast } = useToast();
-
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem('studentClassId');
-    localStorage.removeItem('studentId');
-    localStorage.removeItem('studentPassword');
-    localStorage.removeItem('userRole');
-    router.push('/');
-  }, [router]);
-
-  useEffect(() => {
-    const unsub = fetchInitialData();
-    return () => unsub();
-  }, [fetchInitialData]);
-
-  useEffect(() => {
-    const studentId = localStorage.getItem('studentId');
-    const classId = localStorage.getItem('studentClassId');
-    const storedPassword = localStorage.getItem('studentPassword');
-    const userRole = localStorage.getItem('userRole');
-
-    if (userRole !== 'student' || !studentId || !classId || !storedPassword) {
-      handleLogout();
-      return;
-    }
-    
-    // Only run validation when students array is populated
-    if (students.length > 0) {
-      const student = students.find(s => s.classId === classId && s.id === studentId);
-      if (student) {
-        if (student.password === storedPassword) {
-            setStudentData({ student });
-        } else {
-            toast({ title: "驗證失敗", description: "您的登入資訊已過期或不正確，請重新登入。", variant: "destructive" });
-            handleLogout();
-        }
-      } else {
-         toast({ title: "找不到學生資料", description: "請重新登入。", variant: "destructive" });
-         handleLogout();
-      }
-    }
-  }, [students.length, router, toast, setStudentData, handleLogout]); // Depend on students.length
-
-  if (isLoading || !studentData.student) {
-      return (
-        <div className="flex h-screen w-full items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      );
-  }
-
+  // The main logic is now in StudentLayoutContent, protected by useAuth hook.
   return <StudentLayoutContent>{children}</StudentLayoutContent>;
 }
-
-    

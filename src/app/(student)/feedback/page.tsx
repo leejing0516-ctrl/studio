@@ -14,13 +14,13 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { StudentDataContext } from "@/context/StudentDataContext";
+import { useAuth } from "@/context/AuthContext";
 import { AppDataContext } from "@/context/AppDataContext";
 import { Mail, Send, Loader2 } from "lucide-react";
 import type { Feedback } from "@/lib/types";
 
 export default function FeedbackPage() {
-  const { studentData } = useContext(StudentDataContext);
+  const { student } = useAuth();
   const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
   const { toast } = useToast();
   
@@ -29,7 +29,7 @@ export default function FeedbackPage() {
 
   const handleSubmitFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!studentData.student || !message.trim()) {
+    if (!student || !message.trim()) {
         toast({ title: "請輸入您的意見", variant: "destructive" });
         return;
     }
@@ -38,9 +38,9 @@ export default function FeedbackPage() {
 
     const newFeedback: Feedback = {
         id: `feedback-${Date.now()}-${Math.random()}`,
-        studentId: studentData.student.id,
-        studentName: studentData.student.name,
-        classId: studentData.student.classId,
+        studentId: student.id,
+        studentName: student.name,
+        classId: student.classId,
         message: message,
         date: new Date().toISOString(),
         isRead: false,

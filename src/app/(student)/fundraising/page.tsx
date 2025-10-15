@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { AppDataContext } from "@/context/AppDataContext";
-import { StudentDataContext } from "@/context/StudentDataContext";
+import { useAuth } from "@/context/AuthContext";
 import { HeartHandshake, Users, Info, Coins, Timer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { FundraisingProject, Donation } from "@/lib/types";
@@ -57,7 +57,7 @@ const Countdown = ({ to }: { to: string }) => {
              setIsOver(true);
         }
         setDuration(newDuration);
-    }, 60000); // Update every minute
+    }, 60000); 
 
     return () => clearInterval(interval);
   }, [to, isOver]);
@@ -75,16 +75,14 @@ const Countdown = ({ to }: { to: string }) => {
 
 
 export default function FundraisingPage() {
-  const { platformConfig, setPlatformConfig, setStudents, classes } = useContext(AppDataContext);
-  const { studentData } = useContext(StudentDataContext);
+  const { platformConfig, setPlatformConfig, classes } = useContext(AppDataContext);
+  const { student: currentStudent, setStudents } = useAuth();
   const { toast } = useToast();
 
   const [isDonateDialogOpen, setIsDonateDialogOpen] = useState(false);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<FundraisingProject | null>(null);
   const [donationAmount, setDonationAmount] = useState<number | "">(10);
-  
-  const currentStudent = studentData.student;
 
   const activeProjects = useMemo(() => {
     return (platformConfig?.fundraisingProjects || []).filter(p => p.status === 'active' && new Date(p.deadline) > new Date());
@@ -123,14 +121,12 @@ export default function FundraisingPage() {
         date: new Date().toISOString(),
     };
 
-    // Update student points
     await setStudents(prev => prev.map(s => 
         s.id === currentStudent.id && s.classId === currentStudent.classId
         ? { ...s, points: s.points - donationAmount }
         : s
     ));
     
-    // Update project donations
     await setPlatformConfig({
         fundraisingProjects: (platformConfig?.fundraisingProjects || []).map(p => {
             if (p.id === selectedProject.id) {
@@ -239,7 +235,6 @@ export default function FundraisingPage() {
             </section>
         )}
 
-      {/* Donate Dialog */}
       <Dialog open={isDonateDialogOpen} onOpenChange={setIsDonateDialogOpen}>
         <DialogContent>
             <DialogHeader>
@@ -269,7 +264,6 @@ export default function FundraisingPage() {
         </DialogContent>
       </Dialog>
       
-      {/* Details Dialog */}
       <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
         <DialogContent className="max-w-2xl">
             <DialogHeader>

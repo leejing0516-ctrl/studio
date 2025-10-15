@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useContext, useMemo, useEffect } from "react";
@@ -37,15 +36,12 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { StudentDataContext } from "@/context/StudentDataContext";
+import { useAuth } from "@/context/AuthContext";
 import { AppDataContext } from "@/context/AppDataContext";
 import { subMonths, format, isSameDay, startOfDay, formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
-import { doc, updateDoc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-
 
 const chartConfig: ChartConfig = {
   value: {
@@ -96,12 +92,8 @@ export default function StocksPage() {
   const [tradeType, setTradeType] = useState<"buy" | "sell">("buy");
   const [tradeShares, setTradeShares] = useState(0);
   const { toast } = useToast();
-  const { studentData } = useContext(StudentDataContext);
-  const { students, stocks: marketStocks, isMarketOpen, runTransaction, setStudents, platformConfig } = useContext(AppDataContext);
-  
-  const currentStudent = useMemo(() => 
-    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId)
-  , [students, studentData.student]);
+  const { student: currentStudent, setStudents } = useAuth();
+  const { stocks: marketStocks, isMarketOpen, platformConfig } = useContext(AppDataContext);
   
   const studentHolding = selectedStock ? currentStudent?.portfolio.find(item => item.ticker === selectedStock.ticker) : null;
   
@@ -151,7 +143,6 @@ export default function StocksPage() {
         });
         return;
       }
-      // Day trading prevention
       if (holding.lastPurchaseDate && isSameDay(new Date(holding.lastPurchaseDate), startOfDay(new Date()))) {
          toast({
           title: "無法賣出",

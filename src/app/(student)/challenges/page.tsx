@@ -4,7 +4,7 @@
 import { useState, useContext, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { StudentDataContext } from "@/context/StudentDataContext";
+import { useAuth } from "@/context/AuthContext";
 import { AppDataContext } from "@/context/AppDataContext";
 import { useToast } from "@/hooks/use-toast";
 import type { Challenge, StudentChallenge } from "@/lib/types";
@@ -16,14 +16,9 @@ import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
 export default function ChallengesPage() {
-    const { studentData } = useContext(StudentDataContext);
-    const { students, setStudents, platformConfig, teachers } = useContext(AppDataContext);
+    const { student: currentStudent, setStudents, teachers } = useAuth();
+    const { platformConfig } = useContext(AppDataContext);
     const { toast } = useToast();
-
-    const currentStudent = useMemo(() => 
-        students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId)
-    , [students, studentData.student]);
-
 
     const { availableClassChallenges, availableSchoolChallenges, myChallenges } = useMemo(() => {
         if (!currentStudent) return { availableClassChallenges: [], availableSchoolChallenges: [], myChallenges: [] };
@@ -36,7 +31,7 @@ export default function ChallengesPage() {
         const filterAndSort = (scope: 'school' | 'class') => {
              return allChallenges
                 .filter(challenge => {
-                    if (studentChallengeIds.includes(challenge.id)) return false; // Filter out already accepted challenges
+                    if (studentChallengeIds.includes(challenge.id)) return false; 
                     if (scope === 'school') return challenge.scope === 'school';
                     if (scope === 'class') return challenge.scope === 'class' && challenge.providerId === teacherForClass?.id;
                     return false;
@@ -48,7 +43,7 @@ export default function ChallengesPage() {
                 const challengeDetails = allChallenges.find(c => c.id === sc.challengeId);
                 return { ...sc, details: challengeDetails };
             })
-            .filter(c => c.details) // Filter out if details not found
+            .filter(c => c.details) 
             .sort((a,b) => new Date(b.acceptedDate).getTime() - new Date(a.acceptedDate).getTime());
 
 

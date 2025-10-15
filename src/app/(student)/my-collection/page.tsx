@@ -4,23 +4,17 @@
 import { useContext, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import Image from "next/image";
-import { StudentDataContext } from "@/context/StudentDataContext";
+import { useAuth } from "@/context/AuthContext";
 import { Gem, Hourglass, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AppDataContext } from "@/context/AppDataContext";
 import { useToast } from "@/hooks/use-toast";
 import type { RedeemedRewardItem, Student } from "@/lib/types";
 
 
 export default function MyCollectionPage() {
-  const { studentData } = useContext(StudentDataContext);
+  const { student: currentStudent, setStudents } = useAuth();
   const { toast } = useToast();
   const [isUsing, setIsUsing] = useState<string | null>(null);
-  const { students, setStudents } = useContext(AppDataContext);
-  
-  const currentStudent = useMemo(() => 
-    students.find(s => s.id === studentData.student?.id && s.classId === studentData.student.classId)
-  , [students, studentData.student]);
 
   const handleUseReward = async (redemption: RedeemedRewardItem) => {
     if (!currentStudent?._docId) return;
@@ -147,5 +141,3 @@ export default function MyCollectionPage() {
     </div>
   );
 }
-
-    
