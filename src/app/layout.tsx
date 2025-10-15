@@ -6,8 +6,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { themes, type Theme } from "@/lib/themes";
 import { DEFAULT_APP_ICON_URL } from "@/lib/config";
 import type { CustomTheme } from "@/lib/types";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useSchoolStore } from "@/store/useSchoolStore";
+import { AppDataProvider } from "@/context/AppDataContext";
+import { AuthProvider } from "@/context/AuthContext";
+import { useSyncAll } from "@/hooks/useSyncAll";
 
 function StyleInjector() {
   const platformConfig = useSchoolStore(state => state.config);
@@ -71,9 +74,13 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-          <StyleInjector />
-          {children}
-          <Toaster />
+        <AppDataProvider>
+          <AuthProvider>
+            <StyleInjector />
+            {children}
+            <Toaster />
+          </AuthProvider>
+        </AppDataProvider>
       </body>
     </html>
   );

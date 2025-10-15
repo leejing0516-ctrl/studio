@@ -59,60 +59,27 @@ import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 import { useSchoolStore } from "@/store/useSchoolStore";
-import { useSyncAll } from "@/hooks/useSyncAll";
+import { useAuth } from "@/context/AuthContext";
+import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
 
 function StudentLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const { toast } = useToast();
   
-  const { config: platformConfig, classes, students, setStudents: setAllStudents } = useSchoolStore();
-  const { loading: isAppDataLoading, syncNow, error: syncError } = useSyncAll();
+  const { 
+    config: platformConfig, 
+    classes, 
+    students, 
+    setStudents: setAllStudents, 
+    isLoading: isAppLoading 
+  } = useSchoolStore();
+  const { student, isLoading: isAuthLoading, handleLogout } = useAuth();
   
-  const [student, setStudent] = useState<Student | null>(null);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
-
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    syncNow();
-  }, [syncNow]);
-  
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('studentClassId');
-    localStorage.removeItem('studentId');
-    localStorage.removeItem('studentPassword');
-    setStudent(null);
-    router.replace('/');
-  }, [router]);
-
-  useEffect(() => {
-    if (isAppDataLoading) return;
-
-    const userRole = localStorage.getItem('userRole');
-    const studentId = localStorage.getItem('studentId');
-    const classId = localStorage.getItem('studentClassId');
-    const storedPassword = localStorage.getItem('studentPassword');
-    
-    if (userRole !== 'student' || !studentId || !classId || !storedPassword) {
-      handleLogout();
-      return;
-    }
-
-    const currentStudent = students.find(s => s.classId === classId && s.id === studentId);
-
-    if (currentStudent && currentStudent.password === storedPassword) {
-      setStudent(currentStudent);
-    } else {
-      handleLogout();
-    }
-    setIsAuthLoading(false);
-  }, [isAppDataLoading, students, handleLogout]);
   
   const hasNewAnnouncements = useMemo(() => {
     if (!student) return false;
@@ -176,9 +143,12 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
   };
 
   const handleOpenNotifications = useCallback(async () => {
-    if (!student || !hasNewPointHistory || !student.id) return;
+    if (!student || !hasNewPointHistory) return;
     
     const now = new Date().toISOString();
+
+    const currentStudent = students.find(s => s.id === student.id && s.classId === student.classId);
+    if (!currentStudent) return;
 
     try {
         const updatedStudents = students.map(s => {
@@ -235,7 +205,7 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (isAppDataLoading || isAuthLoading) {
+  if (isAppLoading || isAuthLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -399,5 +369,24 @@ export default function StudentLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <StudentLayoutContent>{children}</StudentLayoutContent>;
+  return (
+      <Providers>
+        <StudentLayoutContent>{children}</StudentLayoutContent>
+      </Providers>
+  );
+}
+
+// Create a new Providers wrapper
+function Providers({ children }: { children: React.ReactNode }) {
+    const { syncNow, error } = useSyncAll();
+
+    useEffect(() => {
+        syncNow();
+    }, [syncNow]);
+
+    if (error) {
+        return <div className="flex h-screen w-full items-center justify-center text-destructive">資料同步失敗: {error}</div>;
+    }
+
+    return <>{children}</>;
 }

@@ -55,10 +55,9 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useSchoolStore } from "@/store/useSchoolStore";
-import { useSyncAll } from "@/hooks/useSyncAll";
+import { useAuth } from "@/context/AuthContext";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
 import Logo from "@/components/logo";
-import type { Teacher } from "@/lib/types";
 
 function TeacherLayoutContent({
   children,
@@ -66,64 +65,21 @@ function TeacherLayoutContent({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const { toast } = useToast();
   
   const { 
     config: platformConfig,
     teachers,
     setTeachers,
-    loading: isAppDataLoading,
+    isLoading: isAppLoading,
   } = useSchoolStore();
-  const { syncNow, error: syncError } = useSyncAll();
-  
-  const [teacher, setTeacher] = useState<Teacher | null>(null);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const { teacher, isLoading: isAuthLoading, handleLogout } = useAuth();
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    syncNow();
-  }, [syncNow]);
-
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem('teacherName');
-    localStorage.removeItem('teacherRole');
-    localStorage.removeItem('teacherClassIds');
-    localStorage.removeItem('teacherId');
-    localStorage.removeItem('teacherPassword');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('impersonator');
-    setTeacher(null);
-    router.replace('/');
-  }, [router]);
-  
-  useEffect(() => {
-    if (isAppDataLoading) return;
-
-    const userRole = localStorage.getItem('userRole');
-    const teacherId = localStorage.getItem('teacherId');
-    const storedPassword = localStorage.getItem('teacherPassword');
-
-    if (userRole !== 'teacher' || !teacherId || !storedPassword) {
-      handleLogout();
-      return;
-    }
-
-    const currentTeacher = teachers.find(t => t.id === teacherId);
-    const correctPassword = currentTeacher?.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
-
-    if (currentTeacher && storedPassword === correctPassword) {
-      setTeacher(currentTeacher);
-    } else {
-      handleLogout();
-    }
-    setIsAuthLoading(false);
-  }, [isAppDataLoading, teachers, platformConfig, handleLogout]);
 
   const isImpersonating = useMemo(() => typeof window !== 'undefined' && !!localStorage.getItem('impersonator'), []);
 
@@ -173,13 +129,12 @@ function TeacherLayoutContent({
     }
 
      try {
-        const updatedTeachers = teachers.map(t => {
+        await setTeachers(currentTeachers => currentTeachers.map(t => {
             if (t.id === teacher.id) {
                 return { ...t, password: newPassword };
             }
             return t;
-        });
-        setTeachers(updatedTeachers);
+        }));
         localStorage.setItem('teacherPassword', newPassword);
         toast({ title: "密碼已更新", description: "您的密碼已成功更新。" });
         setIsSettingsOpen(false);
@@ -219,7 +174,7 @@ function TeacherLayoutContent({
     subject_teacher: '科任教師'
   };
 
-  if (isAppDataLoading || isAuthLoading) {
+  if (isAppLoading || isAuthLoading) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <Loader2 className="mr-2 h-6 w-6 animate-spin" />
@@ -363,5 +318,24 @@ export default function TeacherLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <TeacherLayoutContent>{children}</TeacherLayoutContent>;
+  return (
+    <Providers>
+      <TeacherLayoutContent>{children}</TeacherLayoutContent>
+    </Providers>
+  );
+}
+
+// Create a new Providers wrapper
+function Providers({ children }: { children: React.ReactNode }) {
+    const { syncNow, error } = useSyncAll();
+
+    useEffect(() => {
+        syncNow();
+    }, [syncNow]);
+
+    if (error) {
+        return <div className="flex h-screen w-full items-center justify-center text-destructive">資料同步失敗: {error}</div>;
+    }
+
+    return <>{children}</>;
 }

@@ -29,12 +29,7 @@ function LoginPageContent() {
   const { toast } = useToast();
   
   const { classes, students, teachers, config: platformConfig, loading: isAppDataLoading } = useSchoolStore();
-  const { syncNow, error: syncError } = useSyncAll();
-
-  useEffect(() => {
-    syncNow();
-  }, [syncNow]);
-
+  
   const sortedTeachers = useMemo(() => {
     if (!teachers) return [];
     return [...teachers].sort((a, b) => {
@@ -130,22 +125,13 @@ function LoginPageContent() {
     }
   };
 
-  const isLoading = isAppDataLoading;
-  const isFormDisabled = isLoggingIn || isLoading;
+  const isFormDisabled = isLoggingIn || isAppDataLoading;
 
-  if (isLoading) {
+  if (isAppDataLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
          正在同步初始資料...
-      </div>
-    );
-  }
-  
-  if (syncError) {
-     return (
-      <div className="flex h-screen w-full items-center justify-center text-red-500">
-        資料同步失敗: {syncError}
       </div>
     );
   }
@@ -260,7 +246,7 @@ function LoginPageContent() {
               <CardFooter>
                   <Button type="submit" className="w-full text-base py-6" disabled={isFormDisabled}>
                     {isLoggingIn ? <Loader2 className="animate-spin mr-2" /> : <ArrowRight className="mr-2 h-4 w-4" />}
-                    {isLoggingIn ? "登入中..." : "以老師身份進入"}
+                    {isLoggingIn ? "以老師身份進入" : "以老師身份進入"}
                 </Button>
               </CardFooter>
             </form>
@@ -290,6 +276,26 @@ function LoginPageContent() {
   );
 }
 
+
+function Providers({ children }: { children: React.ReactNode }) {
+    const { syncNow, error } = useSyncAll();
+
+    useEffect(() => {
+        syncNow();
+    }, [syncNow]);
+
+    if (error) {
+        return <div className="flex h-screen w-full items-center justify-center text-destructive">資料同步失敗: {error}</div>;
+    }
+
+    return <>{children}</>;
+}
+
+
 export default function HomePage() {
-  return <LoginPageContent />;
+  return (
+    <Providers>
+        <LoginPageContent />
+    </Providers>
+  );
 }
