@@ -25,6 +25,8 @@ export default function TeacherRankingsPage() {
     const { students, stocks, classes } = useSchoolStore();
 
     const listedStudents = useMemo(() => {
+        if (!stocks || !classes) return []; // Add safety check here
+
         // Use a Map to ensure each student is unique based on _docId, taking the last entry.
         const uniqueStudentsMap = new Map<string, Student>();
         students.forEach(student => {
@@ -55,7 +57,7 @@ export default function TeacherRankingsPage() {
 
         // Sort by total assets descending
         return studentsWithAssets.sort((a, b) => b.totalAssets - a.totalAssets);
-    }, [students, stocks]);
+    }, [students, stocks, classes]);
 
     return (
         <div className="animate-in fade-in-0 duration-500">
@@ -98,7 +100,7 @@ export default function TeacherRankingsPage() {
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            {classes.find(c => c.id === student.classId)?.name || student.classId}
+                                            {(classes || []).find(c => c.id === student.classId)?.name || student.classId}
                                         </TableCell>
                                         <TableCell className="text-right font-bold text-primary">
                                             ${Math.round(student.totalAssets).toLocaleString()}
