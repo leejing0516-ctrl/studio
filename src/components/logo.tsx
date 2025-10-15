@@ -1,14 +1,12 @@
-
 "use client";
 
 import Image from 'next/image';
 import { cn } from "@/lib/utils";
 import { DEFAULT_LOGO_URL } from '@/lib/config';
-import { useContext } from 'react';
-import { AppDataContext } from '@/context/AppDataContext';
+import { useSchoolStore } from '@/store/useSchoolStore';
 
 const Logo = ({ className }: { className?: string }) => {
-  const { platformConfig } = useContext(AppDataContext);
+  const { config: platformConfig } = useSchoolStore();
   const logoUrl = platformConfig?.logoUrl || DEFAULT_LOGO_URL;
 
   if (!logoUrl) {

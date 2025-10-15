@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect, useContext } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -19,18 +19,18 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, UserPlus, Check, X, Coins, Users, AlertTriangle } from "lucide-react";
+import { Coins, Users } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
-import { AppDataContext } from "@/context/AppDataContext";
+import { useSchoolStore } from "@/store/useSchoolStore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Student, PointRecord } from "@/lib/types";
 
 export default function TeacherDashboardPage() {
     const { toast } = useToast();
     const { teacher, setStudents: updateAllStudents } = useAuth();
-    const { students, classes } = useContext(AppDataContext);
+    const { students, classes } = useSchoolStore();
     
     const [selectedClassId, setSelectedClassId] = useState<string>('');
     const [points, setPoints] = useState<{ [key: string]: number | '' }>({});
@@ -51,7 +51,7 @@ export default function TeacherDashboardPage() {
 
     const filteredStudents = useMemo(() => {
         if (!selectedClassId) return [];
-        return students.filter(s => s.classId === selectedClassId);
+        return students.filter(s => s.classId === selectedClassId).sort((a,b) => (a.id).localeCompare(b.id));
     }, [students, selectedClassId]);
 
     const handlePointChange = (studentId: string, value: string) => {
