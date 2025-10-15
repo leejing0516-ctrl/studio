@@ -8,7 +8,6 @@ import type { Student, Teacher, PlatformConfig } from '@/lib/types';
 import { doc, setDoc, writeBatch, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { syncAll } from '@/lib/firestoreFetchers';
 
 interface AuthContextType {
   role: 'student' | 'teacher' | null;
@@ -20,7 +19,7 @@ interface AuthContextType {
   setStudents: (updater: (prev: Student[]) => Student[]) => Promise<void>;
   setTeachers: (updater: (prev: Teacher[]) => Teacher[]) => Promise<void>;
   setPlatformConfig: (updates: Partial<PlatformConfig>) => Promise<void>;
-  isLoading: boolean;
+  isLoading: boolean; // This will now primarily reflect auth state check, not data sync
   runTransaction: (updateFunction: (transaction: any) => Promise<any>) => Promise<void>;
 }
 
@@ -30,7 +29,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   const [role, setRole] = useState<'student' | 'teacher' | null>(null);
   const [studentDocId, setStudentDocId] = useState<string | null>(null);
   const [teacherDocId, setTeacherDocId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
   
@@ -38,46 +37,24 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     students, teachers, config, 
     setStudents: setStoreStudents, 
     setTeachers: setStoreTeachers, 
-    setClasses: setStoreClasses,
     setConfig: setStoreConfig,
-    loading: isSyncing,
-    setLoading: setIsSyncing,
+    loading: isStoreLoading,
   } = useSchoolStore();
   
   const student = students.find(s => s._docId === studentDocId) || null;
   const teacher = teachers.find(t => t._docId === teacherDocId) || null;
 
   useEffect(() => {
-    const syncData = async () => {
-        setIsLoading(true);
-        setIsSyncing(true);
-        try {
-            const { config, students, teachers, classes } = await syncAll();
-            setStoreConfig(config);
-            setStoreStudents(students);
-            setStoreTeachers(teachers);
-            setStoreClasses(classes);
+    // This effect now only runs once on the client to check localStorage.
+    // It assumes the Zustand store is already hydrated by StoreHydration component.
+    const storedRole = localStorage.getItem('userRole') as 'student' | 'teacher' | null;
+    const storedStudentDocId = localStorage.getItem('studentDocId');
+    const storedTeacherDocId = localStorage.getItem('teacherDocId');
 
-            // After data is synced, check local storage for auth state
-            const storedRole = localStorage.getItem('userRole') as 'student' | 'teacher' | null;
-            const storedStudentDocId = localStorage.getItem('studentDocId');
-            const storedTeacherDocId = localStorage.getItem('teacherDocId');
-
-            setRole(storedRole);
-            setStudentDocId(storedStudentDocId);
-            setTeacherDocId(storedTeacherDocId);
-
-        } catch (e: any) {
-            console.error("Failed to sync data on initial load:", e);
-            toast({ title: "資料同步失敗", description: "無法從伺服器載入初始資料。", variant: "destructive" });
-        } finally {
-            setIsLoading(false);
-            setIsSyncing(false);
-        }
-    };
-    
-    syncData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    setRole(storedRole);
+    setStudentDocId(storedStudentDocId);
+    setTeacherDocId(storedTeacherDocId);
+    setIsAuthLoading(false); // Auth check is complete
   }, []);
 
   const handleLogout = useCallback(() => {
@@ -182,7 +159,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     setStudents: setStudentsWithDbUpdate,
     setTeachers: setTeachersWithDbUpdate,
     setPlatformConfig: setPlatformConfigWithDbUpdate,
-    isLoading: isLoading || isSyncing,
+    isLoading: isAuthLoading || isStoreLoading,
     runTransaction: runTransactionWithToast,
   };
 

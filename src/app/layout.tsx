@@ -6,10 +6,37 @@ import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/context/AuthContext";
 import { themes, type Theme } from "@/lib/themes";
 import { DEFAULT_APP_ICON_URL } from "@/lib/config";
-import type { CustomTheme } from "@/lib/types";
-import { useMemo } from "react";
+import type { CustomTheme, PlatformConfig, Student, Teacher, ClassInfo } from "@/lib/types";
+import { useMemo, useEffect, useRef } from "react";
 import { useSchoolStore } from "@/store/useSchoolStore";
+import { syncAll } from "@/lib/firestoreFetchers";
 
+// This component is responsible for taking server-fetched data
+// and "hydrating" the client-side Zustand store with it.
+// It runs only once on initial load.
+function StoreHydration() {
+  const isHydrated = useRef(false);
+
+  useEffect(() => {
+    if (!isHydrated.current) {
+      syncAll().then(initialState => {
+        useSchoolStore.setState({
+          config: initialState.config,
+          students: initialState.students,
+          teachers: initialState.teachers,
+          classes: initialState.classes,
+          loading: false, // Data is now loaded
+        });
+        isHydrated.current = true;
+      });
+    }
+  }, []);
+
+  return null;
+}
+
+// This component applies the dynamic theme based on the config.
+// It's a client component because it needs to access the Zustand store.
 function StyleInjector() {
   const { config: platformConfig } = useSchoolStore();
 
@@ -54,11 +81,13 @@ function StyleInjector() {
   );
 }
 
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -72,9 +101,13 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap"
           rel="stylesheet"
         />
+        {/* StyleInjector is now a client component, must be in a client-only wrapper or in the client-side tree */}
       </head>
       <body className="font-body antialiased">
+        {/* 2. Pass initial data to the client to hydrate the store. */}
+        <StoreHydration />
         <AuthProvider>
+          {/* This is a client component that can safely access the hydrated store */}
           <StyleInjector />
           {children}
           <Toaster />
