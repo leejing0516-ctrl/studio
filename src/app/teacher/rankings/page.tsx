@@ -17,15 +17,15 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { useSchoolStore } from "@/store/useSchoolStore";
-import { Coins, Trophy, PiggyBank, Landmark, LineChart } from "lucide-react";
+import { Coins, Trophy, PiggyBank, Landmark, LineChart, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { Student } from "@/lib/types";
 
 export default function TeacherRankingsPage() {
-    const { students, stocks, classes } = useSchoolStore();
+    const { students, stocks, classes, loading: isLoading } = useSchoolStore();
 
     const listedStudents = useMemo(() => {
-        if (!stocks || !classes) return []; // Add safety check here
+        if (isLoading || !stocks || !classes) return []; // Wait for data to be loaded
 
         // Use a Map to ensure each student is unique based on _docId, taking the last entry.
         const uniqueStudentsMap = new Map<string, Student>();
@@ -57,7 +57,15 @@ export default function TeacherRankingsPage() {
 
         // Sort by total assets descending
         return studentsWithAssets.sort((a, b) => b.totalAssets - a.totalAssets);
-    }, [students, stocks, classes]);
+    }, [students, stocks, classes, isLoading]);
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="animate-in fade-in-0 duration-500">
@@ -87,7 +95,7 @@ export default function TeacherRankingsPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {listedStudents.map((student, index) => (
+                                {listedStudents.length > 0 ? listedStudents.map((student, index) => (
                                     <TableRow key={student._docId || student.id}>
                                         <TableCell className="font-bold text-lg">{index + 1}</TableCell>
                                         <TableCell>
@@ -130,7 +138,13 @@ export default function TeacherRankingsPage() {
                                             </div>
                                         </TableCell>
                                     </TableRow>
-                                ))}
+                                )) : (
+                                    <TableRow>
+                                        <TableCell colSpan={8} className="h-24 text-center">
+                                            目前沒有學生資料，或資料正在載入中...
+                                        </TableCell>
+                                    </TableRow>
+                                )}
                             </TableBody>
                         </Table>
                     </div>
