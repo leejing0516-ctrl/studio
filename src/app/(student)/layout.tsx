@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useContext, useEffect, useState, useMemo, useCallback } from "react";
+import { useContext, useEffect, useState, useMemo, useCallback, useRef } from "react";
 import Image from "next/image";
 import {
   SidebarProvider,
@@ -65,8 +65,8 @@ import { AppDataContext } from "@/context/AppDataContext";
 function StudentLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { student, isLoading } = useAuth();
-  const { platformConfig, classes, setStudents } = useContext(AppDataContext);
+  const { student, isLoading: isAuthLoading } = useAuth();
+  const { platformConfig, classes, setStudents, isLoading: isAppLoading } = useContext(AppDataContext);
   const { toast } = useToast();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -78,11 +78,22 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
   const [hasNewAnnouncements, setHasNewAnnouncements] = useState(false);
   const [hasNewPointHistory, setHasNewPointHistory] = useState(false);
 
+  const logoutOnce = useRef(false);
+
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem('studentClassId');
+    localStorage.removeItem('studentId');
+    localStorage.removeItem('studentPassword');
+    localStorage.removeItem('userRole');
+    router.replace('/');
+  }, [router]);
+
   useEffect(() => {
-    if (!isLoading && !student) {
-      router.replace('/');
+    if (!isAuthLoading && !student && !logoutOnce.current) {
+      logoutOnce.current = true;
+      handleLogout();
     }
-  }, [isLoading, student, router]);
+  }, [isAuthLoading, student, handleLogout]);
   
   useEffect(() => {
     if (!student) return;
@@ -205,10 +216,19 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (isLoading || !student) {
+  if (isAppLoading || isAuthLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
+        載入中...
+      </div>
+    );
+  }
+
+  if (!student) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        正在導回登入頁…
       </div>
     );
   }
@@ -269,13 +289,7 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
                 <Settings className="mr-2 size-4" />
                 <span>設定</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => {
-                  localStorage.removeItem('studentClassId');
-                  localStorage.removeItem('studentId');
-                  localStorage.removeItem('studentPassword');
-                  localStorage.removeItem('userRole');
-                  router.push('/');
-              }}>
+              <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 size-4" />
                 <span>登出</span>
               </DropdownMenuItem>
@@ -368,5 +382,3 @@ export default function StudentLayout({
 }) {
   return <StudentLayoutContent>{children}</StudentLayoutContent>;
 }
-
-    

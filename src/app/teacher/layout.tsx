@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import React, { useEffect, useState, useContext, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useContext, useCallback, useMemo, useRef } from "react";
 import {
   SidebarProvider,
   Sidebar,
@@ -81,6 +81,7 @@ function TeacherLayoutContent({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
+  const logoutOnce = useRef(false);
   const isImpersonating = useMemo(() => typeof window !== 'undefined' && !!localStorage.getItem('impersonator'), []);
 
   const hasNewFeedback = useMemo(() => {
@@ -95,11 +96,12 @@ function TeacherLayoutContent({
     localStorage.removeItem('teacherPassword');
     localStorage.removeItem('userRole');
     localStorage.removeItem('impersonator');
-    router.push('/');
+    router.replace('/');
   }, [router]);
 
   useEffect(() => {
-    if (!isAuthLoading && !teacher) {
+    if (!isAuthLoading && !teacher && !logoutOnce.current) {
+        logoutOnce.current = true;
         handleLogout();
     }
   }, [isAuthLoading, teacher, handleLogout]);
@@ -162,7 +164,6 @@ function TeacherLayoutContent({
     }
   }
 
-
   const navItems = [
     { href: "/teacher/dashboard", label: "班級與點數管理", icon: LayoutDashboard, roles: ['admin', 'teacher', 'subject_teacher'] },
     { href: "/teacher/class-rankings", label: "班級排名", icon: Users, roles: ['admin', 'teacher', 'subject_teacher'] },
@@ -186,20 +187,26 @@ function TeacherLayoutContent({
   const availableNavItems = navItems.filter(item => teacherRole && item.roles.includes(teacherRole));
   const currentNavItem = availableNavItems.find(item => pathname.startsWith(item.href));
 
-
   const roleNameMapping: { [key: string]: string } = {
     admin: '校長',
     teacher: '班級導師',
     subject_teacher: '科任教師'
   };
 
-
-  if (isAppLoading || isAuthLoading || !teacher) {
+  if (isAppLoading || isAuthLoading) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <Loader2 className="mr-2 h-6 w-6 animate-spin" />
-            驗證身份中...
+            載入中…
         </div>
+    );
+  }
+
+  if (!teacher) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        正在導回登入頁…
+      </div>
     );
   }
 
@@ -332,5 +339,3 @@ export default function TeacherLayout({
 }) {
   return <TeacherLayoutContent>{children}</TeacherLayoutContent>;
 }
-
-    
