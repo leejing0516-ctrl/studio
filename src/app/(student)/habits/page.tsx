@@ -409,5 +409,4 @@ export default function HabitsPage() {
       </Dialog>
     </div>
   );
-
-    
+}
