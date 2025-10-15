@@ -1,3 +1,2 @@
-
-// This file is no longer needed and will be removed.
-// The logic has been integrated into AuthContext.
+// This file is no longer used and can be deleted.
+// All logic has been migrated to AuthContext and AppDataContext.

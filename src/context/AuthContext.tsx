@@ -18,19 +18,21 @@ export const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-    const { students, teachers, isLoading: isAppLoading } = useContext(AppDataContext);
+    const { students, teachers } = useContext(AppDataContext);
     const [student, setStudent] = useState<Student | null>(null);
     const [teacher, setTeacher] = useState<Teacher | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if(isAppLoading) {
-          setIsLoading(true);
-          return;
-        }
-
         const userRole = localStorage.getItem('userRole');
         
+        // This effect should only run when the raw data from AppDataContext changes.
+        if (students.length === 0 && teachers.length === 0) {
+            // Data is not ready yet.
+            setIsLoading(true);
+            return;
+        }
+
         if (userRole === 'student') {
             const studentId = localStorage.getItem('studentId');
             const classId = localStorage.getItem('studentClassId');
@@ -48,7 +50,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const storedPassword = localStorage.getItem('teacherPassword');
             const currentTeacher = teachers.find(t => t.id === teacherId);
 
-            if (currentTeacher && (currentTeacher.password === storedPassword || "001" === storedPassword)) { // using default password as fallback
+            if (currentTeacher && (currentTeacher.password === storedPassword || "001" === storedPassword)) {
                 setTeacher(currentTeacher);
             } else {
                 setTeacher(null);
@@ -61,7 +63,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         setIsLoading(false);
 
-    }, [students, teachers, isAppLoading]);
+    }, [students, teachers]);
 
     const value = useMemo(() => ({
         student,

@@ -65,8 +65,8 @@ const DashboardCard = ({ cardKey, title, value, description, icon: Icon }: { car
 };
 
 export default function StudentDashboardPage() {
-  const { student, students } = useAuth();
-  const { stocks: marketStocks, classes, teachers, platformConfig } = useContext(AppDataContext);
+  const { student } = useAuth();
+  const { students, stocks: marketStocks, classes, teachers, platformConfig } = useContext(AppDataContext);
 
   const cardConfig = useMemo(() => platformConfig?.dashboardCards || {}, [platformConfig]);
   
@@ -156,7 +156,7 @@ export default function StudentDashboardPage() {
         .filter(l => l.status === 'active' || l.status === 'overdue')
         .reduce((acc, l) => acc + l.amount, 0);
         
-      const totalAssets = student.points + studentPortfolioValue + studentTotalDeposits - studentTotalLoans;
+      const totalAssets = (student.points || 0) + studentPortfolioValue + studentTotalDeposits - studentTotalLoans;
       return { ...student, totalAssets };
     });
 
@@ -183,7 +183,7 @@ export default function StudentDashboardPage() {
       const studentTotalLoans = (student.loans || [])
         .filter(l => l.status === 'active' || l.status === 'overdue')
         .reduce((acc, l) => acc + l.amount, 0);
-      const totalAssets = student.points + studentPortfolioValue + studentTotalDeposits - studentTotalLoans;
+      const totalAssets = (student.points || 0) + studentPortfolioValue + studentTotalDeposits - studentTotalLoans;
       return { ...student, totalAssets };
     });
 

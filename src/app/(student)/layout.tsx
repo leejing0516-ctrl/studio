@@ -65,8 +65,8 @@ import { AppDataContext } from "@/context/AppDataContext";
 function StudentLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { student, isLoading: isAuthLoading } = useAuth();
-  const { platformConfig, classes, setStudents, isLoading: isAppLoading } = useContext(AppDataContext);
+  const { student, isLoading } = useAuth();
+  const { platformConfig, classes, setStudents } = useContext(AppDataContext);
   const { toast } = useToast();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -88,11 +88,11 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   useEffect(() => {
-    if (!isAuthLoading && !student && !redirectOnce.current) {
+    if (!isLoading && !student && !redirectOnce.current) {
         redirectOnce.current = true;
         handleLogout();
     }
-  }, [isAuthLoading, student, handleLogout]);
+  }, [isLoading, student, handleLogout]);
   
   useEffect(() => {
     if (!student) return;
@@ -108,7 +108,7 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
     const lastPointHistoryView = student.lastPointHistoryView ? new Date(student.lastPointHistoryView).getTime() : 0;
     const latestPointRecordDate = (student.pointHistory || [])
       .reduce((latest, record) => Math.max(latest, new Date(record.date).getTime()), 0);
-    setHasNewPointHistory(latestPointRecordDate > lastViewTime);
+    setHasNewPointHistory(latestPointRecordDate > lastPointHistoryView);
 
   }, [student, platformConfig, classes]);
 
@@ -215,7 +215,7 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (isAppLoading || isAuthLoading) {
+  if (isLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />

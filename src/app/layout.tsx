@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { themes, type Theme } from "@/lib/themes";
 import { DEFAULT_APP_ICON_URL } from "@/lib/config";
 import type { CustomTheme } from "@/lib/types";
-import { useState, useMemo, useEffect, useContext } from "react";
+import { useMemo, useContext } from "react";
 import { Providers } from "@/context/Providers";
 import { AppDataContext } from "@/context/AppDataContext";
 

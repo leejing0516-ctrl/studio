@@ -28,8 +28,8 @@ function LoginPageContent() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const { classes, students, teachers, platformConfig, isLoading: isAppLoading } = useContext(AppDataContext);
-  const { student, teacher, isLoading: isAuthLoading } = useAuth();
+  const { classes, students, teachers, platformConfig } = useContext(AppDataContext);
+  const { student, teacher, isLoading } = useAuth();
 
 
   const sortedTeachers = useMemo(() => {
@@ -43,14 +43,14 @@ function LoginPageContent() {
   }, [teachers]);
 
   useEffect(() => {
-    if (!isAuthLoading) {
+    if (!isLoading) {
       if (student) {
         router.replace('/dashboard');
       } else if (teacher) {
         router.replace('/teacher/dashboard');
       }
     }
-  }, [isAuthLoading, student, teacher, router]);
+  }, [isLoading, student, teacher, router]);
 
 
   const handleStudentLogin = async (e: React.FormEvent) => {
@@ -73,7 +73,7 @@ function LoginPageContent() {
                 localStorage.setItem('studentClassId', classId);
                 localStorage.setItem('studentId', studentIdInput);
                 localStorage.setItem('studentPassword', studentPassword);
-                router.push('/dashboard');
+                window.location.href = '/dashboard';
             } else {
                 throw new Error("密碼不正確");
             }
@@ -110,8 +110,11 @@ function LoginPageContent() {
             toast({ title: "登入成功！", description: `歡迎回來，${teacher.name}！` });
             localStorage.setItem('userRole', 'teacher');
             localStorage.setItem('teacherId', selectedTeacherId);
-            localStorage.setItem('teacherPassword', teacherPassword); // Store the entered password
-            router.push('/teacher/dashboard');
+            localStorage.setItem('teacherName', teacher.name);
+            localStorage.setItem('teacherClassIds', JSON.stringify(teacher.classIds || []));
+            localStorage.setItem('teacherRole', teacher.role);
+            localStorage.setItem('teacherPassword', teacherPassword); 
+            window.location.href = '/teacher/dashboard';
         } else {
             throw new Error("帳號或密碼不正確");
         }
@@ -125,7 +128,6 @@ function LoginPageContent() {
     }
   };
 
-  const isLoading = isAppLoading || isAuthLoading;
   const isFormDisabled = isLoggingIn || isLoading;
 
   if (isLoading || student || teacher) {

@@ -71,9 +71,8 @@ function TeacherLayoutContent({
     platformConfig,
     teachers,
     setTeachers,
-    isLoading: isAppLoading,
   } = useContext(AppDataContext);
-  const { teacher, isLoading: isAuthLoading } = useAuth();
+  const { teacher, isLoading } = useAuth();
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -100,11 +99,11 @@ function TeacherLayoutContent({
   }, [router]);
 
   useEffect(() => {
-    if (!isAuthLoading && !teacher && !logoutOnce.current) {
+    if (!isLoading && !teacher && !logoutOnce.current) {
         logoutOnce.current = true;
         handleLogout();
     }
-  }, [isAuthLoading, teacher, handleLogout]);
+  }, [isLoading, teacher, handleLogout]);
 
   const handleStopImpersonating = () => {
     const originalAdminId = localStorage.getItem('impersonator');
@@ -193,7 +192,7 @@ function TeacherLayoutContent({
     subject_teacher: '科任教師'
   };
 
-  if (isAppLoading || isAuthLoading) {
+  if (isLoading) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <Loader2 className="mr-2 h-6 w-6 animate-spin" />
