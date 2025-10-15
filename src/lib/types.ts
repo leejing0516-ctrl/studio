@@ -1,5 +1,4 @@
 
-
 export type Feedback = {
   id: string;
   studentId: string;
@@ -106,32 +105,15 @@ export type AvatarCustomization = {
 }
 
 export type Student = {
-  id: string; // Student ID within the class
-  _docId?: string; // Firestore document ID
+  id: string;        // doc id，例如 6A-S001
+  _docId?: string;
   name: string;
-  classId: string; // Links to the Class object
-  groupId?: string; // Links to the group ID within the Class object
+  classId: string;   // 例如 "6A"
+  password?: string; // 你們目前簡化驗證用
   points: number;
-  readingEnergy?: number; // For internal conversion
-  avatar: string;
-  password?: string;
-  portfolio: PortfolioItem[];
-  redeemedRewards?: RedeemedRewardItem[];
-  loans?: Loan[];
   pointHistory: PointRecord[];
-  challenges?: StudentChallenge[];
-  fixedDeposits?: FixedDeposit[];
-  habits?: StudentHabit[];
-  avatarCustomization?: AvatarCustomization;
-  lastDailyReward?: string; // ISO date string (YYYY-MM-DD)
-  lastAnnouncementsView?: string | null;
-  lastPointHistoryView?: string;
-  buKeMonth?: number;
-  buKeEnergyThisMonth?: number; // For display
-  buKeBooksThisMonth?: number;
-  buKeLevel?: number;
-  buKeTotalEnergy?: number;
-  buKeTotalBooks?: number;
+  // 其它欄位...
+  [k: string]: any;
 };
 
 export type Reward = {
@@ -181,23 +163,21 @@ export type ClassGroup = {
 }
 
 export type Class = {
-    id: string;
-    _docId?: string;
-    name: string;
-    announcements: Announcement[];
-    groups?: { [teacherId: string]: ClassGroup[] };
-}
+  id: string;        // doc id，例如 "6A"
+  _docId?: string;
+  name: string;      // 顯示名稱
+  announcements?: any[];
+  [k: string]: any;
+};
 
 export type Teacher = {
-    id: string;
-    _docId?: string;
-    name: string;
-    role: 'teacher' | 'admin' | 'subject_teacher';
-    classIds: string[]; // Homeroom teacher will have one, subject teacher can have multiple. Empty for admin/unassigned.
-    password?: string; 
-    pointBalance?: number;
-    sortOrder?: number;
-}
+  id: string;        // doc id，例如 "principal"、"teacher6A"
+  _docId?: string;
+  name: string;
+  role: "admin" | "teacher" | "subject_teacher" | string;
+  password?: string;
+  [k: string]: any;
+};
 
 export type Announcement = {
     id: string;
@@ -238,37 +218,15 @@ export type DashboardCardConfig = {
 }
 
 export type PlatformConfig = {
-    id: 'main';
-    logoUrl?: string;
-    appIconUrl?: string;
-    schoolFunds?: number;
-    sponsorLogoUrls?: (string | null)[];
-    teacherPassword?: string;
-    announcements?: Announcement[];
-    challenges?: Challenge[];
-    fundraisingProjects?: FundraisingProject[];
-    fixedDepositInterestRate?: number;
-    loanInterestRate?: number;
-    lastAutoBackupDate?: string;
-    homeTitle?: string;
-    homeSubtitle?: string;
-    homeIllustrationUrl?: string;
-    theme?: string;
-    customThemes?: CustomTheme[];
-    marketOpenHour?: number;
-    marketCloseHour?: number;
-    stockMarketNews?: Announcement[];
-    stockMarqueeMessages?: string[];
-    petStages?: PetStage[];
-    dashboardCards?: DashboardCardConfig;
-    buKeXingQiuDescription?: string;
-    dailyRewardJackpotChance?: number;
-    dailyRewardJackpotMin?: number;
-    dailyRewardJackpotMax?: number;
-    dailyRewardStandardChance?: number;
-    dailyRewardStandardMin?: number;
-    dailyRewardStandardMax?: number;
-    feedback?: Feedback[];
-}
-
-    
+  id: 'main';
+  schoolFunds: number;
+  fixedDepositInterestRate: number;
+  loanInterestRate: number;
+  rewards: Reward[];
+  challenges: Challenge[];
+  stocks: Stock[];
+  announcements: Announcement[];
+  petStages: PetStage[];
+  // 允許擴充
+  [k: string]: any;
+};
