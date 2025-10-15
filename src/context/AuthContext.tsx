@@ -1,10 +1,8 @@
 
 "use client";
 
-import { createContext, useState, ReactNode, useEffect, useMemo, useCallback, useContext } from 'react';
+import { createContext, useState, ReactNode, useEffect, useMemo, useContext } from 'react';
 import type { Student, Teacher } from '@/lib/types';
-import { db } from '@/lib/firebase';
-import { collection, onSnapshot, doc, writeBatch, runTransaction as firestoreRunTransaction, Transaction } from 'firebase/firestore';
 import { AppDataContext } from './AppDataContext';
 
 interface AuthContextType {
@@ -26,8 +24,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        setIsLoading(isAppLoading);
-        if(isAppLoading) return;
+        if(isAppLoading) {
+          setIsLoading(true);
+          return;
+        }
 
         const userRole = localStorage.getItem('userRole');
         
@@ -36,13 +36,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const classId = localStorage.getItem('studentClassId');
             const storedPassword = localStorage.getItem('studentPassword');
             const currentStudent = students.find(s => s.classId === classId && s.id === studentId);
-
+            
             if (currentStudent && currentStudent.password === storedPassword) {
                 setStudent(currentStudent);
             } else {
                 setStudent(null);
             }
-             setTeacher(null);
+            setTeacher(null);
         } else if (userRole === 'teacher') {
             const teacherId = localStorage.getItem('teacherId');
             const storedPassword = localStorage.getItem('teacherPassword');
@@ -58,6 +58,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setStudent(null);
           setTeacher(null);
         }
+        
+        setIsLoading(false);
+
     }, [students, teachers, isAppLoading]);
 
     const value = useMemo(() => ({
@@ -80,4 +83,3 @@ export const useAuth = () => {
   }
   return context;
 };
-

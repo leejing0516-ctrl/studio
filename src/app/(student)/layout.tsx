@@ -77,8 +77,7 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
   
   const [hasNewAnnouncements, setHasNewAnnouncements] = useState(false);
   const [hasNewPointHistory, setHasNewPointHistory] = useState(false);
-
-  const logoutOnce = useRef(false);
+  const redirectOnce = useRef(false);
 
   const handleLogout = useCallback(() => {
     localStorage.removeItem('studentClassId');
@@ -89,9 +88,9 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   useEffect(() => {
-    if (!isAuthLoading && !student && !logoutOnce.current) {
-      logoutOnce.current = true;
-      handleLogout();
+    if (!isAuthLoading && !student && !redirectOnce.current) {
+        redirectOnce.current = true;
+        handleLogout();
     }
   }, [isAuthLoading, student, handleLogout]);
   
@@ -249,7 +248,7 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
                   asChild
-                  isActive={pathname === item.href}
+                  isActive={pathname.startsWith(item.href)}
                   tooltip={item.label}
                 >
                   <Link href={item.href} className="relative">
@@ -303,7 +302,7 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
                 <div className="flex items-center gap-2">
                     <SidebarTrigger className="md:hidden" />
                     <h1 className="text-lg font-semibold md:text-xl capitalize">
-                        {navItems.find(item => item.href === pathname)?.label || '儀表板'}
+                        {navItems.find(item => pathname.startsWith(item.href))?.label || '儀表板'}
                     </h1>
                 </div>
                 <Popover onOpenChange={(open) => { if (open && hasNewPointHistory) handleOpenNotifications() }}>

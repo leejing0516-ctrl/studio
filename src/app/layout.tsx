@@ -7,8 +7,6 @@ import { themes, type Theme } from "@/lib/themes";
 import { DEFAULT_APP_ICON_URL } from "@/lib/config";
 import type { CustomTheme } from "@/lib/types";
 import { useState, useMemo, useEffect, useContext } from "react";
-import { onSnapshot, doc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { Providers } from "@/context/Providers";
 import { AppDataContext } from "@/context/AppDataContext";
 
