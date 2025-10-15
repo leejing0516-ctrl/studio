@@ -4,36 +4,79 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { PlatformConfig, Student, Teacher, ClassInfo } from "./types";
+import { students as placeholderStudents, teachers as placeholderTeachers, classes as placeholderClasses } from './placeholder-data';
+
 
 export async function fetchConfigMain(): Promise<PlatformConfig> {
+  if (!db) {
+    console.warn("Firestore is not initialized, falling back to empty config.");
+    return { id: 'main', schoolFunds: 100000 } as PlatformConfig;
+  }
   const snap = await getDoc(doc(db, "config", "main"));
-  if (!snap.exists()) throw new Error("config/main 不存在");
+  if (!snap.exists()) {
+    console.warn("config/main not found in Firestore, returning default.");
+    return { id: 'main', schoolFunds: 100000 } as PlatformConfig;
+  }
   return { ...(snap.data() as PlatformConfig) };
 }
 
 export async function fetchAllStudents(): Promise<Student[]> {
-  const col = collection(db, "students");
-  const snap = await getDocs(col);
-  return snap.docs.map(d => ({ ...d.data(), _docId: d.id } as Student));
-}
-
-export async function fetchStudentsByClass(classId: string): Promise<Student[]> {
-  const q = query(collection(db, "students"), where("classId", "==", classId));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ ...d.data(), _docId: d.id } as Student));
+  if (!db) {
+    console.warn("Firestore is not initialized, falling back to placeholder students.");
+    return placeholderStudents.map(s => ({...s, _docId: s.id}));
+  }
+  try {
+    const col = collection(db, "students");
+    const snap = await getDocs(col);
+    if (snap.empty) {
+      console.log("No students found in Firestore, using placeholder data.");
+      return placeholderStudents.map(s => ({...s, _docId: s.id}));
+    }
+    return snap.docs.map(d => ({ ...d.data(), _docId: d.id } as Student));
+  } catch (error) {
+    console.error("Error fetching students from Firestore, falling back to placeholders:", error);
+    return placeholderStudents.map(s => ({...s, _docId: s.id}));
+  }
 }
 
 export async function fetchAllTeachers(): Promise<Teacher[]> {
-  const col = collection(db, "teachers");
-  const snap = await getDocs(col);
-  return snap.docs.map(d => ({ ...d.data(), _docId: d.id } as Teacher));
+   if (!db) {
+    console.warn("Firestore is not initialized, falling back to placeholder teachers.");
+    return placeholderTeachers.map(t => ({...t, _docId: t.id}));
+  }
+   try {
+    const col = collection(db, "teachers");
+    const snap = await getDocs(col);
+    if (snap.empty) {
+        console.log("No teachers found in Firestore, using placeholder data.");
+        return placeholderTeachers.map(t => ({...t, _docId: t.id}));
+    }
+    return snap.docs.map(d => ({ ...d.data(), _docId: d.id } as Teacher));
+  } catch (error) {
+    console.error("Error fetching teachers from Firestore, falling back to placeholders:", error);
+    return placeholderTeachers.map(t => ({...t, _docId: t.id}));
+  }
 }
 
 export async function fetchAllClasses(): Promise<ClassInfo[]> {
-  const col = collection(db, "classes");
-  const snap = await getDocs(col);
-  return snap.docs.map(d => ({ ...d.data(), _docId: d.id } as ClassInfo));
+   if (!db) {
+    console.warn("Firestore is not initialized, falling back to placeholder classes.");
+    return placeholderClasses.map(c => ({...c, _docId: c.id}));
+  }
+  try {
+    const col = collection(db, "classes");
+    const snap = await getDocs(col);
+    if (snap.empty) {
+        console.log("No classes found in Firestore, using placeholder data.");
+        return placeholderClasses.map(c => ({...c, _docId: c.id}));
+    }
+    return snap.docs.map(d => ({ ...d.data(), _docId: d.id } as ClassInfo));
+  } catch (error) {
+     console.error("Error fetching classes from Firestore, falling back to placeholders:", error);
+    return placeholderClasses.map(c => ({...c, _docId: c.id}));
+  }
 }
+
 
 /** 一鍵同步：把所有遠端資料抓回來（不含 Storage 檔案） */
 export async function syncAll() {
