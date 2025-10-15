@@ -15,6 +15,55 @@ import { useSchoolStore } from '@/store/useSchoolStore';
 import { syncAll } from "@/lib/firestoreFetchers";
 import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
 import { DEFAULT_LOGO_URL } from '@/lib/config';
+import { Student } from '@/lib/types';
+
+function Providers({ children }: { children: React.ReactNode }) {
+    const { setLoading, setConfig, setStudents, setTeachers, setClasses, students, classes: schoolClasses, teachers: schoolTeachers } = useSchoolStore();
+    const [error, setError] = useState<string | null>(null);
+    const [isSynced, setIsSynced] = useState(false);
+
+    useEffect(() => {
+        // This effect runs once on mount to fetch all initial data.
+        if(students.length || schoolClasses.length || schoolTeachers.length) {
+          setIsSynced(true);
+          return;
+        }
+
+        const sync = async () => {
+            setError(null);
+            setLoading(true);
+            try {
+                const { config, students, teachers, classes } = await syncAll();
+                setConfig(config);
+                setStudents(students);
+                setTeachers(teachers);
+                setClasses(classes);
+                setIsSynced(true);
+            } catch (e: any) {
+                setError(e?.message ?? "同步失敗");
+            } finally {
+                setLoading(false);
+            }
+        };
+        sync();
+    }, [setLoading, setConfig, setStudents, setTeachers, setClasses, students, schoolClasses, schoolTeachers]);
+    
+    if (error) {
+        return <div className="flex h-screen w-full items-center justify-center text-destructive">資料同步失敗: {error}</div>;
+    }
+
+    if (!isSynced) {
+         return (
+            <div className="flex h-screen w-full items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                正在同步初始資料...
+            </div>
+        );
+    }
+
+    return <>{children}</>;
+}
+
 
 function LoginPageContent() {
   const [studentIdInput, setStudentIdInput] = useState('');
@@ -64,7 +113,8 @@ function LoginPageContent() {
         const foundStudent = students.find(s => s.classId === classId && s.id === studentIdInput);
 
         if (foundStudent) {
-            if (foundStudent.password === studentPassword) {
+            const studentWithPassword = foundStudent as Student;
+            if (studentWithPassword.password === studentPassword) {
                 toast({ title: "登入成功！", description: `歡迎回來，${foundStudent.name}！`});
                 localStorage.setItem('userRole', 'student');
                 localStorage.setItem('studentClassId', classId);
@@ -265,48 +315,6 @@ function LoginPageContent() {
       </footer>
     </div>
   );
-}
-
-
-function Providers({ children }: { children: React.ReactNode }) {
-    const { setLoading, setConfig, setStudents, setTeachers, setClasses } = useSchoolStore();
-    const [error, setError] = useState<string | null>(null);
-    const [isSynced, setIsSynced] = useState(false);
-
-    useEffect(() => {
-        const sync = async () => {
-            setError(null);
-            setLoading(true);
-            try {
-                const { config, students, teachers, classes } = await syncAll();
-                setConfig(config);
-                setStudents(students);
-                setTeachers(teachers);
-                setClasses(classes);
-                setIsSynced(true);
-            } catch (e: any) {
-                setError(e?.message ?? "同步失敗");
-            } finally {
-                setLoading(false);
-            }
-        };
-        sync();
-    }, [setLoading, setConfig, setStudents, setTeachers, setClasses]);
-
-    if (error) {
-        return <div className="flex h-screen w-full items-center justify-center text-destructive">資料同步失敗: {error}</div>;
-    }
-
-    if (!isSynced) {
-        return (
-            <div className="flex h-screen w-full items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin" />
-                正在同步初始資料...
-            </div>
-        );
-    }
-
-    return <>{children}</>;
 }
 
 

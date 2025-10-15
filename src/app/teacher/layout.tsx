@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import React, { useEffect, useState, useContext, useCallback, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import {
   SidebarProvider,
   Sidebar,
@@ -54,7 +54,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { AppDataContext } from "@/context/AppDataContext";
+import { useSchoolStore } from "@/store/useSchoolStore";
 import { useAuth } from "@/context/AuthContext";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
 import Logo from "@/components/logo";
@@ -66,13 +66,12 @@ function TeacherLayoutContent({
 }) {
   const pathname = usePathname();
   const { toast } = useToast();
+  
   const { 
-    platformConfig,
+    config: platformConfig,
     teachers,
-    setTeachers,
-    isLoading: isAppLoading,
-  } = useContext(AppDataContext);
-  const { teacher, isLoading: isAuthLoading, handleLogout } = useAuth();
+  } = useSchoolStore();
+  const { teacher, isLoading: isAuthLoading, handleLogout, setTeachers } = useAuth();
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -173,7 +172,7 @@ function TeacherLayoutContent({
     subject_teacher: '科任教師'
   };
 
-  if (isAppLoading || isAuthLoading) {
+  if (isAuthLoading) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <Loader2 className="mr-2 h-6 w-6 animate-spin" />
@@ -317,5 +316,9 @@ export default function TeacherLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <TeacherLayoutContent>{children}</TeacherLayoutContent>;
+  return (
+    <AuthProvider>
+        <TeacherLayoutContent>{children}</TeacherLayoutContent>
+    </AuthProvider>
+  );
 }

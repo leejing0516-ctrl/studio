@@ -34,7 +34,7 @@ export type FundraisingProject = {
 export type RedeemedRewardItem = {
   redemptionId: string; // A unique ID for this specific instance of the reward
   reward: Reward;
-  status: 'collected' | 'pending_use';
+  status: 'collected' | 'pending_use' | 'used';
   redemptionDate: string; // ISO date string
 };
 
@@ -162,7 +162,7 @@ export type ClassGroup = {
     name: string;
 }
 
-export type Class = {
+export type ClassInfo = {
   id: string;        // doc id，例如 "6A"
   _docId?: string;
   name: string;      // 顯示名稱
@@ -230,3 +230,5 @@ export type PlatformConfig = {
   // 允許擴充
   [k: string]: any;
 };
+
+export type ConfigMain = PlatformConfig;

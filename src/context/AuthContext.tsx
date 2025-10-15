@@ -1,17 +1,21 @@
+
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useSchoolStore } from '@/store/useSchoolStore';
 import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
 import type { Student, Teacher } from '@/lib/types';
+import { doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface AuthContextType {
   student: Student | null;
   teacher: Teacher | null;
   isLoading: boolean;
   handleLogout: () => void;
-  setStudents: (updater: (prev: Student[]) => Student[]) => Promise<void>; // Add this
+  setStudents: (updater: (prev: Student[]) => Student[], skipDbUpdate?: boolean) => Promise<void>; 
+  setTeachers: (updater: (prev: Teacher[]) => Teacher[]) => Promise<void>; 
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -19,12 +23,14 @@ const AuthContext = createContext<AuthContextType>({
   teacher: null,
   isLoading: true,
   handleLogout: () => {},
-  setStudents: async () => {}, // Add this
+  setStudents: async () => {},
+  setTeachers: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
-  const { students, teachers, config: platformConfig, loading: isAppLoading, setStudents: setStoreStudents } = useSchoolStore();
+  const pathname = usePathname();
+  const { students, teachers, config: platformConfig, loading: isAppLoading, setStudents: setStoreStudents, setTeachers: setStoreTeachers } = useSchoolStore();
   const [student, setStudent] = useState<Student | null>(null);
   const [teacher, setTeacher] = useState<Teacher | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -36,18 +42,60 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     router.replace('/');
   }, [router]);
   
-  // This is a temporary solution to allow setStudents to be called from the Auth context consumer
-  // The correct long-term solution is to move all data modification logic to a separate service/hook layer.
-  const setStudentsProxy = async (updater: (prev: Student[]) => Student[]) => {
+  const setStudentsProxy = async (updater: (prev: Student[]) => Student[], skipDbUpdate = false) => {
       const currentStudents = useSchoolStore.getState().students;
       const newStudents = updater(currentStudents);
       setStoreStudents(newStudents);
-      // Here you would also add the logic to persist the changes to Firebase
-      // For now, it just updates the Zustand store.
+      
+      if (skipDbUpdate) return;
+      
+      // Batch update to Firestore
+      try {
+        const batch = writeBatch(db);
+        newStudents.forEach(s => {
+          if (s._docId) { // Ensure we have the document ID
+            const studentRef = doc(db, "students", s._docId);
+            const { _docId, ...studentData } = s; // Don't write _docId back to the document
+            batch.set(studentRef, studentData);
+          }
+        });
+        await batch.commit();
+      } catch (error) {
+        console.error("Failed to batch update students in Firestore:", error);
+        // Optionally revert local state or show an error
+      }
   };
+  
+   const setTeachersProxy = async (updater: (prev: Teacher[]) => Teacher[]) => {
+      const currentTeachers = useSchoolStore.getState().teachers;
+      const newTeachers = updater(currentTeachers);
+      setStoreTeachers(newTeachers);
+
+      // Batch update to Firestore
+      try {
+        const batch = writeBatch(db);
+        newTeachers.forEach(t => {
+          if (t._docId) { // Ensure we have the document ID
+            const teacherRef = doc(db, "teachers", t._docId);
+             const { _docId, ...teacherData } = t; 
+            batch.set(teacherRef, teacherData);
+          }
+        });
+        await batch.commit();
+      } catch (error) {
+        console.error("Failed to batch update teachers in Firestore:", error);
+      }
+  };
+
 
   useEffect(() => {
     if (isAppLoading) return;
+
+    // Don't run auth check on the login page
+    if (pathname === '/') {
+        setAuthLoading(false);
+        return;
+    }
 
     try {
       const userRole = localStorage.getItem('userRole');
@@ -57,25 +105,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const classId = localStorage.getItem('studentClassId');
         const storedPassword = localStorage.getItem('studentPassword');
 
-        if (!studentId || !classId || !storedPassword) {
-          throw new Error('Student auth info missing');
-        }
+        if (!studentId || !classId || !storedPassword) throw new Error('Student auth info missing');
         
         const currentStudent = students.find(s => s.classId === classId && s.id === studentId);
 
-        if (currentStudent && currentStudent.password === storedPassword) {
+        if (currentStudent && (currentStudent as Student).password === storedPassword) {
           setStudent(currentStudent);
         } else {
-           setStudent(null);
-          // throw new Error('Student not found or password mismatch');
+           throw new Error('Student not found or password mismatch');
         }
       } else if (userRole === 'teacher') {
         const teacherId = localStorage.getItem('teacherId');
         const storedPassword = localStorage.getItem('teacherPassword');
         
-        if (!teacherId || !storedPassword) {
-          throw new Error('Teacher auth info missing');
-        }
+        if (!teacherId || !storedPassword) throw new Error('Teacher auth info missing');
         
         const currentTeacher = teachers.find(t => t.id === teacherId);
         const correctPassword = currentTeacher?.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
@@ -83,21 +126,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (currentTeacher && storedPassword === correctPassword) {
           setTeacher(currentTeacher);
         } else {
-          setTeacher(null);
-          // throw new Error('Teacher not found or password mismatch');
+          throw new Error('Teacher not found or password mismatch');
         }
       } else {
-          setStudent(null);
-          setTeacher(null);
+          throw new Error("No user role found");
       }
     } catch (error) {
       handleLogout();
     } finally {
       setAuthLoading(false);
     }
-  }, [isAppLoading, students, teachers, platformConfig, handleLogout]);
+  }, [isAppLoading, students, teachers, platformConfig, handleLogout, pathname]);
 
-  const value = { student, teacher, isLoading: isAppLoading || authLoading, handleLogout, setStudents: setStudentsProxy };
+  const value = { student, teacher, isLoading: authLoading, handleLogout, setStudents: setStudentsProxy, setTeachers: setTeachersProxy };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

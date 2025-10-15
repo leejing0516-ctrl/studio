@@ -25,14 +25,12 @@ function StyleInjector() {
     if (!activeTheme) return "";
     
     let css = ":root {\n";
-    // Prefer light theme for the root, if available, otherwise use dark theme as base
     const lightVars = activeTheme.cssVars.light || activeTheme.cssVars.dark;
     for (const [key, value] of Object.entries(lightVars)) {
       css += `  --${key}: ${value};\n`;
     }
     css += "}\n";
 
-    // If a specific dark theme exists, apply it under the .dark class
     if (activeTheme.cssVars.dark) {
       css += ".dark {\n";
        for (const [key, value] of Object.entries(activeTheme.cssVars.dark)) {
