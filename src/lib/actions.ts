@@ -12,22 +12,39 @@ export const redeemRewardTransaction = async ({
   reward: Reward;
 }) => {
   try {
-    const batch = writeBatch(db);
-    const studentRef = doc(db, "students", studentDocId);
+    await runTransaction(db, async (transaction) => {
+      const studentRef = doc(db, "students", studentDocId);
+      const studentSnap = await transaction.get(studentRef);
+      if (!studentSnap.exists()) {
+        throw new Error("找不到學生資料!");
+      }
+      
+      const student = studentSnap.data() as Student;
+      if (student.points < reward.cost) {
+        throw new Error("點數不足!");
+      }
+      
+      const newPoints = student.points - reward.cost;
+      const newRedeemedReward = {
+        redemptionId: `redeem-${Date.now()}`,
+        reward: reward,
+        status: 'collected' as const,
+        redemptionDate: new Date().toISOString(),
+      };
+      
+      const updatedRewards = [...(student.redeemedRewards || []), newRedeemedReward];
+      transaction.update(studentRef, { points: newPoints, redeemedRewards: updatedRewards });
 
-    // This part needs the full student object to update.
-    // A better implementation would pass the full student object
-    // or fetch it here, but for now we rely on the caller to update the student object.
-    
-    // We can update the reward stock though
-    if (reward._docId) {
+      if (reward._docId) {
         const rewardRef = doc(db, "rewards", reward._docId);
-        batch.update(rewardRef, {
-            stock: reward.stock - 1,
-        });
-    }
-
-    await batch.commit();
+        const rewardSnap = await transaction.get(rewardRef);
+        if (rewardSnap.exists() && rewardSnap.data().stock > 0) {
+            transaction.update(rewardRef, { stock: rewardSnap.data().stock - 1 });
+        } else {
+            throw new Error("獎勵庫存不足!");
+        }
+      }
+    });
 
     return { success: true };
   } catch (e: any) {

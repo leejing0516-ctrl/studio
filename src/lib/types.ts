@@ -1,4 +1,5 @@
 
+
 export type Feedback = {
   id: string;
   studentId: string;
@@ -128,6 +129,7 @@ export type Student = {
   buKeLevel?: number;
   buKeTotalEnergy?: number;
   buKeTotalBooks?: number;
+  groupId?: string;
   [k: string]: any;
 };
 

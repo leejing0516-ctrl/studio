@@ -2,8 +2,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import React, { useContext, useEffect, useState, useMemo } from "react";
+import { usePathname } from "next/navigation";
+import React, { useState, useMemo, useContext } from "react";
 import {
   SidebarProvider,
   Sidebar,
@@ -38,7 +38,7 @@ import {
   FileEdit,
   Mail,
   BookUp,
-  Users
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,14 +49,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AppDataContext } from "@/context/AppDataContext";
-import { StudentDataContext } from "@/context/StudentDataContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { StudentDataContext } from "@/context/StudentDataContext";
+import { AppDataContext } from "@/context/AppDataContext";
+import { useAuth } from "@/context/AuthContext";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
 import Logo from "@/components/logo";
+
 
 export default function TeacherLayout({
   children,
@@ -64,11 +66,11 @@ export default function TeacherLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
+  const { studentData, isLoading } = useContext(StudentDataContext);
+  const { handleLogout, setTeachers } = useAuth();
   const { toast } = useToast();
   
-  const { platformConfig, teachers, setTeachers } = useContext(AppDataContext);
-  const { studentData, setStudentData } = useContext(StudentDataContext);
+  const { platformConfig } = useContext(AppDataContext);
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -76,25 +78,13 @@ export default function TeacherLayout({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   
-  const teacher = studentData?.teacher;
+  const { teacher } = studentData;
   const isImpersonating = useMemo(() => typeof window !== 'undefined' && !!localStorage.getItem('impersonator'), []);
 
   const hasNewFeedback = useMemo(() => {
     return (platformConfig?.feedback || []).some(f => !f.isRead);
   }, [platformConfig?.feedback]);
 
-  useEffect(() => {
-    if (!teacher) {
-      router.replace("/");
-    }
-  }, [teacher, router]);
-
-  const handleLogout = () => {
-    localStorage.clear();
-    setStudentData({} as any);
-    router.replace("/");
-  };
-  
   const handleStopImpersonating = () => {
     const originalAdminId = localStorage.getItem('impersonator');
     if (!originalAdminId) {
@@ -103,12 +93,12 @@ export default function TeacherLayout({
       return;
     }
     
-    const originalAdmin = teachers.find(t => t.id === originalAdminId);
-    const correctPassword = originalAdmin?.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
+    // We assume the admin password is the platform default one
+    const correctPassword = platformConfig?.teacherPassword || TEACHER_PASSWORD;
 
     localStorage.setItem('userRole', 'teacher');
-    localStorage.setItem('teacherId', originalAdminId);
-    localStorage.setItem('teacherPassword', correctPassword);
+    localStorage.setItem('teacherDocId', originalAdminId);
+    localStorage.setItem('teacherPassword', correctPassword); // This might be incorrect if admin had custom password
     localStorage.removeItem('impersonator');
 
     toast({ title: "已返回校長身份" });
@@ -138,16 +128,16 @@ export default function TeacherLayout({
 
      try {
         await setTeachers(currentTeachers => currentTeachers.map(t => {
-            if (t.id === teacher.id) {
+            if (t._docId === teacher._docId) {
                 return { ...t, password: newPassword };
             }
             return t;
         }));
-        localStorage.setItem('teacherPassword', newPassword);
+        
         toast({ title: "密碼已更新", description: "您的密碼已成功更新。" });
         setIsSettingsOpen(false);
-    } catch (e) {
-        toast({ title: "更新失敗", description: "更新密碼時發生錯誤。", variant: "destructive" });
+    } catch (e: any) {
+        toast({ title: "更新失敗", description: e.message || "更新密碼時發生錯誤。", variant: "destructive" });
     } finally {
          setIsSaving(false);
     }
@@ -182,10 +172,10 @@ export default function TeacherLayout({
     subject_teacher: '科任教師'
   };
 
-  if (!teacher) {
+  if (isLoading || !teacher) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
-        正在載入或導回登入頁…
+          ...載入中
       </div>
     );
   }

@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useContext } from "react";
 import {
   Card,
   CardContent,
@@ -22,17 +23,14 @@ import { Loader2, UserPlus, Check, X, Coins, Users, AlertTriangle } from "lucide
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
-import { useSchoolStore } from "@/store/useSchoolStore";
+import { AppDataContext } from "@/context/AppDataContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Student, PointRecord } from "@/lib/types";
-import { writeBatch } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { doc } from "firebase/firestore";
 
 export default function TeacherDashboardPage() {
     const { toast } = useToast();
     const { teacher, setStudents: updateAllStudents } = useAuth();
-    const { students, classes, teachers } = useSchoolStore();
+    const { students, classes } = useContext(AppDataContext);
     
     const [selectedClassId, setSelectedClassId] = useState<string>('');
     const [points, setPoints] = useState<{ [key: string]: number | '' }>({});
@@ -127,24 +125,25 @@ export default function TeacherDashboardPage() {
         }
 
         try {
-            const batch = writeBatch(db);
-            students.forEach(s => {
-                if (targetStudentIds.includes(s.id) && s.classId === selectedClassId && s._docId) {
-                    const studentRef = doc(db, "students", s._docId);
-                    const newPoints = (s.points || 0) + Number(batchPoints);
-                    const newRecord: PointRecord = {
-                        points: Number(batchPoints),
-                        date: new Date().toISOString(),
-                        reason: batchReason || "批次操作",
-                        teacherId: teacher?.id
-                    };
-                    batch.update(studentRef, {
-                        points: newPoints,
-                        pointHistory: [...(s.pointHistory || []), newRecord]
-                    });
-                }
-            });
-            await batch.commit();
+            await updateAllStudents(currentStudents => 
+                currentStudents.map(s => {
+                    if (targetStudentIds.includes(s.id) && s.classId === selectedClassId) {
+                        const newPoints = (s.points || 0) + Number(batchPoints);
+                        const newRecord: PointRecord = {
+                            points: Number(batchPoints),
+                            date: new Date().toISOString(),
+                            reason: batchReason || "批次操作",
+                            teacherId: teacher?.id
+                        };
+                        return { 
+                            ...s, 
+                            points: newPoints,
+                            pointHistory: [...(s.pointHistory || []), newRecord]
+                        };
+                    }
+                    return s;
+                })
+            );
             
             toast({ title: "批次操作成功", description: `已為 ${targetStudentIds.length} 位學生更新 ${batchPoints} 點。` });
             setBatchPoints('');

@@ -1,9 +1,9 @@
 
 // Import the functions you need from the SDKs you need
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
-import { getStorage } from "firebase/storage";
+import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
+import { getFirestore, enableIndexedDbPersistence, Firestore } from "firebase/firestore";
+import { getAuth, Auth } from "firebase/auth";
+import { getStorage, FirebaseStorage } from "firebase/storage";
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -16,26 +16,27 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+let app: FirebaseApp;
+let db: Firestore;
+let auth: Auth;
+let storage: FirebaseStorage;
 
-// Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-
-const db = getFirestore(app);
-
-// Enable offline persistence
 if (typeof window !== "undefined") {
+    app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+    db = getFirestore(app);
+    auth = getAuth(app);
+    storage = getStorage(app);
+
     enableIndexedDbPersistence(db).catch((err) => {
         if (err.code == 'failed-precondition') {
-            // Multiple tabs open, persistence can only be enabled in one tab at a time.
             console.log('Firestore persistence failed: multiple tabs open.');
         } else if (err.code == 'unimplemented') {
-            // The current browser does not support all of the features required to enable persistence.
             console.log('Firestore persistence not available in this browser.');
         }
     });
 }
 
-const auth = getAuth(app);
-const storage = getStorage(app);
 
+// These exports are conditionally defined to avoid server-side errors
+// In a server component, they will be undefined.
 export { db, auth, app, storage };

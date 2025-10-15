@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useContext, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -10,14 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { User, School, ArrowRight, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { AppDataContext } from "@/context/AppDataContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
 import { DEFAULT_LOGO_URL } from '@/lib/config';
-import type { Student } from '@/lib/types';
-import { useSchoolStore } from '@/store/useSchoolStore';
-import { syncAll } from '@/lib/firestoreFetchers';
 
-function LoginPageContent() {
+export default function LoginPage() {
   const [studentIdInput, setStudentIdInput] = useState('');
   const [studentPassword, setStudentPassword] = useState('');
   const [classId, setClassId] = useState('');
@@ -29,7 +27,7 @@ function LoginPageContent() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const { classes, students, teachers, config: platformConfig } = useSchoolStore();
+  const { classes, students, teachers, platformConfig } = useContext(AppDataContext);
   
   const sortedTeachers = useMemo(() => {
     if (!teachers) return [];
@@ -58,10 +56,7 @@ function LoginPageContent() {
             if (foundStudent.password === studentPassword) {
                 toast({ title: "登入成功！", description: `歡迎回來，${foundStudent.name}！`});
                 localStorage.setItem('userRole', 'student');
-                localStorage.setItem('studentClassId', classId);
                 localStorage.setItem('studentDocId', foundStudent._docId!);
-                localStorage.setItem('studentId', studentIdInput);
-                localStorage.setItem('studentPassword', studentPassword);
                 router.push('/dashboard');
             } else {
                 throw new Error("密碼不正確");
@@ -75,6 +70,7 @@ function LoginPageContent() {
             description: error.message || "您輸入的班級、學號或密碼不正確。",
             variant: "destructive",
         });
+    } finally {
         setIsLoggingIn(false);
     }
   };
@@ -98,9 +94,11 @@ function LoginPageContent() {
         if (teacherPassword === correctPassword) {
             toast({ title: "登入成功！", description: `歡迎回來，${teacher.name}！` });
             localStorage.setItem('userRole', 'teacher');
-            localStorage.setItem('teacherId', selectedTeacherId);
             localStorage.setItem('teacherDocId', teacher._docId!);
-            localStorage.setItem('teacherPassword', teacherPassword); 
+            localStorage.setItem('teacherId', teacher.id);
+            localStorage.setItem('teacherName', teacher.name);
+            localStorage.setItem('teacherClassIds', JSON.stringify(teacher.classIds || []));
+            localStorage.setItem('teacherRole', teacher.role);
             router.push('/teacher/dashboard');
         } else {
             throw new Error("帳號或密碼不正確");
@@ -111,16 +109,19 @@ function LoginPageContent() {
             description: error.message || "您輸入的帳號或密碼不正確。",
             variant: "destructive",
         });
+    } finally {
         setIsLoggingIn(false);
     }
   };
+  
+  const { homeIllustrationUrl, homeTitle, homeSubtitle, sponsorLogoUrls } = platformConfig || {};
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 font-body">
       <header className="mb-8 text-center animate-in fade-in slide-in-from-top duration-700">
         <div className="relative h-24 w-48 md:h-32 mx-auto mb-2">
             <Image 
-                src={platformConfig?.homeIllustrationUrl || DEFAULT_LOGO_URL}
+                src={homeIllustrationUrl || DEFAULT_LOGO_URL}
                 alt="Virtual Bank"
                 fill
                 className="object-contain"
@@ -128,10 +129,10 @@ function LoginPageContent() {
             />
         </div>
         <h1 className="text-4xl md:text-5xl font-bold tracking-wider text-foreground">
-          {platformConfig?.homeTitle || '南梓實小虛擬銀行'}
+          {homeTitle || '南梓實小虛擬銀行'}
         </h1>
         <p className="text-lg text-muted-foreground mt-2 max-w-2xl mx-auto">
-          {platformConfig?.homeSubtitle || '為每一個努力的你,獻上更值得的未來。'}
+          {homeSubtitle || '為每一個努力的你,獻上更值得的未來。'}
         </p>
       </header>
       
@@ -233,11 +234,11 @@ function LoginPageContent() {
       </main>
 
       <footer className="text-center mt-12 text-muted-foreground text-sm">
-        {platformConfig?.sponsorLogoUrls && platformConfig.sponsorLogoUrls.some(url => url) ? (
+        {sponsorLogoUrls && sponsorLogoUrls.some(url => url) ? (
             <div className="flex flex-col items-center gap-4">
                 <span className="text-xs">贊助單位</span>
                 <div className="flex flex-wrap justify-center items-center gap-8">
-                    {platformConfig.sponsorLogoUrls.map((url, index) => url && (
+                    {sponsorLogoUrls.map((url, index) => url && (
                         <div key={index} className="relative h-12 w-32">
                             <Image 
                                 src={url}
@@ -253,56 +254,4 @@ function LoginPageContent() {
       </footer>
     </div>
   );
-}
-
-
-export default function LoginPage() {
-    const { loading, setLoading, setConfig, setStudents, setTeachers, setClasses } = useSchoolStore();
-    const [error, setError] = useState<string | null>(null);
-    const router = useRouter();
-
-    useEffect(() => {
-        // Redirect if already logged in
-        const userRole = localStorage.getItem('userRole');
-        if (userRole === 'student') {
-            router.replace('/dashboard');
-            return;
-        } else if (userRole === 'teacher') {
-            router.replace('/teacher/dashboard');
-            return;
-        }
-        
-        // If not logged in, sync data
-        const sync = async () => {
-            setError(null);
-            setLoading(true);
-            try {
-                const { config, students, teachers, classes } = await syncAll();
-                setConfig(config);
-                setStudents(students);
-                setTeachers(teachers);
-                setClasses(classes);
-            } catch (e: any) {
-                setError(e?.message ?? "同步失敗");
-            } finally {
-                setLoading(false);
-            }
-        };
-        sync();
-    }, [setLoading, setConfig, setStudents, setTeachers, setClasses, router]);
-    
-    if (loading) {
-        return (
-            <div className="flex h-screen w-full items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin" />
-                正在同步全校資料...
-            </div>
-        );
-    }
-    
-    if (error) {
-        return <div className="flex h-screen w-full items-center justify-center text-destructive">資料同步失敗: {error}</div>;
-    }
-
-    return <LoginPageContent />;
 }

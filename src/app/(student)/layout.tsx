@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useContext, useMemo, useCallback } from "react";
 import {
   SidebarProvider,
   Sidebar,
@@ -26,7 +26,6 @@ import {
   ChevronDown,
   Package,
   Landmark,
-  KeyRound,
   Megaphone,
   Flag,
   PiggyBank,
@@ -34,10 +33,7 @@ import {
   Mail,
   HeartHandshake,
   Repeat,
-  Globe,
-  Smile,
-  BookUp,
-  Loader2
+  BookUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,50 +48,57 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import type { PointRecord, Student } from "@/lib/types";
+import { StudentDataContext } from "@/context/StudentDataContext";
+import type { PointRecord } from "@/lib/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AppDataContext } from "@/context/AppDataContext";
 import { Separator } from "@/components/ui/separator";
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/context/AuthContext";
-import { useSchoolStore } from "@/store/useSchoolStore";
-import { syncAll } from "@/lib/firestoreFetchers";
+import { useAuth } from '@/context/AuthContext';
 
-function StudentLayoutContent({ children }: { children: React.ReactNode }) {
+
+export default function StudentLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
+  const { studentData, isLoading } = useContext(StudentDataContext);
+  const { handleLogout, setStudents } = useAuth();
   const { toast } = useToast();
   
-  const { config: platformConfig, classes } = useSchoolStore();
-  const { student, handleLogout, setStudents } = useAuth();
+  const { classes, platformConfig } = useContext(AppDataContext);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const { student: currentStudent } = studentData;
 
   const hasNewAnnouncements = useMemo(() => {
-    if (!student) return false;
-    const lastViewTime = student.lastAnnouncementsView ? new Date(student.lastAnnouncementsView).getTime() : 0;
+    if (!currentStudent) return false;
+    const lastViewTime = currentStudent.lastAnnouncementsView ? new Date(currentStudent.lastAnnouncementsView).getTime() : 0;
     const latestSchoolAnnouncementDate = (platformConfig?.announcements || [])
       .reduce((latest, ann) => Math.max(latest, new Date(ann.date).getTime()), 0);
-    const studentClass = classes.find(c => c.id === student.classId);
+    const studentClass = classes.find(c => c.id === currentStudent.classId);
     const latestClassAnnouncementDate = (studentClass?.announcements || [])
       .reduce((latest, ann) => Math.max(latest, new Date(ann.date).getTime()), 0);
     return latestSchoolAnnouncementDate > lastViewTime || latestClassAnnouncementDate > lastViewTime;
-  }, [student, platformConfig, classes]);
+  }, [currentStudent, platformConfig, classes]);
 
   const hasNewPointHistory = useMemo(() => {
-     if (!student) return false;
-    const lastPointHistoryView = student.lastPointHistoryView ? new Date(student.lastPointHistoryView).getTime() : 0;
-    const latestPointRecordDate = (student.pointHistory || [])
+     if (!currentStudent) return false;
+    const lastPointHistoryView = currentStudent.lastPointHistoryView ? new Date(currentStudent.lastPointHistoryView).getTime() : 0;
+    const latestPointRecordDate = (currentStudent.pointHistory || [])
       .reduce((latest, record) => Math.max(latest, new Date(record.date).getTime()), 0);
     return latestPointRecordDate > lastPointHistoryView;
-  }, [student]);
+  }, [currentStudent]);
 
   const handleChangePassword = async () => {
-    if (!student || !student.id) return;
+    if (!currentStudent) return;
     setIsSaving(true);
 
     if (newPassword !== confirmPassword) {
@@ -108,20 +111,14 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
         setIsSaving(false);
         return;
     }
-    if (student.password !== currentPassword) {
+    if (currentStudent.password !== currentPassword) {
         toast({ title: "密碼錯誤", description: "您輸入的目前密碼不正確。", variant: "destructive" });
         setIsSaving(false);
         return;
     }
 
     try {
-        await setStudents(prev => prev.map(s => {
-            if (s._docId === student._docId) {
-                return { ...s, password: newPassword };
-            }
-            return s;
-        }));
-        localStorage.setItem('studentPassword', newPassword);
+        await setStudents((prev) => prev.map(s => s._docId === currentStudent._docId ? { ...s, password: newPassword } : s));
         toast({ title: "密碼已更新", description: "您的密碼已成功更新。" });
         setIsSettingsOpen(false);
         setCurrentPassword("");
@@ -135,22 +132,15 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
   };
 
   const handleOpenNotifications = useCallback(async () => {
-    if (!student || !hasNewPointHistory) return;
+    if (!currentStudent || !hasNewPointHistory) return;
     
-    const now = new Date().toISOString();
-
     try {
-        await setStudents(prev => prev.map(s => {
-            if (s._docId === student._docId) {
-                return { ...s, lastPointHistoryView: now };
-            }
-            return s;
-        }));
+        await setStudents((prev) => prev.map(s => s._docId === currentStudent._docId ? { ...s, lastPointHistoryView: new Date().toISOString() } : s));
     } catch (e) {
         console.error("Failed to update lastPointHistoryView:", e);
         toast({ title: "錯誤", description: "無法更新通知狀態，請稍後再試。", variant: "destructive" });
     }
-}, [student, hasNewPointHistory, setStudents, toast]);
+}, [currentStudent, hasNewPointHistory, setStudents, toast]);
 
   const navItems = [
     { href: "/dashboard", label: "儀表板", icon: LayoutDashboard },
@@ -168,8 +158,8 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
   ];
   
   const pointHistory = useMemo(() => {
-    return student?.pointHistory?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
-  }, [student?.pointHistory]);
+    return currentStudent?.pointHistory?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
+  }, [currentStudent?.pointHistory]);
   
   const NotificationItem = ({ record }: { record: PointRecord }) => {
     const isPositive = record.points > 0;
@@ -191,6 +181,14 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
             </div>
         </div>
     )
+  }
+
+  if (isLoading || !currentStudent) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+          ...載入中
+      </div>
+    );
   }
 
   return (
@@ -232,11 +230,11 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
                 className="w-full justify-start gap-2 p-2 group-data-[collapsible=icon]:justify-center"
               >
                 <Avatar className="size-8">
-                  <AvatarImage src={student?.avatar} data-ai-hint="student avatar" />
-                  <AvatarFallback>{student?.name.slice(0, 2)}</AvatarFallback>
+                  <AvatarImage src={currentStudent.avatar} data-ai-hint="student avatar" />
+                  <AvatarFallback>{currentStudent.name.slice(0, 2)}</AvatarFallback>
                 </Avatar>
                 <div className="text-left group-data-[collapsible=icon]:hidden">
-                  <p className="font-semibold text-lg">{student?.name || '學生'}</p>
+                  <p className="font-semibold text-lg">{currentStudent.name}</p>
                   <p className="text-xs text-muted-foreground">學生</p>
                 </div>
                 <ChevronDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
@@ -332,70 +330,5 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
       </DialogContent>
     </Dialog>
     </SidebarProvider>
-  );
-}
-
-function Providers({ children }: { children: React.ReactNode }) {
-    const { loading, setLoading, setConfig, setStudents, setTeachers, setClasses } = useSchoolStore();
-    const [error, setError] = useState<string | null>(null);
-    const [isSynced, setIsSynced] = useState(false);
-    const { student, isLoading: isAuthLoading } = useAuth();
-    
-    useEffect(() => {
-        // This effect runs once on mount to fetch all initial data.
-        if (isSynced || !student) return;
-        const sync = async () => {
-            setError(null);
-            setLoading(true);
-            try {
-                const { config, students, teachers, classes } = await syncAll();
-                setConfig(config);
-                setStudents(students);
-                setTeachers(teachers);
-                setClasses(classes);
-                setIsSynced(true);
-            } catch (e: any) {
-                setError(e?.message ?? "同步失敗");
-            } finally {
-                setLoading(false);
-            }
-        };
-        sync();
-    }, [setLoading, setConfig, setStudents, setTeachers, setClasses, isSynced, student]);
-    
-    if (isAuthLoading) {
-      return (
-        <div className="flex h-screen w-full items-center justify-center">
-          正在驗證您的身份...
-        </div>
-      );
-    }
-    
-    if (error) {
-        return <div className="flex h-screen w-full items-center justify-center text-destructive">資料同步失敗: {error}</div>;
-    }
-
-    if (loading || !isSynced) {
-         return (
-            <div className="flex h-screen w-full items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin" />
-                正在同步資料...
-            </div>
-        );
-    }
-
-    return <>{children}</>;
-}
-
-
-export default function StudentLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <Providers>
-      <StudentLayoutContent>{children}</StudentLayoutContent>
-    </Providers>
   );
 }

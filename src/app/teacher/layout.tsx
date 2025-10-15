@@ -55,16 +55,12 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useSchoolStore } from "@/store/useSchoolStore";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth, AuthProvider } from "@/context/AuthContext";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
 import Logo from "@/components/logo";
 import { syncAll } from "@/lib/firestoreFetchers";
 
-function TeacherLayoutContent({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function TeacherLayoutContent({ children }: { children: React.ReactNode; }) {
   const pathname = usePathname();
   const { toast } = useToast();
   
@@ -72,8 +68,7 @@ function TeacherLayoutContent({
     config: platformConfig,
     teachers,
   } = useSchoolStore();
-  const { teacher, handleLogout, setStudents: setStoreStudents } = useAuth();
-  const setTeachers = useSchoolStore((state) => state.setTeachers);
+  const { teacher, handleLogout, setTeachers, isLoading } = useAuth();
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -99,8 +94,11 @@ function TeacherLayoutContent({
     const correctPassword = originalAdmin?.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
 
     localStorage.setItem('userRole', 'teacher');
-    localStorage.setItem('teacherId', originalAdminId);
-    localStorage.setItem('teacherPassword', correctPassword);
+    localStorage.setItem('teacherDocId', originalAdmin._docId!);
+    localStorage.setItem('teacherId', originalAdmin.id);
+    localStorage.setItem('teacherName', originalAdmin.name);
+    localStorage.setItem('teacherClassIds', JSON.stringify(originalAdmin.classIds || []));
+    localStorage.setItem('teacherRole', originalAdmin.role);
     localStorage.removeItem('impersonator');
 
     toast({ title: "已返回校長身份" });
@@ -129,15 +127,12 @@ function TeacherLayoutContent({
     }
 
      try {
-        // This is a simplified update. A proper implementation would use a server-side function
-        // to securely update the password in the database.
-        const updatedTeachers = teachers.map(t => {
-             if (t.id === teacher.id) {
+        await setTeachers(currentTeachers => currentTeachers.map(t => {
+            if (t.id === teacher.id) {
                 return { ...t, password: newPassword };
             }
             return t;
-        });
-        setTeachers(updatedTeachers);
+        }));
         localStorage.setItem('teacherPassword', newPassword);
         toast({ title: "密碼已更新", description: "您的密碼已成功更新。" });
         setIsSettingsOpen(false);
@@ -176,6 +171,15 @@ function TeacherLayoutContent({
     teacher: '班級導師',
     subject_teacher: '科任教師'
   };
+
+  if (isLoading || !teacher) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          驗證身份中...
+      </div>
+    );
+  }
 
   return (
     <>
@@ -301,14 +305,12 @@ function TeacherLayoutContent({
 
 
 function Providers({ children }: { children: React.ReactNode }) {
-    const { loading, setLoading, setConfig, setStudents, setTeachers, setClasses } = useSchoolStore();
+    const { setLoading, setConfig, setStudents, setTeachers, setClasses } = useSchoolStore();
     const [error, setError] = useState<string | null>(null);
     const [isSynced, setIsSynced] = useState(false);
-    const { teacher, isLoading: isAuthLoading } = useAuth();
     
     useEffect(() => {
-        // This effect runs once on mount to fetch all initial data.
-        if (isSynced || !teacher) return;
+        if (isSynced) return;
         const sync = async () => {
             setError(null);
             setLoading(true);
@@ -326,21 +328,9 @@ function Providers({ children }: { children: React.ReactNode }) {
             }
         };
         sync();
-    }, [setLoading, setConfig, setStudents, setTeachers, setClasses, isSynced, teacher]);
+    }, [setLoading, setConfig, setStudents, setTeachers, setClasses, isSynced]);
     
-    if (isAuthLoading) {
-      return (
-        <div className="flex h-screen w-full items-center justify-center">
-          正在驗證您的身份...
-        </div>
-      );
-    }
-    
-    if (error) {
-        return <div className="flex h-screen w-full items-center justify-center text-destructive">資料同步失敗: {error}</div>;
-    }
-
-    if (loading || !isSynced) {
+    if (!isSynced) {
          return (
             <div className="flex h-screen w-full items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin" />
@@ -348,16 +338,16 @@ function Providers({ children }: { children: React.ReactNode }) {
             </div>
         );
     }
+    
+    if (error) {
+        return <div className="flex h-screen w-full items-center justify-center text-destructive">資料同步失敗: {error}</div>;
+    }
 
-    return <>{children}</>;
+    return <AuthProvider>{children}</AuthProvider>;
 }
 
 
-export default function TeacherLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function TeacherLayout({ children }: { children: React.ReactNode; }) {
   return (
     <Providers>
       <TeacherLayoutContent>{children}</TeacherLayoutContent>
