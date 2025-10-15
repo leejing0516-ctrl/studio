@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -17,7 +17,7 @@ import {
   TableBody,
   TableCell,
 } from "@/components/ui/table";
-import { AppDataContext } from "@/context/AppDataContext";
+import { useSchoolStore } from "@/store/useSchoolStore";
 import { Coins, Trophy, PiggyBank, Landmark, LineChart, Wallet } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,7 +26,7 @@ import { Loader2 } from "lucide-react";
 import type { Student } from "@/lib/types";
 
 export default function TeacherClassRankingsPage() {
-    const { students, stocks, classes, isLoading } = useContext(AppDataContext);
+    const { students, stocks, classes, loading: isLoading } = useSchoolStore();
     
     const [role, setRole] = useState<string | null>(null);
     const [teacherClassIds, setTeacherClassIds] = useState<string[]>([]);
@@ -191,5 +191,3 @@ export default function TeacherClassRankingsPage() {
         </div>
     );
 }
-
-    
