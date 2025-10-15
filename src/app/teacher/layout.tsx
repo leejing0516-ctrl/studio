@@ -132,7 +132,7 @@ function TeacherLayoutContent({
              handleLogout();
         }
     }
-  }, [handleLogout, platformConfig?.teacherPassword, toast, teachers]);
+  }, [teachers.length, router, toast, handleLogout, platformConfig?.teacherPassword]);
 
   
   const handleStopImpersonating = () => {
@@ -361,5 +361,14 @@ export default function TeacherLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const { fetchInitialData } = useContext(AppDataContext);
+
+  useEffect(() => {
+    const unsub = fetchInitialData();
+    return () => unsub();
+  }, [fetchInitialData]);
+
   return <TeacherLayoutContent>{children}</TeacherLayoutContent>;
 }
+
+    

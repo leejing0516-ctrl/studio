@@ -367,7 +367,7 @@ export default function StudentLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { fetchInitialData, isLoading, students } = useContext(AppDataContext);
+  const { students, isLoading, fetchInitialData } = useContext(AppDataContext);
   const { studentData, setStudentData } = useContext(StudentDataContext);
   const router = useRouter();
   const { toast } = useToast();
@@ -396,6 +396,7 @@ export default function StudentLayout({
       return;
     }
     
+    // Only run validation when students array is populated
     if (students.length > 0) {
       const student = students.find(s => s.classId === classId && s.id === studentId);
       if (student) {
@@ -410,7 +411,7 @@ export default function StudentLayout({
          handleLogout();
       }
     }
-  }, [students, handleLogout, toast, setStudentData]);
+  }, [students.length, router, toast, setStudentData, handleLogout]); // Depend on students.length
 
   if (isLoading || !studentData.student) {
       return (
@@ -422,3 +423,5 @@ export default function StudentLayout({
 
   return <StudentLayoutContent>{children}</StudentLayoutContent>;
 }
+
+    
