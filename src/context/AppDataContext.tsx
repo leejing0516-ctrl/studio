@@ -14,64 +14,74 @@ import type { PlatformConfig, Student, Teacher, ClassInfo } from "@/lib/types";
 // and "hydrating" the client-side Zustand store with it.
 // It now uses onSnapshot for real-time updates for all core data collections.
 function StoreHydration() {
-  const isHydrated = useRef(false);
+    const isInitialLoadComplete = useRef(false);
 
-  useEffect(() => {
-    if (!db) return;
-    
-    const unsubscribers: (() => void)[] = [];
-    const collectionsToSync = {
-      config: { ref: collection(db, "config"), setter: useSchoolStore.getState().setConfig, isSingleDoc: true },
-      students: { ref: collection(db, "students"), setter: useSchoolStore.getState().setStudents },
-      teachers: { ref: collection(db, "teachers"), setter: useSchoolStore.getState().setTeachers },
-      classes: { ref: collection(db, "classes"), setter: useSchoolStore.getState().setClasses },
-    };
+    useEffect(() => {
+        if (!db || isInitialLoadComplete.current) return;
 
-    let initialLoadCompleted = 0;
-    const totalCollections = Object.keys(collectionsToSync).length;
+        const collectionsToSync = {
+            config: { ref: doc(db, "config", "main"), setter: useSchoolStore.getState().setConfig, isSingleDoc: true },
+            students: { ref: collection(db, "students"), setter: useSchoolStore.getState().setStudents },
+            teachers: { ref: collection(db, "teachers"), setter: useSchoolStore.getState().setTeachers },
+            classes: { ref: collection(db, "classes"), setter: useSchoolStore.getState().setClasses },
+        };
 
-    const checkAllLoaded = () => {
-      initialLoadCompleted++;
-      if (initialLoadCompleted >= totalCollections) {
-        useSchoolStore.getState().setLoading(false);
-      }
-    };
-    
-    for (const [key, { ref, setter, isSingleDoc }] of Object.entries(collectionsToSync)) {
-        if (isSingleDoc) {
-            const docRef = doc(ref, 'main');
-            const unsubscribe = onSnapshot(docRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    (setter as (v: PlatformConfig) => void)(docSnap.data() as PlatformConfig);
-                }
-                if (!isHydrated.current) checkAllLoaded();
-            }, (error) => {
-                console.error(`Failed to listen to ${key} changes:`, error);
-                if (!isHydrated.current) checkAllLoaded();
-            });
-            unsubscribers.push(unsubscribe);
-        } else {
-             const unsubscribe = onSnapshot(ref, (querySnapshot) => {
-                const data = querySnapshot.docs.map(d => ({ ...d.data(), _docId: d.id }));
-                (setter as (v: any[]) => void)(data);
-                if (!isHydrated.current) checkAllLoaded();
-            }, (error) => {
-                console.error(`Failed to listen to ${key} changes:`, error);
-                if (!isHydrated.current) checkAllLoaded();
-            });
-            unsubscribers.push(unsubscribe);
-        }
-    }
-    
-    isHydrated.current = true;
+        const collectionKeys = Object.keys(collectionsToSync);
+        const initialLoadMap = new Map(collectionKeys.map(key => [key, false]));
 
-    return () => {
-      unsubscribers.forEach(unsub => unsub()); // Clean up all listeners on component unmount
-    };
-  }, []);
+        const checkAllLoaded = () => {
+            if (isInitialLoadComplete.current) return;
+            
+            const allLoaded = Array.from(initialLoadMap.values()).every(Boolean);
+            if (allLoaded) {
+                useSchoolStore.getState().setLoading(false);
+                isInitialLoadComplete.current = true;
+            }
+        };
 
-  return null;
+        const unsubscribers = Object.entries(collectionsToSync).map(([key, { ref, setter, isSingleDoc }]) => {
+            if (isSingleDoc) {
+                return onSnapshot(ref, (docSnap) => {
+                    if (docSnap.exists()) {
+                        (setter as (v: PlatformConfig) => void)(docSnap.data() as PlatformConfig);
+                    }
+                    if (!initialLoadMap.get(key)) {
+                        initialLoadMap.set(key, true);
+                        checkAllLoaded();
+                    }
+                }, (error) => {
+                    console.error(`Failed to listen to ${key} changes:`, error);
+                    if (!initialLoadMap.get(key)) {
+                        initialLoadMap.set(key, true);
+                        checkAllLoaded();
+                    }
+                });
+            } else {
+                return onSnapshot(ref as any, (querySnapshot) => {
+                    const data = querySnapshot.docs.map(d => ({ ...d.data(), _docId: d.id }));
+                    (setter as (v: any[]) => void)(data);
+                    if (!initialLoadMap.get(key)) {
+                        initialLoadMap.set(key, true);
+                        checkAllLoaded();
+                    }
+                }, (error) => {
+                    console.error(`Failed to listen to ${key} changes:`, error);
+                     if (!initialLoadMap.get(key)) {
+                        initialLoadMap.set(key, true);
+                        checkAllLoaded();
+                    }
+                });
+            }
+        });
+
+        return () => {
+            unsubscribers.forEach(unsub => unsub());
+        };
+    }, []);
+
+    return null;
 }
+
 
 // This component applies the dynamic theme based on the config.
 function StyleInjector() {
