@@ -52,11 +52,11 @@ export const students: Student[] = [
 export const rewards: Reward[] = [];
 
 export const stocks: Stock[] = [
-    { id: "EDU", ticker: "EDU", name: "學習公司", price: 150.75, change: 2.50, changePercent: 1.68, marketCap: "1.2兆" },
-    { id: "BOOK", ticker: "BOOK", name: "閱讀公司", price: 89.20, change: -1.10, changePercent: -1.22, marketCap: "8000億" },
-    { id: "SCI", ticker: "SCI", name: "科學解決方案", price: 234.50, change: 5.60, changePercent: 2.45, marketCap: "2.1兆" },
-    { id: "ART", ticker: "ART", name: "創意公司", price: 45.30, change: 0.25, changePercent: 0.55, marketCap: "3000億" },
-    { id: "TECH", ticker: "TECH", name: "創新有限責任公司", price: 550.00, change: -12.30, changePercent: -2.18, marketCap: "5.5兆" },
+    { id: "ART", ticker: "ART", name: "創意公司", price: 78, change: 0, changePercent: 0, marketCap: "3000億" },
+    { id: "BOOK", ticker: "BOOK", name: "閱讀公司", price: 343, change: 0, changePercent: 0, marketCap: "8000億" },
+    { id: "EDU", ticker: "EDU", name: "學習公司", price: 444, change: 0, changePercent: 0, marketCap: "1.2兆" },
+    { id: "SCI", ticker: "SCI", name: "科學解決方案", price: 554, change: 0, changePercent: 0, marketCap: "2.1兆" },
+    { id: "TECH", ticker: "TECH", name: "創新有限責任公司", price: 1105, change: 0, changePercent: 0, marketCap: "5.5兆" },
 ];
 
 export const challenges: Challenge[] = [];
