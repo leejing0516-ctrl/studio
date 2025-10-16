@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   Card,
@@ -37,7 +37,6 @@ import {
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { AppDataContext } from "@/context/AppDataContext";
 import { format, addDays, isValid } from "date-fns";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -48,12 +47,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { resizeImage, fileToDataUrl } from "@/lib/image-utils";
+import { useSchoolStore } from "@/store/useSchoolStore";
+import { useAuth } from "@/context/AuthContext";
 
 
 export default function TeacherFundraisingPage() {
   const { 
-    isLoading, platformConfig, setPlatformConfig, classes
-  } = useContext(AppDataContext);
+    isLoading, config: platformConfig, classes
+  } = useSchoolStore();
+  const { setPlatformConfig } = useAuth();
 
   const { toast } = useToast();
   const router = useRouter();

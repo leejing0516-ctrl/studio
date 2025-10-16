@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
-import { AppDataContext } from "@/context/AppDataContext";
+import { useSchoolStore } from "@/store/useSchoolStore";
 import {
   Select,
   SelectContent,
@@ -38,8 +38,8 @@ const depositDurations = [
 ];
 
 export default function DepositsPage() {
-  const { student: currentStudent, setStudents, runTransaction } = useAuth();
-  const { platformConfig } = useContext(AppDataContext);
+  const { student: currentStudent, runTransaction } = useAuth();
+  const { config: platformConfig } = useSchoolStore();
   const { toast } = useToast();
 
   const [amount, setAmount] = useState<number | "">("");

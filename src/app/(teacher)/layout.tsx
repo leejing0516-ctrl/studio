@@ -2,8 +2,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import React, { useState, useMemo, useContext } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import {
   SidebarProvider,
   Sidebar,
@@ -39,6 +39,7 @@ import {
   Mail,
   BookUp,
   Users,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,24 +54,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { StudentDataContext } from "@/context/StudentDataContext";
-import { AppDataContext } from "@/context/AppDataContext";
+import { useSchoolStore } from "@/store/useSchoolStore";
 import { useAuth } from "@/context/AuthContext";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
 import Logo from "@/components/logo";
 
-
-export default function TeacherLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function TeacherLayout({ children }: { children: React.ReactNode; }) {
   const pathname = usePathname();
-  const { studentData, isLoading } = useContext(StudentDataContext);
-  const { handleLogout, setTeachers } = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
   
-  const { platformConfig } = useContext(AppDataContext);
+  const { 
+    config: platformConfig,
+    teachers,
+  } = useSchoolStore();
+  const { teacher, handleLogout, setTeachers, isLoading } = useAuth();
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -78,8 +76,14 @@ export default function TeacherLayout({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   
-  const { teacher } = studentData;
   const isImpersonating = useMemo(() => typeof window !== 'undefined' && !!localStorage.getItem('impersonator'), []);
+
+  // Auth check
+  useEffect(() => {
+    if (!isLoading && !teacher) {
+      handleLogout();
+    }
+  }, [isLoading, teacher, handleLogout]);
 
   const hasNewFeedback = useMemo(() => {
     return (platformConfig?.feedback || []).some(f => !f.isRead);
@@ -93,12 +97,20 @@ export default function TeacherLayout({
       return;
     }
     
-    // We assume the admin password is the platform default one
-    const correctPassword = platformConfig?.teacherPassword || TEACHER_PASSWORD;
+    const originalAdmin = teachers.find(t => t.id === originalAdminId);
+    if (!originalAdmin) {
+       toast({ title: "返回失敗", description: "找不到原始管理員帳號資料。", variant: "destructive" });
+       handleLogout();
+       return;
+    }
+    const correctPassword = originalAdmin?.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
 
     localStorage.setItem('userRole', 'teacher');
-    localStorage.setItem('teacherDocId', originalAdminId);
-    localStorage.setItem('teacherPassword', correctPassword); // This might be incorrect if admin had custom password
+    localStorage.setItem('teacherDocId', originalAdmin._docId!);
+    localStorage.setItem('teacherId', originalAdmin.id);
+    localStorage.setItem('teacherName', originalAdmin.name);
+    localStorage.setItem('teacherClassIds', JSON.stringify(originalAdmin.classIds || []));
+    localStorage.setItem('teacherRole', originalAdmin.role);
     localStorage.removeItem('impersonator');
 
     toast({ title: "已返回校長身份" });
@@ -128,7 +140,7 @@ export default function TeacherLayout({
 
      try {
         await setTeachers(currentTeachers => currentTeachers.map(t => {
-            if (t._docId === teacher._docId) {
+            if (t.id === teacher.id) {
                 return { ...t, password: newPassword };
             }
             return t;
@@ -175,7 +187,8 @@ export default function TeacherLayout({
   if (isLoading || !teacher) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
-          ...載入中
+          <Loader2 className="h-8 w-8 animate-spin" />
+          正在載入教師資料...
       </div>
     );
   }

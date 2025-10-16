@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -35,18 +35,21 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { AppDataContext } from "@/context/AppDataContext";
 import { useRouter } from "next/navigation";
 import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
+import { useSchoolStore } from "@/store/useSchoolStore";
+import { useAuth } from "@/context/AuthContext";
 
 
 export default function TeacherStocksPage() {
   const { 
-    stocks, setStocks,
-    students, setStudents,
-    isLoading, platformConfig, setPlatformConfig
-  } = useContext(AppDataContext);
+    stocks,
+    students,
+    isLoading, 
+    config: platformConfig, 
+  } = useSchoolStore();
+  const { setStudents, setPlatformConfig } = useAuth();
 
   const { toast } = useToast();
   const router = useRouter();
@@ -101,7 +104,7 @@ export default function TeacherStocksPage() {
     const formData = new FormData(event.currentTarget);
     const ticker = (formData.get("ticker") as string).toUpperCase();
     
-    if (stocks.some(s => s.ticker === ticker)) {
+    if ((stocks || []).some(s => s.ticker === ticker)) {
         toast({ title: "新增失敗", description: `股票代碼 ${ticker} 已存在。`, variant: "destructive" });
         return;
     }
@@ -116,7 +119,7 @@ export default function TeacherStocksPage() {
         changePercent: 0,
     };
 
-    await setStocks(current => [...current, newStock]);
+    await setPlatformConfig({ stocks: [...(platformConfig?.stocks || []), newStock] });
     setIsAddStockDialogOpen(false);
     toast({ title: "已新增股票", description: `${newStock.name} (${newStock.ticker}) 已新增至市場。`});
   };
@@ -138,7 +141,7 @@ export default function TeacherStocksPage() {
         marketCap: formData.get("marketCap") as string,
     };
     
-    await setStocks(current => current.map(s => s.ticker === updatedStock.ticker ? updatedStock : s));
+    await setPlatformConfig({ stocks: (platformConfig?.stocks || []).map(s => s.ticker === updatedStock.ticker ? updatedStock : s) });
     setIsEditStockDialogOpen(false);
     setStockToEdit(null);
     toast({ title: "已更新股票", description: `${updatedStock.name} 的資訊已更新。` });
@@ -157,7 +160,7 @@ export default function TeacherStocksPage() {
             portfolio: (student.portfolio || []).filter(p => p.ticker !== stockToDelete.ticker)
         })));
 
-        await setStocks(current => current.filter(s => s.ticker !== stockToDelete.ticker));
+        await setPlatformConfig({ stocks: (platformConfig?.stocks || []).filter(s => s.ticker !== stockToDelete.ticker) });
 
         toast({ title: "已刪除股票", description: `已從市場及所有投資組合中移除 ${stockToDelete.name}。`, variant: "destructive" });
     } catch(e) {
@@ -274,7 +277,7 @@ export default function TeacherStocksPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {stocks.map(stock => (
+                            {(stocks || []).map(stock => (
                                 <TableRow key={stock.ticker}>
                                     <TableCell>{stock.ticker}</TableCell>
                                     <TableCell>{stock.name}</TableCell>
@@ -525,5 +528,3 @@ export default function TeacherStocksPage() {
     </div>
   );
 }
-
-    

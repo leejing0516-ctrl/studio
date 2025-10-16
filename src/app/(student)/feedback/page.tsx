@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext } from "react";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -15,13 +15,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
-import { AppDataContext } from "@/context/AppDataContext";
+import { useSchoolStore } from "@/store/useSchoolStore";
 import { Mail, Send, Loader2 } from "lucide-react";
 import type { Feedback } from "@/lib/types";
 
 export default function FeedbackPage() {
-  const { student } = useAuth();
-  const { platformConfig, setPlatformConfig } = useContext(AppDataContext);
+  const { student, setPlatformConfig } = useAuth();
+  const { config: platformConfig } = useSchoolStore();
   const { toast } = useToast();
   
   const [message, setMessage] = useState("");
