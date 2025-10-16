@@ -33,11 +33,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import Papa from "papaparse";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 
 const StudentManagement = () => {
     const { toast } = useToast();
-    const { teacher, setStudents: updateAllStudents } = useAuth();
-    const { students, classes } = useSchoolStore();
+    const { teacher } = useAuth();
+    const { students, classes, setStudents: updateAllStudents } = useSchoolStore();
     
     const [selectedClassId, setSelectedClassId] = useState<string>('');
     const [points, setPoints] = useState<{ [key: string]: number | '' }>({});
@@ -300,7 +303,7 @@ const TeacherAndClassManagement = () => {
     const [isAddTeacherOpen, setIsAddTeacherOpen] = useState(false);
     const [newTeacherName, setNewTeacherName] = useState('');
     const [newTeacherRole, setNewTeacherRole] = useState('teacher');
-    const [assignClassId, setAssignClassId] = useState('');
+    const [assignedClassIds, setAssignedClassIds] = useState<string[]>([]);
     const [isSavingTeacher, setIsSavingTeacher] = useState(false);
 
     const [classToDelete, setClassToDelete] = useState<ClassInfo | null>(null);
@@ -310,11 +313,19 @@ const TeacherAndClassManagement = () => {
     const [isDistributePointsOpen, setIsDistributePointsOpen] = useState(false);
     const [distributeTeacher, setDistributeTeacher] = useState<Teacher | null>(null);
     const [distributeAmount, setDistributeAmount] = useState<number | ''>('');
+    
+    const unassignedClasses = useMemo(() => {
+        return classes.filter(c => !teachers.some(t => Array.isArray(t.classIds) && t.classIds.includes(c.id) && t.role === 'teacher'));
+    }, [classes, teachers]);
 
 
     const handleAddTeacher = async () => {
         if (!newTeacherName) {
             toast({ title: "請輸入教師姓名", variant: "destructive" });
+            return;
+        }
+        if (newTeacherRole === 'teacher' && assignedClassIds.length !== 1) {
+            toast({ title: "班級導師只能指派一個班級", variant: "destructive" });
             return;
         }
         setIsSavingTeacher(true);
@@ -324,24 +335,18 @@ const TeacherAndClassManagement = () => {
                 id: newTeacherId,
                 name: newTeacherName,
                 role: newTeacherRole,
-                classIds: newTeacherRole === 'teacher' && assignClassId ? [assignClassId] : [],
+                classIds: assignedClassIds,
                 password: config?.teacherPassword || TEACHER_PASSWORD,
                 pointBalance: 0,
             };
             
             await setTeachers(current => [...current, newTeacher]);
 
-            if (newTeacherRole === 'teacher' && assignClassId) {
-                const classToUpdate = classes.find(c => c.id === assignClassId);
-                if (classToUpdate) {
-                    await setClasses(current => current.map(c => c.id === assignClassId ? { ...c, teacherId: newTeacherId } : c));
-                }
-            }
             toast({ title: "教師已新增", description: `已成功新增 ${newTeacherName} 老師。` });
             setIsAddTeacherOpen(false);
             setNewTeacherName('');
             setNewTeacherRole('teacher');
-            setAssignClassId('');
+            setAssignedClassIds([]);
         } catch (e) {
             toast({ title: "新增失敗", description: "建立教師時發生錯誤。", variant: "destructive" });
         } finally {
@@ -411,20 +416,16 @@ const TeacherAndClassManagement = () => {
     const handleDeleteClass = async () => {
         if (!classToDelete) return;
 
-        // Delete all students in that class
-        const studentIdsToDelete = students.filter(s => s.classId === classToDelete.id).map(s => s._docId!);
-        const newStudents = students.filter(s => s.classId !== classToDelete.id);
-        
-        // Unassign teacher
-        const teacherToUpdate = teachers.find(t => t.classIds.includes(classToDelete.id));
-        
         try {
              await setStudents(current => current.filter(s => s.classId !== classToDelete.id));
              await setClasses(current => current.filter(c => c.id !== classToDelete.id));
-             if (teacherToUpdate) {
-                await setTeachers(current => current.map(t => t.id === teacherToUpdate.id ? {...t, classIds: t.classIds.filter(cid => cid !== classToDelete.id)} : t))
-             }
-             toast({ title: "班級已刪除", description: "班級及其所有學生資料已被刪除。", variant: "destructive" });
+             
+             await setTeachers(current => current.map(t => ({
+                ...t,
+                classIds: (t.classIds || []).filter(cid => cid !== classToDelete.id)
+             })));
+
+             toast({ title: "班級已刪除", description: "班級及其所有學生資料、教師關聯皆已被刪除。", variant: "destructive" });
         } catch(e) {
              toast({ title: "刪除失敗", description: "刪除班級時發生錯誤。", variant: "destructive" });
         }
@@ -439,7 +440,7 @@ const TeacherAndClassManagement = () => {
                 <CardHeader className="flex flex-row items-center justify-between">
                     <div className="space-y-1.5">
                         <CardTitle>教師管理</CardTitle>
-                        <CardDescription>新增、編輯或刪除教師帳號。</CardDescription>
+                        <CardDescription>管理系統中的教師帳號、分配點數或模擬登入。</CardDescription>
                     </div>
                     <Button size="sm" onClick={() => setIsAddTeacherOpen(true)}><UserPlus className="mr-2 h-4 w-4" /> 新增老師</Button>
                 </CardHeader>
@@ -447,25 +448,32 @@ const TeacherAndClassManagement = () => {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>姓名</TableHead>
+                                <TableHead>ID / 姓名</TableHead>
                                 <TableHead>角色</TableHead>
+                                <TableHead>任教班級</TableHead>
                                 <TableHead>點數餘額</TableHead>
                                 <TableHead className="text-right">操作</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {teachers.map(t => (
+                            {teachers.map(t => {
+                                const assignedClasses = (t.classIds || []).map(cid => classes.find(c => c.id === cid)?.name).filter(Boolean);
+                                return (
                                 <TableRow key={t.id}>
-                                    <TableCell>{t.name}</TableCell>
+                                    <TableCell>
+                                        <div className="font-medium">{t.name}</div>
+                                        <div className="text-xs text-muted-foreground">{t.id}</div>
+                                    </TableCell>
                                     <TableCell>{t.role}</TableCell>
-                                    <TableCell>{t.pointBalance.toLocaleString()}</TableCell>
+                                    <TableCell>{assignedClasses.join(', ') || '-'}</TableCell>
+                                    <TableCell>{t.pointBalance?.toLocaleString() || 0}</TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="sm" onClick={() => handleImpersonate(t)}><Eye className="mr-1 h-4 w-4" />模擬</Button>
                                         <Button variant="ghost" size="sm" onClick={() => {setDistributeTeacher(t); setIsDistributePointsOpen(true);}}><Coins className="mr-1 h-4 w-4" />分配</Button>
                                         <Button variant="destructive" size="sm" onClick={() => setTeacherToDelete(t)}><Trash2 className="mr-1 h-4 w-4" />刪除</Button>
                                     </TableCell>
                                 </TableRow>
-                            ))}
+                            )})}
                         </TableBody>
                     </Table>
                 </CardContent>
@@ -528,19 +536,47 @@ const TeacherAndClassManagement = () => {
                                 </SelectContent>
                             </Select>
                         </div>
+                        
                         {newTeacherRole === 'teacher' && (
                              <div className="space-y-2">
-                                <Label htmlFor="assign-class">指派班級 (僅限導師)</Label>
-                                <Select value={assignClassId} onValueChange={setAssignClassId}>
+                                <Label htmlFor="assign-class">指派班級 (導師只能選一個)</Label>
+                                <Select value={assignedClassIds[0] || ''} onValueChange={value => setAssignedClassIds([value])}>
                                     <SelectTrigger id="assign-class"><SelectValue placeholder="選擇一個班級"/></SelectTrigger>
                                     <SelectContent>
-                                        {classes.filter(c => !teachers.some(t => Array.isArray(t.classIds) && t.classIds.includes(c.id) && t.role === 'teacher')).map(c => (
+                                        {unassignedClasses.map(c => (
                                             <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                         )}
+                        
+                        {newTeacherRole === 'subject_teacher' && (
+                             <div className="space-y-2">
+                                <Label>指派班級 (科任可複選)</Label>
+                                <ScrollArea className="h-40 rounded-md border p-4">
+                                     <div className="space-y-2">
+                                        {classes.map(c => (
+                                            <div key={c.id} className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id={`class-${c.id}`}
+                                                    checked={assignedClassIds.includes(c.id)}
+                                                    onCheckedChange={(checked) => {
+                                                        setAssignedClassIds(prev => 
+                                                            checked ? [...prev, c.id] : prev.filter(id => id !== c.id)
+                                                        );
+                                                    }}
+                                                />
+                                                <label htmlFor={`class-${c.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                                    {c.name}
+                                                </label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                            </div>
+                        )}
+
                     </div>
                     <DialogFooter>
                         <DialogClose asChild><Button variant="secondary">取消</Button></DialogClose>
