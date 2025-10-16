@@ -465,7 +465,7 @@ const TeacherAndClassManagement = () => {
                                         <div className="text-xs text-muted-foreground">{t.id}</div>
                                     </TableCell>
                                     <TableCell>{t.role}</TableCell>
-                                    <TableCell>{assignedClasses.join(', ') || '-'}</TableCell>
+                                    <TableCell className="max-w-[150px] truncate">{assignedClasses.join(', ') || '-'}</TableCell>
                                     <TableCell>{t.pointBalance?.toLocaleString() || 0}</TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="sm" onClick={() => handleImpersonate(t)}><Eye className="mr-1 h-4 w-4" />模擬</Button>
@@ -516,7 +516,7 @@ const TeacherAndClassManagement = () => {
             
              {/* Dialogs */}
             <Dialog open={isAddTeacherOpen} onOpenChange={setIsAddTeacherOpen}>
-                <DialogContent>
+                <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>新增教師</DialogTitle>
                         <DialogDescription>建立一個新的教師帳號。預設密碼將會是您在平台設定中定義的密碼。</DialogDescription>
@@ -554,26 +554,24 @@ const TeacherAndClassManagement = () => {
                         {newTeacherRole === 'subject_teacher' && (
                              <div className="space-y-2">
                                 <Label>指派班級 (科任可複選)</Label>
-                                <ScrollArea className="h-40 rounded-md border p-4">
-                                     <div className="space-y-2">
-                                        {classes.map(c => (
-                                            <div key={c.id} className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id={`class-${c.id}`}
-                                                    checked={assignedClassIds.includes(c.id)}
-                                                    onCheckedChange={(checked) => {
-                                                        setAssignedClassIds(prev => 
-                                                            checked ? [...prev, c.id] : prev.filter(id => id !== c.id)
-                                                        );
-                                                    }}
-                                                />
-                                                <label htmlFor={`class-${c.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                                    {c.name}
-                                                </label>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </ScrollArea>
+                                <div className="p-4 border rounded-md grid grid-cols-2 md:grid-cols-3 gap-2">
+                                    {classes.map(c => (
+                                        <div key={c.id} className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id={`class-${c.id}`}
+                                                checked={assignedClassIds.includes(c.id)}
+                                                onCheckedChange={(checked) => {
+                                                    setAssignedClassIds(prev => 
+                                                        checked ? [...prev, c.id] : prev.filter(id => id !== c.id)
+                                                    );
+                                                }}
+                                            />
+                                            <label htmlFor={`class-${c.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                                {c.name}
+                                            </label>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         )}
 
@@ -682,5 +680,3 @@ export default function TeacherDashboardPage() {
         </div>
     );
 }
-
-    
