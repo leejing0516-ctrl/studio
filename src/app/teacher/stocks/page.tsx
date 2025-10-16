@@ -87,7 +87,7 @@ export default function TeacherStocksPage() {
         setMarqueeMessages(newMessages);
     }
 
-  }, [router, toast, platformConfig, teacher]);
+  }, [teacher, router, toast, platformConfig]);
 
   const teacherName = useMemo(() => teacher?.name || '', [teacher]);
 
@@ -226,7 +226,7 @@ export default function TeacherStocksPage() {
   const handleSaveMarquee = async () => {
     setIsSavingMarquee(true);
     try {
-        await setPlatformConfig({ stockMarketNews: marqueeMessages });
+        await setPlatformConfig({ stockMarqueeMessages: marqueeMessages });
         toast({ title: "跑馬燈訊息已儲存" });
     } catch(e) {
         toast({ title: "儲存失敗", variant: "destructive" });
