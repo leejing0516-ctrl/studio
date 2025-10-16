@@ -48,7 +48,9 @@ export default function TeacherClassRankingsPage() {
 
     const isLoading = isAuthLoading || isStoreLoading;
     
-    const listedStudents = useMemo(() => {
+    // Direct calculation on each render to avoid stale cache issues from useMemo.
+    const listedStudents = (() => {
+        // Return empty if still loading or data is not ready, the top-level loader will handle the UI.
         if (!selectedClassId || !students || !config?.stocks) {
             return [];
         }
@@ -81,10 +83,10 @@ export default function TeacherClassRankingsPage() {
                 };
             })
             .sort((a, b) => b.totalAssets - a.totalAssets);
-    }, [selectedClassId, students, config]);
+    })();
 
 
-    if (isLoading) {
+    if (isLoading || !teacher || !classes || !students || !config) {
         return (
             <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />

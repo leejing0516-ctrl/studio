@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useMemo, useEffect } from "react";
+import { useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -44,8 +44,11 @@ export default function TeacherRankingsPage() {
 
     const isLoading = isAuthLoading || isStoreLoading;
     
-    const listedStudents: StudentWithAssets[] = useMemo(() => {
-        if (!students || !classes || !config?.stocks) {
+    // Direct calculation on each render to avoid stale cache issues.
+    const listedStudents: StudentWithAssets[] = (() => {
+        // If still loading or essential data isn't ready, return an empty array.
+        // The top-level isLoading check will show the spinner.
+        if (isLoading || !students || !classes || !config?.stocks) {
             return [];
         }
 
@@ -74,9 +77,9 @@ export default function TeacherRankingsPage() {
               points: Math.round(student.points || 0),
             };
         }).sort((a, b) => b.totalAssets - a.totalAssets);
-    }, [students, classes, config]);
+    })();
 
-    if (isLoading) {
+    if (isLoading || !teacher || !students || !classes || !config) {
         return (
             <div className="flex items-center justify-center h-64">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
