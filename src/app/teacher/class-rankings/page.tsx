@@ -18,11 +18,10 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { useSchoolStore } from "@/store/useSchoolStore";
-import { Coins, Trophy, PiggyBank, Landmark, LineChart, Wallet } from "lucide-react";
+import { Coins, Trophy, PiggyBank, Landmark, LineChart, Wallet, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
 import type { Student } from "@/lib/types";
 import { useAuth } from "@/context/AuthContext";
 
@@ -42,19 +41,15 @@ export default function TeacherClassRankingsPage() {
     }, [teacher, classes]);
 
     useEffect(() => {
-        // Set default selected class when options are available and none is selected
         if (classOptions.length > 0 && !selectedClassId) {
             setSelectedClassId(classOptions[0].id);
         }
     }, [classOptions, selectedClassId]);
 
     const listedStudents = useMemo(() => {
-        // Defensive coding: If no class is selected but options are available, default to the first one.
-        const effectiveClassId = selectedClassId || (classOptions.length > 0 ? classOptions[0].id : '');
+        if (!selectedClassId || !students || !stocks) return [];
 
-        if (!effectiveClassId || !students || !stocks) return [];
-
-        const studentsInClass = students.filter(student => student.classId === effectiveClassId);
+        const studentsInClass = students.filter(student => student.classId === selectedClassId);
 
         const studentsWithAssets = studentsInClass.map(student => {
             const portfolioValue = (student.portfolio || []).reduce((acc, item) => {
@@ -75,9 +70,8 @@ export default function TeacherClassRankingsPage() {
             return { ...student, totalAssets, portfolioValue, totalFixedDeposits, totalLoans };
         });
 
-        // Sort by total assets descending
         return studentsWithAssets.sort((a, b) => b.totalAssets - a.totalAssets);
-    }, [students, stocks, selectedClassId, classOptions]);
+    }, [students, stocks, selectedClassId]);
 
     if (isLoading) {
         return (
@@ -104,7 +98,7 @@ export default function TeacherClassRankingsPage() {
                         <Label htmlFor="class-select-rankings">選擇班級</Label>
                         <Select 
                             onValueChange={setSelectedClassId} 
-                            value={selectedClassId || (classOptions.length > 0 ? classOptions[0].id : '')}
+                            value={selectedClassId}
                         >
                             <SelectTrigger id="class-select-rankings">
                                 <SelectValue placeholder="請選擇班級" />
