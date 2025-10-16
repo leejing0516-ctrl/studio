@@ -26,28 +26,28 @@ import type { Student } from "@/lib/types";
 import { useAuth } from "@/context/AuthContext";
 
 export default function TeacherClassRankingsPage() {
-    const { students, stocks, classes, loading: isStoreLoading } = useSchoolStore();
-    const { teacher } = useAuth();
+    const { students, config, classes, loading: isStoreLoading } = useSchoolStore();
+    const { teacher, isLoading: isAuthLoading } = useAuth();
     
     const [selectedClassId, setSelectedClassId] = useState<string>('');
 
     const classOptions = useMemo(() => {
         if (!teacher || !classes) return [];
         if (teacher.role === 'admin') {
-            return classes;
+            return classes.sort((a, b) => a.name.localeCompare(b.name));
         }
         const teacherClassIds = teacher.classIds || [];
-        return classes.filter(c => teacherClassIds.includes(c.id));
+        return classes.filter(c => teacherClassIds.includes(c.id)).sort((a, b) => a.name.localeCompare(b.name));
     }, [teacher, classes]);
 
     useEffect(() => {
-        // Set default selected class only once when options are available
         if (classOptions.length > 0 && !selectedClassId) {
             setSelectedClassId(classOptions[0].id);
         }
     }, [classOptions, selectedClassId]);
 
     const listedStudents = useMemo(() => {
+        const stocks = config?.stocks;
         if (!selectedClassId || !students || !stocks) return [];
 
         const studentsInClass = students.filter(student => student.classId === selectedClassId);
@@ -72,9 +72,9 @@ export default function TeacherClassRankingsPage() {
         });
 
         return studentsWithAssets.sort((a, b) => b.totalAssets - a.totalAssets);
-    }, [students, stocks, selectedClassId]);
+    }, [students, config?.stocks, selectedClassId]);
     
-    const isLoading = isStoreLoading || !teacher;
+    const isLoading = isStoreLoading || isAuthLoading;
 
 
     if (isLoading) {

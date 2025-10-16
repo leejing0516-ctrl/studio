@@ -8,59 +8,87 @@ import { DEFAULT_APP_ICON_URL } from "@/lib/config";
 import { collection, onSnapshot, doc, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { PlatformConfig, Student, Teacher, ClassInfo } from "@/lib/types";
-import { fetchAllStudents, fetchAllTeachers, fetchAllClasses, fetchConfigMain } from "@/lib/firestoreFetchers";
-
 
 // This component is responsible for taking server-fetched data
 // and "hydrating" the client-side Zustand store with it.
 function StoreHydration() {
-    const { setLoading, setConfig, setStudents, setTeachers, setClasses } = useSchoolStore();
+    const { setLoading, setConfig, setStudents, setTeachers, setClasses } = useSchoolStore.getState();
     const isInitialized = useRef(false);
 
     useEffect(() => {
         if (!db || isInitialized.current) return;
-        isInitialized.current = true; // Mark as initialized to prevent re-running
+        isInitialized.current = true;
 
         setLoading(true);
 
-        const syncData = async () => {
-            try {
-                // Fetch initial data once to ensure the app is usable quickly
-                const [initialConfig, initialStudents, initialTeachers, initialClasses] = await Promise.all([
-                    fetchConfigMain(),
-                    fetchAllStudents(),
-                    fetchAllTeachers(),
-                    fetchAllClasses()
-                ]);
-                setConfig(initialConfig);
-                setStudents(initialStudents);
-                setTeachers(initialTeachers);
-                setClasses(initialClasses);
-            } catch (error) {
-                console.error("Initial data fetch failed:", error);
-            } finally {
-                setLoading(false); // Stop loading after initial fetch regardless of snapshot setup
+        const initialLoadCompleted = {
+            config: false,
+            students: false,
+            teachers: false,
+            classes: false,
+        };
+
+        const checkAllLoaded = () => {
+            if (Object.values(initialLoadCompleted).every(Boolean)) {
+                setLoading(false);
             }
         };
 
-        syncData();
-        
-        // Set up real-time listeners after initial load
         const unsubscribers = [
             onSnapshot(doc(db, "config", "main"), (docSnap) => {
                 if (docSnap.exists()) {
                     setConfig(docSnap.data() as PlatformConfig);
                 }
-            }, (error) => console.error("Config snapshot error:", error)),
+                if (!initialLoadCompleted.config) {
+                    initialLoadCompleted.config = true;
+                    checkAllLoaded();
+                }
+            }, (error) => {
+                console.error("Config snapshot error:", error);
+                 if (!initialLoadCompleted.config) {
+                    initialLoadCompleted.config = true;
+                    checkAllLoaded();
+                }
+            }),
             onSnapshot(collection(db, "students"), (snapshot) => {
                 setStudents(snapshot.docs.map(d => ({ ...d.data(), _docId: d.id } as Student)));
-            }, (error) => console.error("Students snapshot error:", error)),
+                 if (!initialLoadCompleted.students) {
+                    initialLoadCompleted.students = true;
+                    checkAllLoaded();
+                }
+            }, (error) => {
+                console.error("Students snapshot error:", error);
+                 if (!initialLoadCompleted.students) {
+                    initialLoadCompleted.students = true;
+                    checkAllLoaded();
+                }
+            }),
             onSnapshot(collection(db, "teachers"), (snapshot) => {
                 setTeachers(snapshot.docs.map(d => ({ ...d.data(), _docId: d.id } as Teacher)));
-            }, (error) => console.error("Teachers snapshot error:", error)),
+                 if (!initialLoadCompleted.teachers) {
+                    initialLoadCompleted.teachers = true;
+                    checkAllLoaded();
+                }
+            }, (error) => {
+                console.error("Teachers snapshot error:", error);
+                 if (!initialLoadCompleted.teachers) {
+                    initialLoadCompleted.teachers = true;
+                    checkAllLoaded();
+                }
+            }),
             onSnapshot(collection(db, "classes"), (snapshot) => {
                 setClasses(snapshot.docs.map(d => ({ ...d.data(), _docId: d.id } as ClassInfo)));
-            }, (error) => console.error("Classes snapshot error:", error)),
+                 if (!initialLoadCompleted.classes) {
+                    initialLoadCompleted.classes = true;
+                    checkAllLoaded();
+                }
+            }, (error) => {
+                console.error("Classes snapshot error:", error);
+                 if (!initialLoadCompleted.classes) {
+                    initialLoadCompleted.classes = true;
+                    checkAllLoaded();
+                }
+            }),
         ];
 
         return () => {
