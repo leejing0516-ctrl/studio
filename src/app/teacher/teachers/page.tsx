@@ -64,7 +64,7 @@ export default function TeacherManagementPage() {
     const unassignedClassesForEdit = useMemo(() => {
         if (!editingTeacher) return [];
         return classes.filter(c => {
-            const currentTeacherIsTutor = editingTeacher.role === 'teacher' && editingTeacher.classIds.includes(c.id);
+            const currentTeacherIsTutor = editingTeacher.role === 'teacher' && (editingTeacher.classIds || []).includes(c.id);
             const anotherTeacherIsTutor = teachers.some(t => t.id !== editingTeacher.id && Array.isArray(t.classIds) && t.classIds.includes(c.id) && t.role === 'teacher');
             return currentTeacherIsTutor || !anotherTeacherIsTutor;
         });
@@ -220,11 +220,11 @@ export default function TeacherManagementPage() {
                                     <TableCell>{t.role}</TableCell>
                                     <TableCell className="max-w-[200px] truncate">{assignedClasses.join(', ')}</TableCell>
                                     <TableCell>{t.pointBalance?.toLocaleString() || 0}</TableCell>
-                                    <TableCell className="text-right">
-                                        <Button variant="ghost" size="sm" onClick={() => handleEditClick(t)}><Edit className="mr-1 h-4 w-4" />編輯</Button>
-                                        <Button variant="ghost" size="sm" onClick={() => handleImpersonate(t)}><Eye className="mr-1 h-4 w-4" />模擬</Button>
-                                        <Button variant="ghost" size="sm" onClick={() => {setDistributeTeacher(t); setIsDistributePointsOpen(true);}}><Coins className="mr-1 h-4 w-4" />分配</Button>
-                                        <Button variant="destructive" size="sm" onClick={() => setTeacherToDelete(t)}><Trash2 className="mr-1 h-4 w-4" />刪除</Button>
+                                    <TableCell className="text-right space-x-1">
+                                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(t)}><Edit className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => handleImpersonate(t)}><Eye className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => {setDistributeTeacher(t); setIsDistributePointsOpen(true);}}><Coins className="h-4 w-4" /></Button>
+                                        <Button variant="destructive" size="icon" onClick={() => setTeacherToDelete(t)}><Trash2 className="h-4 w-4" /></Button>
                                     </TableCell>
                                 </TableRow>
                             )})}
@@ -273,7 +273,7 @@ export default function TeacherManagementPage() {
                         {newTeacherRole === 'subject_teacher' && (
                             <div className="space-y-2">
                                 <Label>指派班級 (科任可複選)</Label>
-                                <div className="p-4 border rounded-md grid grid-cols-2 md:grid-cols-3 gap-2">
+                                <div className="p-4 border rounded-md grid grid-cols-2 md:grid-cols-3 gap-4">
                                     {classes.map(c => (
                                         <div key={c.id} className="flex items-center space-x-2">
                                             <Checkbox
@@ -343,7 +343,7 @@ export default function TeacherManagementPage() {
                             {editTeacherRole === 'subject_teacher' && (
                                 <div className="space-y-2">
                                     <Label>指派班級 (科任可複選)</Label>
-                                    <div className="p-4 border rounded-md grid grid-cols-2 md:grid-cols-3 gap-2">
+                                    <div className="p-4 border rounded-md grid grid-cols-2 md:grid-cols-3 gap-4">
                                         {classes.map(c => (
                                             <div key={c.id} className="flex items-center space-x-2">
                                                 <Checkbox
