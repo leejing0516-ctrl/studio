@@ -45,10 +45,11 @@ import { resizeImage, fileToDataUrl } from "@/lib/image-utils";
 
 export default function TeacherRewardsPage() {
     const { 
-        rewards,
+        config,
         isLoading, teachers
     } = useSchoolStore();
     const { setPlatformConfig } = useAuth();
+    const rewards = useMemo(() => config?.rewards || [], [config]);
 
     const { toast } = useToast();
 

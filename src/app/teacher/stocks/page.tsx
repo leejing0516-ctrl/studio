@@ -44,12 +44,12 @@ import { useAuth } from "@/context/AuthContext";
 
 export default function TeacherStocksPage() {
   const { 
-    stocks,
     students,
     isLoading, 
     config: platformConfig, 
   } = useSchoolStore();
   const { setStudents, setPlatformConfig } = useAuth();
+  const stocks = platformConfig?.stocks || [];
 
   const { toast } = useToast();
   const router = useRouter();
