@@ -34,7 +34,6 @@ type StudentWithAssets = Student & {
 export default function TeacherRankingsPage() {
     const { students, config, classes, loading: isStoreLoading } = useSchoolStore();
     const { teacher, isLoading: isAuthLoading } = useAuth();
-    const stocks = config?.stocks;
     const router = useRouter();
 
     useEffect(() => {
@@ -44,13 +43,11 @@ export default function TeacherRankingsPage() {
     }, [teacher, router]);
     
     const isLoading = isAuthLoading || isStoreLoading;
-
-    const listedStudents = useMemo((): StudentWithAssets[] => {
-        if (isLoading || !students || !stocks || !classes) {
-            return [];
-        }
-
-        const studentsWithAssets = students.map(student => {
+    const stocks = config?.stocks;
+    
+    // Direct calculation instead of useMemo to avoid stale state issues
+    const listedStudents: StudentWithAssets[] = (!isLoading && students && stocks && classes) 
+        ? students.map(student => {
             const portfolioValue = (student.portfolio || []).reduce((acc, item) => {
                 const marketInfo = stocks.find(s => s.ticker === item.ticker);
                 return acc + (marketInfo ? marketInfo.price * item.shares : 0);
@@ -73,13 +70,10 @@ export default function TeacherRankingsPage() {
               totalFixedDeposits: Math.round(totalFixedDeposits), 
               totalLoans: Math.round(totalLoans) 
             };
-        });
+        }).sort((a, b) => b.totalAssets - a.totalAssets)
+        : [];
 
-        return studentsWithAssets.sort((a, b) => b.totalAssets - a.totalAssets);
-    }, [isLoading, students, stocks, classes]);
-
-
-    if (isLoading) {
+    if (isLoading || !students || !classes || !stocks) {
         return (
             <div className="flex items-center justify-center h-64">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />

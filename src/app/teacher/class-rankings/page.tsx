@@ -46,44 +46,42 @@ export default function TeacherClassRankingsPage() {
         }
     }, [classOptions, selectedClassId]);
 
-    const listedStudents = useMemo(() => {
-        const stocks = config?.stocks;
-        if (!selectedClassId || !students || !stocks) return [];
-
-        const studentsInClass = students.filter(student => student.classId === selectedClassId);
-
-        const studentsWithAssets = studentsInClass.map(student => {
-            const portfolioValue = (student.portfolio || []).reduce((acc, item) => {
-                const marketInfo = stocks.find(s => s.ticker === item.ticker);
-                return acc + (marketInfo ? marketInfo.price * item.shares : 0);
-            }, 0);
-
-            const totalFixedDeposits = (student.fixedDeposits || [])
-                .filter(d => d.status === 'active')
-                .reduce((acc, deposit) => acc + deposit.amount, 0);
-
-            const totalLoans = (student.loans || [])
-                .filter(l => l.status === 'active' || l.status === 'overdue')
-                .reduce((acc, loan) => acc + loan.amount, 0);
-
-            const totalAssets = (student.points || 0) + portfolioValue + totalFixedDeposits - totalLoans;
-            
-            return { 
-                ...student, 
-                totalAssets: Math.round(totalAssets),
-                portfolioValue: Math.round(portfolioValue),
-                totalFixedDeposits: Math.round(totalFixedDeposits),
-                totalLoans: Math.round(totalLoans)
-            };
-        });
-
-        return studentsWithAssets.sort((a, b) => b.totalAssets - a.totalAssets);
-    }, [students, config?.stocks, selectedClassId]);
-    
     const isLoading = isStoreLoading || isAuthLoading;
+    const stocks = config?.stocks;
+
+    // Direct calculation instead of useMemo to avoid stale state issues
+    const listedStudents = (!isLoading && selectedClassId && students && stocks)
+        ? students
+            .filter(student => student.classId === selectedClassId)
+            .map(student => {
+                const portfolioValue = (student.portfolio || []).reduce((acc, item) => {
+                    const marketInfo = stocks.find(s => s.ticker === item.ticker);
+                    return acc + (marketInfo ? marketInfo.price * item.shares : 0);
+                }, 0);
+
+                const totalFixedDeposits = (student.fixedDeposits || [])
+                    .filter(d => d.status === 'active')
+                    .reduce((acc, deposit) => acc + deposit.amount, 0);
+
+                const totalLoans = (student.loans || [])
+                    .filter(l => l.status === 'active' || l.status === 'overdue')
+                    .reduce((acc, loan) => acc + loan.amount, 0);
+
+                const totalAssets = (student.points || 0) + portfolioValue + totalFixedDeposits - totalLoans;
+                
+                return { 
+                    ...student, 
+                    totalAssets: Math.round(totalAssets),
+                    portfolioValue: Math.round(portfolioValue),
+                    totalFixedDeposits: Math.round(totalFixedDeposits),
+                    totalLoans: Math.round(totalLoans)
+                };
+            })
+            .sort((a, b) => b.totalAssets - a.totalAssets)
+        : [];
 
 
-    if (isLoading) {
+    if (isLoading || !classes || !stocks) {
         return (
             <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
