@@ -42,10 +42,9 @@ export default function TeacherRankingsPage() {
         }
     }, [teacher, router]);
     
-    const isLoading = isAuthLoading || isStoreLoading;
+    const isLoading = isAuthLoading || isStoreLoading || !students || !config || !classes;
     const stocks = config?.stocks;
     
-    // Direct calculation instead of useMemo to avoid stale state issues
     const listedStudents: StudentWithAssets[] = (!isLoading && students && stocks && classes) 
         ? students.map(student => {
             const portfolioValue = (student.portfolio || []).reduce((acc, item) => {
@@ -73,7 +72,7 @@ export default function TeacherRankingsPage() {
         }).sort((a, b) => b.totalAssets - a.totalAssets)
         : [];
 
-    if (isLoading || !students || !classes || !stocks) {
+    if (isLoading) {
         return (
             <div className="flex items-center justify-center h-64">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />

@@ -46,10 +46,9 @@ export default function TeacherClassRankingsPage() {
         }
     }, [classOptions, selectedClassId]);
 
-    const isLoading = isStoreLoading || isAuthLoading;
+    const isLoading = isStoreLoading || isAuthLoading || !students || !config || !classes;
     const stocks = config?.stocks;
-
-    // Direct calculation instead of useMemo to avoid stale state issues
+    
     const listedStudents = (!isLoading && selectedClassId && students && stocks)
         ? students
             .filter(student => student.classId === selectedClassId)
@@ -81,7 +80,7 @@ export default function TeacherClassRankingsPage() {
         : [];
 
 
-    if (isLoading || !classes || !stocks) {
+    if (isLoading) {
         return (
             <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
