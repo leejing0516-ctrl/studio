@@ -46,15 +46,14 @@ export default function TeacherClassRankingsPage() {
         }
     }, [classOptions, selectedClassId]);
 
-    const isLoading = isStoreLoading || isAuthLoading || !students || !config || !classes;
-    const stocks = config?.stocks;
+    const isLoading = isStoreLoading || isAuthLoading || !students || !config || !classes || !config.stocks;
     
-    const listedStudents = (!isLoading && selectedClassId && students && stocks)
+    const listedStudents = (!isLoading && selectedClassId && students)
         ? students
             .filter(student => student.classId === selectedClassId)
             .map(student => {
                 const portfolioValue = (student.portfolio || []).reduce((acc, item) => {
-                    const marketInfo = stocks.find(s => s.ticker === item.ticker);
+                    const marketInfo = config.stocks.find(s => s.ticker === item.ticker);
                     return acc + (marketInfo ? marketInfo.price * item.shares : 0);
                 }, 0);
 

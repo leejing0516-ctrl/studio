@@ -42,7 +42,7 @@ export default function TeacherRankingsPage() {
         }
     }, [teacher, router]);
     
-    const isLoading = isAuthLoading || isStoreLoading || !students || !config || !classes;
+    const isLoading = isAuthLoading || isStoreLoading || !students || !config || !classes || !config.stocks;
     
     const listedStudents: StudentWithAssets[] = !isLoading
         ? students.map(student => {
