@@ -76,10 +76,12 @@ export default function TeacherLayout({ children }: { children: React.ReactNode;
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   
-  const isImpersonating = useMemo(() => {
-      if (typeof window === 'undefined') return false;
-      return !!localStorage.getItem('impersonator');
-  }, []);
+  const [isImpersonating, setIsImpersonating] = useState(false);
+
+  useEffect(() => {
+    // Safely check localStorage only on the client side
+    setIsImpersonating(!!localStorage.getItem('impersonator'));
+  }, [pathname]);
 
 
   // Auth check
@@ -112,7 +114,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode;
     localStorage.removeItem('impersonator');
 
     toast({ title: "已返回校長身份" });
-    // Using router.refresh() or window.location.reload() to ensure state is fresh
+    // Using router.refresh() to ensure all components re-render with the correct auth state
     router.refresh();
   }
 
@@ -313,3 +315,4 @@ export default function TeacherLayout({ children }: { children: React.ReactNode;
     </>
   );
 }
+
