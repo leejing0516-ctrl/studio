@@ -17,7 +17,7 @@ type SchoolState = {
 };
 
 export const useSchoolStore = create<SchoolState>((set) => ({
-  loading: false,
+  loading: true, // Start with loading: true
   config: undefined,
   students: [],
   teachers: [],

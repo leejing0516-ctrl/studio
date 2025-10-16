@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo, useEffect, useRef, PropsWithChildren } from "react";
@@ -53,6 +54,20 @@ function StyleInjector() {
     for (const [key, value] of Object.entries(lightVars)) {
       css += `  --${key}: ${value};\n`;
     }
+
+     // Add specific card theme variables
+    if(themeName === 'default' || themeName === 'business-blue' || themeName === 'finance' || themeName === 'briefing' || themeName === 'forest' || themeName === 'rose' || themeName === 'ocean' || themeName === 'neutral') {
+        css += `  --reward-card-school: ${lightVars['primary']};\n`;
+        css += `  --reward-card-school-foreground: ${lightVars['primary-foreground']};\n`;
+        css += `  --reward-card-class: ${lightVars['secondary']};\n`;
+        css += `  --reward-card-class-foreground: ${lightVars['secondary-foreground']};\n`;
+    } else {
+        css += `  --reward-card-school: hsl(var(--primary));\n`;
+        css += `  --reward-card-school-foreground: hsl(var(--primary-foreground));\n`;
+        css += `  --reward-card-class: hsl(var(--secondary));\n`;
+        css += `  --reward-card-class-foreground: hsl(var(--secondary-foreground));\n`;
+    }
+
     css += "}\n";
 
     if (activeTheme.cssVars.dark) {
@@ -64,7 +79,7 @@ function StyleInjector() {
     }
 
     return css;
-  }, [activeTheme]);
+  }, [activeTheme, themeName]);
 
   return (
     <>

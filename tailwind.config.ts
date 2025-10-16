@@ -1,5 +1,4 @@
 
-
 import type {Config} from 'tailwindcss';
 
 export default {
@@ -62,10 +61,10 @@ export default {
           border: 'hsl(var(--sidebar-border))',
           ring: 'hsl(var(--sidebar-ring))',
         },
-        'reward-card-school': 'hsl(var(--primary))',
-        'reward-card-school-foreground': 'hsl(var(--primary-foreground))',
-        'reward-card-class': 'hsl(var(--secondary))',
-        'reward-card-class-foreground': 'hsl(var(--secondary-foreground))',
+        'reward-card-school': 'hsl(var(--reward-card-school))',
+        'reward-card-school-foreground': 'hsl(var(--reward-card-school-foreground))',
+        'reward-card-class': 'hsl(var(--reward-card-class))',
+        'reward-card-class-foreground': 'hsl(var(--reward-card-class-foreground))',
       },
       borderRadius: {
         lg: 'var(--radius)',
