@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Coins, Eye, UserPlus, Trash2, Briefcase } from "lucide-react";
+import { Coins, Eye, UserPlus, Trash2, Briefcase, Edit } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
@@ -37,19 +37,38 @@ export default function TeacherManagementPage() {
     const { teachers, classes, config } = useSchoolStore();
 
     const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
+    
+    // State for adding teacher
     const [isAddTeacherOpen, setIsAddTeacherOpen] = useState(false);
     const [newTeacherName, setNewTeacherName] = useState('');
     const [newTeacherRole, setNewTeacherRole] = useState('teacher');
     const [assignedClassIds, setAssignedClassIds] = useState<string[]>([]);
+    
+    // State for editing teacher
+    const [isEditTeacherOpen, setIsEditTeacherOpen] = useState(false);
+    const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
+    const [editTeacherName, setEditTeacherName] = useState('');
+    const [editTeacherRole, setEditTeacherRole] = useState('teacher');
+    const [editAssignedClassIds, setEditAssignedClassIds] = useState<string[]>([]);
+
     const [isSavingTeacher, setIsSavingTeacher] = useState(false);
 
     const [isDistributePointsOpen, setIsDistributePointsOpen] = useState(false);
     const [distributeTeacher, setDistributeTeacher] = useState<Teacher | null>(null);
     const [distributeAmount, setDistributeAmount] = useState<number | ''>('');
     
-    const unassignedClasses = useMemo(() => {
+    const unassignedClassesForAdd = useMemo(() => {
         return classes.filter(c => !teachers.some(t => Array.isArray(t.classIds) && t.classIds.includes(c.id) && t.role === 'teacher'));
     }, [classes, teachers]);
+    
+    const unassignedClassesForEdit = useMemo(() => {
+        if (!editingTeacher) return [];
+        return classes.filter(c => {
+            const currentTeacherIsTutor = editingTeacher.role === 'teacher' && editingTeacher.classIds.includes(c.id);
+            const anotherTeacherIsTutor = teachers.some(t => t.id !== editingTeacher.id && Array.isArray(t.classIds) && t.classIds.includes(c.id) && t.role === 'teacher');
+            return currentTeacherIsTutor || !anotherTeacherIsTutor;
+        });
+    }, [classes, teachers, editingTeacher]);
 
 
     const handleAddTeacher = async () => {
@@ -82,6 +101,45 @@ export default function TeacherManagementPage() {
             setAssignedClassIds([]);
         } catch (e) {
             toast({ title: "新增失敗", description: "建立教師時發生錯誤。", variant: "destructive" });
+        } finally {
+            setIsSavingTeacher(false);
+        }
+    };
+    
+    const handleEditClick = (teacher: Teacher) => {
+        setEditingTeacher(teacher);
+        setEditTeacherName(teacher.name);
+        setEditTeacherRole(teacher.role);
+        setEditAssignedClassIds(teacher.classIds || []);
+        setIsEditTeacherOpen(true);
+    };
+
+    const handleUpdateTeacher = async () => {
+        if (!editingTeacher || !editTeacherName) {
+            toast({ title: "請輸入教師姓名", variant: "destructive" });
+            return;
+        }
+        if (editTeacherRole === 'teacher' && editAssignedClassIds.length !== 1) {
+            toast({ title: "班級導師只能指派一個班級", variant: "destructive" });
+            return;
+        }
+        setIsSavingTeacher(true);
+        try {
+            const updatedTeacher: Teacher = {
+                ...editingTeacher,
+                name: editTeacherName,
+                role: editTeacherRole,
+                classIds: editAssignedClassIds,
+            };
+
+            await setTeachers(current => current.map(t => t.id === editingTeacher.id ? updatedTeacher : t));
+
+            toast({ title: "教師資料已更新" });
+            setIsEditTeacherOpen(false);
+            setEditingTeacher(null);
+
+        } catch(e) {
+            toast({ title: "更新失敗", variant: "destructive" });
         } finally {
             setIsSavingTeacher(false);
         }
@@ -163,6 +221,7 @@ export default function TeacherManagementPage() {
                                     <TableCell className="max-w-[200px] truncate">{assignedClasses.join(', ')}</TableCell>
                                     <TableCell>{t.pointBalance?.toLocaleString() || 0}</TableCell>
                                     <TableCell className="text-right">
+                                        <Button variant="ghost" size="sm" onClick={() => handleEditClick(t)}><Edit className="mr-1 h-4 w-4" />編輯</Button>
                                         <Button variant="ghost" size="sm" onClick={() => handleImpersonate(t)}><Eye className="mr-1 h-4 w-4" />模擬</Button>
                                         <Button variant="ghost" size="sm" onClick={() => {setDistributeTeacher(t); setIsDistributePointsOpen(true);}}><Coins className="mr-1 h-4 w-4" />分配</Button>
                                         <Button variant="destructive" size="sm" onClick={() => setTeacherToDelete(t)}><Trash2 className="mr-1 h-4 w-4" />刪除</Button>
@@ -174,7 +233,7 @@ export default function TeacherManagementPage() {
                 </CardContent>
             </Card>
 
-            {/* Dialogs */}
+            {/* Add Teacher Dialog */}
             <Dialog open={isAddTeacherOpen} onOpenChange={setIsAddTeacherOpen}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
@@ -199,11 +258,11 @@ export default function TeacherManagementPage() {
                         
                         {newTeacherRole === 'teacher' && (
                              <div className="space-y-2">
-                                <Label htmlFor="assign-class">指派班級 (導師只能選一個)</Label>
+                                <Label htmlFor="assign-class-add">指派班級 (導師只能選一個)</Label>
                                 <Select value={assignedClassIds[0] || ''} onValueChange={value => setAssignedClassIds([value])}>
-                                    <SelectTrigger id="assign-class"><SelectValue placeholder="選擇一個未被指派的班級"/></SelectTrigger>
+                                    <SelectTrigger id="assign-class-add"><SelectValue placeholder="選擇一個未被指派的班級"/></SelectTrigger>
                                     <SelectContent>
-                                        {unassignedClasses.map(c => (
+                                        {unassignedClassesForAdd.map(c => (
                                             <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                                         ))}
                                     </SelectContent>
@@ -212,13 +271,13 @@ export default function TeacherManagementPage() {
                         )}
                         
                         {newTeacherRole === 'subject_teacher' && (
-                             <div className="space-y-2">
+                            <div className="space-y-2">
                                 <Label>指派班級 (科任可複選)</Label>
                                 <div className="p-4 border rounded-md grid grid-cols-2 md:grid-cols-3 gap-2">
                                     {classes.map(c => (
                                         <div key={c.id} className="flex items-center space-x-2">
                                             <Checkbox
-                                                id={`class-${c.id}`}
+                                                id={`add-class-${c.id}`}
                                                 checked={assignedClassIds.includes(c.id)}
                                                 onCheckedChange={(checked) => {
                                                     setAssignedClassIds(prev => 
@@ -226,7 +285,7 @@ export default function TeacherManagementPage() {
                                                     );
                                                 }}
                                             />
-                                            <label htmlFor={`class-${c.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                            <label htmlFor={`add-class-${c.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                                                 {c.name}
                                             </label>
                                         </div>
@@ -243,6 +302,77 @@ export default function TeacherManagementPage() {
                 </DialogContent>
             </Dialog>
             
+            {/* Edit Teacher Dialog */}
+            {editingTeacher && (
+                <Dialog open={isEditTeacherOpen} onOpenChange={setIsEditTeacherOpen}>
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>編輯教師資料</DialogTitle>
+                            <DialogDescription>修改 {editingTeacher.name} 的相關資訊。</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-teacher-name">姓名</Label>
+                                <Input id="edit-teacher-name" value={editTeacherName} onChange={e => setEditTeacherName(e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-teacher-role">角色</Label>
+                                <Select value={editTeacherRole} onValueChange={setEditTeacherRole}>
+                                    <SelectTrigger id="edit-teacher-role"><SelectValue/></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="teacher">班級導師</SelectItem>
+                                        <SelectItem value="subject_teacher">科任教師</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            
+                            {editTeacherRole === 'teacher' && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="assign-class-edit">指派班級 (導師只能選一個)</Label>
+                                    <Select value={editAssignedClassIds[0] || ''} onValueChange={value => setEditAssignedClassIds([value])}>
+                                        <SelectTrigger id="assign-class-edit"><SelectValue placeholder="選擇一個未被指派的班級"/></SelectTrigger>
+                                        <SelectContent>
+                                            {unassignedClassesForEdit.map(c => (
+                                                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+                            
+                            {editTeacherRole === 'subject_teacher' && (
+                                <div className="space-y-2">
+                                    <Label>指派班級 (科任可複選)</Label>
+                                    <div className="p-4 border rounded-md grid grid-cols-2 md:grid-cols-3 gap-2">
+                                        {classes.map(c => (
+                                            <div key={c.id} className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id={`edit-class-${c.id}`}
+                                                    checked={editAssignedClassIds.includes(c.id)}
+                                                    onCheckedChange={(checked) => {
+                                                        setEditAssignedClassIds(prev => 
+                                                            checked ? [...prev, c.id] : prev.filter(id => id !== c.id)
+                                                        );
+                                                    }}
+                                                />
+                                                <label htmlFor={`edit-class-${c.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                                    {c.name}
+                                                </label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild><Button variant="secondary">取消</Button></DialogClose>
+                            <Button onClick={handleUpdateTeacher} disabled={isSavingTeacher}>儲存變更</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            )}
+            
+            {/* Distribute Points Dialog */}
             <Dialog open={isDistributePointsOpen} onOpenChange={setIsDistributePointsOpen}>
                 <DialogContent>
                     <DialogHeader>
@@ -262,6 +392,7 @@ export default function TeacherManagementPage() {
                 </DialogContent>
             </Dialog>
             
+            {/* Delete Teacher Dialog */}
             <AlertDialog open={!!teacherToDelete} onOpenChange={(open) => !open && setTeacherToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
