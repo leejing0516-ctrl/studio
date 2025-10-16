@@ -46,11 +46,10 @@ export default function TeacherClassRankingsPage() {
         }
     }, [classOptions, selectedClassId]);
 
-    const isLoading = isStoreLoading || isAuthLoading;
+    const isLoading = isStoreLoading || isAuthLoading || !config || !config.stocks;
     
     const listedStudents = useMemo(() => {
-        // Critical fix: Ensure config and config.stocks exist before any calculations
-        if (!selectedClassId || !students || !config || !config.stocks) {
+        if (isLoading || !selectedClassId || !students) {
             return [];
         }
 
@@ -82,7 +81,7 @@ export default function TeacherClassRankingsPage() {
                 };
             })
             .sort((a, b) => b.totalAssets - a.totalAssets);
-    }, [selectedClassId, students, config]);
+    }, [selectedClassId, students, config, isLoading]);
 
 
     if (isLoading) {
