@@ -1,4 +1,5 @@
 
+      
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
@@ -488,7 +489,7 @@ const TeacherAndClassManagement = () => {
                         </TableHeader>
                         <TableBody>
                             {classes.map(c => {
-                                const assignedTeacher = teachers.find(t => t.classIds.includes(c.id) && t.role === 'teacher');
+                                const assignedTeacher = teachers.find(t => Array.isArray(t.classIds) && t.classIds.includes(c.id) && t.role === 'teacher');
                                 return (
                                 <TableRow key={c.id}>
                                     <TableCell>{c.name}</TableCell>
@@ -645,3 +646,5 @@ export default function TeacherDashboardPage() {
         </div>
     );
 }
+
+    
