@@ -337,13 +337,17 @@ export default function StocksPage() {
                             ${Math.round(stock.price).toLocaleString()}
                         </TableCell>
                         <TableCell className="text-right">
-                            <span className={cn(
-                                "flex items-center justify-end gap-1",
-                                stock.change >= 0 ? "text-red-500" : "text-green-600",
-                            )}>
-                                {stock.change >= 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-                                {Math.abs(stock.change).toFixed(2)} ({Math.abs(stock.changePercent).toFixed(2)}%)
-                            </span>
+                            {isMarketOpen ? (
+                                <span className={cn(
+                                    "flex items-center justify-end gap-1",
+                                    stock.change >= 0 ? "text-red-500" : "text-green-600",
+                                )}>
+                                    {stock.change >= 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                                    {Math.abs(stock.change).toFixed(2)} ({Math.abs(stock.changePercent).toFixed(2)}%)
+                                </span>
+                            ) : (
+                                <span className="text-muted-foreground">---</span>
+                            )}
                         </TableCell>
                         <TableCell className="text-right">{stock.marketCap}</TableCell>
                         <TableCell className="text-right">
