@@ -26,7 +26,7 @@ import type { Student } from "@/lib/types";
 import { useAuth } from "@/context/AuthContext";
 
 export default function TeacherClassRankingsPage() {
-    const { students, stocks, classes, loading: isLoading } = useSchoolStore();
+    const { students, stocks, classes, loading: isStoreLoading } = useSchoolStore();
     const { teacher } = useAuth();
     
     const [selectedClassId, setSelectedClassId] = useState<string>('');
@@ -41,6 +41,7 @@ export default function TeacherClassRankingsPage() {
     }, [teacher, classes]);
 
     useEffect(() => {
+        // Set default selected class only once when options are available
         if (classOptions.length > 0 && !selectedClassId) {
             setSelectedClassId(classOptions[0].id);
         }
@@ -72,6 +73,9 @@ export default function TeacherClassRankingsPage() {
 
         return studentsWithAssets.sort((a, b) => b.totalAssets - a.totalAssets);
     }, [students, stocks, selectedClassId]);
+    
+    const isLoading = isStoreLoading || !teacher;
+
 
     if (isLoading) {
         return (
@@ -99,6 +103,7 @@ export default function TeacherClassRankingsPage() {
                         <Select 
                             onValueChange={setSelectedClassId} 
                             value={selectedClassId}
+                            disabled={classOptions.length === 0}
                         >
                             <SelectTrigger id="class-select-rankings">
                                 <SelectValue placeholder="請選擇班級" />
@@ -165,7 +170,9 @@ export default function TeacherClassRankingsPage() {
                                     </TableRow>
                                 )) : (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="h-24 text-center">請先選擇班級，或此班級中沒有學生。</TableCell>
+                                        <TableCell colSpan={7} className="h-24 text-center">
+                                          {selectedClassId ? '此班級中沒有學生資料。' : '請先選擇一個班級以查看排名。'}
+                                        </TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
