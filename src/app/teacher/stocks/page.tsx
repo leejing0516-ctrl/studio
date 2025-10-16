@@ -48,6 +48,7 @@ export default function TeacherStocksPage() {
     config: platformConfig, 
   } = useSchoolStore();
   const { setStudents, setPlatformConfig, teacher } = useAuth();
+  
   const stocks = platformConfig?.stocks || [];
 
   const { toast } = useToast();
@@ -234,7 +235,7 @@ export default function TeacherStocksPage() {
     }
   };
   
-  if (isLoading || !teacher) {
+  if (isLoading) {
       return (
         <div className="flex items-center justify-center h-full">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />

@@ -4,18 +4,30 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { PlatformConfig, Student, Teacher, ClassInfo } from "./types";
-import { students as placeholderStudents, teachers as placeholderTeachers, classes as placeholderClasses } from './placeholder-data';
+import { students as placeholderStudents, teachers as placeholderTeachers, classes as placeholderClasses, stocks as placeholderStocks, rewards as placeholderRewards, challenges as placeholderChallenges } from './placeholder-data';
 
 
 export async function fetchConfigMain(): Promise<PlatformConfig> {
   if (!db) {
-    console.warn("Firestore is not initialized, falling back to empty config.");
-    return { id: 'main', schoolFunds: 100000 } as PlatformConfig;
+    console.warn("Firestore is not initialized, falling back to placeholder config.");
+    return { 
+        id: 'main', 
+        schoolFunds: 100000, 
+        stocks: placeholderStocks, 
+        rewards: placeholderRewards, 
+        challenges: placeholderChallenges 
+    } as PlatformConfig;
   }
   const snap = await getDoc(doc(db, "config", "main"));
   if (!snap.exists()) {
     console.warn("config/main not found in Firestore, returning default.");
-    return { id: 'main', schoolFunds: 100000 } as PlatformConfig;
+    return { 
+        id: 'main', 
+        schoolFunds: 100000, 
+        stocks: placeholderStocks, 
+        rewards: placeholderRewards, 
+        challenges: placeholderChallenges 
+    } as PlatformConfig;
   }
   return { ...(snap.data() as PlatformConfig) };
 }
