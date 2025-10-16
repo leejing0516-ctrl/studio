@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useMemo, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -43,12 +43,11 @@ export default function TeacherRankingsPage() {
     }, [teacher, router]);
     
     const isLoading = isAuthLoading || isStoreLoading || !students || !config || !classes;
-    const stocks = config?.stocks;
     
-    const listedStudents: StudentWithAssets[] = (!isLoading && students && stocks && classes) 
+    const listedStudents: StudentWithAssets[] = !isLoading
         ? students.map(student => {
             const portfolioValue = (student.portfolio || []).reduce((acc, item) => {
-                const marketInfo = stocks.find(s => s.ticker === item.ticker);
+                const marketInfo = config.stocks.find(s => s.ticker === item.ticker);
                 return acc + (marketInfo ? marketInfo.price * item.shares : 0);
             }, 0);
 

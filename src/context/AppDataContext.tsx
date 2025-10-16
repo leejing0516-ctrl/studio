@@ -12,7 +12,7 @@ import type { PlatformConfig, Student, Teacher, ClassInfo } from "@/lib/types";
 // This component is responsible for taking server-fetched data
 // and "hydrating" the client-side Zustand store with it.
 function StoreHydration() {
-    const { setLoading, setConfig, setStudents, setTeachers, setClasses } = useSchoolStore.getState();
+    const { setLoading, setConfig, setStudents, setTeachers, setClasses } = useSchoolStore();
     const isInitialized = useRef(false);
 
     useEffect(() => {
@@ -21,75 +21,47 @@ function StoreHydration() {
 
         setLoading(true);
 
-        const initialLoadCompleted = {
-            config: false,
-            students: false,
-            teachers: false,
-            classes: false,
-        };
+        const unsubscribers: (() => void)[] = [];
 
-        const checkAllLoaded = () => {
-            if (Object.values(initialLoadCompleted).every(Boolean)) {
+        const fetchDataAndSubscribe = async () => {
+            try {
+                // Initial atomic fetch
+                const [configSnap, studentsSnap, teachersSnap, classesSnap] = await Promise.all([
+                    getDoc(doc(db, "config", "main")),
+                    getDocs(collection(db, "students")),
+                    getDocs(collection(db, "teachers")),
+                    getDocs(collection(db, "classes")),
+                ]);
+
+                if (configSnap.exists()) setConfig(configSnap.data() as PlatformConfig);
+                setStudents(studentsSnap.docs.map(d => ({ ...d.data(), _docId: d.id } as Student)));
+                setTeachers(teachersSnap.docs.map(d => ({ ...d.data(), _docId: d.id } as Teacher)));
+                setClasses(classesSnap.docs.map(d => ({ ...d.data(), _docId: d.id } as ClassInfo)));
+                
+                // All initial data is loaded, set loading to false
                 setLoading(false);
+
+                // Now, set up real-time listeners for subsequent updates
+                unsubscribers.push(onSnapshot(doc(db, "config", "main"), (docSnap) => {
+                    if (docSnap.exists()) setConfig(docSnap.data() as PlatformConfig);
+                }));
+                unsubscribers.push(onSnapshot(collection(db, "students"), (snapshot) => {
+                    setStudents(snapshot.docs.map(d => ({ ...d.data(), _docId: d.id } as Student)));
+                }));
+                unsubscribers.push(onSnapshot(collection(db, "teachers"), (snapshot) => {
+                    setTeachers(snapshot.docs.map(d => ({ ...d.data(), _docId: d.id } as Teacher)));
+                }));
+                unsubscribers.push(onSnapshot(collection(db, "classes"), (snapshot) => {
+                    setClasses(snapshot.docs.map(d => ({ ...d.data(), _docId: d.id } as ClassInfo)));
+                }));
+
+            } catch (error) {
+                console.error("Error during initial data fetch:", error);
+                setLoading(false); // Stop loading even if there's an error
             }
         };
 
-        const unsubscribers = [
-            onSnapshot(doc(db, "config", "main"), (docSnap) => {
-                if (docSnap.exists()) {
-                    setConfig(docSnap.data() as PlatformConfig);
-                }
-                if (!initialLoadCompleted.config) {
-                    initialLoadCompleted.config = true;
-                    checkAllLoaded();
-                }
-            }, (error) => {
-                console.error("Config snapshot error:", error);
-                 if (!initialLoadCompleted.config) {
-                    initialLoadCompleted.config = true;
-                    checkAllLoaded();
-                }
-            }),
-            onSnapshot(collection(db, "students"), (snapshot) => {
-                setStudents(snapshot.docs.map(d => ({ ...d.data(), _docId: d.id } as Student)));
-                 if (!initialLoadCompleted.students) {
-                    initialLoadCompleted.students = true;
-                    checkAllLoaded();
-                }
-            }, (error) => {
-                console.error("Students snapshot error:", error);
-                 if (!initialLoadCompleted.students) {
-                    initialLoadCompleted.students = true;
-                    checkAllLoaded();
-                }
-            }),
-            onSnapshot(collection(db, "teachers"), (snapshot) => {
-                setTeachers(snapshot.docs.map(d => ({ ...d.data(), _docId: d.id } as Teacher)));
-                 if (!initialLoadCompleted.teachers) {
-                    initialLoadCompleted.teachers = true;
-                    checkAllLoaded();
-                }
-            }, (error) => {
-                console.error("Teachers snapshot error:", error);
-                 if (!initialLoadCompleted.teachers) {
-                    initialLoadCompleted.teachers = true;
-                    checkAllLoaded();
-                }
-            }),
-            onSnapshot(collection(db, "classes"), (snapshot) => {
-                setClasses(snapshot.docs.map(d => ({ ...d.data(), _docId: d.id } as ClassInfo)));
-                 if (!initialLoadCompleted.classes) {
-                    initialLoadCompleted.classes = true;
-                    checkAllLoaded();
-                }
-            }, (error) => {
-                console.error("Classes snapshot error:", error);
-                 if (!initialLoadCompleted.classes) {
-                    initialLoadCompleted.classes = true;
-                    checkAllLoaded();
-                }
-            }),
-        ];
+        fetchDataAndSubscribe();
 
         return () => {
             unsubscribers.forEach(unsub => unsub());
