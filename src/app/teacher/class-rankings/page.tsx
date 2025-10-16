@@ -24,42 +24,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import type { Student } from "@/lib/types";
+import { useAuth } from "@/context/AuthContext";
 
 export default function TeacherClassRankingsPage() {
     const { students, stocks, classes, loading: isLoading } = useSchoolStore();
+    const { teacher } = useAuth();
     
-    const [role, setRole] = useState<string | null>(null);
-    const [teacherClassIds, setTeacherClassIds] = useState<string[]>([]);
     const [selectedClassId, setSelectedClassId] = useState<string>('');
-
-    useEffect(() => {
-        const storedRole = localStorage.getItem('teacherRole');
-        const storedClassIdsStr = localStorage.getItem('teacherClassIds');
-        setRole(storedRole);
-        if (storedClassIdsStr && storedClassIdsStr !== 'undefined') {
-            try {
-                const ids = JSON.parse(storedClassIdsStr);
-                setTeacherClassIds(Array.isArray(ids) ? ids : []);
-            } catch (e) {
-                console.error("Failed to parse teacherClassIds from localStorage", e);
-                setTeacherClassIds([]);
-            }
-        }
-    }, []);
+    const teacherClassIds = teacher?.classIds || [];
 
     const classOptions = useMemo(() => {
-        if (role === 'admin') return classes;
-        if ((role === 'teacher' || role === 'subject_teacher') && teacherClassIds.length > 0) {
+        if (teacher?.role === 'admin') return classes;
+        if ((teacher?.role === 'teacher' || teacher?.role === 'subject_teacher') && teacherClassIds.length > 0) {
             return classes.filter(c => teacherClassIds.includes(c.id));
         }
         return [];
-    }, [role, classes, teacherClassIds]);
+    }, [teacher?.role, classes, teacherClassIds]);
 
     useEffect(() => {
-        if (classOptions.length > 0) {
-            if (!selectedClassId || !classOptions.some(c => c.id === selectedClassId)) {
-                setSelectedClassId(classOptions[0].id);
-            }
+        if (classOptions.length > 0 && !classOptions.some(c => c.id === selectedClassId)) {
+            setSelectedClassId(classOptions[0].id);
         }
     }, [classOptions, selectedClassId]);
 

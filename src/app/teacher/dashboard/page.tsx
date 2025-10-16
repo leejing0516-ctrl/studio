@@ -41,10 +41,12 @@ export default function TeacherDashboardPage() {
     const [batchReason, setBatchReason] = useState('');
     const [batchTarget, setBatchTarget] = useState('selected');
 
-    const teacherClassIds = useMemo(() => teacher?.classIds || [], [teacher]);
+    const teacherClassIds = teacher?.classIds || [];
 
     useEffect(() => {
-        if (teacherClassIds.length > 0 && !selectedClassId) {
+        // If a class is already selected, do nothing.
+        // If no class is selected but there are available classes, select the first one.
+        if (!selectedClassId && teacherClassIds.length > 0) {
             setSelectedClassId(teacherClassIds[0]);
         }
     }, [teacherClassIds, selectedClassId]);
