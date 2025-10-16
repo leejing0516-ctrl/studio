@@ -534,7 +534,7 @@ const TeacherAndClassManagement = () => {
                                 <Select value={assignClassId} onValueChange={setAssignClassId}>
                                     <SelectTrigger id="assign-class"><SelectValue placeholder="選擇一個班級"/></SelectTrigger>
                                     <SelectContent>
-                                        {classes.filter(c => !teachers.some(t => t.classIds.includes(c.id) && t.role === 'teacher')).map(c => (
+                                        {classes.filter(c => !teachers.some(t => Array.isArray(t.classIds) && t.classIds.includes(c.id) && t.role === 'teacher')).map(c => (
                                             <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                                         ))}
                                     </SelectContent>
