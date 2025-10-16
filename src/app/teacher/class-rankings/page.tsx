@@ -46,10 +46,15 @@ export default function TeacherClassRankingsPage() {
         }
     }, [classOptions, selectedClassId]);
 
-    const isLoading = isStoreLoading || isAuthLoading || !students || !config || !classes || !config.stocks;
+    const isLoading = isStoreLoading || isAuthLoading;
     
-    const listedStudents = (!isLoading && selectedClassId && students)
-        ? students
+    const listedStudents = useMemo(() => {
+        // Critical fix: Ensure config and config.stocks exist before any calculations
+        if (!selectedClassId || !students || !config || !config.stocks) {
+            return [];
+        }
+
+        return students
             .filter(student => student.classId === selectedClassId)
             .map(student => {
                 const portfolioValue = (student.portfolio || []).reduce((acc, item) => {
@@ -76,8 +81,8 @@ export default function TeacherClassRankingsPage() {
                     points: Math.round(student.points || 0)
                 };
             })
-            .sort((a, b) => b.totalAssets - a.totalAssets)
-        : [];
+            .sort((a, b) => b.totalAssets - a.totalAssets);
+    }, [selectedClassId, students, config]);
 
 
     if (isLoading) {
