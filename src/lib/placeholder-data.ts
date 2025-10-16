@@ -1,5 +1,4 @@
 
-
 import type { Student, Reward, Stock, Class, Teacher, Challenge, RedeemedRewardItem, StudentHabit } from "./types";
 
 export const TEACHER_PASSWORD = "001"; // Shared password for all teachers for simplicity
@@ -52,13 +51,11 @@ export const students: Student[] = [
 export const rewards: Reward[] = [];
 
 export const stocks: Stock[] = [
-    { id: "ART", ticker: "ART", name: "創意公司", price: 78, change: 0, changePercent: 0, marketCap: "3000億" },
-    { id: "BOOK", ticker: "BOOK", name: "閱讀公司", price: 343, change: 0, changePercent: 0, marketCap: "8000億" },
-    { id: "EDU", ticker: "EDU", name: "學習公司", price: 444, change: 0, changePercent: 0, marketCap: "1.2兆" },
-    { id: "SCI", ticker: "SCI", name: "科學解決方案", price: 554, change: 0, changePercent: 0, marketCap: "2.1兆" },
-    { id: "TECH", ticker: "TECH", name: "創新有限責任公司", price: 1105, change: 0, changePercent: 0, marketCap: "5.5兆" },
+    { id: "ART", ticker: "ART", name: "創意公司", price: 77.8736190312441, change: 0.06600775319166985, changePercent: 0.08483457094677442, marketCap: "3000億" },
+    { id: "BOOK", ticker: "BOOK", name: "閱讀公司", price: 342.966265843318, change: -1.8431795645573175, changePercent: -0.5345501955078461, marketCap: "8000億" },
+    { id: "EDU", ticker: "EDU", name: "學習公司", price: 444.47281579873237, change: 3.306771862324979, changePercent: 0.7495526701963579, marketCap: "1.2兆" },
+    { id: "SCI", ticker: "SCI", name: "科學解決方案", price: 553.6537686178709, change: -0.362525375174755, changePercent: -0.06543586878318522, marketCap: "2.1兆" },
+    { id: "TECH", ticker: "TECH", name: "創新有限責任公司", price: 1105.0936452644073, change: 4.6620332314646475, changePercent: 0.42365497142089414, marketCap: "5.5兆" },
 ];
 
 export const challenges: Challenge[] = [];
-
-    
