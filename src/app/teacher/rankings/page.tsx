@@ -20,9 +20,9 @@ import {
 import { useSchoolStore } from "@/store/useSchoolStore";
 import { Coins, Trophy, PiggyBank, Landmark, LineChart, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import type { Student } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import type { Student } from "@/lib/types";
 
 type StudentWithAssets = Student & {
     totalAssets: number;
@@ -41,17 +41,14 @@ export default function TeacherRankingsPage() {
             router.push('/teacher/dashboard');
         }
     }, [teacher, router]);
-    
-    const isLoading = isAuthLoading || isStoreLoading || !students || !config || !classes;
 
-    const listedStudents: StudentWithAssets[] = useMemo(() => {
-        if (isLoading || !config.stocks) {
-            return [];
-        }
-        
-        return students.map(student => {
+    const isLoading = isAuthLoading || isStoreLoading || !students || !config || !classes || !config.stocks;
+    
+    // Direct calculation within the render body, no useMemo or useEffect for calculation
+    const listedStudents: StudentWithAssets[] = !isLoading
+        ? students.map(student => {
             const portfolioValue = (student.portfolio || []).reduce((acc, item) => {
-                const marketInfo = config.stocks.find(s => s.ticker === item.ticker);
+                const marketInfo = config.stocks!.find(s => s.ticker === item.ticker);
                 return acc + (marketInfo ? marketInfo.price * item.shares : 0);
             }, 0);
 
@@ -70,12 +67,11 @@ export default function TeacherRankingsPage() {
               totalAssets: Math.round(totalAssets), 
               portfolioValue: Math.round(portfolioValue), 
               totalFixedDeposits: Math.round(totalFixedDeposits), 
-              totalLoans: Math.round(totalLoans) 
+              totalLoans: Math.round(totalLoans),
+              points: Math.round(student.points || 0),
             };
-        }).sort((a, b) => b.totalAssets - a.totalAssets);
-
-    }, [isLoading, students, classes, config]);
-
+        }).sort((a, b) => b.totalAssets - a.totalAssets)
+        : [];
 
     if (isLoading) {
         return (
@@ -130,7 +126,7 @@ export default function TeacherRankingsPage() {
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            {(classes || []).find(c => c.id === student.classId)?.name || student.classId}
+                                            {classes.find(c => c.id === student.classId)?.name || student.classId}
                                         </TableCell>
                                         <TableCell className="text-right font-bold text-primary">
                                             ${student.totalAssets.toLocaleString()}
@@ -138,7 +134,7 @@ export default function TeacherRankingsPage() {
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-1">
                                                 <Coins className="h-4 w-4 text-muted-foreground" />
-                                                {Math.round(student.points || 0).toLocaleString()}
+                                                {student.points.toLocaleString()}
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right">
