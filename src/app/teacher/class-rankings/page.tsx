@@ -42,16 +42,19 @@ export default function TeacherClassRankingsPage() {
     }, [teacher, classes]);
 
     useEffect(() => {
-        // Automatically select the first available class if none is selected
+        // Set default selected class when options are available and none is selected
         if (classOptions.length > 0 && !selectedClassId) {
             setSelectedClassId(classOptions[0].id);
         }
     }, [classOptions, selectedClassId]);
 
     const listedStudents = useMemo(() => {
-        if (!selectedClassId || !students || !stocks) return [];
+        // Defensive coding: If no class is selected but options are available, default to the first one.
+        const effectiveClassId = selectedClassId || (classOptions.length > 0 ? classOptions[0].id : '');
 
-        const studentsInClass = students.filter(student => student.classId === selectedClassId);
+        if (!effectiveClassId || !students || !stocks) return [];
+
+        const studentsInClass = students.filter(student => student.classId === effectiveClassId);
 
         const studentsWithAssets = studentsInClass.map(student => {
             const portfolioValue = (student.portfolio || []).reduce((acc, item) => {
@@ -74,7 +77,7 @@ export default function TeacherClassRankingsPage() {
 
         // Sort by total assets descending
         return studentsWithAssets.sort((a, b) => b.totalAssets - a.totalAssets);
-    }, [students, stocks, selectedClassId]);
+    }, [students, stocks, selectedClassId, classOptions]);
 
     if (isLoading) {
         return (
@@ -99,7 +102,10 @@ export default function TeacherClassRankingsPage() {
                 <CardContent>
                     <div className="mb-6 max-w-sm">
                         <Label htmlFor="class-select-rankings">選擇班級</Label>
-                        <Select onValueChange={setSelectedClassId} value={selectedClassId}>
+                        <Select 
+                            onValueChange={setSelectedClassId} 
+                            value={selectedClassId || (classOptions.length > 0 ? classOptions[0].id : '')}
+                        >
                             <SelectTrigger id="class-select-rankings">
                                 <SelectValue placeholder="請選擇班級" />
                             </SelectTrigger>
