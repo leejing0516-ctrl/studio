@@ -5,7 +5,7 @@ import React, { createContext, useContext, PropsWithChildren, useEffect, useStat
 import { useRouter } from 'next/navigation';
 import { useSchoolStore } from '@/store/useSchoolStore';
 import type { Student, Teacher, PlatformConfig, ClassInfo } from '@/lib/types';
-import { doc, setDoc, writeBatch, runTransaction } from 'firebase/firestore';
+import { doc, setDoc, addDoc, collection, writeBatch, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 
@@ -44,8 +44,8 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     loading: isStoreLoading,
   } = useSchoolStore();
   
-  const student = students.find(s => s._docId === studentDocId) || null;
-  const teacher = teachers.find(t => t._docId === teacherDocId) || null;
+  const student = useMemo(() => students.find(s => s._docId === studentDocId) || null, [students, studentDocId]);
+  const teacher = useMemo(() => teachers.find(t => t._docId === teacherDocId) || null, [teachers, teacherDocId]);
 
   useEffect(() => {
     const storedRole = localStorage.getItem('userRole') as 'student' | 'teacher' | null;
@@ -123,18 +123,47 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       
       try {
         const batch = writeBatch(db);
-        newTeachers.forEach((teacher) => {
-            const oldTeacher = oldTeachers.find(t => t._docId === teacher._docId);
-            if (!oldTeacher || JSON.stringify(teacher) !== JSON.stringify(oldTeacher)) {
-                if (teacher._docId) {
-                    const ref = doc(db, "teachers", teacher._docId);
-                    const { _docId, ...teacherData } = teacher;
-                    batch.set(ref, teacherData, { merge: true });
-                }
+        const newDocIds: { [tempId: string]: string } = {};
+
+        // Process additions first to get new doc IDs
+        for (const teacher of newTeachers) {
+            if (!teacher._docId) {
+                const { _docId, ...teacherData } = teacher;
+                const newDocRef = doc(collection(db, "teachers"));
+                batch.set(newDocRef, teacherData);
+                // Store temporary id to new id mapping
+                newDocIds[teacher.id] = newDocRef.id; 
             }
-        });
+        }
+        
+        // Process modifications and deletions
+        for (const oldTeacher of oldTeachers) {
+             const newTeacher = newTeachers.find(t => t._docId === oldTeacher._docId);
+             if (newTeacher) { // It exists, check for modification
+                if (JSON.stringify(newTeacher) !== JSON.stringify(oldTeacher)) {
+                   const ref = doc(db, "teachers", newTeacher._docId!);
+                   const { _docId, ...teacherData } = newTeacher;
+                   batch.set(ref, teacherData, { merge: true });
+                }
+             } else { // It was deleted
+                const ref = doc(db, "teachers", oldTeacher._docId!);
+                batch.delete(ref);
+             }
+        }
+
         await batch.commit();
+
+        // After commit, update the store with the real doc IDs
+        const finalTeachers = newTeachers.map(t => {
+            if (!t._docId && newDocIds[t.id]) {
+                return { ...t, _docId: newDocIds[t.id] };
+            }
+            return t;
+        });
+        setStoreTeachers(finalTeachers);
+
       } catch (error: any) {
+        console.error("Failed to update teachers in DB:", error);
         setStoreTeachers(oldTeachers); // Revert
         toast({ title: "教師資料更新失敗", variant: "destructive" });
         throw error;

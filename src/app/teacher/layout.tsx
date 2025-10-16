@@ -77,9 +77,12 @@ export default function TeacherLayout({ children }: { children: React.ReactNode;
   const [isSaving, setIsSaving] = useState(false);
   
   const isImpersonating = useMemo(() => {
-      if (typeof window === 'undefined') return false;
-      return !!localStorage.getItem('impersonator');
-  }, []);
+      if (typeof window === 'undefined' || !teacher) return false;
+      const impersonatorId = localStorage.getItem('impersonator');
+      // It's impersonation if there is an impersonator ID and it's different from the current teacher's ID
+      return !!impersonatorId && impersonatorId !== teacher.id;
+  }, [teacher]);
+
 
   // Auth check
   useEffect(() => {
@@ -101,13 +104,13 @@ export default function TeacherLayout({ children }: { children: React.ReactNode;
     }
     
     const originalAdmin = teachers.find(t => t.id === originalAdminId);
-    if (!originalAdmin) {
+    if (!originalAdmin || !originalAdmin._docId) {
        toast({ title: "返回失敗", description: "找不到原始管理員帳號資料。", variant: "destructive" });
        handleLogout();
        return;
     }
     
-    setAuthInfo({ role: 'teacher', docId: originalAdmin._docId! });
+    setAuthInfo({ role: 'teacher', docId: originalAdmin._docId });
     localStorage.removeItem('impersonator');
 
     toast({ title: "已返回校長身份" });
