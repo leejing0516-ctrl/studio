@@ -77,11 +77,9 @@ export default function TeacherLayout({ children }: { children: React.ReactNode;
   const [isSaving, setIsSaving] = useState(false);
   
   const isImpersonating = useMemo(() => {
-      if (typeof window === 'undefined' || !teacher) return false;
-      const impersonatorId = localStorage.getItem('impersonator');
-      // It's impersonation if there is an impersonator ID and it's different from the current teacher's ID
-      return !!impersonatorId && impersonatorId !== teacher.id;
-  }, [teacher]);
+      if (typeof window === 'undefined') return false;
+      return !!localStorage.getItem('impersonator');
+  }, []);
 
 
   // Auth check
