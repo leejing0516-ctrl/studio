@@ -73,11 +73,12 @@ export default function TeacherStocksPage() {
 
   useEffect(() => {
     if (teacher && teacher.role !== 'admin') {
-      toast({ title: "權限不足", description: "只有校長才能存取此頁面。", variant: "destructive" });
-      router.push('/teacher/dashboard');
-      return;
+        toast({ title: "權限不足", description: "只有校長才能存取此頁面。", variant: "destructive" });
+        router.push('/teacher/dashboard');
     }
+  }, [teacher, router, toast]);
 
+   useEffect(() => {
     if (platformConfig?.stockMarqueeMessages) {
         const existingMessages = platformConfig.stockMarqueeMessages;
         const newMessages = Array(10).fill('');
@@ -86,8 +87,7 @@ export default function TeacherStocksPage() {
         }
         setMarqueeMessages(newMessages);
     }
-
-  }, [teacher, router, toast, platformConfig]);
+  }, [platformConfig]);
 
   const teacherName = useMemo(() => teacher?.name || '', [teacher]);
 
@@ -269,7 +269,7 @@ export default function TeacherStocksPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {(stocks || []).map(stock => (
+                            {stocks.length > 0 ? stocks.map(stock => (
                                 <TableRow key={stock.ticker}>
                                     <TableCell>{stock.ticker}</TableCell>
                                     <TableCell>{stock.name}</TableCell>
@@ -300,7 +300,13 @@ export default function TeacherStocksPage() {
                                         </AlertDialog>
                                     </TableCell>
                                 </TableRow>
-                            ))}
+                            )) : (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="h-24 text-center">
+                                    目前沒有股票資料。
+                                    </TableCell>
+                                </TableRow>
+                            )}
                         </TableBody>
                     </Table>
                 </div>
