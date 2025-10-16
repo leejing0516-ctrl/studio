@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { createContext, useContext, PropsWithChildren, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, PropsWithChildren, useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSchoolStore } from '@/store/useSchoolStore';
 import type { Student, Teacher, PlatformConfig, ClassInfo } from '@/lib/types';
@@ -123,44 +123,50 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       
       try {
         const batch = writeBatch(db);
-        const newDocIds: { [tempId: string]: string } = {};
+        
+        // Handle creations first
+        const teachersToAdd = newTeachers.filter(t => !t._docId);
+        const addedTeachersWithDocId: Teacher[] = [];
 
-        // Process additions first to get new doc IDs
-        for (const teacher of newTeachers) {
-            if (!teacher._docId) {
-                const { _docId, ...teacherData } = teacher;
-                const newDocRef = doc(collection(db, "teachers"));
-                batch.set(newDocRef, teacherData);
-                // Store temporary id to new id mapping
-                newDocIds[teacher.id] = newDocRef.id; 
-            }
+        for (const teacher of teachersToAdd) {
+            const { _docId, ...teacherData } = teacher;
+            const newDocRef = doc(collection(db, "teachers"));
+            batch.set(newDocRef, teacherData);
+            addedTeachersWithDocId.push({ ...teacher, _docId: newDocRef.id });
         }
         
-        // Process modifications and deletions
-        for (const oldTeacher of oldTeachers) {
-             const newTeacher = newTeachers.find(t => t._docId === oldTeacher._docId);
-             if (newTeacher) { // It exists, check for modification
-                if (JSON.stringify(newTeacher) !== JSON.stringify(oldTeacher)) {
-                   const ref = doc(db, "teachers", newTeacher._docId!);
-                   const { _docId, ...teacherData } = newTeacher;
-                   batch.set(ref, teacherData, { merge: true });
-                }
-             } else { // It was deleted
-                const ref = doc(db, "teachers", oldTeacher._docId!);
-                batch.delete(ref);
-             }
-        }
+        // Handle modifications
+        const teachersToUpdate = newTeachers.filter(t => {
+            if (!t._docId) return false;
+            const oldTeacher = oldTeachers.find(ot => ot._docId === t._docId);
+            return oldTeacher && JSON.stringify(t) !== JSON.stringify(oldTeacher);
+        });
+        teachersToUpdate.forEach(teacher => {
+            const ref = doc(db, "teachers", teacher._docId!);
+            const { _docId, ...teacherData } = teacher;
+            batch.set(ref, teacherData, { merge: true });
+        });
+
+        // Handle deletions
+        const deletedTeacherIds = oldTeachers
+            .filter(ot => !newTeachers.some(nt => nt._docId === ot._docId))
+            .map(t => t._docId!);
+            
+        deletedTeacherIds.forEach(docId => {
+            const ref = doc(db, "teachers", docId);
+            batch.delete(ref);
+        });
 
         await batch.commit();
 
-        // After commit, update the store with the real doc IDs
-        const finalTeachers = newTeachers.map(t => {
-            if (!t._docId && newDocIds[t.id]) {
-                return { ...t, _docId: newDocIds[t.id] };
-            }
-            return t;
-        });
-        setStoreTeachers(finalTeachers);
+        // Update local state with new docIds for newly created teachers
+        if (addedTeachersWithDocId.length > 0) {
+            const finalTeachers = newTeachers.map(t => {
+                const added = addedTeachersWithDocId.find(at => at.id === t.id);
+                return added || t;
+            });
+            setStoreTeachers(finalTeachers);
+        }
 
       } catch (error: any) {
         console.error("Failed to update teachers in DB:", error);
