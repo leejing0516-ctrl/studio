@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -27,15 +27,24 @@ import { useSchoolStore } from "@/store/useSchoolStore";
 import type { Teacher, ClassInfo } from "@/lib/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useRouter } from "next/navigation";
 
 export default function ClassManagementPage() {
     const { toast } = useToast();
-    const { setClasses, setStudents, setTeachers } = useAuth();
+    const { setClasses, setStudents, setTeachers, teacher } = useAuth();
     const { teachers, classes } = useSchoolStore();
+    const router = useRouter();
 
     const [classToDelete, setClassToDelete] = useState<ClassInfo | null>(null);
     const [isAddClassOpen, setIsAddClassOpen] = useState(false);
     const [newClassName, setNewClassName] = useState('');
+
+    useEffect(() => {
+        if (teacher && teacher.role !== 'admin') {
+            toast({ title: "權限不足", description: "只有校長才能存取此頁面。", variant: "destructive" });
+            router.push('/teacher/dashboard');
+        }
+    }, [teacher, router, toast]);
     
     const handleAddClass = async () => {
         if (!newClassName) {
@@ -73,6 +82,8 @@ export default function ClassManagementPage() {
         
         setClassToDelete(null);
     };
+
+    if (!teacher) return null; // or a loading spinner
 
     return (
         <div className="space-y-6 animate-in fade-in-0 duration-500">

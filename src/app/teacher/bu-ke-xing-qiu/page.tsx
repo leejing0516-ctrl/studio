@@ -49,11 +49,10 @@ const classMap: { [key: string]: string } = { "1": "甲班", "2": "乙班" };
 
 export default function BuKeXingQiuPage() {
     const { students, classes, isLoading, platformConfig } = useSchoolStore();
-    const { setStudents, runTransaction } = useAuth();
+    const { setStudents, runTransaction, teacher } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
 
-    const [role, setRole] = useState<string | null>(null);
     const [conversionRate, setConversionRate] = useState<number>(1);
     const [isProcessing, setIsProcessing] = useState(false);
 
@@ -62,13 +61,11 @@ export default function BuKeXingQiuPage() {
     const [csvPreview, setCsvPreview] = useState<string[][]>([]);
 
     useEffect(() => {
-        const storedRole = localStorage.getItem('teacherRole');
-        if (storedRole !== 'admin') {
+        if (teacher && teacher.role !== 'admin') {
             toast({ title: "權限不足", description: "只有校長才能存取此頁面。", variant: "destructive" });
             router.push('/teacher/dashboard');
         }
-        setRole(storedRole);
-    }, [router, toast]);
+    }, [teacher, router, toast]);
     
     const sortedStudents = useMemo(() => {
         if (!students) return [];
@@ -239,7 +236,7 @@ export default function BuKeXingQiuPage() {
         }
     };
 
-    if (isLoading || role !== 'admin') {
+    if (isLoading || !teacher) {
         return (
             <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />

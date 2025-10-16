@@ -42,7 +42,7 @@ const ThemeColorPreview = ({ theme }: { theme: Theme }) => {
 
 export default function TeacherSettingsPage() {
     const { config: platformConfig } = useSchoolStore();
-    const { setPlatformConfig } = useAuth();
+    const { setPlatformConfig, teacher } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
 
@@ -74,8 +74,7 @@ export default function TeacherSettingsPage() {
     ];
 
     useEffect(() => {
-        const role = localStorage.getItem('teacherRole');
-        if (role !== 'admin') {
+        if (teacher && teacher.role !== 'admin') {
             toast({ title: "權限不足", description: "只有校長才能存取此頁面。", variant: "destructive" });
             router.push('/teacher/dashboard');
             return;
@@ -102,7 +101,7 @@ export default function TeacherSettingsPage() {
             setDailyRewardStandardMin(platformConfig.dailyRewardStandardMin ?? 10);
             setDailyRewardStandardMax(platformConfig.dailyRewardStandardMax ?? 50);
         }
-    }, [platformConfig, router, toast]);
+    }, [platformConfig, router, toast, teacher]);
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
         const file = e.target.files?.[0];
@@ -168,6 +167,8 @@ export default function TeacherSettingsPage() {
             setIsSavingSettings(false);
         }
     };
+
+    if (!teacher) return null;
 
     return (
         <div className="space-y-6 animate-in fade-in-0 duration-500">

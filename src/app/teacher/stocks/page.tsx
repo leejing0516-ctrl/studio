@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -48,15 +48,11 @@ export default function TeacherStocksPage() {
     isLoading, 
     config: platformConfig, 
   } = useSchoolStore();
-  const { setStudents, setPlatformConfig } = useAuth();
+  const { setStudents, setPlatformConfig, teacher } = useAuth();
   const stocks = platformConfig?.stocks || [];
 
   const { toast } = useToast();
   const router = useRouter();
-
-  const [role, setRole] = useState<string | null>(null);
-  const [teacherId, setTeacherId] = useState<string>('');
-  const [teacherName, setTeacherName] = useState<string>('');
 
   // States for Stock Management
   const [isAddStockDialogOpen, setIsAddStockDialogOpen] = useState(false);
@@ -76,17 +72,11 @@ export default function TeacherStocksPage() {
 
 
   useEffect(() => {
-    const storedRole = localStorage.getItem('teacherRole');
-    const storedTeacherId = localStorage.getItem('teacherId');
-    const storedTeacherName = localStorage.getItem('teacherName');
-    if (storedRole !== 'admin') {
+    if (teacher && teacher.role !== 'admin') {
       toast({ title: "權限不足", description: "只有校長才能存取此頁面。", variant: "destructive" });
       router.push('/teacher/dashboard');
       return;
     }
-    setRole(storedRole);
-    setTeacherId(storedTeacherId || '');
-    setTeacherName(storedTeacherName || '');
 
     if (platformConfig?.stockMarqueeMessages) {
         const existingMessages = platformConfig.stockMarqueeMessages;
@@ -97,7 +87,9 @@ export default function TeacherStocksPage() {
         setMarqueeMessages(newMessages);
     }
 
-  }, [router, toast, platformConfig]);
+  }, [router, toast, platformConfig, teacher]);
+
+  const teacherName = useMemo(() => teacher?.name || '', [teacher]);
 
   const handleAddStock = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -182,8 +174,8 @@ export default function TeacherStocksPage() {
         title,
         content,
         date: new Date().toISOString(),
-        teacherId,
-        teacherName,
+        teacherId: teacher?.id || '',
+        teacherName: teacherName,
     };
 
     setPlatformConfig({ stockMarketNews: [...(platformConfig?.stockMarketNews || []), newNews]});
@@ -234,7 +226,7 @@ export default function TeacherStocksPage() {
   const handleSaveMarquee = async () => {
     setIsSavingMarquee(true);
     try {
-        await setPlatformConfig({ stockMarqueeMessages: marqueeMessages });
+        await setPlatformConfig({ stockMarketNews: marqueeMessages });
         toast({ title: "跑馬燈訊息已儲存" });
     } catch(e) {
         toast({ title: "儲存失敗", variant: "destructive" });
@@ -243,7 +235,7 @@ export default function TeacherStocksPage() {
     }
   };
   
-  if (isLoading || role !== 'admin') {
+  if (isLoading || !teacher) {
       return (
         <div className="flex items-center justify-center h-full">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />

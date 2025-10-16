@@ -24,7 +24,7 @@ import { useAuth } from "@/context/AuthContext";
 
 export default function TeacherHomeEditorPage() {
     const { config: platformConfig } = useSchoolStore();
-    const { setPlatformConfig } = useAuth();
+    const { setPlatformConfig, teacher } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
     
@@ -36,8 +36,7 @@ export default function TeacherHomeEditorPage() {
     const [illustrationUrl, setIllustrationUrl] = useState<string | null>(null);
 
     useEffect(() => {
-        const role = localStorage.getItem('teacherRole');
-        if (role !== 'admin') {
+        if (teacher && teacher.role !== 'admin') {
             toast({ title: "權限不足", description: "只有校長才能存取此頁面。", variant: "destructive" });
             router.push('/teacher/dashboard');
             return;
@@ -48,7 +47,7 @@ export default function TeacherHomeEditorPage() {
             setHomeSubtitle(platformConfig.homeSubtitle || '您通往金融素養的門戶，在這裡學習金錢知識既有回報又充滿樂趣！');
             setIllustrationUrl(platformConfig.homeIllustrationUrl || null);
         }
-    }, [platformConfig, router, toast]);
+    }, [platformConfig, router, toast, teacher]);
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -91,6 +90,8 @@ export default function TeacherHomeEditorPage() {
             setIsSaving(false);
         }
     };
+
+    if (!teacher) return null;
 
     return (
         <div className="space-y-6 animate-in fade-in-0 duration-500">

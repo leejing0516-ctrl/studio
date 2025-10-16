@@ -149,7 +149,7 @@ const EditorCard = ({
 };
 
 export default function TeacherDashboardEditorPage() {
-    const { setPlatformConfig } = useAuth();
+    const { setPlatformConfig, teacher } = useAuth();
     const { config: platformConfig } = useSchoolStore();
     const { toast } = useToast();
     const router = useRouter();
@@ -158,8 +158,7 @@ export default function TeacherDashboardEditorPage() {
     const [cardConfig, setCardConfig] = useState<Partial<DashboardCardConfig>>(initialCardConfig);
 
     useEffect(() => {
-        const role = localStorage.getItem('teacherRole');
-        if (role !== 'admin') {
+        if (teacher && teacher.role !== 'admin') {
             toast({ title: "權限不足", description: "只有校長才能存取此頁面。", variant: "destructive" });
             router.push('/teacher/dashboard');
             return;
@@ -170,7 +169,7 @@ export default function TeacherDashboardEditorPage() {
         } else {
              setCardConfig(initialCardConfig);
         }
-    }, [platformConfig, router, toast]);
+    }, [platformConfig, router, toast, teacher]);
 
     const handleTextChange = (cardKey: CardFieldKeys, field: 'title' | 'description', value: string) => {
         setCardConfig(prev => {
@@ -219,7 +218,7 @@ export default function TeacherDashboardEditorPage() {
         }
     };
     
-    if (!platformConfig || !cardConfig) {
+    if (!platformConfig || !cardConfig || !teacher) {
         return (
              <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />

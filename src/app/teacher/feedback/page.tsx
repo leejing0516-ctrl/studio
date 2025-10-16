@@ -27,17 +27,16 @@ import { Badge } from "@/components/ui/badge";
 
 export default function TeacherFeedbackPage() {
     const { config: platformConfig, classes } = useSchoolStore();
-    const { setPlatformConfig } = useAuth();
+    const { setPlatformConfig, teacher } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
 
     useEffect(() => {
-        const role = localStorage.getItem('teacherRole');
-        if (role !== 'admin') {
+        if (teacher && teacher.role !== 'admin') {
             toast({ title: "權限不足", description: "只有校長才能存取此頁面。", variant: "destructive" });
             router.push('/teacher/dashboard');
         }
-    }, [router, toast]);
+    }, [teacher, router, toast]);
     
     const feedbackList = useMemo(() => {
         return (platformConfig?.feedback || []).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -63,6 +62,8 @@ export default function TeacherFeedbackPage() {
             toast({ title: "刪除失敗", variant: "destructive" });
         }
     };
+
+    if (!teacher) return null; // or a loading spinner
 
     return (
         <div className="space-y-6 animate-in fade-in-0 duration-500">

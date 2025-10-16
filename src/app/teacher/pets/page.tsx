@@ -53,7 +53,7 @@ const defaultPetStages: PetStage[] = [
 
 export default function TeacherPetsPage() {
     const { config: platformConfig } = useSchoolStore();
-    const { setPlatformConfig } = useAuth();
+    const { setPlatformConfig, teacher } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
     
@@ -62,8 +62,7 @@ export default function TeacherPetsPage() {
     const [petStages, setPetStages] = useState<PetStage[]>([]);
     
     useEffect(() => {
-        const role = localStorage.getItem('teacherRole');
-        if (role !== 'admin') {
+        if (teacher && teacher.role !== 'admin') {
             toast({ title: "權限不足", description: "只有校長才能存取此頁面。", variant: "destructive" });
             router.push('/teacher/dashboard');
             return;
@@ -74,7 +73,7 @@ export default function TeacherPetsPage() {
         } else {
             setPetStages(defaultPetStages);
         }
-    }, [platformConfig, router, toast]);
+    }, [platformConfig, router, toast, teacher]);
 
     const handleStageChange = (index: number, field: keyof PetStage, value: string | number) => {
         const newStages = [...petStages];
@@ -141,6 +140,8 @@ export default function TeacherPetsPage() {
             setIsSaving(false);
         }
     };
+
+    if (!teacher) return null;
 
     return (
         <div className="space-y-6 animate-in fade-in-0 duration-500">
@@ -246,5 +247,3 @@ export default function TeacherPetsPage() {
         </div>
     );
 }
-
-    

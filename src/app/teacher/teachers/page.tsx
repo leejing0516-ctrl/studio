@@ -30,11 +30,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useRouter } from "next/navigation";
 
 export default function TeacherManagementPage() {
     const { toast } = useToast();
     const { teacher: admin, setTeachers, setPlatformConfig: setConfig, setAuthInfo } = useAuth();
     const { teachers, classes, config } = useSchoolStore();
+    const router = useRouter();
 
     const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
     
@@ -56,6 +58,13 @@ export default function TeacherManagementPage() {
     const [isDistributePointsOpen, setIsDistributePointsOpen] = useState(false);
     const [distributeTeacher, setDistributeTeacher] = useState<Teacher | null>(null);
     const [distributeAmount, setDistributeAmount] = useState<number | ''>('');
+
+     useEffect(() => {
+        if (admin && admin.role !== 'admin') {
+            toast({ title: "權限不足", description: "只有校長才能存取此頁面。", variant: "destructive" });
+            router.push('/teacher/dashboard');
+        }
+    }, [admin, router, toast]);
     
     const unassignedClassesForAdd = useMemo(() => {
         return classes.filter(c => !teachers.some(t => Array.isArray(t.classIds) && t.classIds.includes(c.id) && t.role === 'teacher'));
@@ -186,6 +195,8 @@ export default function TeacherManagementPage() {
         toast({ title: "教師已刪除", variant: "destructive" });
         setTeacherToDelete(null);
     };
+
+    if (!admin) return null;
 
     return (
         <div className="space-y-6 animate-in fade-in-0 duration-500">

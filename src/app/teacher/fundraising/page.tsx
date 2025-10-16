@@ -55,13 +55,10 @@ export default function TeacherFundraisingPage() {
   const { 
     isLoading, config: platformConfig, classes
   } = useSchoolStore();
-  const { setPlatformConfig } = useAuth();
+  const { setPlatformConfig, teacher } = useAuth();
 
   const { toast } = useToast();
   const router = useRouter();
-
-  const [role, setRole] = useState<string | null>(null);
-  const [teacherId, setTeacherId] = useState<string | null>(null);
 
   // State for Fundraising
   const [isAddProjectDialogOpen, setIsAddProjectDialogOpen] = useState(false);
@@ -73,16 +70,12 @@ export default function TeacherFundraisingPage() {
   const [projectDeadline, setProjectDeadline] = useState<Date | undefined>(addDays(new Date(), 14));
   
   useEffect(() => {
-    const storedRole = localStorage.getItem('teacherRole');
-    const storedTeacherId = localStorage.getItem('teacherId');
-    if (storedRole !== 'admin') {
+    if (teacher && teacher.role !== 'admin') {
       toast({ title: "權限不足", description: "只有校長才能存取此頁面。", variant: "destructive" });
       router.push('/teacher/dashboard');
       return;
     }
-    setRole(storedRole);
-    setTeacherId(storedTeacherId);
-  }, [router, toast]);
+  }, [teacher, router, toast]);
 
 
   const handleProjectImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -133,7 +126,7 @@ export default function TeacherFundraisingPage() {
           goal,
           currentAmount: 0,
           status: 'active',
-          creatorId: teacherId || 'school_admin',
+          creatorId: teacher?.id || 'school_admin',
           donations: [],
           deadline: projectDeadline.toISOString(),
       };
@@ -205,7 +198,7 @@ export default function TeacherFundraisingPage() {
     setProjectToDelete(null);
   };
 
-  if (isLoading || role !== 'admin') {
+  if (isLoading || !teacher) {
       return (
         <div className="flex items-center justify-center h-full">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
