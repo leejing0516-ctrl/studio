@@ -339,9 +339,9 @@ export default function StocksPage() {
                         <TableCell className="text-right">
                             <span className={cn(
                                 "flex items-center justify-end gap-1",
-                                stock.change >= 0 ? "text-destructive" : "text-success",
+                                stock.change >= 0 ? "text-red-500" : "text-green-600",
                             )}>
-                                {stock.change < 0 ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />}
+                                {stock.change >= 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
                                 {Math.abs(stock.change).toFixed(2)} ({Math.abs(stock.changePercent).toFixed(2)}%)
                             </span>
                         </TableCell>
@@ -391,9 +391,9 @@ export default function StocksPage() {
                                             <TableCell className="text-right">
                                                 <span className={cn(
                                                     "flex items-center justify-end gap-1",
-                                                    item.totalGain >= 0 ? "text-destructive" : "text-success",
+                                                     item.totalGain >= 0 ? "text-red-500" : "text-green-600",
                                                 )}>
-                                                    {item.totalGain < 0 ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />}
+                                                    {item.totalGain >= 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
                                                     ${Math.round(Math.abs(item.totalGain)).toLocaleString()} ({item.totalGainPercent.toFixed(2)}%)
                                                 </span>
                                             </TableCell>
@@ -486,5 +486,3 @@ export default function StocksPage() {
     </>
   );
 }
-
-    

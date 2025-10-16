@@ -3,29 +3,61 @@
 
 import React, { useMemo, useEffect, useRef, PropsWithChildren } from "react";
 import { useSchoolStore } from "@/store/useSchoolStore";
-import { syncAll } from "@/lib/firestoreFetchers";
+import { syncAll, fetchAllStudents, fetchAllTeachers, fetchAllClasses } from "@/lib/firestoreFetchers";
 import { themes, type Theme } from "@/lib/themes";
 import { DEFAULT_APP_ICON_URL } from "@/lib/config";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import type { PlatformConfig } from "@/lib/types";
+
 
 // This component is responsible for taking server-fetched data
 // and "hydrating" the client-side Zustand store with it.
-// It runs only once on initial load.
+// It now uses onSnapshot for real-time updates for config.
 function StoreHydration() {
   const isHydrated = useRef(false);
 
   useEffect(() => {
+    if (!db) return;
+    
+    // Fetch non-real-time data once
     if (!isHydrated.current) {
-      syncAll().then(initialState => {
-        useSchoolStore.setState({
-          config: initialState.config,
-          students: initialState.students,
-          teachers: initialState.teachers,
-          classes: initialState.classes,
-          loading: false, // Data is now loaded
+        Promise.all([
+            fetchAllStudents(),
+            fetchAllTeachers(),
+            fetchAllClasses()
+        ]).then(([students, teachers, classes]) => {
+            useSchoolStore.setState({
+                students,
+                teachers,
+                classes,
+                loading: false, // Partial loading completed
+            });
         });
         isHydrated.current = true;
-      });
     }
+
+    // Set up real-time listener for config
+    const configRef = doc(db, "config", "main");
+    const unsubscribe = onSnapshot(configRef, (doc) => {
+      if (doc.exists()) {
+        useSchoolStore.setState({ config: doc.data() as PlatformConfig });
+      } else {
+        console.warn("config/main not found in Firestore.");
+        useSchoolStore.setState({ config: { id: 'main', schoolFunds: 100000 } as PlatformConfig });
+      }
+      // Ensure loading is false after first config fetch
+      if (useSchoolStore.getState().loading) {
+          useSchoolStore.setState({ loading: false });
+      }
+    }, (error) => {
+        console.error("Failed to listen to config changes:", error);
+        useSchoolStore.setState({ loading: false });
+    });
+
+    return () => {
+      unsubscribe(); // Clean up the listener on component unmount
+    };
   }, []);
 
   return null;
