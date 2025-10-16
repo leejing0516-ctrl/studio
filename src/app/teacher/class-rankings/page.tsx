@@ -142,7 +142,7 @@ export default function TeacherClassRankingsPage() {
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-1">
                                                 <Coins className="h-4 w-4 text-muted-foreground" />
-                                                {Math.round(student.points).toLocaleString()}
+                                                {Math.round(student.points || 0).toLocaleString()}
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right">
