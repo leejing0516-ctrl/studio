@@ -44,7 +44,6 @@ function StoreHydration() {
         useSchoolStore.setState({ config: doc.data() as PlatformConfig });
       } else {
         console.warn("config/main not found in Firestore.");
-        useSchoolStore.setState({ config: { id: 'main', schoolFunds: 100000 } as PlatformConfig });
       }
       // Ensure loading is false after first config fetch
       if (useSchoolStore.getState().loading) {
