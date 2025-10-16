@@ -54,11 +54,7 @@ function StoreHydration() {
 
         // A simple mechanism to set loading to false after initial data fetch attempt.
         // onSnapshot provides the first snapshot immediately.
-        const timer = setTimeout(() => {
-            setLoading(false);
-        }, 2500); // Failsafe timeout to avoid infinite loading screen
-
-        unsubscribers.push(() => clearTimeout(timer));
+        setLoading(false);
 
         return () => {
             unsubscribers.forEach(unsub => unsub());

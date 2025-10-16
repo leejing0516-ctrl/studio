@@ -45,7 +45,7 @@ export default function TeacherRankingsPage() {
     const isLoading = isAuthLoading || isStoreLoading;
     
     const listedStudents: StudentWithAssets[] = (() => {
-        if (isLoading || !students || !classes || !config?.stocks) {
+        if (!students || !classes || !config?.stocks) {
             return [];
         }
 

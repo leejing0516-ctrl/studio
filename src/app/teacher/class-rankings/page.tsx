@@ -50,8 +50,9 @@ export default function TeacherClassRankingsPage() {
     
     // Direct calculation on each render to avoid stale cache issues from useMemo.
     const listedStudents = (() => {
-        // Return empty if still loading or data is not ready, the top-level loader will handle the UI.
-        if (isLoading || !selectedClassId || !students || !config?.stocks) {
+        // Return empty if still loading or data is not ready.
+        // The top-level loader will handle the initial UI.
+        if (!selectedClassId || !students || !config?.stocks || !classes) {
             return [];
         }
 
