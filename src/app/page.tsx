@@ -95,11 +95,6 @@ export default function LoginPage() {
         if (teacherPassword === correctPassword) {
             toast({ title: "登入成功！", description: `歡迎回來，${teacher.name}！` });
             setAuthInfo({ role: 'teacher', docId: teacher._docId! });
-            // Store other teacher info for direct access in teacher layout
-            localStorage.setItem('teacherId', teacher.id);
-            localStorage.setItem('teacherName', teacher.name);
-            localStorage.setItem('teacherClassIds', JSON.stringify(teacher.classIds || []));
-            localStorage.setItem('teacherRole', teacher.role);
             router.push('/teacher/dashboard');
         } else {
             throw new Error("帳號或密碼不正確");

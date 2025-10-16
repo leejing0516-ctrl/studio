@@ -68,7 +68,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode;
     config: platformConfig,
     teachers,
   } = useSchoolStore();
-  const { teacher, handleLogout, setTeachers, isLoading } = useAuth();
+  const { teacher, handleLogout, setTeachers, isLoading, setAuthInfo } = useAuth();
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -76,7 +76,10 @@ export default function TeacherLayout({ children }: { children: React.ReactNode;
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   
-  const isImpersonating = useMemo(() => typeof window !== 'undefined' && !!localStorage.getItem('impersonator'), []);
+  const isImpersonating = useMemo(() => {
+      if (typeof window === 'undefined') return false;
+      return !!localStorage.getItem('impersonator');
+  }, []);
 
   // Auth check
   useEffect(() => {
@@ -103,18 +106,13 @@ export default function TeacherLayout({ children }: { children: React.ReactNode;
        handleLogout();
        return;
     }
-    const correctPassword = originalAdmin?.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
-
-    localStorage.setItem('userRole', 'teacher');
-    localStorage.setItem('teacherDocId', originalAdmin._docId!);
-    localStorage.setItem('teacherId', originalAdmin.id);
-    localStorage.setItem('teacherName', originalAdmin.name);
-    localStorage.setItem('teacherClassIds', JSON.stringify(originalAdmin.classIds || []));
-    localStorage.setItem('teacherRole', originalAdmin.role);
+    
+    setAuthInfo({ role: 'teacher', docId: originalAdmin._docId! });
     localStorage.removeItem('impersonator');
 
     toast({ title: "已返回校長身份" });
-    window.location.reload();
+    // Using router.refresh() or window.location.reload() to ensure state is fresh
+    router.refresh();
   }
 
   const handleChangePassword = async () => {

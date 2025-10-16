@@ -65,11 +65,13 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     localStorage.setItem('userRole', info.role);
     if (info.role === 'student') {
         localStorage.setItem('studentDocId', info.docId);
+        localStorage.removeItem('teacherDocId');
         setRole('student');
         setStudentDocId(info.docId);
         setTeacherDocId(null);
     } else {
         localStorage.setItem('teacherDocId', info.docId);
+        localStorage.removeItem('studentDocId');
         setRole('teacher');
         setTeacherDocId(info.docId);
         setStudentDocId(null);
