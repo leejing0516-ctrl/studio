@@ -68,7 +68,13 @@ export default function TeacherClassRankingsPage() {
 
             const totalAssets = (student.points || 0) + portfolioValue + totalFixedDeposits - totalLoans;
             
-            return { ...student, totalAssets, portfolioValue, totalFixedDeposits, totalLoans };
+            return { 
+                ...student, 
+                totalAssets: Math.round(totalAssets),
+                portfolioValue: Math.round(portfolioValue),
+                totalFixedDeposits: Math.round(totalFixedDeposits),
+                totalLoans: Math.round(totalLoans)
+            };
         });
 
         return studentsWithAssets.sort((a, b) => b.totalAssets - a.totalAssets);
@@ -141,7 +147,7 @@ export default function TeacherClassRankingsPage() {
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right font-bold text-primary">
-                                            ${Math.round(student.totalAssets).toLocaleString()}
+                                            ${student.totalAssets.toLocaleString()}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-1">
@@ -152,19 +158,19 @@ export default function TeacherClassRankingsPage() {
                                         <TableCell className="text-right">
                                              <div className="flex items-center justify-end gap-1">
                                                 <LineChart className="h-4 w-4 text-muted-foreground" />
-                                                ${Math.round(student.portfolioValue).toLocaleString()}
+                                                ${student.portfolioValue.toLocaleString()}
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-1">
                                                 <PiggyBank className="h-4 w-4 text-muted-foreground" />
-                                                {Math.round(student.totalFixedDeposits).toLocaleString()}
+                                                {student.totalFixedDeposits.toLocaleString()}
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-1 text-destructive">
                                                 <Landmark className="h-4 w-4" />
-                                                {Math.round(student.totalLoans).toLocaleString()}
+                                                {student.totalLoans.toLocaleString()}
                                             </div>
                                         </TableCell>
                                     </TableRow>

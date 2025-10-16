@@ -21,6 +21,8 @@ import { useSchoolStore } from "@/store/useSchoolStore";
 import { Coins, Trophy, PiggyBank, Landmark, LineChart, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { Student } from "@/lib/types";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 type StudentWithAssets = Student & {
     totalAssets: number;
@@ -31,26 +33,26 @@ type StudentWithAssets = Student & {
 
 export default function TeacherRankingsPage() {
     const { students, config, classes, loading: isStoreLoading } = useSchoolStore();
+    const { teacher, isLoading: isAuthLoading } = useAuth();
     const stocks = config?.stocks;
+    const router = useRouter();
+
+    useEffect(() => {
+        if (teacher && teacher.role !== 'admin') {
+            router.push('/teacher/dashboard');
+        }
+    }, [teacher, router]);
     
-    const isLoading = isStoreLoading || !students || !stocks || !classes;
+    const isLoading = isAuthLoading || isStoreLoading;
 
     const listedStudents = useMemo((): StudentWithAssets[] => {
-        if (isLoading) {
+        if (isLoading || !students || !stocks || !classes) {
             return [];
         }
 
-        const uniqueStudentsMap = new Map<string, Student>();
-        students.forEach(student => {
-            if (student._docId) {
-                uniqueStudentsMap.set(student._docId, student);
-            }
-        });
-        const uniqueStudents = Array.from(uniqueStudentsMap.values());
-
-        const studentsWithAssets = uniqueStudents.map(student => {
+        const studentsWithAssets = students.map(student => {
             const portfolioValue = (student.portfolio || []).reduce((acc, item) => {
-                const marketInfo = stocks!.find(s => s.ticker === item.ticker);
+                const marketInfo = stocks.find(s => s.ticker === item.ticker);
                 return acc + (marketInfo ? marketInfo.price * item.shares : 0);
             }, 0);
 
@@ -64,7 +66,13 @@ export default function TeacherRankingsPage() {
 
             const totalAssets = (student.points || 0) + portfolioValue + totalFixedDeposits - totalLoans;
             
-            return { ...student, totalAssets, portfolioValue, totalFixedDeposits, totalLoans };
+            return { 
+              ...student, 
+              totalAssets: Math.round(totalAssets), 
+              portfolioValue: Math.round(portfolioValue), 
+              totalFixedDeposits: Math.round(totalFixedDeposits), 
+              totalLoans: Math.round(totalLoans) 
+            };
         });
 
         return studentsWithAssets.sort((a, b) => b.totalAssets - a.totalAssets);
@@ -77,6 +85,10 @@ export default function TeacherRankingsPage() {
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
         );
+    }
+    
+    if (teacher?.role !== 'admin') {
+        return null;
     }
 
     return (
@@ -123,7 +135,7 @@ export default function TeacherRankingsPage() {
                                             {(classes || []).find(c => c.id === student.classId)?.name || student.classId}
                                         </TableCell>
                                         <TableCell className="text-right font-bold text-primary">
-                                            ${Math.round(student.totalAssets).toLocaleString()}
+                                            ${student.totalAssets.toLocaleString()}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-1">
@@ -134,19 +146,19 @@ export default function TeacherRankingsPage() {
                                         <TableCell className="text-right">
                                              <div className="flex items-center justify-end gap-1">
                                                 <LineChart className="h-4 w-4 text-muted-foreground" />
-                                                ${Math.round(student.portfolioValue).toLocaleString()}
+                                                ${student.portfolioValue.toLocaleString()}
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-1">
                                                 <PiggyBank className="h-4 w-4 text-muted-foreground" />
-                                                {Math.round(student.totalFixedDeposits).toLocaleString()}
+                                                {student.totalFixedDeposits.toLocaleString()}
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-1 text-destructive">
                                                 <Landmark className="h-4 w-4" />
-                                                {Math.round(student.totalLoans).toLocaleString()}
+                                                {student.totalLoans.toLocaleString()}
                                             </div>
                                         </TableCell>
                                     </TableRow>
