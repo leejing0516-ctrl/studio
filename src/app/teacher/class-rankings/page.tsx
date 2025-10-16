@@ -53,7 +53,7 @@ export default function TeacherClassRankingsPage() {
             .filter(student => student.classId === selectedClassId)
             .map(student => {
                 const portfolioValue = (student.portfolio || []).reduce((acc, item) => {
-                    const marketInfo = config.stocks.find(s => s.ticker === item.ticker);
+                    const marketInfo = config.stocks!.find(s => s.ticker === item.ticker);
                     return acc + (marketInfo ? marketInfo.price * item.shares : 0);
                 }, 0);
 
@@ -72,7 +72,8 @@ export default function TeacherClassRankingsPage() {
                     totalAssets: Math.round(totalAssets),
                     portfolioValue: Math.round(portfolioValue),
                     totalFixedDeposits: Math.round(totalFixedDeposits),
-                    totalLoans: Math.round(totalLoans)
+                    totalLoans: Math.round(totalLoans),
+                    points: Math.round(student.points || 0)
                 };
             })
             .sort((a, b) => b.totalAssets - a.totalAssets)
@@ -148,7 +149,7 @@ export default function TeacherClassRankingsPage() {
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-1">
                                                 <Coins className="h-4 w-4 text-muted-foreground" />
-                                                {Math.round(student.points || 0).toLocaleString()}
+                                                {student.points.toLocaleString()}
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right">
