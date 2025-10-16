@@ -31,15 +31,17 @@ export default function TeacherClassRankingsPage() {
     const { teacher } = useAuth();
     
     const [selectedClassId, setSelectedClassId] = useState<string>('');
-    const teacherClassIds = teacher?.classIds || [];
 
     const classOptions = useMemo(() => {
-        if (teacher?.role === 'admin') return classes;
+        if (teacher?.role === 'admin') {
+            return classes;
+        }
+        const teacherClassIds = teacher?.classIds || [];
         if ((teacher?.role === 'teacher' || teacher?.role === 'subject_teacher') && teacherClassIds.length > 0) {
             return classes.filter(c => teacherClassIds.includes(c.id));
         }
         return [];
-    }, [teacher?.role, classes, teacherClassIds]);
+    }, [teacher, classes]);
 
     useEffect(() => {
         if (classOptions.length > 0 && !classOptions.some(c => c.id === selectedClassId)) {

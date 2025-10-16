@@ -41,15 +41,19 @@ export default function TeacherDashboardPage() {
     const [batchReason, setBatchReason] = useState('');
     const [batchTarget, setBatchTarget] = useState('selected');
 
-    const teacherClassIds = teacher?.classIds || [];
+    const availableClasses = useMemo(() => {
+      if (teacher?.role === 'admin') {
+        return classes;
+      }
+      const teacherClassIds = teacher?.classIds || [];
+      return classes.filter(c => teacherClassIds.includes(c.id));
+    }, [teacher, classes]);
 
     useEffect(() => {
-        // If a class is already selected, do nothing.
-        // If no class is selected but there are available classes, select the first one.
-        if (!selectedClassId && teacherClassIds.length > 0) {
-            setSelectedClassId(teacherClassIds[0]);
+        if (availableClasses.length > 0 && !availableClasses.some(c => c.id === selectedClassId)) {
+            setSelectedClassId(availableClasses[0].id);
         }
-    }, [teacherClassIds, selectedClassId]);
+    }, [availableClasses, selectedClassId]);
 
     const filteredStudents = useMemo(() => {
         if (!selectedClassId) return [];
@@ -180,10 +184,9 @@ export default function TeacherDashboardPage() {
                                     <SelectValue placeholder="請選擇班級" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {teacherClassIds.map(id => {
-                                        const classInfo = classes.find(c => c.id === id);
-                                        return classInfo ? <SelectItem key={id} value={id}>{classInfo.name}</SelectItem> : null
-                                    })}
+                                    {availableClasses.map(classInfo => (
+                                        <SelectItem key={classInfo.id} value={classInfo.id}>{classInfo.name}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
