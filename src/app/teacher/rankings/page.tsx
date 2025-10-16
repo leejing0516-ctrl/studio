@@ -45,7 +45,7 @@ export default function TeacherRankingsPage() {
     const isLoading = isAuthLoading || isStoreLoading || !config || !config.stocks;
     
     const listedStudents: StudentWithAssets[] = useMemo(() => {
-        if (isLoading || !students || !classes) {
+        if (isLoading || !students || !classes || !config?.stocks) {
             return [];
         }
 

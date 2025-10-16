@@ -5,7 +5,7 @@ import React, { useMemo, useEffect, useRef, PropsWithChildren } from "react";
 import { useSchoolStore } from "@/store/useSchoolStore";
 import { themes, type Theme } from "@/lib/themes";
 import { DEFAULT_APP_ICON_URL } from "@/lib/config";
-import { collection, onSnapshot, doc, getDoc, getDocs } from "firebase/firestore";
+import { collection, onSnapshot, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { PlatformConfig, Student, Teacher, ClassInfo } from "@/lib/types";
 
@@ -20,81 +20,45 @@ function StoreHydration() {
         isInitialized.current = true;
 
         setLoading(true);
-        
-        let configLoaded = false;
-        let studentsLoaded = false;
-        let teachersLoaded = false;
-        let classesLoaded = false;
-        
-        const checkAllLoaded = () => {
-            if (configLoaded && studentsLoaded && teachersLoaded && classesLoaded) {
-                setLoading(false);
-            }
-        };
 
         const unsubscribers: (() => void)[] = [];
 
-        const configUnsub = onSnapshot(doc(db, "config", "main"), (docSnap) => {
+        const collections = {
+            config: collection(db, "config"),
+            students: collection(db, "students"),
+            teachers: collection(db, "teachers"),
+            classes: collection(db, "classes"),
+        };
+
+        const configUnsub = onSnapshot(doc(collections.config, "main"), (docSnap) => {
             if (docSnap.exists()) {
                 setConfig(docSnap.data() as PlatformConfig);
-            }
-            if (!configLoaded) {
-                configLoaded = true;
-                checkAllLoaded();
-            }
-        }, (error) => {
-            console.error("Failed to listen to config:", error);
-            if (!configLoaded) {
-                configLoaded = true;
-                checkAllLoaded();
             }
         });
         unsubscribers.push(configUnsub);
 
-        const studentsUnsub = onSnapshot(collection(db, "students"), (snapshot) => {
+        const studentsUnsub = onSnapshot(collections.students, (snapshot) => {
             setStudents(snapshot.docs.map(d => ({ ...d.data(), _docId: d.id } as Student)));
-            if (!studentsLoaded) {
-                studentsLoaded = true;
-                checkAllLoaded();
-            }
-        }, (error) => {
-            console.error("Failed to listen to students:", error);
-            if (!studentsLoaded) {
-                studentsLoaded = true;
-                checkAllLoaded();
-            }
         });
         unsubscribers.push(studentsUnsub);
 
-        const teachersUnsub = onSnapshot(collection(db, "teachers"), (snapshot) => {
+        const teachersUnsub = onSnapshot(collections.teachers, (snapshot) => {
             setTeachers(snapshot.docs.map(d => ({ ...d.data(), _docId: d.id } as Teacher)));
-            if (!teachersLoaded) {
-                teachersLoaded = true;
-                checkAllLoaded();
-            }
-        }, (error) => {
-            console.error("Failed to listen to teachers:", error);
-            if (!teachersLoaded) {
-                teachersLoaded = true;
-                checkAllLoaded();
-            }
         });
         unsubscribers.push(teachersUnsub);
 
-        const classesUnsub = onSnapshot(collection(db, "classes"), (snapshot) => {
+        const classesUnsub = onSnapshot(collections.classes, (snapshot) => {
             setClasses(snapshot.docs.map(d => ({ ...d.data(), _docId: d.id } as ClassInfo)));
-            if (!classesLoaded) {
-                classesLoaded = true;
-                checkAllLoaded();
-            }
-        }, (error) => {
-            console.error("Failed to listen to classes:", error);
-            if (!classesLoaded) {
-                classesLoaded = true;
-                checkAllLoaded();
-            }
         });
         unsubscribers.push(classesUnsub);
+
+        // A simple mechanism to set loading to false after initial data fetch attempt.
+        // onSnapshot provides the first snapshot immediately.
+        const timer = setTimeout(() => {
+            setLoading(false);
+        }, 2500); // Failsafe timeout to avoid infinite loading screen
+
+        unsubscribers.push(() => clearTimeout(timer));
 
         return () => {
             unsubscribers.forEach(unsub => unsub());

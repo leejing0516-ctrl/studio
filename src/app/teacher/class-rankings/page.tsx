@@ -46,10 +46,10 @@ export default function TeacherClassRankingsPage() {
         }
     }, [classOptions, selectedClassId]);
 
-    const isLoading = isStoreLoading || isAuthLoading || !config || !config.stocks;
+    const isLoading = isAuthLoading || isStoreLoading || !config || !config.stocks;
     
     const listedStudents = useMemo(() => {
-        if (isLoading || !selectedClassId || !students) {
+        if (isLoading || !selectedClassId || !students || !config?.stocks) {
             return [];
         }
 
