@@ -30,47 +30,46 @@ type StudentWithAssets = Student & {
 };
 
 export default function TeacherRankingsPage() {
-    const { students, stocks, classes, loading: isStoreLoading } = useSchoolStore();
-    const [listedStudents, setListedStudents] = useState<StudentWithAssets[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const { students, config, classes, loading: isStoreLoading } = useSchoolStore();
+    const stocks = config?.stocks;
+    
+    const isLoading = isStoreLoading || !students || !stocks || !classes;
 
-    useEffect(() => {
-        if (!isStoreLoading && students && stocks && classes) {
-            
-            const uniqueStudentsMap = new Map<string, Student>();
-            students.forEach(student => {
-                if (student._docId) {
-                    uniqueStudentsMap.set(student._docId, student);
-                }
-            });
-            const uniqueStudents = Array.from(uniqueStudentsMap.values());
-
-            const studentsWithAssets = uniqueStudents.map(student => {
-                const portfolioValue = (student.portfolio || []).reduce((acc, item) => {
-                    const marketInfo = stocks.find(s => s.ticker === item.ticker);
-                    return acc + (marketInfo ? marketInfo.price * item.shares : 0);
-                }, 0);
-
-                const totalFixedDeposits = (student.fixedDeposits || [])
-                    .filter(d => d.status === 'active')
-                    .reduce((acc, deposit) => acc + deposit.amount, 0);
-
-                const totalLoans = (student.loans || [])
-                    .filter(l => l.status === 'active' || l.status === 'overdue')
-                    .reduce((acc, loan) => acc + loan.amount, 0);
-
-                const totalAssets = (student.points || 0) + portfolioValue + totalFixedDeposits - totalLoans;
-                
-                return { ...student, totalAssets, portfolioValue, totalFixedDeposits, totalLoans };
-            });
-
-            const sortedStudents = studentsWithAssets.sort((a, b) => b.totalAssets - a.totalAssets);
-            setListedStudents(sortedStudents);
-            setIsLoading(false);
-        } else if (!isStoreLoading) {
-            setIsLoading(false);
+    const listedStudents = useMemo((): StudentWithAssets[] => {
+        if (isLoading) {
+            return [];
         }
-    }, [isStoreLoading, students, stocks, classes]);
+
+        const uniqueStudentsMap = new Map<string, Student>();
+        students.forEach(student => {
+            if (student._docId) {
+                uniqueStudentsMap.set(student._docId, student);
+            }
+        });
+        const uniqueStudents = Array.from(uniqueStudentsMap.values());
+
+        const studentsWithAssets = uniqueStudents.map(student => {
+            const portfolioValue = (student.portfolio || []).reduce((acc, item) => {
+                const marketInfo = stocks!.find(s => s.ticker === item.ticker);
+                return acc + (marketInfo ? marketInfo.price * item.shares : 0);
+            }, 0);
+
+            const totalFixedDeposits = (student.fixedDeposits || [])
+                .filter(d => d.status === 'active')
+                .reduce((acc, deposit) => acc + deposit.amount, 0);
+
+            const totalLoans = (student.loans || [])
+                .filter(l => l.status === 'active' || l.status === 'overdue')
+                .reduce((acc, loan) => acc + loan.amount, 0);
+
+            const totalAssets = (student.points || 0) + portfolioValue + totalFixedDeposits - totalLoans;
+            
+            return { ...student, totalAssets, portfolioValue, totalFixedDeposits, totalLoans };
+        });
+
+        return studentsWithAssets.sort((a, b) => b.totalAssets - a.totalAssets);
+    }, [isLoading, students, stocks, classes]);
+
 
     if (isLoading) {
         return (
@@ -129,7 +128,7 @@ export default function TeacherRankingsPage() {
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-1">
                                                 <Coins className="h-4 w-4 text-muted-foreground" />
-                                                {Math.round(student.points).toLocaleString()}
+                                                {Math.round(student.points || 0).toLocaleString()}
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right">
