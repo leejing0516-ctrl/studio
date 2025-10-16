@@ -39,7 +39,9 @@ import {
   Mail,
   BookUp,
   Users,
-  Loader2
+  Loader2,
+  Briefcase,
+  School,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -157,7 +159,9 @@ export default function TeacherLayout({ children }: { children: React.ReactNode;
   }
 
   const navItems = [
-    { href: "/teacher/dashboard", label: "班級與點數管理", icon: LayoutDashboard, roles: ['admin', 'teacher', 'subject_teacher'] },
+    { href: "/teacher/dashboard", label: "學生點數管理", icon: LayoutDashboard, roles: ['admin', 'teacher', 'subject_teacher'] },
+    { href: "/teacher/teachers", label: "教師管理", icon: Briefcase, roles: ['admin'] },
+    { href: "/teacher/classes", label: "班級管理", icon: School, roles: ['admin'] },
     { href: "/teacher/class-rankings", label: "班級排名", icon: Users, roles: ['admin', 'teacher', 'subject_teacher'] },
     { href: "/teacher/rankings", label: "全校排名", icon: Trophy, roles: ['admin'] },
     { href: "/teacher/announcements", label: "公告管理", icon: Megaphone, roles: ['admin', 'teacher', 'subject_teacher'] },
@@ -315,4 +319,3 @@ export default function TeacherLayout({ children }: { children: React.ReactNode;
     </>
   );
 }
-
