@@ -33,18 +33,17 @@ export default function TeacherClassRankingsPage() {
     const [selectedClassId, setSelectedClassId] = useState<string>('');
 
     const classOptions = useMemo(() => {
-        if (teacher?.role === 'admin') {
+        if (!teacher || !classes) return [];
+        if (teacher.role === 'admin') {
             return classes;
         }
-        const teacherClassIds = teacher?.classIds || [];
-        if ((teacher?.role === 'teacher' || teacher?.role === 'subject_teacher') && teacherClassIds.length > 0) {
-            return classes.filter(c => teacherClassIds.includes(c.id));
-        }
-        return [];
+        const teacherClassIds = teacher.classIds || [];
+        return classes.filter(c => teacherClassIds.includes(c.id));
     }, [teacher, classes]);
 
     useEffect(() => {
-        if (classOptions.length > 0 && !classOptions.some(c => c.id === selectedClassId)) {
+        // Automatically select the first available class if none is selected
+        if (classOptions.length > 0 && !selectedClassId) {
             setSelectedClassId(classOptions[0].id);
         }
     }, [classOptions, selectedClassId]);
