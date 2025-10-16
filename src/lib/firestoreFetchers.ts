@@ -20,13 +20,28 @@ export async function fetchConfigMain(): Promise<PlatformConfig> {
   }
   const snap = await getDoc(doc(db, "config", "main"));
   if (!snap.exists()) {
-    console.warn("config/main not found in Firestore, returning default.");
+    console.warn("config/main not found in Firestore, returning placeholder data as default.");
     return { 
         id: 'main', 
         schoolFunds: 100000, 
         stocks: placeholderStocks, 
         rewards: placeholderRewards, 
-        challenges: placeholderChallenges 
+        challenges: placeholderChallenges,
+        // Add other necessary default fields from PlatformConfig to avoid issues
+        announcements: [],
+        stockMarketNews: [],
+        stockMarqueeMessages: [],
+        petStages: [],
+        feedback: [],
+        fundraisingProjects: [],
+        homeTitle: "南梓實小虛擬銀行",
+        homeSubtitle: "一個為學生設計，充滿活力的獎勵與金融素養應用程式。",
+        homeIllustrationUrl: "",
+        logoUrl: "",
+        appIconUrl: "",
+        sponsorLogoUrls: [],
+        fixedDepositInterestRate: 0.01,
+        loanInterestRate: 0.005,
     } as PlatformConfig;
   }
   return { ...(snap.data() as PlatformConfig) };
