@@ -88,7 +88,7 @@ export default function TeacherStocksPage() {
     }
   }, [platformConfig]);
 
-  const teacherName = useMemo(() => teacher?.name || '', [teacher]);
+  const teacherName = teacher?.name || '';
 
   const handleAddStock = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();

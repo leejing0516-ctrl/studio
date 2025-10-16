@@ -3,59 +3,70 @@
 
 import React, { useMemo, useEffect, useRef, PropsWithChildren } from "react";
 import { useSchoolStore } from "@/store/useSchoolStore";
-import { syncAll, fetchAllStudents, fetchAllTeachers, fetchAllClasses } from "@/lib/firestoreFetchers";
 import { themes, type Theme } from "@/lib/themes";
 import { DEFAULT_APP_ICON_URL } from "@/lib/config";
-import { doc, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { PlatformConfig } from "@/lib/types";
+import type { PlatformConfig, Student, Teacher, ClassInfo } from "@/lib/types";
 
 
 // This component is responsible for taking server-fetched data
 // and "hydrating" the client-side Zustand store with it.
-// It now uses onSnapshot for real-time updates for config.
+// It now uses onSnapshot for real-time updates for all core data collections.
 function StoreHydration() {
   const isHydrated = useRef(false);
 
   useEffect(() => {
     if (!db) return;
     
-    // Fetch non-real-time data once
-    if (!isHydrated.current) {
-        Promise.all([
-            fetchAllStudents(),
-            fetchAllTeachers(),
-            fetchAllClasses()
-        ]).then(([students, teachers, classes]) => {
-            useSchoolStore.setState({
-                students,
-                teachers,
-                classes,
-                loading: false, // Partial loading completed
-            });
-        });
-        isHydrated.current = true;
-    }
+    const unsubscribers: (() => void)[] = [];
+    const collectionsToSync = {
+      config: { ref: collection(db, "config"), setter: useSchoolStore.getState().setConfig, isSingleDoc: true },
+      students: { ref: collection(db, "students"), setter: useSchoolStore.getState().setStudents },
+      teachers: { ref: collection(db, "teachers"), setter: useSchoolStore.getState().setTeachers },
+      classes: { ref: collection(db, "classes"), setter: useSchoolStore.getState().setClasses },
+    };
 
-    // Set up real-time listener for config
-    const configRef = doc(db, "config", "main");
-    const unsubscribe = onSnapshot(configRef, (doc) => {
-      if (doc.exists()) {
-        useSchoolStore.setState({ config: doc.data() as PlatformConfig });
-      } else {
-        console.warn("config/main not found in Firestore.");
+    let initialLoadCompleted = 0;
+    const totalCollections = Object.keys(collectionsToSync).length;
+
+    const checkAllLoaded = () => {
+      initialLoadCompleted++;
+      if (initialLoadCompleted >= totalCollections) {
+        useSchoolStore.getState().setLoading(false);
       }
-      // Ensure loading is false after first config fetch
-      if (useSchoolStore.getState().loading) {
-          useSchoolStore.setState({ loading: false });
-      }
-    }, (error) => {
-        console.error("Failed to listen to config changes:", error);
-        useSchoolStore.setState({ loading: false });
-    });
+    };
+    
+    for (const [key, { ref, setter, isSingleDoc }] of Object.entries(collectionsToSync)) {
+        if (isSingleDoc) {
+            const docRef = doc(ref, 'main');
+            const unsubscribe = onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    (setter as (v: PlatformConfig) => void)(docSnap.data() as PlatformConfig);
+                }
+                if (!isHydrated.current) checkAllLoaded();
+            }, (error) => {
+                console.error(`Failed to listen to ${key} changes:`, error);
+                if (!isHydrated.current) checkAllLoaded();
+            });
+            unsubscribers.push(unsubscribe);
+        } else {
+             const unsubscribe = onSnapshot(ref, (querySnapshot) => {
+                const data = querySnapshot.docs.map(d => ({ ...d.data(), _docId: d.id }));
+                (setter as (v: any[]) => void)(data);
+                if (!isHydrated.current) checkAllLoaded();
+            }, (error) => {
+                console.error(`Failed to listen to ${key} changes:`, error);
+                if (!isHydrated.current) checkAllLoaded();
+            });
+            unsubscribers.push(unsubscribe);
+        }
+    }
+    
+    isHydrated.current = true;
 
     return () => {
-      unsubscribe(); // Clean up the listener on component unmount
+      unsubscribers.forEach(unsub => unsub()); // Clean up all listeners on component unmount
     };
   }, []);
 
