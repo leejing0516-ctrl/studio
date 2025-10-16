@@ -42,10 +42,10 @@ export default function TeacherRankingsPage() {
         }
     }, [teacher, router]);
 
-    const isLoading = isAuthLoading || isStoreLoading || !config || !config.stocks;
+    const isLoading = isAuthLoading || isStoreLoading;
     
     const listedStudents: StudentWithAssets[] = useMemo(() => {
-        if (isLoading || !students || !classes || !config?.stocks) {
+        if (!students || !classes || !config?.stocks) {
             return [];
         }
 
@@ -74,7 +74,7 @@ export default function TeacherRankingsPage() {
               points: Math.round(student.points || 0),
             };
         }).sort((a, b) => b.totalAssets - a.totalAssets);
-    }, [isLoading, students, classes, config]);
+    }, [students, classes, config]);
 
     if (isLoading) {
         return (
