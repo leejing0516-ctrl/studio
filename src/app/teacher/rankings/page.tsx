@@ -42,10 +42,14 @@ export default function TeacherRankingsPage() {
         }
     }, [teacher, router]);
     
-    const isLoading = isAuthLoading || isStoreLoading || !students || !config || !classes || !config.stocks;
-    
-    const listedStudents: StudentWithAssets[] = !isLoading
-        ? students.map(student => {
+    const isLoading = isAuthLoading || isStoreLoading || !students || !config || !classes;
+
+    const listedStudents: StudentWithAssets[] = useMemo(() => {
+        if (isLoading || !config.stocks) {
+            return [];
+        }
+        
+        return students.map(student => {
             const portfolioValue = (student.portfolio || []).reduce((acc, item) => {
                 const marketInfo = config.stocks.find(s => s.ticker === item.ticker);
                 return acc + (marketInfo ? marketInfo.price * item.shares : 0);
@@ -68,8 +72,10 @@ export default function TeacherRankingsPage() {
               totalFixedDeposits: Math.round(totalFixedDeposits), 
               totalLoans: Math.round(totalLoans) 
             };
-        }).sort((a, b) => b.totalAssets - a.totalAssets)
-        : [];
+        }).sort((a, b) => b.totalAssets - a.totalAssets);
+
+    }, [isLoading, students, classes, config]);
+
 
     if (isLoading) {
         return (
