@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -31,13 +30,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useRouter } from "next/navigation";
-import { doc, setDoc, writeBatch } from "firebase/firestore";
+import { doc, setDoc, writeBatch, deleteDoc, collection } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export default function TeacherManagementPage() {
     const { toast } = useToast();
     const { teacher: admin, setAuthInfo } = useAuth();
-    const { teachers, classes, config, setTeachers, setConfig } = useSchoolStore();
+    const { teachers, classes, config } = useSchoolStore();
     const router = useRouter();
 
     const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
@@ -93,9 +92,9 @@ export default function TeacherManagementPage() {
         }
         setIsSavingTeacher(true);
         try {
-            const newTeacherId = `teacher-${Date.now()}`;
+            const newTeacherRef = doc(collection(db, "teachers"));
             const newTeacher: Teacher = {
-                id: newTeacherId,
+                id: newTeacherRef.id,
                 name: newTeacherName,
                 role: newTeacherRole,
                 classIds: assignedClassIds,
@@ -103,8 +102,7 @@ export default function TeacherManagementPage() {
                 pointBalance: 0,
             };
             
-            const newTeacherDocRef = doc(db, 'teachers', newTeacherId);
-            await setDoc(newTeacherDocRef, newTeacher);
+            await setDoc(newTeacherRef, newTeacher);
 
             toast({ title: "教師已新增", description: `已成功新增 ${newTeacherName} 老師。` });
             setIsAddTeacherOpen(false);
@@ -441,5 +439,3 @@ export default function TeacherManagementPage() {
         </div>
     )
 }
-
-    
