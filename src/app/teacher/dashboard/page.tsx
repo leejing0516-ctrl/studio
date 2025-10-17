@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Coins, Users, Trash2, Edit, UserPlus, PlusCircle, KeySquare, UserCog, Briefcase, Bank, Eye } from "lucide-react";
+import { Coins, Users, Trash2, Edit, UserPlus, PlusCircle, KeySquare, Upload } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
@@ -28,6 +28,238 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { Student, PointRecord, Teacher, ClassInfo, ClassGroup } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import Papa from "papaparse";
+
+const StudentManagementTab = () => {
+    const { toast } = useToast();
+    const { teacher, setStudents } = useAuth();
+    const { students, classes } = useSchoolStore();
+    
+    const [selectedClassId, setSelectedClassId] = useState<string>('');
+    const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
+    const [isEditStudentOpen, setIsEditStudentOpen] = useState(false);
+    const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
+    const [newStudentData, setNewStudentData] = useState({ id: '', name: '', password: '' });
+    const [editStudentName, setEditStudentName] = useState('');
+    const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+    const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
+    const [studentToResetPassword, setStudentToResetPassword] = useState<Student | null>(null);
+    const [newPassword, setNewPassword] = useState('');
+
+    const availableClasses = useMemo(() => {
+        if (!teacher) return [];
+        if (teacher.role === 'admin') return classes;
+        const teacherClassIds = teacher.classIds || [];
+        return classes.filter(c => teacherClassIds.includes(c.id));
+    }, [teacher, classes]);
+
+    useEffect(() => {
+        if (availableClasses.length > 0 && !selectedClassId) {
+            setSelectedClassId(availableClasses[0].id);
+        }
+    }, [availableClasses, selectedClassId]);
+
+    const filteredStudents = useMemo(() => {
+        if (!selectedClassId) return [];
+        return students.filter(s => s.classId === selectedClassId).sort((a,b) => a.id.localeCompare(b.id));
+    }, [students, selectedClassId]);
+
+    const handleAddStudent = async () => {
+        if (!newStudentData.id || !newStudentData.name || !newStudentData.password) {
+            toast({ title: "請填寫所有欄位", variant: "destructive" });
+            return;
+        }
+        if (students.some(s => s.id === newStudentData.id && s.classId === selectedClassId)) {
+            toast({ title: "學生已存在", description: "此班級已有相同座號的學生。", variant: "destructive" });
+            return;
+        }
+        
+        await setStudents(prev => [
+            ...prev,
+            { ...newStudentData, classId: selectedClassId, points: 0, portfolio: [], pointHistory: [], redeemedRewards: [] }
+        ]);
+
+        toast({ title: "學生已新增" });
+        setIsAddStudentOpen(false);
+        setNewStudentData({ id: '', name: '', password: '' });
+    };
+
+    const handleEditStudent = async () => {
+        if (!studentToEdit || !editStudentName) return;
+        await setStudents(prev => prev.map(s => s._docId === studentToEdit._docId ? { ...s, name: editStudentName } : s));
+        toast({ title: "學生資料已更新" });
+        setIsEditStudentOpen(false);
+        setStudentToEdit(null);
+    };
+
+    const handleResetPassword = async () => {
+        if (!studentToResetPassword || !newPassword) return;
+        await setStudents(prev => prev.map(s => s._docId === studentToResetPassword._docId ? { ...s, password: newPassword } : s));
+        toast({ title: "密碼已重設" });
+        setIsResetPasswordOpen(false);
+        setStudentToResetPassword(null);
+        setNewPassword('');
+    };
+
+    const handleDeleteStudent = async () => {
+        if (!studentToDelete) return;
+        await setStudents(prev => prev.filter(s => s._docId !== studentToDelete._docId));
+        toast({ title: "學生已刪除", variant: "destructive" });
+        setStudentToDelete(null);
+    };
+    
+    return (
+        <Card>
+            <CardHeader className="flex-row justify-between items-start">
+                <div>
+                    <CardTitle>學生名單</CardTitle>
+                    <CardDescription>管理班級中的學生、重設密碼或進行批次匯入。</CardDescription>
+                </div>
+                <div className="flex gap-2">
+                    <Button variant="outline" disabled><Upload className="mr-2 h-4 w-4"/>批次匯入</Button>
+                    <Button onClick={() => setIsAddStudentOpen(true)}><UserPlus className="mr-2 h-4 w-4"/>新增學生</Button>
+                </div>
+            </CardHeader>
+            <CardContent>
+                 <div className="mb-4 max-w-xs">
+                    <Label htmlFor="class-select-student">選擇班級</Label>
+                    <Select onValueChange={setSelectedClassId} value={selectedClassId}>
+                        <SelectTrigger id="class-select-student">
+                            <SelectValue placeholder="請選擇班級" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {availableClasses.map(classInfo => (
+                                <SelectItem key={classInfo.id} value={classInfo.id}>{classInfo.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                 </div>
+                 <div className="border rounded-md">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>座號</TableHead>
+                                <TableHead>姓名</TableHead>
+                                <TableHead>持有總點數</TableHead>
+                                <TableHead className="text-right">操作</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredStudents.length > 0 ? filteredStudents.map(student => (
+                                <TableRow key={student.id}>
+                                    <TableCell>{student.id}</TableCell>
+                                    <TableCell>{student.name}</TableCell>
+                                    <TableCell>{Math.round(student.points).toLocaleString()}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="ghost" size="icon" onClick={() => { setStudentToEdit(student); setEditStudentName(student.name); setIsEditStudentOpen(true); }}><Edit className="h-4 w-4"/></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => { setStudentToResetPassword(student); setIsResetPasswordOpen(true); }}><KeySquare className="h-4 w-4"/></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => setStudentToDelete(student)} className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4"/></Button>
+                                    </TableCell>
+                                </TableRow>
+                            )) : (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="h-24 text-center">此班級尚無學生資料。</TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                 </div>
+            </CardContent>
+
+             {/* Add Student Dialog */}
+            <Dialog open={isAddStudentOpen} onOpenChange={setIsAddStudentOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>新增學生至 {classes.find(c=>c.id === selectedClassId)?.name}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="student-id">座號</Label>
+                            <Input id="student-id" value={newStudentData.id} onChange={e => setNewStudentData({...newStudentData, id: e.target.value})} placeholder="例如: S001"/>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="student-name">姓名</Label>
+                            <Input id="student-name" value={newStudentData.name} onChange={e => setNewStudentData({...newStudentData, name: e.target.value})}/>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="student-password">初始密碼</Label>
+                            <Input id="student-password" value={newStudentData.password} onChange={e => setNewStudentData({...newStudentData, password: e.target.value})}/>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button variant="secondary">取消</Button></DialogClose>
+                        <Button onClick={handleAddStudent}>確認新增</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Student Dialog */}
+            <Dialog open={isEditStudentOpen} onOpenChange={setIsEditStudentOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>編輯學生資料</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                         <div className="space-y-2">
+                            <Label>座號</Label>
+                            <Input value={studentToEdit?.id} disabled/>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-student-name">姓名</Label>
+                            <Input id="edit-student-name" value={editStudentName} onChange={e => setEditStudentName(e.target.value)}/>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button variant="secondary">取消</Button></DialogClose>
+                        <Button onClick={handleEditStudent}>儲存變更</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Reset Password Dialog */}
+            <Dialog open={isResetPasswordOpen} onOpenChange={setIsResetPasswordOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>重設 {studentToResetPassword?.name} 的密碼</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-2 py-4">
+                        <Label htmlFor="new-password">新密碼</Label>
+                        <Input id="new-password" type="text" value={newPassword} onChange={e => setNewPassword(e.target.value)}/>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button variant="secondary">取消</Button></DialogClose>
+                        <Button onClick={handleResetPassword}>確認重設</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+            
+            {/* Delete Student Alert */}
+            <AlertDialog open={!!studentToDelete} onOpenChange={(open) => !open && setStudentToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>確定刪除?</AlertDialogTitle>
+                        <AlertDialogDescription>您確定要刪除學生 {studentToDelete?.name} 嗎? 此動作無法復原。</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setStudentToDelete(null)}>取消</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteStudent}>確定刪除</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </Card>
+    );
+}
+
 
 const PointsTab = () => {
     const { toast } = useToast();
@@ -170,119 +402,125 @@ const PointsTab = () => {
     }, [classes, selectedClassId, teacher]);
 
     return (
-        <div className="space-y-4">
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
-                <div className="flex-1">
-                    <Label htmlFor="class-select">選擇班級</Label>
-                    <Select onValueChange={setSelectedClassId} value={selectedClassId}>
-                        <SelectTrigger id="class-select">
-                            <SelectValue placeholder="請選擇班級" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {availableClasses.map(classInfo => (
-                                <SelectItem key={classInfo.id} value={classInfo.id}>{classInfo.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-            </div>
-    
-            <Card className="bg-muted/50">
-                <CardHeader>
-                        <CardTitle className="text-lg">批次發送/扣除點數</CardTitle>
-                        <CardDescription>對全班、特定分組或選取的學生進行操作。輸入正數為發送，負數為扣除。</CardDescription>
-                </CardHeader>
-                <CardContent className="grid md:grid-cols-4 gap-4 items-end">
-                    <div className="md:col-span-1 space-y-2">
-                        <Label htmlFor="batch-target">操作目標</Label>
-                        <Select value={batchTarget} onValueChange={setBatchTarget}>
-                            <SelectTrigger id="batch-target">
-                                <SelectValue />
+        <Card>
+            <CardHeader>
+                <CardTitle>發送點數</CardTitle>
+                <CardDescription>獎勵或扣除學生的點數。</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="flex flex-col md:flex-row gap-4 mb-6">
+                    <div className="flex-1">
+                        <Label htmlFor="class-select">選擇班級</Label>
+                        <Select onValueChange={setSelectedClassId} value={selectedClassId}>
+                            <SelectTrigger id="class-select">
+                                <SelectValue placeholder="請選擇班級" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="selected">已選取的學生 ({selectedStudents.length})</SelectItem>
-                                <SelectItem value="all">全班</SelectItem>
-                                {teacherGroups.map(g => <SelectItem key={g.id} value={g.id}>分組: {g.name}</SelectItem>)}
+                                {availableClasses.map(classInfo => (
+                                    <SelectItem key={classInfo.id} value={classInfo.id}>{classInfo.name}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
-                    <div className="md:col-span-1 space-y-2">
-                        <Label htmlFor="batch-points">點數</Label>
-                        <Input id="batch-points" type="number" placeholder="例如: 50, -5" value={batchPoints} onChange={e => setBatchPoints(e.target.value === '' ? '' : Number(e.target.value))} />
-                    </div>
-                    <div className="md:col-span-1 space-y-2">
-                        <Label htmlFor="batch-reason">理由 (選填)</Label>
-                        <Input id="batch-reason" placeholder="例如: 小組競賽獲勝" value={batchReason} onChange={e => setBatchReason(e.target.value)} />
-                    </div>
-                    <div className="md:col-span-1">
-                        <Button className="w-full" onClick={handleBatchSubmit}>執行批次操作</Button>
-                    </div>
-                </CardContent>
-            </Card>
+                </div>
+        
+                <Card className="bg-muted/50">
+                    <CardHeader>
+                            <CardTitle className="text-lg">批次發送/扣除點數</CardTitle>
+                            <CardDescription>對全班、特定分組或選取的學生進行操作。輸入正數為發送，負數為扣除。</CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid md:grid-cols-4 gap-4 items-end">
+                        <div className="md:col-span-1 space-y-2">
+                            <Label htmlFor="batch-target">操作目標</Label>
+                            <Select value={batchTarget} onValueChange={setBatchTarget}>
+                                <SelectTrigger id="batch-target">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="selected">已選取的學生 ({selectedStudents.length})</SelectItem>
+                                    <SelectItem value="all">全班</SelectItem>
+                                    {teacherGroups.map(g => <SelectItem key={g.id} value={g.id}>分組: {g.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="md:col-span-1 space-y-2">
+                            <Label htmlFor="batch-points">點數</Label>
+                            <Input id="batch-points" type="number" placeholder="例如: 50, -5" value={batchPoints} onChange={e => setBatchPoints(e.target.value === '' ? '' : Number(e.target.value))} />
+                        </div>
+                        <div className="md:col-span-1 space-y-2">
+                            <Label htmlFor="batch-reason">理由 (選填)</Label>
+                            <Input id="batch-reason" placeholder="例如: 小組競賽獲勝" value={batchReason} onChange={e => setBatchReason(e.target.value)} />
+                        </div>
+                        <div className="md:col-span-1">
+                            <Button className="w-full" onClick={handleBatchSubmit}>執行批次操作</Button>
+                        </div>
+                    </CardContent>
+                </Card>
 
-            <div className="mt-6 overflow-x-auto">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-[50px]">
-                                    <input
-                                    type="checkbox"
-                                    onChange={(e) => {
-                                        if (e.target.checked) {
-                                            setSelectedStudents(filteredStudents.map(s => s.id));
-                                        } else {
-                                            setSelectedStudents([]);
-                                        }
-                                    }}
-                                    checked={selectedStudents.length === filteredStudents.length && filteredStudents.length > 0}
-                                />
-                            </TableHead>
-                            <TableHead>姓名</TableHead>
-                            <TableHead>分組</TableHead>
-                            <TableHead className="text-right">目前點數</TableHead>
-                            <TableHead className="w-[200px]">個別操作：點數</TableHead>
-                            <TableHead className="w-[200px]">理由 (選填)</TableHead>
-                            <TableHead className="text-right w-[80px]">執行</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {filteredStudents.length > 0 ? filteredStudents.map(student => (
-                            <TableRow key={student.id}>
-                                <TableCell>
-                                    <input
+                <div className="mt-6 overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-[50px]">
+                                        <input
                                         type="checkbox"
-                                        checked={selectedStudents.includes(student.id)}
                                         onChange={(e) => {
                                             if (e.target.checked) {
-                                                setSelectedStudents([...selectedStudents, student.id]);
+                                                setSelectedStudents(filteredStudents.map(s => s.id));
                                             } else {
-                                                setSelectedStudents(selectedStudents.filter(id => id !== student.id));
+                                                setSelectedStudents([]);
                                             }
                                         }}
+                                        checked={selectedStudents.length === filteredStudents.length && filteredStudents.length > 0}
                                     />
-                                </TableCell>
-                                <TableCell>{student.name}</TableCell>
-                                <TableCell>{teacherGroups.find(g => g.id === student.groupId)?.name || '未分組'}</TableCell>
-                                <TableCell className="text-right font-medium">{Math.round(Number(student.points || 0)).toLocaleString()}</TableCell>
-                                <TableCell>
-                                    <Input type="number" placeholder="例如: 50, -50" value={points[student.id] || ''} onChange={e => handlePointChange(student.id, e.target.value)} />
-                                </TableCell>
-                                <TableCell>
-                                    <Input value={reason[student.id] || ''} onChange={e => handleReasonChange(student.id, e.target.value)} />
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <Button size="sm" onClick={() => handleIndividualSubmit(student)} disabled={points[student.id] === '' || points[student.id] === undefined}>送出</Button>
-                                </TableCell>
+                                </TableHead>
+                                <TableHead>姓名</TableHead>
+                                <TableHead>分組</TableHead>
+                                <TableHead className="text-right">目前點數</TableHead>
+                                <TableHead className="w-[200px]">個別操作：點數</TableHead>
+                                <TableHead className="w-[200px]">理由 (選填)</TableHead>
+                                <TableHead className="text-right w-[80px]">執行</TableHead>
                             </TableRow>
-                        )) : (
-                            <TableRow>
-                                <TableCell colSpan={7} className="h-24 text-center">這個班級目前沒有學生。</TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
-        </div>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredStudents.length > 0 ? filteredStudents.map(student => (
+                                <TableRow key={student.id}>
+                                    <TableCell>
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedStudents.includes(student.id)}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setSelectedStudents([...selectedStudents, student.id]);
+                                                } else {
+                                                    setSelectedStudents(selectedStudents.filter(id => id !== student.id));
+                                                }
+                                            }}
+                                        />
+                                    </TableCell>
+                                    <TableCell>{student.name}</TableCell>
+                                    <TableCell>{teacherGroups.find(g => g.id === student.groupId)?.name || '未分組'}</TableCell>
+                                    <TableCell className="text-right font-medium">{Math.round(Number(student.points || 0)).toLocaleString()}</TableCell>
+                                    <TableCell>
+                                        <Input type="number" placeholder="例如: 50, -50" value={points[student.id] || ''} onChange={e => handlePointChange(student.id, e.target.value)} />
+                                    </TableCell>
+                                    <TableCell>
+                                        <Input value={reason[student.id] || ''} onChange={e => handleReasonChange(student.id, e.target.value)} />
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <Button size="sm" onClick={() => handleIndividualSubmit(student)} disabled={points[student.id] === '' || points[student.id] === undefined}>送出</Button>
+                                    </TableCell>
+                                </TableRow>
+                            )) : (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="h-24 text-center">這個班級目前沒有學生。</TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            </CardContent>
+        </Card>
     )
 }
 
@@ -372,9 +610,18 @@ const GroupManagementTab = () => {
     };
 
     return (
-        <div className="space-y-4">
-             <div className="flex justify-between items-center">
-                 <div className="flex-1 max-w-xs">
+        <Card>
+            <CardHeader className="flex-row justify-between items-start">
+                <div>
+                    <CardTitle>分組管理</CardTitle>
+                    <CardDescription>為目前選擇的班級建立您自己的小組，並將學生指派到各組。</CardDescription>
+                </div>
+                <Button onClick={handleManageGroups}>
+                    <Users className="mr-2 h-4 w-4" /> 管理我的分組
+                </Button>
+            </CardHeader>
+            <CardContent>
+                <div className="mb-4 max-w-xs">
                     <Label htmlFor="class-select-group">選擇班級</Label>
                     <Select onValueChange={setSelectedClassId} value={selectedClassId}>
                         <SelectTrigger id="class-select-group">
@@ -386,53 +633,50 @@ const GroupManagementTab = () => {
                             ))}
                         </SelectContent>
                     </Select>
-                 </div>
-                 <Button onClick={handleManageGroups}>
-                    <Users className="mr-2 h-4 w-4" /> 管理我的分組
-                 </Button>
-            </div>
-            
-            {groups.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                    <p>您尚未為此班級建立任何分組。</p>
                 </div>
-            ) : (
-                <div className="overflow-x-auto">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>座號</TableHead>
-                                <TableHead>姓名</TableHead>
-                                <TableHead className="w-1/3">指派分組</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredStudents.map(student => (
-                                <TableRow key={student.id}>
-                                    <TableCell>{student.id}</TableCell>
-                                    <TableCell>{student.name}</TableCell>
-                                    <TableCell>
-                                        <Select 
-                                            value={student.groupId || ""} 
-                                            onValueChange={(value) => assignStudentToGroup(student.id, value)}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="未分組" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="">未分組</SelectItem>
-                                                {groups.map(group => (
-                                                    <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </TableCell>
+                
+                {groups.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                        <p>您尚未為此班級建立任何分組。</p>
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto border rounded-md">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>座號</TableHead>
+                                    <TableHead>姓名</TableHead>
+                                    <TableHead className="w-1/3">指派分組</TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-            )}
+                            </TableHeader>
+                            <TableBody>
+                                {filteredStudents.map(student => (
+                                    <TableRow key={student.id}>
+                                        <TableCell>{student.id}</TableCell>
+                                        <TableCell>{student.name}</TableCell>
+                                        <TableCell>
+                                            <Select 
+                                                value={student.groupId || ""} 
+                                                onValueChange={(value) => assignStudentToGroup(student.id, value)}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="未分組" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="">未分組</SelectItem>
+                                                    {groups.map(group => (
+                                                        <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
+            </CardContent>
 
             <Dialog open={isManageGroupsOpen} onOpenChange={setIsManageGroupsOpen}>
                 <DialogContent>
@@ -469,7 +713,7 @@ const GroupManagementTab = () => {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </Card>
     )
 }
 
@@ -482,7 +726,7 @@ export default function TeacherDashboardPage() {
                     <CardDescription>在此管理班級、學生分組、發放點數與查看歷史紀錄。</CardDescription>
                 </CardHeader>
                 <CardContent>
-                   <Tabs defaultValue="points" className="w-full">
+                   <Tabs defaultValue="students" className="w-full">
                       <TabsList className="grid w-full grid-cols-5">
                         <TabsTrigger value="students">學生管理</TabsTrigger>
                         <TabsTrigger value="groups">分組管理</TabsTrigger>
@@ -491,37 +735,13 @@ export default function TeacherDashboardPage() {
                         <TabsTrigger value="approvals">審核中心</TabsTrigger>
                       </TabsList>
                       <TabsContent value="students" className="mt-4">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>學生管理</CardTitle>
-                                <CardDescription>即將推出：在此新增、編輯或批次匯入學生資料。</CardDescription>
-                            </CardHeader>
-                             <CardContent>
-                                <p className="text-muted-foreground text-center py-12">此功能正在開發中。</p>
-                             </CardContent>
-                        </Card>
+                        <StudentManagementTab />
                       </TabsContent>
                       <TabsContent value="groups" className="mt-4">
-                         <Card>
-                            <CardHeader>
-                                <CardTitle>分組管理</CardTitle>
-                                <CardDescription>為目前選擇的班級建立您自己的小組，並將學生指派到各組。</CardDescription>
-                            </CardHeader>
-                             <CardContent>
-                               <GroupManagementTab />
-                             </CardContent>
-                        </Card>
+                         <GroupManagementTab />
                       </TabsContent>
                        <TabsContent value="points" className="mt-4">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>發送點數</CardTitle>
-                                <CardDescription>獎勵或扣除學生的點數。</CardDescription>
-                            </CardHeader>
-                             <CardContent>
-                                <PointsTab />
-                             </CardContent>
-                        </Card>
+                        <PointsTab />
                       </TabsContent>
                        <TabsContent value="history" className="mt-4">
                         <Card>
