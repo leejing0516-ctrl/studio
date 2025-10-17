@@ -76,9 +76,9 @@ export default function TeacherRewardsPage() {
         }
     }, []);
 
-    const allClassRewards = (allRewards || []).filter(r => r.scope === 'class' && teachers.some(t => t.id === r.providerId));
-    const schoolRewards = (allRewards || []).filter(r => r.scope === 'school');
-    const teacherRewards = (!role || !teacherId || role === 'admin') ? [] : (allRewards || []).filter(r => r.providerId === teacherId);
+    const schoolRewards = allRewards.filter(r => r.scope === 'school');
+    const allClassRewards = allRewards.filter(r => r.scope === 'class' && teachers.some(t => t.id === r.providerId));
+    const teacherRewards = (!role || !teacherId || role === 'admin') ? [] : allRewards.filter(r => r.providerId === teacherId);
 
     const handleRewardImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -449,5 +449,3 @@ export default function TeacherRewardsPage() {
         </div>
     );
 }
-
-    
