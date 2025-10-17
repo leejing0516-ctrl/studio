@@ -1,5 +1,4 @@
 
-
 export type Feedback = {
   id: string;
   studentId: string;
@@ -277,3 +276,13 @@ export type PlatformConfig = {
 };
 
 export type ConfigMain = PlatformConfig;
+
+// This is a helper from themes.ts, added here to avoid circular dependency
+export type Theme = {
+  name: string
+  label: string
+  cssVars: {
+    dark: CustomTheme
+    light?: CustomTheme
+  }
+}
