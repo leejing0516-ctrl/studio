@@ -1,4 +1,3 @@
-
 import { create } from "zustand";
 import { ConfigMain, Student, Teacher, ClassInfo } from "@/lib/types";
 
