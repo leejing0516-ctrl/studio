@@ -32,6 +32,11 @@ export default function LoginPage() {
   const handleTeacherLogin = () => {
     handleLogin({ role: 'teacher', teacherId, password: teacherPassword });
   }
+  
+  const handleClassChange = (value: string) => {
+    setClassId(value);
+    setStudentSeatNumber("");
+  }
 
   const isStudentLoginDisabled = () => {
     return isLoading || !classId || !studentSeatNumber;
@@ -85,7 +90,7 @@ export default function LoginPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="class">班級</Label>
-              <Select value={classId} onValueChange={setClassId}>
+              <Select value={classId} onValueChange={handleClassChange}>
                 <SelectTrigger id="class">
                   <SelectValue placeholder="請選擇班級" />
                 </SelectTrigger>
