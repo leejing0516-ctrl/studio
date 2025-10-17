@@ -2,7 +2,7 @@
 "use client";
 import { useSchoolStore } from '@/store/useSchoolStore';
 import { useAuth } from '@/context/AuthContext';
-import { useMemo }s from 'react';
+import { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Coins, PiggyBank, Handshake, Repeat, Flag, LineChart, Building, HeartHandshake, Bone, GraduationCap } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
