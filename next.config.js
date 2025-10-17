@@ -12,15 +12,6 @@ const nextConfig = {
             }
         ],
     },
-    webpack: (config) => {
-        // See https://webpack.js.org/configuration/resolve/#resolvealias
-        config.resolve.alias = {
-          ...config.resolve.alias,
-          'sharp$': false,
-          'canvas$': false,
-        }
-        return config
-      },
 };
 
 module.exports = nextConfig;
