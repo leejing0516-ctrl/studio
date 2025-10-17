@@ -67,14 +67,14 @@ export default function TeacherManagementPage() {
     }, [admin, router, toast]);
     
     const unassignedClassesForAdd = useMemo(() => {
-        return classes.filter(c => !teachers.some(t => Array.isArray(t.classIds) && t.classIds.includes(c.id) && t.role === 'teacher'));
+        return classes.filter(c => !teachers.some(t => t.role === 'teacher' && (t.classIds || []).includes(c.id)));
     }, [classes, teachers]);
     
     const unassignedClassesForEdit = useMemo(() => {
         if (!editingTeacher) return [];
         return classes.filter(c => {
             const currentTeacherIsTutor = editingTeacher.role === 'teacher' && (editingTeacher.classIds || []).includes(c.id);
-            const anotherTeacherIsTutor = teachers.some(t => t.id !== editingTeacher.id && Array.isArray(t.classIds) && t.classIds.includes(c.id) && t.role === 'teacher');
+            const anotherTeacherIsTutor = teachers.some(t => t.id !== editingTeacher.id && t.role === 'teacher' && (t.classIds || []).includes(c.id));
             return currentTeacherIsTutor || !anotherTeacherIsTutor;
         });
     }, [classes, teachers, editingTeacher]);
@@ -128,17 +128,23 @@ export default function TeacherManagementPage() {
             toast({ title: "請輸入教師姓名", variant: "destructive" });
             return;
         }
-        if (editTeacherRole === 'teacher' && editAssignedClassIds.length !== 1) {
+        
+        const finalClassIds = editTeacherRole === 'teacher' 
+            ? (editAssignedClassIds[0] === 'unassigned' ? [] : editAssignedClassIds) 
+            : editAssignedClassIds;
+
+        if (editTeacherRole === 'teacher' && finalClassIds.length > 1) {
             toast({ title: "班級導師只能指派一個班級", variant: "destructive" });
             return;
         }
+
         setIsSavingTeacher(true);
         try {
             const updatedTeacher: Teacher = {
                 ...editingTeacher,
                 name: editTeacherName,
                 role: editTeacherRole,
-                classIds: editAssignedClassIds,
+                classIds: finalClassIds,
             };
 
             await setTeachers(current => current.map(t => t.id === editingTeacher.id ? updatedTeacher : t));
@@ -270,13 +276,16 @@ export default function TeacherManagementPage() {
                         {newTeacherRole === 'teacher' && (
                              <div className="space-y-2">
                                 <Label htmlFor="assign-class-add">指派班級 (導師只能選一個)</Label>
-                                <Select value={assignedClassIds[0] || ''} onValueChange={value => setAssignedClassIds([value])}>
+                                <Select value={assignedClassIds[0] || ''} onValueChange={value => setAssignedClassIds(value ? [value] : [])}>
                                     <SelectTrigger id="assign-class-add"><SelectValue placeholder="選擇一個未被指派的班級"/></SelectTrigger>
                                     <SelectContent>
-                                        {unassignedClassesForAdd.length === 0 && <SelectItem value="no-class" disabled>沒有可指派的班級</SelectItem>}
-                                        {unassignedClassesForAdd.map(c => (
-                                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                                        ))}
+                                        {unassignedClassesForAdd.length === 0 ? (
+                                            <SelectItem value="no-class" disabled>沒有可指派的班級</SelectItem>
+                                        ) : (
+                                            unassignedClassesForAdd.map(c => (
+                                                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                            ))
+                                        )}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -341,10 +350,10 @@ export default function TeacherManagementPage() {
                             {editTeacherRole === 'teacher' && (
                                 <div className="space-y-2">
                                     <Label htmlFor="assign-class-edit">指派班級 (導師只能選一個)</Label>
-                                    <Select value={editAssignedClassIds[0] || ''} onValueChange={value => setEditAssignedClassIds([value])}>
-                                        <SelectTrigger id="assign-class-edit"><SelectValue placeholder="選擇一個未被指派的班級"/></SelectTrigger>
+                                    <Select value={editAssignedClassIds[0] || ''} onValueChange={value => setEditAssignedClassIds(value ? [value] : [])}>
+                                        <SelectTrigger id="assign-class-edit"><SelectValue placeholder="選擇一個班級"/></SelectTrigger>
                                         <SelectContent>
-                                            {unassignedClassesForEdit.length === 0 && <SelectItem value="no-class" disabled>沒有可指派的班級</SelectItem>}
+                                            <SelectItem value="unassigned">解除指派</SelectItem>
                                             {unassignedClassesForEdit.map(c => (
                                                 <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                                             ))}
