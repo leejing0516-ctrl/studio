@@ -170,6 +170,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   
   const isAuthenticated = !!student || !!teacher;
 
+  if (dataLoading && (pathname !== '/' || isAuthenticated)) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        正在從雲端同步資料...
+      </div>
+    );
+  }
+
   return (
     <AuthContext.Provider value={{ student, teacher, isLoading, isAuthenticated, handleLogin, handleLogout, setAuthInfo }}>
       {children}
