@@ -41,10 +41,12 @@ import {
 import { subDays, isAfter } from 'date-fns';
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
+import { doc, writeBatch } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const StudentManagementTab = () => {
     const { toast } = useToast();
-    const { teacher, setStudents } = useAuth();
+    const { teacher } = useAuth();
     const { students, classes } = useSchoolStore();
     
     const [selectedClassId, setSelectedClassId] = useState<string>('');
@@ -66,7 +68,7 @@ const StudentManagementTab = () => {
     }, [teacher, classes]);
 
     useEffect(() => {
-        if (availableClasses.length > 0 && !selectedClassId) {
+        if (availableClasses.length > 0 && !availableClasses.some(c => c.id === selectedClassId)) {
             setSelectedClassId(availableClasses[0].id);
         }
     }, [availableClasses, selectedClassId]);
@@ -86,10 +88,10 @@ const StudentManagementTab = () => {
             return;
         }
         
-        await setStudents(prev => [
-            ...prev,
-            { ...newStudentData, classId: selectedClassId, points: 0, portfolio: [], pointHistory: [], redeemedRewards: [] }
-        ]);
+        const newStudentDoc = doc(collection(db, "students"));
+        await setDoc(newStudentDoc, {
+            ...newStudentData, classId: selectedClassId, points: 0, portfolio: [], pointHistory: [], redeemedRewards: []
+        });
 
         toast({ title: "學生已新增" });
         setIsAddStudentOpen(false);
@@ -97,16 +99,18 @@ const StudentManagementTab = () => {
     };
 
     const handleEditStudent = async () => {
-        if (!studentToEdit || !editStudentName) return;
-        await setStudents(prev => prev.map(s => s._docId === studentToEdit._docId ? { ...s, name: editStudentName } : s));
+        if (!studentToEdit?._docId || !editStudentName) return;
+        const studentRef = doc(db, 'students', studentToEdit._docId);
+        await setDoc(studentRef, { name: editStudentName }, { merge: true });
         toast({ title: "學生資料已更新" });
         setIsEditStudentOpen(false);
         setStudentToEdit(null);
     };
 
     const handleResetPassword = async () => {
-        if (!studentToResetPassword || !newPassword) return;
-        await setStudents(prev => prev.map(s => s._docId === studentToResetPassword._docId ? { ...s, password: newPassword } : s));
+        if (!studentToResetPassword?._docId || !newPassword) return;
+        const studentRef = doc(db, 'students', studentToResetPassword._docId);
+        await setDoc(studentRef, { password: newPassword }, { merge: true });
         toast({ title: "密碼已重設" });
         setIsResetPasswordOpen(false);
         setStudentToResetPassword(null);
@@ -114,8 +118,8 @@ const StudentManagementTab = () => {
     };
 
     const handleDeleteStudent = async () => {
-        if (!studentToDelete) return;
-        await setStudents(prev => prev.filter(s => s._docId !== studentToDelete._docId));
+        if (!studentToDelete?._docId) return;
+        await deleteDoc(doc(db, 'students', studentToDelete._docId));
         toast({ title: "學生已刪除", variant: "destructive" });
         setStudentToDelete(null);
     };
@@ -266,7 +270,7 @@ const StudentManagementTab = () => {
 const PointsTab = () => {
     const { toast } = useToast();
     const { teacher } = useAuth();
-    const { students, classes, setStudents: updateAllStudents } = useSchoolStore();
+    const { students, classes } = useSchoolStore();
     
     const [selectedClassId, setSelectedClassId] = useState<string>('');
     const [points, setPoints] = useState<{ [key: string]: number | '' }>({});
@@ -287,7 +291,7 @@ const PointsTab = () => {
     }, [teacher, classes]);
 
     useEffect(() => {
-        if (availableClasses.length > 0 && !availableClasses.find(c => c.id === selectedClassId)) {
+        if (availableClasses.length > 0 && !availableClasses.some(c => c.id === selectedClassId)) {
             setSelectedClassId(availableClasses[0].id);
         }
     }, [availableClasses, selectedClassId]);
@@ -306,31 +310,26 @@ const PointsTab = () => {
     };
 
     const handleIndividualSubmit = async (student: Student) => {
+        if (!student._docId) return;
         const pointsToUpdate = points[student.id];
         const reasonForUpdate = reason[student.id] || "老師手動調整";
 
         if (pointsToUpdate === undefined || pointsToUpdate === '') return;
 
+        const studentRef = doc(db, 'students', student._docId);
+        const newPoints = (Number(student.points) || 0) + Number(pointsToUpdate);
+        const newRecord: PointRecord = {
+            points: Number(pointsToUpdate),
+            date: new Date().toISOString(),
+            reason: reasonForUpdate,
+            teacherId: teacher?.id
+        };
+
         try {
-            await updateAllStudents(currentStudents => 
-                currentStudents.map(s => {
-                    if (s._docId === student._docId) {
-                        const newPoints = (Number(s.points) || 0) + Number(pointsToUpdate);
-                        const newRecord: PointRecord = {
-                            points: Number(pointsToUpdate),
-                            date: new Date().toISOString(),
-                            reason: reasonForUpdate,
-                            teacherId: teacher?.id
-                        };
-                        return { 
-                            ...s, 
-                            points: newPoints,
-                            pointHistory: [...(s.pointHistory || []), newRecord]
-                        };
-                    }
-                    return s;
-                })
-            );
+            await setDoc(studentRef, {
+                points: newPoints,
+                pointHistory: [...(student.pointHistory || []), newRecord]
+            }, { merge: true });
 
             toast({ title: "點數已更新", description: `已為 ${student.name} 更新 ${pointsToUpdate} 點。` });
             setPoints(prev => ({ ...prev, [student.id]: '' }));
@@ -346,48 +345,49 @@ const PointsTab = () => {
             return;
         }
 
-        let targetStudentIds: string[] = [];
+        let targets: Student[] = [];
         if (batchTarget === 'selected') {
-            targetStudentIds = selectedStudents;
+            targets = filteredStudents.filter(s => selectedStudents.includes(s.id));
         } else if (batchTarget === 'all') {
-            targetStudentIds = filteredStudents.map(s => s.id);
+            targets = filteredStudents;
         } else {
              const classInfo = classes.find(c => c.id === selectedClassId);
              if (classInfo && classInfo.groups && classInfo.groups[teacher?.id || '']) {
                  const group = classInfo.groups[teacher?.id || ''].find(g => g.id === batchTarget);
                  if (group) {
-                     targetStudentIds = filteredStudents.filter(s => s.groupId === group.id).map(s => s.id);
+                     targets = filteredStudents.filter(s => s.groupId === group.id);
                  }
              }
         }
         
-        if (targetStudentIds.length === 0) {
+        if (targets.length === 0) {
             toast({ title: "沒有目標學生", description: "請選擇至少一位學生或一個群組。", variant: "destructive" });
             return;
         }
 
+        const batch = writeBatch(db);
+        const reasonForUpdate = batchReason || "批次操作";
+        const newRecord: PointRecord = {
+            points: Number(batchPoints),
+            date: new Date().toISOString(),
+            reason: reasonForUpdate,
+            teacherId: teacher?.id
+        };
+
+        targets.forEach(student => {
+            if (student._docId) {
+                const studentRef = doc(db, 'students', student._docId);
+                const newPoints = (Number(student.points) || 0) + Number(batchPoints);
+                batch.update(studentRef, {
+                    points: newPoints,
+                    pointHistory: [...(student.pointHistory || []), newRecord]
+                });
+            }
+        });
+
         try {
-            await updateAllStudents(currentStudents => 
-                currentStudents.map(s => {
-                    if (targetStudentIds.includes(s.id) && s.classId === selectedClassId) {
-                        const newPoints = (Number(s.points) || 0) + Number(batchPoints);
-                        const newRecord: PointRecord = {
-                            points: Number(batchPoints),
-                            date: new Date().toISOString(),
-                            reason: batchReason || "批次操作",
-                            teacherId: teacher?.id
-                        };
-                        return { 
-                            ...s, 
-                            points: newPoints,
-                            pointHistory: [...(s.pointHistory || []), newRecord]
-                        };
-                    }
-                    return s;
-                })
-            );
-            
-            toast({ title: "批次操作成功", description: `已為 ${targetStudentIds.length} 位學生更新 ${batchPoints} 點。` });
+            await batch.commit();
+            toast({ title: "批次操作成功", description: `已為 ${targets.length} 位學生更新 ${batchPoints} 點。` });
             setBatchPoints('');
             setBatchReason('');
             setSelectedStudents([]);
@@ -525,7 +525,7 @@ const PointsTab = () => {
 }
 
 const GroupManagementTab = () => {
-    const { teacher, setStudents, setClasses } = useAuth();
+    const { teacher } = useAuth();
     const { students, classes } = useSchoolStore();
     const { toast } = useToast();
 
@@ -545,7 +545,7 @@ const GroupManagementTab = () => {
     }, [teacher, classes]);
 
     useEffect(() => {
-        if (availableClasses.length > 0 && !selectedClassId) {
+        if (availableClasses.length > 0 && !availableClasses.some(c => c.id === selectedClassId)) {
             setSelectedClassId(availableClasses[0].id);
         }
     }, [availableClasses, selectedClassId]);
@@ -609,35 +609,34 @@ const GroupManagementTab = () => {
     const saveGroupsAndAssignments = async () => {
         if (!teacher?.id || !selectedClassId) return;
 
-        // Save groups to class data
-        await setClasses(prevClasses => prevClasses.map(c => {
-            if (c.id === selectedClassId) {
-                return {
-                    ...c,
-                    groups: {
-                        ...(c.groups || {}),
-                        [teacher.id!]: dialogGroups
-                    }
-                };
-            }
-            return c;
-        }));
+        const classRef = doc(db, 'classes', selectedClassId);
+        const batch = writeBatch(db);
 
-        // Save assignments to student data
-        await setStudents(prevStudents => prevStudents.map(s => {
-            if (s.classId === selectedClassId && dialogStudentAssignments.hasOwnProperty(s.id)) {
-                 // Only update if the assignment has changed for this teacher's groups
-                const originalGroupId = teacherGroups.find(g => g.id === s.groupId) ? s.groupId : undefined;
-                const newGroupId = dialogStudentAssignments[s.id];
-                 if (originalGroupId !== newGroupId) {
-                    return { ...s, groupId: newGroupId };
+        const currentClass = classes.find(c => c.id === selectedClassId);
+        const updatedGroupsData = {
+            ...currentClass?.groups,
+            [teacher.id]: dialogGroups
+        };
+        batch.update(classRef, { groups: updatedGroupsData });
+
+        studentsInClass.forEach(student => {
+            if (student._docId && dialogStudentAssignments.hasOwnProperty(student.id)) {
+                const studentRef = doc(db, 'students', student._docId);
+                const newGroupId = dialogStudentAssignments[student.id];
+                if (student.groupId !== newGroupId) {
+                    batch.update(studentRef, { groupId: newGroupId || null });
                 }
             }
-            return s;
-        }));
-
-        toast({ title: "分組已儲存" });
-        setIsManageGroupsOpen(false);
+        });
+        
+        try {
+            await batch.commit();
+            toast({ title: "分組已儲存" });
+            setIsManageGroupsOpen(false);
+        } catch (error) {
+            console.error("Failed to save groups and assignments:", error);
+            toast({ title: "儲存失敗", description: "更新資料時發生錯誤。", variant: "destructive" });
+        }
     };
 
     return (
@@ -648,7 +647,6 @@ const GroupManagementTab = () => {
                     <CardDescription>為目前選擇的班級建立您自己的小組，並將學生指派到各組。</CardDescription>
                 </div>
                 <div className="flex flex-col items-end gap-2">
-                    <p className="text-sm font-semibold">我的點數餘額: {(teacher?.pointBalance || 0).toLocaleString()}</p>
                     <Button onClick={openManagementDialog}>
                         <Users className="mr-2 h-4 w-4" /> 管理我的分組
                     </Button>
