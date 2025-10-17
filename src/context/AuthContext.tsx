@@ -83,14 +83,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   
   // Effect to initialize auth state from localStorage
   useEffect(() => {
+    // Wait until essential data is loaded before trying to restore auth
+    if (dataLoading) {
+      setIsLoading(true);
+      return;
+    };
+  
     try {
       const savedAuth = localStorage.getItem('auth');
       if (savedAuth) {
         const user: User = JSON.parse(savedAuth);
         if (user.role === 'student') {
-          setStudent(user);
-        } else {
-          setTeacher(user);
+          // Verify student exists before setting auth state
+          if (students.some(s => s.id === user.id)) {
+            setStudent(user);
+          } else {
+            handleLogout(); // Stale auth data, log out
+          }
+        } else { // teacher, admin, etc.
+          // Verify teacher exists before setting auth state
+           if (teachers.some(t => t._docId === user._docId)) {
+            setTeacher(user);
+          } else {
+            handleLogout(); // Stale auth data, log out
+          }
         }
       }
     } catch (error) {
@@ -98,7 +114,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       localStorage.removeItem('auth');
     }
     setIsLoading(false);
-  }, []);
+  }, [dataLoading, students, teachers]);
 
   const handleLogin = useCallback(async ({ role, studentId, teacherId, password }: any) => {
     setIsLoading(true);
