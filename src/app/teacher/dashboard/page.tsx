@@ -527,7 +527,7 @@ const PointsTab = () => {
 
 const GroupManagementTab = () => {
     const { teacher } = useAuth();
-    const { students, classes, setClasses, setStudents: setAllStudents } = useSchoolStore();
+    const { students, classes } = useSchoolStore();
     const { toast } = useToast();
 
     const [selectedClassId, setSelectedClassId] = useState<string>('');
@@ -704,7 +704,7 @@ const GroupManagementTab = () => {
             </CardContent>
 
             <Dialog open={isManageGroupsOpen} onOpenChange={setIsManageGroupsOpen}>
-                <DialogContent className="max-w-4xl bg-muted">
+                <DialogContent className="max-w-4xl">
                     <DialogHeader>
                         <DialogTitle>管理我的分組 - {classes.find(c => c.id === selectedClassId)?.name}</DialogTitle>
                         <DialogDescription>在此建立您個人的小組，並將學生指派到對應的小組中。</DialogDescription>
@@ -772,8 +772,8 @@ const GroupManagementTab = () => {
                              </CardContent>
                         </Card>
                     </div>
-                    <DialogFooter className="bg-muted pb-4 px-6 rounded-b-lg -m-6 pt-4 mt-4">
-                        <Button variant="ghost" onClick={() => setIsManageGroupsOpen(false)}>取消</Button>
+                    <DialogFooter>
+                        <Button variant="secondary" onClick={() => setIsManageGroupsOpen(false)}>取消</Button>
                         <Button onClick={saveGroupsAndAssignments}>儲存變更</Button>
                     </DialogFooter>
                 </DialogContent>
@@ -975,3 +975,5 @@ export default function TeacherDashboardPage() {
         </div>
     );
 }
+
+    

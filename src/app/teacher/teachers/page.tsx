@@ -31,11 +31,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useRouter } from "next/navigation";
+import { doc, setDoc, writeBatch } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function TeacherManagementPage() {
     const { toast } = useToast();
-    const { teacher: admin, setTeachers, setPlatformConfig: setConfig, setAuthInfo } = useAuth();
-    const { teachers, classes, config } = useSchoolStore();
+    const { teacher: admin, setAuthInfo } = useAuth();
+    const { teachers, classes, config, setTeachers, setConfig } = useSchoolStore();
     const router = useRouter();
 
     const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
@@ -101,7 +103,8 @@ export default function TeacherManagementPage() {
                 pointBalance: 0,
             };
             
-            await setTeachers(current => [...current, newTeacher]);
+            const newTeacherDocRef = doc(db, 'teachers', newTeacherId);
+            await setDoc(newTeacherDocRef, newTeacher);
 
             toast({ title: "教師已新增", description: `已成功新增 ${newTeacherName} 老師。` });
             setIsAddTeacherOpen(false);
@@ -124,13 +127,13 @@ export default function TeacherManagementPage() {
     };
 
     const handleUpdateTeacher = async () => {
-        if (!editingTeacher || !editTeacherName) {
+        if (!editingTeacher || !editTeacherName || !editingTeacher._docId) {
             toast({ title: "請輸入教師姓名", variant: "destructive" });
             return;
         }
         
         const finalClassIds = editTeacherRole === 'teacher' 
-            ? (editAssignedClassIds[0] === 'unassigned' ? [] : editAssignedClassIds.filter(id => id !== 'unassigned'))
+            ? (editAssignedClassIds.length > 0 && editAssignedClassIds[0] !== 'unassigned' ? [editAssignedClassIds[0]] : [])
             : editAssignedClassIds;
 
         if (editTeacherRole === 'teacher' && finalClassIds.length > 1) {
@@ -140,14 +143,14 @@ export default function TeacherManagementPage() {
 
         setIsSavingTeacher(true);
         try {
-            const updatedTeacher: Teacher = {
-                ...editingTeacher,
+            const updatedTeacher: Partial<Teacher> = {
                 name: editTeacherName,
                 role: editTeacherRole,
                 classIds: finalClassIds,
             };
-
-            await setTeachers(current => current.map(t => t.id === editingTeacher.id ? updatedTeacher : t));
+            
+            const teacherRef = doc(db, 'teachers', editingTeacher._docId);
+            await setDoc(teacherRef, updatedTeacher, { merge: true });
 
             toast({ title: "教師資料已更新" });
             setIsEditTeacherOpen(false);
@@ -171,7 +174,7 @@ export default function TeacherManagementPage() {
     };
     
     const handleDistributePoints = async () => {
-        if (!distributeTeacher || distributeAmount === '' || Number(distributeAmount) <= 0) {
+        if (!distributeTeacher || distributeAmount === '' || Number(distributeAmount) <= 0 || !distributeTeacher._docId) {
             toast({ title: "請輸入有效的點數", variant: "destructive" });
             return;
         }
@@ -182,10 +185,15 @@ export default function TeacherManagementPage() {
         }
 
         try {
-            await setConfig({ schoolFunds: schoolFunds - Number(distributeAmount) });
-            await setTeachers(current => current.map(t => 
-                t.id === distributeTeacher.id ? { ...t, pointBalance: (t.pointBalance || 0) + Number(distributeAmount) } : t
-            ));
+            const batch = writeBatch(db);
+            const configRef = doc(db, 'config', 'main');
+            const teacherRef = doc(db, 'teachers', distributeTeacher._docId);
+
+            batch.update(configRef, { schoolFunds: schoolFunds - Number(distributeAmount) });
+            batch.update(teacherRef, { pointBalance: (distributeTeacher.pointBalance || 0) + Number(distributeAmount) });
+
+            await batch.commit();
+
             toast({ title: "點數已分配", description: `已成功分配 ${Number(distributeAmount).toLocaleString()} 點給 ${distributeTeacher.name} 老師。` });
             setIsDistributePointsOpen(false);
             setDistributeAmount('');
@@ -196,8 +204,11 @@ export default function TeacherManagementPage() {
     };
 
     const handleDeleteTeacher = async () => {
-        if (!teacherToDelete) return;
-        await setTeachers(current => current.filter(t => t.id !== teacherToDelete.id));
+        if (!teacherToDelete?._docId) return;
+
+        const teacherRef = doc(db, 'teachers', teacherToDelete._docId);
+        await deleteDoc(teacherRef);
+        
         toast({ title: "教師已刪除", variant: "destructive" });
         setTeacherToDelete(null);
     };

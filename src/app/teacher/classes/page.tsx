@@ -28,7 +28,7 @@ import type { Teacher, ClassInfo } from "@/lib/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useRouter } from "next/navigation";
-import { collection, doc, writeBatch } from "firebase/firestore";
+import { collection, doc, writeBatch, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export default function ClassManagementPage() {
@@ -171,3 +171,5 @@ export default function ClassManagementPage() {
         </div>
     )
 }
+
+    
