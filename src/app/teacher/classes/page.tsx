@@ -28,11 +28,13 @@ import type { Teacher, ClassInfo } from "@/lib/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useRouter } from "next/navigation";
+import { collection, doc, writeBatch } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function ClassManagementPage() {
     const { toast } = useToast();
-    const { setClasses, setStudents, setTeachers, teacher } = useAuth();
-    const { teachers, classes } = useSchoolStore();
+    const { teacher } = useAuth();
+    const { teachers, classes, students } = useSchoolStore();
     const router = useRouter();
 
     const [classToDelete, setClassToDelete] = useState<ClassInfo | null>(null);
@@ -51,32 +53,45 @@ export default function ClassManagementPage() {
             toast({ title: "請輸入班級名稱", variant: "destructive" });
             return;
         }
-        const newClassId = `class-${Date.now()}`;
-        const newClass: ClassInfo = {
-            id: newClassId,
+        const newClassRef = doc(collection(db, "classes"));
+        await setDoc(newClassRef, {
+            id: newClassRef.id,
             name: newClassName,
             announcements: []
-        };
-        await setClasses(current => [...current, newClass]);
+        });
         toast({ title: "班級已新增" });
         setIsAddClassOpen(false);
         setNewClassName('');
     };
 
     const handleDeleteClass = async () => {
-        if (!classToDelete) return;
+        if (!classToDelete?._docId) return;
 
         try {
-             await setStudents(current => current.filter(s => s.classId !== classToDelete.id));
-             await setClasses(current => current.filter(c => c.id !== classToDelete.id));
+             const batch = writeBatch(db);
+
+             // Delete students in the class
+             const studentsToDelete = students.filter(s => s.classId === classToDelete.id);
+             studentsToDelete.forEach(s => {
+                if (s._docId) batch.delete(doc(db, 'students', s._docId));
+             });
+
+             // Delete the class itself
+             batch.delete(doc(db, 'classes', classToDelete._docId));
              
-             await setTeachers(current => current.map(t => ({
-                ...t,
-                classIds: (t.classIds || []).filter(cid => cid !== classToDelete.id)
-             })));
+             // Remove classId from all teachers
+             teachers.forEach(t => {
+                if (t._docId && t.classIds?.includes(classToDelete.id)) {
+                    const updatedClassIds = (t.classIds || []).filter(cid => cid !== classToDelete.id);
+                    batch.update(doc(db, 'teachers', t._docId), { classIds: updatedClassIds });
+                }
+             });
+
+             await batch.commit();
 
              toast({ title: "班級已刪除", description: "班級及其所有學生資料、教師關聯皆已被刪除。", variant: "destructive" });
         } catch(e) {
+             console.error(e);
              toast({ title: "刪除失敗", description: "刪除班級時發生錯誤。", variant: "destructive" });
         }
         
@@ -106,7 +121,7 @@ export default function ClassManagementPage() {
                         </TableHeader>
                         <TableBody>
                             {classes.map(c => {
-                                const assignedTeacher = teachers.find(t => Array.isArray(t.classIds) && t.classIds.includes(c.id) && t.role === 'teacher');
+                                const assignedTeacher = teachers.find(t => t.role === 'teacher' && Array.isArray(t.classIds) && t.classIds.includes(c.id));
                                 return (
                                 <TableRow key={c.id}>
                                     <TableCell>{c.name}</TableCell>

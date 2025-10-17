@@ -5,8 +5,6 @@ import React, { createContext, useContext, PropsWithChildren, useEffect, useStat
 import { useRouter } from 'next/navigation';
 import { useSchoolStore } from '@/store/useSchoolStore';
 import type { Student, Teacher } from '@/lib/types';
-import { doc, setDoc, runTransaction, writeBatch, Transaction } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 interface AuthContextType {
   role: 'student' | 'teacher' | null;

@@ -39,7 +39,9 @@ import {
   Mail,
   BookUp,
   Users,
-  Loader2
+  Loader2,
+  Briefcase,
+  School,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,6 +60,8 @@ import { useSchoolStore } from "@/store/useSchoolStore";
 import { useAuth } from "@/context/AuthContext";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
 import Logo from "@/components/logo";
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function TeacherLayout({ children }: { children: React.ReactNode; }) {
   const pathname = usePathname();
@@ -68,7 +72,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode;
     config: platformConfig,
     teachers,
   } = useSchoolStore();
-  const { teacher, handleLogout, setTeachers, isLoading } = useAuth();
+  const { teacher, handleLogout, isLoading, setAuthInfo } = useAuth();
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -76,7 +80,13 @@ export default function TeacherLayout({ children }: { children: React.ReactNode;
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   
-  const isImpersonating = useMemo(() => typeof window !== 'undefined' && !!localStorage.getItem('impersonator'), []);
+  const [isImpersonating, setIsImpersonating] = useState(false);
+
+  useEffect(() => {
+    // Safely check localStorage only on the client side
+    setIsImpersonating(!!localStorage.getItem('impersonator'));
+  }, [pathname]);
+
 
   // Auth check
   useEffect(() => {
@@ -98,27 +108,22 @@ export default function TeacherLayout({ children }: { children: React.ReactNode;
     }
     
     const originalAdmin = teachers.find(t => t.id === originalAdminId);
-    if (!originalAdmin) {
+    if (!originalAdmin || !originalAdmin._docId) {
        toast({ title: "返回失敗", description: "找不到原始管理員帳號資料。", variant: "destructive" });
        handleLogout();
        return;
     }
-    const correctPassword = originalAdmin?.password || platformConfig?.teacherPassword || TEACHER_PASSWORD;
-
-    localStorage.setItem('userRole', 'teacher');
-    localStorage.setItem('teacherDocId', originalAdmin._docId!);
-    localStorage.setItem('teacherId', originalAdmin.id);
-    localStorage.setItem('teacherName', originalAdmin.name);
-    localStorage.setItem('teacherClassIds', JSON.stringify(originalAdmin.classIds || []));
-    localStorage.setItem('teacherRole', originalAdmin.role);
+    
+    setAuthInfo({ role: 'teacher', docId: originalAdmin._docId });
     localStorage.removeItem('impersonator');
 
     toast({ title: "已返回校長身份" });
-    window.location.reload();
+    // Using router.refresh() to ensure all components re-render with the correct auth state
+    router.refresh();
   }
 
   const handleChangePassword = async () => {
-     if (!teacher) return;
+     if (!teacher?._docId) return;
     setIsSaving(true);
     if (newPassword !== confirmPassword) {
         toast({ title: "密碼不符", description: "新密碼與確認密碼不相符。", variant: "destructive" });
@@ -139,12 +144,8 @@ export default function TeacherLayout({ children }: { children: React.ReactNode;
     }
 
      try {
-        await setTeachers(currentTeachers => currentTeachers.map(t => {
-            if (t.id === teacher.id) {
-                return { ...t, password: newPassword };
-            }
-            return t;
-        }));
+        const teacherRef = doc(db, 'teachers', teacher._docId);
+        await setDoc(teacherRef, { password: newPassword }, { merge: true });
         
         toast({ title: "密碼已更新", description: "您的密碼已成功更新。" });
         setIsSettingsOpen(false);
@@ -156,12 +157,12 @@ export default function TeacherLayout({ children }: { children: React.ReactNode;
   }
 
   const navItems = [
-    { href: "/teacher/dashboard", label: "班級與點數管理", icon: LayoutDashboard, roles: ['admin', 'teacher', 'subject_teacher'] },
-    { href: "/teacher/class-rankings", label: "班級排名", icon: Users, roles: ['admin', 'teacher', 'subject_teacher'] },
-    { href: "/teacher/rankings", label: "全校排名", icon: Trophy, roles: ['admin'] },
+    { href: "/teacher/dashboard", label: "學生點數管理", icon: LayoutDashboard, roles: ['admin', 'teacher', 'subject_teacher'] },
+    { href: "/teacher/teachers", label: "教師管理", icon: Briefcase, roles: ['admin'] },
+    { href: "/teacher/classes", label: "班級管理", icon: School, roles: ['admin'] },
     { href: "/teacher/announcements", label: "公告管理", icon: Megaphone, roles: ['admin', 'teacher', 'subject_teacher'] },
     { href: "/teacher/feedback", label: "意見信箱", icon: Mail, roles: ['admin'], hasNew: hasNewFeedback },
-    { href: "/teacher/rewards", label: "獎勵管理", icon: Gift, roles: ['admin', 'teacher'] },
+    { href: "/teacher/rewards", label: "獎勵管理", icon: Gift, roles: ['admin', 'teacher', 'subject_teacher'] },
     { href: "/teacher/challenges", label: "挑戰管理", icon: Flag, roles: ['admin', 'teacher', 'subject_teacher'] },
     { href: "/teacher/habits", label: "習慣審核", icon: Repeat, roles: ['admin', 'teacher'] },
     { href: "/teacher/bu-ke-xing-qiu", label: "布可星球", icon: BookUp, roles: ['admin'] },
@@ -263,7 +264,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode;
         {isImpersonating && (
           <div className="sticky top-0 z-30 flex items-center justify-center gap-2 bg-yellow-400 p-2 text-center text-sm font-semibold text-yellow-900">
             <AlertTriangle className="h-4 w-4" />
-            <span>您正在以 {teacher.name} 的身份模擬登入。</span>
+            <span>您正在以 {teacher.name} 的身分模擬登入。</span>
             <Button size="sm" variant="link" className="h-auto p-0 text-yellow-900 underline" onClick={handleStopImpersonating}>
               返回校長身份
             </Button>
