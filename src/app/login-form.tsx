@@ -27,17 +27,14 @@ export default function LoginForm({ classes, teachers }: LoginFormProps) {
   const { students } = useSchoolStore();
 
   const handleStudentLogin = () => {
-    // In a real app, you'd likely want to find the student by seat number and class,
-    // then verify the password. For now, we find by ID which is seat number.
-    const student = students.find(s => s.classId === classId && s.id.toLowerCase() === studentSeatNumber.toLowerCase());
-    
-    // Placeholder for password check. In a real app, this would be a hashed password check.
-    const isPasswordCorrect = true; // Replace with actual password logic
+    // For now, student id is their seat number, and no password is required.
+    // This logic might need to be updated if login requirements change.
+    const student = students.find(s => s.classId === classId && s.seatNumber === parseInt(studentSeatNumber, 10));
 
-    if (student && isPasswordCorrect) {
+    if (student) {
         handleLogin({ role: 'student', studentId: student.id });
     } else {
-        alert("找不到學生資料或座號/密碼錯誤");
+        alert("找不到學生資料或座號錯誤");
     }
   }
 
@@ -51,6 +48,7 @@ export default function LoginForm({ classes, teachers }: LoginFormProps) {
   }
 
   const isStudentLoginDisabled = () => {
+    // Password is not required for now
     return isLoading || !classId || !studentSeatNumber;
   }
 
@@ -85,11 +83,11 @@ export default function LoginForm({ classes, teachers }: LoginFormProps) {
           </div>
           <div className="space-y-2">
             <Label htmlFor="student-seat">學生座號</Label>
-            <Input id="student-seat" placeholder="請輸入您的座號 (例如: S001)" value={studentSeatNumber} onChange={e => setStudentSeatNumber(e.target.value)} />
+            <Input id="student-seat" placeholder="請輸入您的座號" value={studentSeatNumber} onChange={e => setStudentSeatNumber(e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="student-password">密碼</Label>
-            <Input id="student-password" type="password" placeholder="請輸入您的密碼" value={studentPassword} onChange={e => setStudentPassword(e.target.value)} />
+            <Input id="student-password" type="password" placeholder="請輸入您的密碼 (目前不需輸入)" value={studentPassword} onChange={e => setStudentPassword(e.target.value)} />
           </div>
         </CardContent>
         <CardFooter>
