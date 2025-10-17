@@ -1,3 +1,4 @@
+
 import { useSchoolStore } from '@/store/useSchoolStore';
 import Image from 'next/image';
 
