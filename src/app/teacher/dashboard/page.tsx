@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Coins, Users, Trash2, Edit, UserPlus, PlusCircle, KeySquare, Upload } from "lucide-react";
+import { Coins, Users, Trash2, Edit, UserPlus, PlusCircle, KeySquare, Upload, AlertTriangle } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
@@ -42,8 +42,9 @@ import {
 import { subDays, isAfter } from 'date-fns';
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
-import { doc, writeBatch, deleteDoc, setDoc, collection } from "firebase/firestore";
+import { doc, writeBatch, deleteDoc, setDoc, collection, runTransaction } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useRouter } from "next/navigation";
 
 const StudentManagementTab = () => {
     const { toast } = useToast();
@@ -608,12 +609,14 @@ const GroupManagementTab = () => {
     const saveGroupsAndAssignments = async () => {
         if (!teacher?.id || !selectedClassId) return;
 
-        const classRef = doc(db, 'classes', selectedClassId);
+        const classDoc = classes.find(c => c.id === selectedClassId);
+        if (!classDoc?._docId) return;
+        const classRef = doc(db, 'classes', classDoc._docId);
+
         const batch = writeBatch(db);
 
-        const currentClass = classes.find(c => c.id === selectedClassId);
         const updatedGroupsData = {
-            ...currentClass?.groups,
+            ...classDoc?.groups,
             [teacher.id]: dialogGroups
         };
         batch.update(classRef, { groups: updatedGroupsData });
@@ -916,6 +919,110 @@ const PointsHistoryTab = () => {
     )
 }
 
+const ApprovalsTab = () => {
+    const { students, classes, config } = useSchoolStore();
+    const { teacher } = useAuth();
+    const { toast } = useToast();
+    const router = useRouter();
+
+    const relevantStudents = useMemo(() => {
+        if (!teacher) return [];
+        if (teacher.role === 'admin') return students;
+        return students.filter(s => (teacher.classIds || []).includes(s.classId));
+    }, [students, teacher]);
+
+    const pendingChallengeApprovals = useMemo(() => {
+        return relevantStudents.flatMap(student =>
+            (student.challenges || [])
+                .filter(c => c.status === 'pending_approval')
+                .map(sc => ({ student, studentChallenge: sc, challenge: config?.challenges.find(ch => ch.id === sc.challengeId) }))
+                .filter(item => !!item.challenge)
+        );
+    }, [relevantStudents, config?.challenges]);
+
+    const handleApproveChallenge = async (student: Student, challengeId: string) => {
+        if (!student._docId || !teacher?.id) return;
+
+        const challenge = config?.challenges.find(ch => ch.id === challengeId);
+        if (!challenge) return;
+
+        try {
+            await runTransaction(db, async (transaction) => {
+                const studentRef = doc(db, "students", student._docId!);
+                const studentDoc = await transaction.get(studentRef);
+                if (!studentDoc.exists()) throw new Error("Student not found");
+
+                const currentStudentData = studentDoc.data() as Student;
+                const newPoints = (currentStudentData.points || 0) + challenge.points;
+                const newHistory: PointRecord = {
+                    points: challenge.points,
+                    date: new Date().toISOString(),
+                    reason: `完成挑戰: ${challenge.name}`,
+                    teacherId: teacher.id,
+                };
+                const updatedChallenges = (currentStudentData.challenges || []).map(c =>
+                    c.challengeId === challengeId ? { ...c, status: 'completed' as const, completedDate: new Date().toISOString() } : c
+                );
+
+                transaction.update(studentRef, {
+                    points: newPoints,
+                    pointHistory: [...(currentStudentData.pointHistory || []), newHistory],
+                    challenges: updatedChallenges
+                });
+            });
+
+            toast({ title: "挑戰已批准", description: `已為 ${student.name} 發放 ${challenge.points} 點。` });
+        } catch (error: any) {
+            toast({ title: "批准失敗", description: error.message, variant: "destructive" });
+        }
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>審核中心</CardTitle>
+                <CardDescription>在此統一審核所有來自學生的申請，例如挑戰完成、習慣養成、貸款等。</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg">挑戰任務完成審核</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>學生</TableHead>
+                                    <TableHead>挑戰名稱</TableHead>
+                                    <TableHead className="text-right">獎勵點數</TableHead>
+                                    <TableHead className="text-right">操作</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {pendingChallengeApprovals.length > 0 ? pendingChallengeApprovals.map(({ student, studentChallenge, challenge }) => (
+                                    <TableRow key={`${student.id}-${studentChallenge.challengeId}`}>
+                                        <TableCell>{student.name} ({classes.find(c => c.id === student.classId)?.name})</TableCell>
+                                        <TableCell>{challenge?.name}</TableCell>
+                                        <TableCell className="text-right">{challenge?.points.toLocaleString()}</TableCell>
+                                        <TableCell className="text-right">
+                                            <Button size="sm" onClick={() => handleApproveChallenge(student, studentChallenge.challengeId)}>批准</Button>
+                                        </TableCell>
+                                    </TableRow>
+                                )) : (
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="h-24 text-center">沒有待審核的挑戰。</TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            </CardContent>
+        </Card>
+    );
+};
+
+
 export default function TeacherDashboardPage() {
     const { teacher } = useAuth();
     if (!teacher) return null;
@@ -959,15 +1066,7 @@ export default function TeacherDashboardPage() {
                         <PointsHistoryTab />
                       </TabsContent>
                        <TabsContent value="approvals" className="mt-4">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>審核中心</CardTitle>
-                                <CardDescription>即將推出：在此統一審核所有來自學生的申請。</CardDescription>
-                            </CardHeader>
-                             <CardContent>
-                                <p className="text-muted-foreground text-center py-12">此功能正在開發中。</p>
-                             </CardContent>
-                        </Card>
+                         <ApprovalsTab />
                       </TabsContent>
                     </Tabs>
                 </CardContent>
@@ -975,5 +1074,3 @@ export default function TeacherDashboardPage() {
         </div>
     );
 }
-
-    

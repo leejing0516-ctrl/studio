@@ -33,6 +33,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -119,9 +120,10 @@ export default function TeacherAnnouncementsPage() {
             await setDoc(configRef, { announcements: [...(platformConfig?.announcements || []), newAnnouncement] }, { merge: true });
             toast({ title: "學校公告已發布" });
         } else if (announcementType === 'class' && selectedClassId) {
-             const classRef = doc(db, 'classes', selectedClassId);
-             const currentClass = classes.find(c => c.id === selectedClassId);
-             await setDoc(classRef, { announcements: [...(currentClass?.announcements || []), newAnnouncement] }, { merge: true });
+             const classDoc = classes.find(c => c.id === selectedClassId);
+             if (!classDoc?._docId) return;
+             const classRef = doc(db, 'classes', classDoc._docId);
+             await setDoc(classRef, { announcements: [...(classDoc?.announcements || []), newAnnouncement] }, { merge: true });
              toast({ title: "班級公告已發布" });
         }
         
@@ -155,9 +157,10 @@ export default function TeacherAnnouncementsPage() {
             );
             await setDoc(configRef, { announcements: updatedAnnouncements }, { merge: true });
         } else if (announcementType === 'class' && selectedClassId) {
-            const classRef = doc(db, 'classes', selectedClassId);
-            const currentClass = classes.find(c => c.id === selectedClassId);
-            const updatedClassAnnouncements = (currentClass?.announcements || []).map(ann => 
+            const classDoc = classes.find(c => c.id === selectedClassId);
+            if (!classDoc?._docId) return;
+            const classRef = doc(db, 'classes', classDoc._docId);
+            const updatedClassAnnouncements = (classDoc?.announcements || []).map(ann => 
                 ann.id === updatedAnnouncement.id ? updatedAnnouncement : ann
             );
             await setDoc(classRef, { announcements: updatedClassAnnouncements }, { merge: true });
@@ -181,9 +184,10 @@ export default function TeacherAnnouncementsPage() {
             const updatedAnnouncements = (platformConfig?.announcements || []).filter(ann => ann.id !== announcementToDelete.id);
             await setDoc(configRef, { announcements: updatedAnnouncements }, { merge: true });
         } else if (announcementType === 'class' && selectedClassId) {
-            const classRef = doc(db, 'classes', selectedClassId);
-            const currentClass = classes.find(c => c.id === selectedClassId);
-            const updatedClassAnnouncements = (currentClass?.announcements || []).filter(ann => ann.id !== announcementToDelete.id);
+            const classDoc = classes.find(c => c.id === selectedClassId);
+            if (!classDoc?._docId) return;
+            const classRef = doc(db, 'classes', classDoc._docId);
+            const updatedClassAnnouncements = (classDoc?.announcements || []).filter(ann => ann.id !== announcementToDelete.id);
             await setDoc(classRef, { announcements: updatedClassAnnouncements }, { merge: true });
         }
 
@@ -417,5 +421,3 @@ export default function TeacherAnnouncementsPage() {
         </div>
     )
 }
-
-    

@@ -57,6 +57,8 @@ import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/context/AuthContext';
 import { useSchoolStore } from "@/store/useSchoolStore";
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function StudentLayout({
   children,
@@ -65,7 +67,7 @@ export default function StudentLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { student, isLoading, handleLogout, setStudents } = useAuth();
+  const { student, isLoading, handleLogout } = useAuth();
   const { toast } = useToast();
   
   const { classes, config: platformConfig } = useSchoolStore();
@@ -103,7 +105,7 @@ export default function StudentLayout({
   }, [isLoading, student, handleLogout]);
 
   const handleChangePassword = async () => {
-    if (!student) return;
+    if (!student?._docId) return;
     setIsSaving(true);
 
     if (newPassword !== confirmPassword) {
@@ -123,7 +125,8 @@ export default function StudentLayout({
     }
 
     try {
-        await setStudents((prev) => prev.map(s => s._docId === student._docId ? { ...s, password: newPassword } : s));
+        const studentRef = doc(db, 'students', student._docId);
+        await setDoc(studentRef, { password: newPassword }, { merge: true });
         toast({ title: "密碼已更新", description: "您的密碼已成功更新。" });
         setIsSettingsOpen(false);
         setCurrentPassword("");
@@ -137,15 +140,16 @@ export default function StudentLayout({
   };
 
   const handleOpenNotifications = useCallback(async () => {
-    if (!student || !hasNewPointHistory) return;
+    if (!student?._docId || !hasNewPointHistory) return;
     
     try {
-        await setStudents((prev) => prev.map(s => s._docId === student._docId ? { ...s, lastPointHistoryView: new Date().toISOString() } : s));
+        const studentRef = doc(db, 'students', student._docId);
+        await setDoc(studentRef, { lastPointHistoryView: new Date().toISOString() }, { merge: true });
     } catch (e) {
         console.error("Failed to update lastPointHistoryView:", e);
         toast({ title: "錯誤", description: "無法更新通知狀態，請稍後再試。", variant: "destructive" });
     }
-}, [student, hasNewPointHistory, setStudents, toast]);
+}, [student, hasNewPointHistory, toast]);
 
   const navItems = [
     { href: "/dashboard", label: "儀表板", icon: LayoutDashboard },
