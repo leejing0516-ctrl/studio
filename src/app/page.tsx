@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/context/AuthContext";
 import { useSchoolStore } from '@/store/useSchoolStore';
 import { Loader2, User, Building } from 'lucide-react';
-import Logo from '@/components/logo';
 
 export default function LoginPage() {
   const [classId, setClassId] = useState("");
@@ -73,9 +71,6 @@ export default function LoginPage() {
   return (
     <div style={pageStyle} className="flex min-h-screen flex-col items-center justify-center bg-background p-4 text-foreground">
       <div className="text-center mb-8">
-        <div className="flex justify-center items-center mb-4">
-            <Logo className="h-20 w-20" />
-        </div>
         <h1 className="text-4xl font-bold">{config?.platformName || "南梓實小虛擬銀行"}</h1>
         <p className="text-muted-foreground mt-2">為每一個努力的你,獻上更值得的未來。</p>
       </div>
