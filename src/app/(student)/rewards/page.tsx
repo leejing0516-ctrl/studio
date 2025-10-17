@@ -32,28 +32,22 @@ export default function RewardsPage() {
   const { student, setStudents, setPlatformConfig } = useAuth();
   const { config: platformConfig, teachers, loading: storeLoading } = useSchoolStore();
 
-  const allRewards = useMemo(() => platformConfig?.rewards || [], [platformConfig]);
+  const allRewards = platformConfig?.rewards || [];
 
+  // Direct computation on each render. This is safer than useMemo with complex dependencies.
   const { classRewards, schoolRewards } = (() => {
-    // Direct computation on each render.
-    // Return empty if data is not ready, the top-level loader will handle the UI.
-    if (!student || !allRewards.length || !teachers.length || storeLoading) {
+    if (!student || storeLoading || !allRewards.length || !teachers.length) {
       return { classRewards: [], schoolRewards: [] };
     }
 
     const availableRewards = allRewards.filter(reward => {
-      // Rule 1: School-wide rewards are always available.
       if (reward.scope === 'school') {
         return true;
       }
-
-      // Rule 2: Class-specific rewards are available if the provider (teacher) teaches the student's class.
       if (reward.scope === 'class') {
         const provider = teachers.find(t => t.id === reward.providerId);
-        // Check if the provider exists and their classIds array includes the student's classId.
-        return provider && provider.classIds?.includes(student.classId);
+        return provider?.classIds?.includes(student.classId);
       }
-
       return false;
     });
 
@@ -258,5 +252,3 @@ export default function RewardsPage() {
     </>
   );
 }
-
-    

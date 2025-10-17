@@ -30,31 +30,54 @@ function StoreHydration() {
             classes: collection(db, "classes"),
         };
 
+        let configLoaded = false;
+        let studentsLoaded = false;
+        let teachersLoaded = false;
+        let classesLoaded = false;
+
+        const checkAllLoaded = () => {
+            if (configLoaded && studentsLoaded && teachersLoaded && classesLoaded) {
+                setLoading(false);
+            }
+        };
+
         const configUnsub = onSnapshot(doc(collections.config, "main"), (docSnap) => {
             if (docSnap.exists()) {
                 setConfig(docSnap.data() as PlatformConfig);
+            }
+            if (!configLoaded) {
+                configLoaded = true;
+                checkAllLoaded();
             }
         });
         unsubscribers.push(configUnsub);
 
         const studentsUnsub = onSnapshot(collections.students, (snapshot) => {
             setStudents(snapshot.docs.map(d => ({ ...d.data(), _docId: d.id } as Student)));
+             if (!studentsLoaded) {
+                studentsLoaded = true;
+                checkAllLoaded();
+            }
         });
         unsubscribers.push(studentsUnsub);
 
         const teachersUnsub = onSnapshot(collections.teachers, (snapshot) => {
             setTeachers(snapshot.docs.map(d => ({ ...d.data(), _docId: d.id } as Teacher)));
+             if (!teachersLoaded) {
+                teachersLoaded = true;
+                checkAllLoaded();
+            }
         });
         unsubscribers.push(teachersUnsub);
 
         const classesUnsub = onSnapshot(collections.classes, (snapshot) => {
             setClasses(snapshot.docs.map(d => ({ ...d.data(), _docId: d.id } as ClassInfo)));
+             if (!classesLoaded) {
+                classesLoaded = true;
+                checkAllLoaded();
+            }
         });
         unsubscribers.push(classesUnsub);
-
-        // A simple mechanism to set loading to false after initial data fetch attempt.
-        // onSnapshot provides the first snapshot immediately.
-        setLoading(false);
 
         return () => {
             unsubscribers.forEach(unsub => unsub());
