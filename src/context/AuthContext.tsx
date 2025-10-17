@@ -4,6 +4,8 @@ import React, { createContext, useContext, PropsWithChildren, useEffect, useStat
 import { useRouter } from 'next/navigation';
 import { useSchoolStore } from '@/store/useSchoolStore';
 import type { Student, Teacher } from '@/lib/types';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface AuthContextType {
   role: 'student' | 'teacher' | null;
@@ -13,6 +15,7 @@ interface AuthContextType {
   teacher: Teacher | null;
   handleLogout: () => void;
   setAuthInfo: (info: { role: 'student' | 'teacher'; docId: string }) => void;
+  setPlatformConfig: (data: any) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -28,6 +31,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   const { 
     students, teachers, 
     loading: isStoreLoading,
+    config: platformConfig,
   } = useSchoolStore();
   
   const student = useMemo(() => students.find(s => s._docId === studentDocId) || null, [students, studentDocId]);
@@ -71,6 +75,13 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     setTeacherDocId(null);
     router.replace("/");
   }, [router]);
+
+  const setPlatformConfig = async (data: any) => {
+    if (db && platformConfig) {
+      const configRef = doc(db, 'config', 'main');
+      await setDoc(configRef, data, { merge: true });
+    }
+  };
   
   const value = {
     role,
@@ -80,6 +91,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     teacher,
     handleLogout,
     setAuthInfo,
+    setPlatformConfig,
     isLoading: isAuthLoading || isStoreLoading,
   };
 

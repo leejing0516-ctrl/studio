@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -20,7 +19,7 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { Student, StudentHabit, HabitCheckIn } from "@/lib/types";
+import type { Student, StudentHabit, HabitCheckIn, PointRecord } from "@/lib/types";
 import { Check, X, Coins, Loader2, Eye } from "lucide-react";
 import {
   AlertDialog,
@@ -44,14 +43,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useSchoolStore } from "@/store/useSchoolStore";
 import { useAuth } from "@/context/AuthContext";
-import { doc } from "firebase/firestore";
+import { doc, setDoc, runTransaction } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 const HABIT_DURATION = 21;
 
 export default function TeacherHabitsPage() {
-    const { students, classes, loading: isLoading } = useSchoolStore();
-    const { setStudents, runTransaction, teacher } = useAuth();
+    const { students, classes, loading: isLoading, config } = useSchoolStore();
+    const { teacher } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
 
@@ -66,21 +65,20 @@ export default function TeacherHabitsPage() {
     
 
     useEffect(() => {
-        const storedRole = localStorage.getItem('teacherRole');
-        const storedClassIdsStr = localStorage.getItem('teacherClassIds');
+        if (!teacher) return;
+        const storedRole = teacher.role;
+        const storedClassIds = teacher.classIds || [];
         if (storedRole !== 'admin' && storedRole !== 'teacher') {
             toast({ title: "權限不足", description: "只有校長或班級導師才能存取此頁面。", variant: "destructive" });
             router.push('/teacher/dashboard');
             return;
         }
         setRole(storedRole);
-         if (storedClassIdsStr && storedClassIdsStr !== 'undefined') {
-            const ids = JSON.parse(storedClassIdsStr);
-            setTeacherClassIds(ids);
-        }
-    }, [router, toast]);
+        setTeacherClassIds(storedClassIds);
+    }, [teacher, router, toast]);
     
     const relevantStudents = useMemo(() => {
+        if (!role) return [];
         if (role === 'admin') return students;
         return students.filter(s => teacherClassIds.includes(s.classId));
     }, [students, role, teacherClassIds]);
@@ -101,7 +99,9 @@ export default function TeacherHabitsPage() {
         ).sort((a, b) => new Date(b.habit.requestDate).getTime() - new Date(a.habit.requestDate).getTime());
     }, [relevantStudents]);
     
-    const handleApproveHabit = async (studentId: string, classId: string, habitId: string) => {
+    const handleApproveHabit = async (student: Student, habitId: string) => {
+        if (!student._docId) return;
+        
         const points = pointsToAward[habitId];
         if (!points || points <= 0) {
             toast({ title: "請設定有效的點數", variant: "destructive" });
@@ -109,10 +109,9 @@ export default function TeacherHabitsPage() {
         }
         
         const today = new Date();
-        const studentToUpdate = students.find(s => s.id === studentId && s.classId === classId);
-        if (!studentToUpdate) return;
+        const studentRef = doc(db, 'students', student._docId);
         
-        const updatedHabits = (studentToUpdate.habits || []).map(h => 
+        const updatedHabits = (student.habits || []).map(h => 
             h.id === habitId 
             ? { 
                 ...h, 
@@ -125,9 +124,7 @@ export default function TeacherHabitsPage() {
             : h
         );
 
-        await setStudents(currentStudents => currentStudents.map(s => 
-            s.id === studentId && s.classId === classId ? { ...s, habits: updatedHabits } : s
-        ));
+        await setDoc(studentRef, { habits: updatedHabits }, { merge: true });
         
         toast({ title: "習慣已批准", description: "學生現在可以開始他們的 21 天挑戰了！" });
     };
@@ -135,19 +132,16 @@ export default function TeacherHabitsPage() {
     const handleRejectHabit = async () => {
         if (!habitToReject) return;
         const { student, habit } = habitToReject;
+        if (!student._docId) return;
         
+        const studentRef = doc(db, 'students', student._docId);
         const updatedHabits = (student.habits || []).map(h => 
             h.id === habit.id 
             ? { ...h, status: 'rejected' as const, rejectionReason: rejectionReason } 
             : h
         );
 
-        await setStudents(currentStudents => currentStudents.map(s => {
-            if (s.id === student.id && s.classId === student.classId) {
-                return { ...s, habits: updatedHabits };
-            }
-            return s;
-        }));
+        await setDoc(studentRef, { habits: updatedHabits }, { merge: true });
         
         toast({ title: "習慣已拒絕", variant: "destructive" });
         setHabitToReject(null);
@@ -155,7 +149,7 @@ export default function TeacherHabitsPage() {
     };
     
     const handleAwardHabitPoints = async (student: Student, habit: StudentHabit) => {
-        if (!habit || habit.points <= 0 || !teacher) {
+        if (!habit || habit.points <= 0 || !teacher || !student._docId) {
             toast({ title: "無效的操作", description: "該習慣沒有設定有效的獎勵點數。", variant: "destructive" });
             return;
         }
@@ -163,11 +157,12 @@ export default function TeacherHabitsPage() {
         const pointsToAward = habit.points;
         
         try {
-            await runTransaction(async (transaction) => {
+            await runTransaction(db, async (transaction) => {
                 if (!student._docId) throw new Error("找不到學生文檔ID");
 
                 const configRef = doc(db, 'config', 'main');
                 const configDoc = await transaction.get(configRef);
+                if (!configDoc.exists()) throw new Error("找不到平台設定");
                 const platformConfig = configDoc.data();
                 const currentSchoolFunds = (platformConfig?.schoolFunds || 0) as number;
 
@@ -183,12 +178,13 @@ export default function TeacherHabitsPage() {
                 const studentData = studentDoc.data() as Student;
 
                 const today = new Date().toISOString();
-                const newHistory = [...(studentData.pointHistory || []), { points: pointsToAward, date: today, reason: `完成習慣: ${habit.title}`, teacherId: teacher.id }];
+                const newHistory: PointRecord = { points: pointsToAward, date: today, reason: `完成習慣: ${habit.title}`, teacherId: teacher.id };
+                
                 const updatedHabits = (studentData.habits || []).map(h => h.id === habit.id ? { ...h, status: 'completed' as const } : h);
 
                 transaction.update(studentRef, {
                     points: (studentData.points || 0) + pointsToAward,
-                    pointHistory: newHistory,
+                    pointHistory: [...(studentData.pointHistory || []), newHistory],
                     habits: updatedHabits,
                 });
             });
@@ -201,7 +197,7 @@ export default function TeacherHabitsPage() {
         }
     }
 
-    if (isLoading) {
+    if (isLoading || !role) {
       return (
         <div className="flex items-center justify-center h-full">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -251,7 +247,7 @@ export default function TeacherHabitsPage() {
                                                 />
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <Button size="sm" variant="outline" className="mr-2 border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600" onClick={() => handleApproveHabit(student.id, student.classId, habit.id)}>
+                                                <Button size="sm" variant="outline" className="mr-2 border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600" onClick={() => handleApproveHabit(student, habit.id)}>
                                                     <Check className="h-4 w-4 mr-1"/>批准
                                                 </Button>
                                                 <Button size="sm" variant="outline" className="border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600" onClick={() => setHabitToReject({student, habit})}>

@@ -1,4 +1,3 @@
-
 export type Feedback = {
   id: string;
   studentId: string;
@@ -240,6 +239,7 @@ export type DashboardCardConfig = {
 
 export type PlatformConfig = {
   id: 'main';
+  _docId?: string;
   schoolFunds: number;
   fixedDepositInterestRate: number;
   loanInterestRate: number;
