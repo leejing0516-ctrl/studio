@@ -7,6 +7,7 @@ import { useSchoolStore } from '@/store/useSchoolStore';
 import { TEACHER_PASSWORD } from '@/lib/placeholder-data';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { useAppData } from './AppDataContext';
 
 interface User {
   id: string;
@@ -37,13 +38,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
   const { toast } = useToast();
   
-  const { students, teachers, classes, config } = useSchoolStore(state => ({
+  const { students, teachers, config } = useSchoolStore(state => ({
     students: state.students,
     teachers: state.teachers,
     classes: state.classes,
     config: state.config,
   }));
-  const dataLoading = useSchoolStore(state => state.students.length === 0 || state.teachers.length === 0);
+  const { loading: dataLoading } = useAppData();
 
   const setAuthInfo = useCallback((info: any) => {
     setIsLoading(true);
@@ -83,30 +84,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   
   // Effect to initialize auth state from localStorage
   useEffect(() => {
-    // Wait until essential data is loaded before trying to restore auth
-    if (dataLoading) {
-      setIsLoading(true);
-      return;
-    };
-  
+    // We can run this check before all data is loaded to speed up initial render.
+    // The layouts will handle showing a loading state if their specific data isn't ready.
     try {
       const savedAuth = localStorage.getItem('auth');
       if (savedAuth) {
         const user: User = JSON.parse(savedAuth);
         if (user.role === 'student') {
-          // Verify student exists before setting auth state
-          if (students.some(s => s.id === user.id)) {
-            setStudent(user);
-          } else {
-            handleLogout(); // Stale auth data, log out
-          }
+          // Temporarily set user, subsequent renders in layouts will verify data.
+          setStudent(user);
         } else { // teacher, admin, etc.
-          // Verify teacher exists before setting auth state
-           if (teachers.some(t => t._docId === user._docId)) {
-            setTeacher(user);
-          } else {
-            handleLogout(); // Stale auth data, log out
-          }
+          setTeacher(user);
         }
       }
     } catch (error) {
@@ -114,10 +102,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       localStorage.removeItem('auth');
     }
     setIsLoading(false);
+  }, []);
+
+  // Effect to verify auth state once data is loaded, and log out if stale.
+  useEffect(() => {
+    if (dataLoading) return; // Wait for data to be loaded.
+    
+    const savedAuth = localStorage.getItem('auth');
+    if(savedAuth) {
+        try {
+            const user: User = JSON.parse(savedAuth);
+            if (user.role === 'student') {
+                if (!students.some(s => s.id === user.id)) {
+                    handleLogout(); // Stale auth data, log out
+                }
+            } else { // teacher, admin, etc.
+                if (!teachers.some(t => t._docId === user._docId)) {
+                    handleLogout(); // Stale auth data, log out
+                }
+            }
+        } catch {
+            handleLogout();
+        }
+    }
+
   }, [dataLoading, students, teachers]);
 
   const handleLogin = useCallback(async ({ role, studentId, teacherId, password }: any) => {
     setIsLoading(true);
+    // Give time for data to potentially load on first login
     await new Promise(resolve => setTimeout(resolve, 500));
 
     if (role === 'student') {
@@ -157,18 +170,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   
   const isAuthenticated = !!student || !!teacher;
 
-  // Render a global loading screen if essential data is not ready
-  if (dataLoading && isAuthenticated && pathname !== '/') {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <span className='ml-4'>正在從雲端同步資料...</span>
-      </div>
-    );
-  }
-
   return (
-    <AuthContext.Provider value={{ student, teacher, isLoading: isLoading || (isAuthenticated && dataLoading), isAuthenticated, handleLogin, handleLogout, setAuthInfo }}>
+    <AuthContext.Provider value={{ student, teacher, isLoading, isAuthenticated, handleLogin, handleLogout, setAuthInfo }}>
       {children}
     </AuthContext.Provider>
   );
