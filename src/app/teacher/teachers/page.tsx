@@ -74,7 +74,7 @@ export default function TeacherManagementPage() {
         if (!editingTeacher) return [];
         return classes.filter(c => {
             const currentTeacherIsTutor = editingTeacher.role === 'teacher' && (editingTeacher.classIds || []).includes(c.id);
-            const anotherTeacherIsTutor = teachers.some(t => t.id !== editingTeacher.id && t.role === 'teacher' && (t.classIds || []).includes(c.id));
+            const anotherTeacherIsTutor = teachers.some(t => t.id !== editingTeacher.id && t.role === 'teacher' && Array.isArray(t.classIds) && t.classIds.includes(c.id));
             return currentTeacherIsTutor || !anotherTeacherIsTutor;
         });
     }, [classes, teachers, editingTeacher]);
@@ -130,7 +130,7 @@ export default function TeacherManagementPage() {
         }
         
         const finalClassIds = editTeacherRole === 'teacher' 
-            ? (editAssignedClassIds[0] === 'unassigned' ? [] : editAssignedClassIds) 
+            ? (editAssignedClassIds[0] === 'unassigned' ? [] : editAssignedClassIds.filter(id => id !== 'unassigned'))
             : editAssignedClassIds;
 
         if (editTeacherRole === 'teacher' && finalClassIds.length > 1) {
@@ -350,7 +350,7 @@ export default function TeacherManagementPage() {
                             {editTeacherRole === 'teacher' && (
                                 <div className="space-y-2">
                                     <Label htmlFor="assign-class-edit">指派班級 (導師只能選一個)</Label>
-                                    <Select value={editAssignedClassIds[0] || ''} onValueChange={value => setEditAssignedClassIds(value ? [value] : [])}>
+                                    <Select value={editAssignedClassIds[0] || 'unassigned'} onValueChange={value => setEditAssignedClassIds(value ? [value] : [])}>
                                         <SelectTrigger id="assign-class-edit"><SelectValue placeholder="選擇一個班級"/></SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="unassigned">解除指派</SelectItem>
@@ -430,3 +430,5 @@ export default function TeacherManagementPage() {
         </div>
     )
 }
+
+    
