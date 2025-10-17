@@ -273,6 +273,7 @@ export default function TeacherManagementPage() {
                                 <Select value={assignedClassIds[0] || ''} onValueChange={value => setAssignedClassIds([value])}>
                                     <SelectTrigger id="assign-class-add"><SelectValue placeholder="選擇一個未被指派的班級"/></SelectTrigger>
                                     <SelectContent>
+                                        {unassignedClassesForAdd.length === 0 && <SelectItem value="no-class" disabled>沒有可指派的班級</SelectItem>}
                                         {unassignedClassesForAdd.map(c => (
                                             <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                                         ))}
@@ -343,6 +344,7 @@ export default function TeacherManagementPage() {
                                     <Select value={editAssignedClassIds[0] || ''} onValueChange={value => setEditAssignedClassIds([value])}>
                                         <SelectTrigger id="assign-class-edit"><SelectValue placeholder="選擇一個未被指派的班級"/></SelectTrigger>
                                         <SelectContent>
+                                            {unassignedClassesForEdit.length === 0 && <SelectItem value="no-class" disabled>沒有可指派的班級</SelectItem>}
                                             {unassignedClassesForEdit.map(c => (
                                                 <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                                             ))}
