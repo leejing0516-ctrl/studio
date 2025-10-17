@@ -1,4 +1,3 @@
-
 // This file contains placeholder data that is used when the database is empty.
 // In a real application, this data would be fetched from a database.
 

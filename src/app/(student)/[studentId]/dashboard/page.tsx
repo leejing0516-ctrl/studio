@@ -1,4 +1,3 @@
-
 "use client";
 import { useSchoolStore } from '@/store/useSchoolStore';
 import { useAuth } from '@/context/AuthContext';
