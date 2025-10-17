@@ -50,54 +50,35 @@ export default function TeacherAnnouncementsPage() {
         config: platformConfig,
         loading: isLoading
     } = useSchoolStore();
-    const { setClasses, setPlatformConfig } = useAuth();
+    const { setClasses, setPlatformConfig, teacher } = useAuth();
 
     const { toast } = useToast();
 
-    const [role, setRole] = useState<string | null>(null);
-    const [teacherId, setTeacherId] = useState<string>('');
-    const [teacherName, setTeacherName] = useState<string>('');
-    const [teacherClassIds, setTeacherClassIds] = useState<string[]>([]);
-    const [selectedClassId, setSelectedClassId] = useState<string>('');
-    
-    // State for Announcements
+    const [announcementToDelete, setAnnouncementToDelete] = useState<Announcement | null>(null);
+    const [announcementType, setAnnouncementType] = useState<'school' | 'class'>('school');
     const [isAddAnnouncementDialogOpen, setIsAddAnnouncementDialogOpen] = useState(false);
     const [isEditAnnouncementDialogOpen, setIsEditAnnouncementDialogOpen] = useState(false);
     const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
-    const [announcementToDelete, setAnnouncementToDelete] = useState<Announcement | null>(null);
-    const [announcementType, setAnnouncementType] = useState<'school' | 'class'>('school');
+    const [selectedClassId, setSelectedClassId] = useState<string>('');
+    
+    const { role, teacherId, teacherName, teacherClassIds } = useMemo(() => ({
+        role: teacher?.role || null,
+        teacherId: teacher?.id || '',
+        teacherName: teacher?.name || '',
+        teacherClassIds: teacher?.classIds || []
+    }), [teacher]);
 
 
      useEffect(() => {
-        const storedRole = localStorage.getItem('teacherRole');
-        const storedTeacherId = localStorage.getItem('teacherId');
-        const storedTeacherName = localStorage.getItem('teacherName');
-        const storedClassIdsStr = localStorage.getItem('teacherClassIds');
-        setRole(storedRole);
-        setTeacherId(storedTeacherId || '');
-        setTeacherName(storedTeacherName || '');
-        
-        let ids: string[] = [];
-        if (storedClassIdsStr && storedClassIdsStr !== 'undefined') {
-            try {
-                ids = JSON.parse(storedClassIdsStr);
-            } catch (e) {
-                console.error("Failed to parse teacherClassIds from localStorage", e);
-                ids = [];
-            }
-        }
-        setTeacherClassIds(ids);
-
-        // Set initial selected class and announcement type based on role
-        if (storedRole === 'admin') {
+        if (role === 'admin') {
             setAnnouncementType('school');
-        } else if (storedRole === 'teacher' || storedRole === 'subject_teacher') {
+        } else if (role === 'teacher' || role === 'subject_teacher') {
             setAnnouncementType('class');
-            if (ids.length > 0 && !selectedClassId) {
-                setSelectedClassId(ids[0]);
+            if (teacherClassIds.length > 0 && !teacherClassIds.includes(selectedClassId)) {
+                setSelectedClassId(teacherClassIds[0]);
             }
         }
-    }, [selectedClassId]);
+    }, [role, teacherClassIds, selectedClassId]);
 
     const schoolAnnouncements = useMemo(() => {
         return (platformConfig?.announcements || [])
@@ -364,20 +345,22 @@ export default function TeacherAnnouncementsPage() {
                             </Button>
                         </CardHeader>
                         <CardContent>
-                            <div className="mb-4">
-                                <Label htmlFor="class-select">選擇班級</Label>
-                                 <Select onValueChange={setSelectedClassId} value={selectedClassId}>
-                                    <SelectTrigger id="class-select" className="w-full md:w-[280px]">
-                                        <SelectValue placeholder="請選擇班級" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {teacherClassIds.map(id => {
-                                            const classInfo = classes.find(c => c.id === id);
-                                            return classInfo ? <SelectItem key={id} value={id}>{classInfo.name}</SelectItem> : null
-                                        })}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                            {teacherClassIds.length > 0 && (
+                                <div className="mb-4">
+                                    <Label htmlFor="class-select">選擇班級</Label>
+                                    <Select onValueChange={setSelectedClassId} value={selectedClassId}>
+                                        <SelectTrigger id="class-select" className="w-full md:w-[280px]">
+                                            <SelectValue placeholder="請選擇班級" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {teacherClassIds.map(id => {
+                                                const classInfo = classes.find(c => c.id === id);
+                                                return classInfo ? <SelectItem key={id} value={id}>{classInfo.name}</SelectItem> : null
+                                            })}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
                             <AnnouncementTable announcements={classAnnouncements} type="class" />
                         </CardContent>
                     </Card>
