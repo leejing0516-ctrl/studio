@@ -1,9 +1,9 @@
-
-import type { Student, Reward, Stock, Class, Teacher, Challenge, RedeemedRewardItem, StudentHabit } from "./types";
+import type { Student, Reward, Stock, ClassInfo as Class, Teacher, Challenge, RedeemedRewardItem, StudentHabit } from "./types";
 
 export const TEACHER_PASSWORD = "001"; // Shared password for all teachers for simplicity
 
 export const classes: Class[] = [
+    { id: "1A", name: "一年甲班", announcements: [] },
     { id: "1B", name: "一年乙班", announcements: [] },
     { id: "6A", name: "六年甲班", announcements: [] },
     { id: "6B", name: "六年乙班", announcements: [] },
@@ -17,7 +17,8 @@ export const classes: Class[] = [
 
 export const teachers: Teacher[] = [
     { id: "principal", name: "李志軒校長", role: "admin", classIds: [], password: TEACHER_PASSWORD, pointBalance: 0, sortOrder: 1 },
-    { id: "uu", name: "黃雅娟護士", role: "subject_teacher", classIds: ["6A", "6B", "5A", "5B", "4A", "4B", "3A", "3B", "1B"], password: TEACHER_PASSWORD, pointBalance: 15000, sortOrder: 2 },
+    { id: "uu", name: "黃雅娟護士", role: "subject_teacher", classIds: ["6A", "6B", "5A", "5B", "4A", "4B", "3A", "3B", "1A", "1B"], password: TEACHER_PASSWORD, pointBalance: 15000, sortOrder: 2 },
+    { id: "teacher1A", name: "導師1A", role: "teacher", classIds: ["1A"], password: TEACHER_PASSWORD, pointBalance: 10000 },
     { id: "teacher1B", name: "導師1B", role: "teacher", classIds: ["1B"], password: TEACHER_PASSWORD, pointBalance: 10000 },
     { id: "teacher6A", name: "高老師", role: "teacher", classIds: ["6A"], password: TEACHER_PASSWORD, pointBalance: 10000 },
     { id: "teacher6B", name: "李老師", role: "teacher", classIds: ["6B"], password: TEACHER_PASSWORD, pointBalance: 10000 },
@@ -29,6 +30,8 @@ export const teachers: Teacher[] = [
 ];
 
 export const students: Student[] = [
+  // Class 1A
+  { id: "S001", name: "王大明", classId: "1A", points: 1200, avatar: "https://picsum.photos/seed/S001-1A/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [] },
   // Class 1B
   { id: "S001", name: "陳容德", classId: "1B", points: 600, avatar: "https://picsum.photos/seed/S001/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [] },
   { id: "S002", name: "方崇恩", classId: "1B", points: 100, avatar: "https://picsum.photos/seed/S002/100", password: "1", portfolio: [], pointHistory: [], redeemedRewards: [] },
@@ -48,7 +51,18 @@ export const students: Student[] = [
 ];
 
 
-export const rewards: Reward[] = [];
+export const rewards: Reward[] = [
+    { id: 'reward-1A-1', name: '小點心', description: '餅乾糖果', cost: 50, stock: 50, image: 'https://picsum.photos/seed/snack/200', scope: 'class', providerId: 'teacher1A' },
+    { id: 'reward-1A-2', name: '免午休卡', description: '午休可以不用趴下，安靜做自己的事一次。', cost: 400, stock: 3, image: 'https://picsum.photos/seed/rest/200', scope: 'class', providerId: 'teacher1A' },
+    { id: 'reward-1A-3', name: '點歌卡', description: '早自修或午餐時間可點歌1首。', cost: 200, stock: 10, image: 'https://picsum.photos/seed/music/200', scope: 'class', providerId: 'teacher1A' },
+    { id: 'reward-1A-4', name: '鉛筆', description: '一枝好用的鉛筆。', cost: 20, stock: 10, image: 'https://picsum.photos/seed/pencil/200', scope: 'class', providerId: 'teacher1A' },
+    { id: 'reward-1A-5', name: '橡皮擦', description: '一塊好用的橡皮擦。', cost: 20, stock: 9, image: 'https://picsum.photos/seed/eraser/200', scope: 'class', providerId: 'teacher1A' },
+    { id: 'reward-1A-6', name: '彩虹筆', description: '一枝彩虹筆。', cost: 40, stock: 5, image: 'https://picsum.photos/seed/rainbowpen/200', scope: 'class', providerId: 'teacher1A' },
+    { id: 'reward-1A-7', name: '點數輪盤', description: '輕鬆賺點數的好機會！但也可能得不償失，請謹慎使用。80→20%, 90→25%, 100→25%; 120→11%, 140→9%, 160→7%, 180→5%, 200→3%', cost: 100, stock: 5, image: 'https://picsum.photos/seed/roulette/200', scope: 'class', providerId: 'teacher1A' },
+    { id: 'reward-1A-8', name: '口罩', description: '1個普通的口罩', cost: 5, stock: 50, image: 'https://picsum.photos/seed/mask1/200', scope: 'class', providerId: 'teacher1A' },
+    { id: 'reward-1A-9', name: '口罩', description: '1個普通的口罩', cost: 5, stock: 50, image: 'https://picsum.photos/seed/mask2/200', scope: 'class', providerId: 'teacher1A' },
+    { id: 'reward-school-1', name: '與校長共進午餐', description: '獲得一次與校長共進午餐的榮譽！', cost: 5000, stock: 1, image: 'https://picsum.photos/seed/principal-lunch/200', scope: 'school', providerId: 'school_admin' },
+];
 
 export const stocks: Stock[] = [
     { id: "ART", ticker: "ART", name: "創意公司", price: 77.8736190312441, change: 0.06600775319166985, changePercent: 0.08483457094677442, marketCap: "3000億" },
