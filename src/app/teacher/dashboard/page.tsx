@@ -37,6 +37,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { subDays, isAfter } from 'date-fns';
 import { cn } from "@/lib/utils";
@@ -526,7 +527,7 @@ const PointsTab = () => {
 
 const GroupManagementTab = () => {
     const { teacher } = useAuth();
-    const { students, classes } = useSchoolStore();
+    const { students, classes, setClasses, setStudents: setAllStudents } = useSchoolStore();
     const { toast } = useToast();
 
     const [selectedClassId, setSelectedClassId] = useState<string>('');
