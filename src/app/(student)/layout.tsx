@@ -59,10 +59,10 @@ export default function StudentLayout({
 }) {
   const pathname = usePathname();
   const { student, handleLogout, isLoading } = useAuth();
-  const { config, students, classes, teachers } = useSchoolStore();
+  const { config, students, classes } = useSchoolStore();
 
   const currentStudent = React.useMemo(() => {
-    if (!student?._docId) return null;
+    if (!student?.id) return null;
     return students.find(s => s.id === student.id);
   }, [student, students]);
 

@@ -15,7 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Student } from '@/lib/types';
-import { doc, runTransaction, writeBatch } from 'firebase/firestore';
+import { doc, runTransaction, writeBatch, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Papa from 'papaparse';
 

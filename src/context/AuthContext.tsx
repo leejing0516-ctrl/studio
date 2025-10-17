@@ -46,6 +46,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const dataLoading = useSchoolStore(state => state.students.length === 0 || state.teachers.length === 0);
 
   const setAuthInfo = useCallback((info: any) => {
+    setIsLoading(true);
     if (info.role === 'student') {
       const studentData = students.find(s => s.id === info.studentId);
       if (studentData) {
@@ -77,6 +78,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         router.push('/teacher/dashboard');
       }
     }
+    setIsLoading(false);
   }, [router, students, teachers]);
   
   // Effect to initialize auth state from localStorage
@@ -98,13 +100,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsLoading(false);
   }, []);
 
-  const handleLogin = useCallback(async ({ role, classId, studentId, teacherId, password }: any) => {
+  const handleLogin = useCallback(async ({ role, studentId, teacherId, password }: any) => {
     setIsLoading(true);
-    // Add a small delay to allow data to load from store
     await new Promise(resolve => setTimeout(resolve, 500));
 
     if (role === 'student') {
-      const studentData = students.find(s => s.classId === classId && s.id === studentId);
+      const studentData = students.find(s => s.id === studentId);
+      // Student password check is optional for now based on screenshot
       if (studentData) {
         const user = { id: studentData.id, role: 'student', name: studentData.name, _docId: studentData._docId, classId: studentData.classId };
         setStudent(user);
