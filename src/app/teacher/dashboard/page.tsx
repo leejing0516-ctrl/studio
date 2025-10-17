@@ -531,8 +531,10 @@ const GroupManagementTab = () => {
 
     const [selectedClassId, setSelectedClassId] = useState<string>('');
     const [isManageGroupsOpen, setIsManageGroupsOpen] = useState(false);
-    const [groups, setGroups] = useState<ClassGroup[]>([]);
-    const [editingGroupName, setEditingGroupName] = useState<{ id: string, name: string } | null>(null);
+    
+    // State for the management dialog
+    const [dialogGroups, setDialogGroups] = useState<ClassGroup[]>([]);
+    const [dialogStudentAssignments, setDialogStudentAssignments] = useState<{ [studentId: string]: string | undefined }>({});
 
     const availableClasses = useMemo(() => {
         if (!teacher) return [];
@@ -541,72 +543,93 @@ const GroupManagementTab = () => {
         return classes.filter(c => teacherClassIds.includes(c.id));
     }, [teacher, classes]);
 
-    const filteredStudents = useMemo(() => {
-        if (!selectedClassId) return [];
-        return students.filter(s => s.classId === selectedClassId).sort((a, b) => a.id.localeCompare(b.id));
-    }, [students, selectedClassId]);
-
     useEffect(() => {
         if (availableClasses.length > 0 && !selectedClassId) {
             setSelectedClassId(availableClasses[0].id);
         }
     }, [availableClasses, selectedClassId]);
 
-    useEffect(() => {
-        if (selectedClassId && teacher?.id) {
-            const currentClass = classes.find(c => c.id === selectedClassId);
-            setGroups(currentClass?.groups?.[teacher.id] || []);
-        }
-    }, [selectedClassId, classes, teacher?.id]);
+    const studentsInClass = useMemo(() => {
+        if (!selectedClassId) return [];
+        return students.filter(s => s.classId === selectedClassId).sort((a, b) => a.id.localeCompare(b.id));
+    }, [students, selectedClassId]);
+    
+    const teacherGroups = useMemo(() => {
+        const classInfo = classes.find(c => c.id === selectedClassId);
+        if (!classInfo || !teacher?.id) return [];
+        return classInfo.groups?.[teacher.id] || [];
+    }, [classes, selectedClassId, teacher?.id]);
 
-    const handleManageGroups = () => {
+
+    const unassignedStudents = useMemo(() => {
+        return studentsInClass.filter(student => !student.groupId || !teacherGroups.some(g => g.id === student.groupId));
+    }, [studentsInClass, teacherGroups]);
+    
+    const openManagementDialog = () => {
         if (!selectedClassId) {
             toast({ title: "請先選擇一個班級", variant: "destructive" });
             return;
         }
+        setDialogGroups(teacherGroups);
+        const initialAssignments: { [studentId: string]: string | undefined } = {};
+        studentsInClass.forEach(s => {
+            initialAssignments[s.id] = s.groupId;
+        });
+        setDialogStudentAssignments(initialAssignments);
         setIsManageGroupsOpen(true);
     };
 
-    const addGroup = () => {
-        const newGroup: ClassGroup = { id: `group-${Date.now()}`, name: `新的分組 ${groups.length + 1}` };
-        setGroups([...groups, newGroup]);
+    const addGroupInDialog = () => {
+        const newGroup: ClassGroup = { id: `group-${Date.now()}`, name: `新的分組 ${dialogGroups.length + 1}` };
+        setDialogGroups([...dialogGroups, newGroup]);
     };
 
-    const deleteGroup = (groupId: string) => {
-        setGroups(groups.filter(g => g.id !== groupId));
+
+
+    const deleteGroupInDialog = (groupId: string) => {
+        setDialogGroups(dialogGroups.filter(g => g.id !== groupId));
+        // Also unassign students from the deleted group
+        const newAssignments = { ...dialogStudentAssignments };
+        Object.keys(newAssignments).forEach(studentId => {
+            if (newAssignments[studentId] === groupId) {
+                newAssignments[studentId] = undefined;
+            }
+        });
+        setDialogStudentAssignments(newAssignments);
     };
 
-    const saveGroups = async () => {
+    const saveGroupsAndAssignments = async () => {
         if (!teacher?.id || !selectedClassId) return;
 
+        // Save groups to class data
         await setClasses(prevClasses => prevClasses.map(c => {
             if (c.id === selectedClassId) {
                 return {
                     ...c,
                     groups: {
                         ...(c.groups || {}),
-                        [teacher.id!]: groups
+                        [teacher.id!]: dialogGroups
                     }
                 };
             }
             return c;
         }));
 
+        // Save assignments to student data
         await setStudents(prevStudents => prevStudents.map(s => {
-            if (s.classId === selectedClassId && s.groupId && !groups.some(g => g.id === s.groupId)) {
-                return { ...s, groupId: undefined };
+            if (s.classId === selectedClassId && dialogStudentAssignments.hasOwnProperty(s.id)) {
+                 // Only update if the assignment has changed for this teacher's groups
+                const originalGroupId = teacherGroups.find(g => g.id === s.groupId) ? s.groupId : undefined;
+                const newGroupId = dialogStudentAssignments[s.id];
+                 if (originalGroupId !== newGroupId) {
+                    return { ...s, groupId: newGroupId };
+                }
             }
             return s;
         }));
 
         toast({ title: "分組已儲存" });
         setIsManageGroupsOpen(false);
-    };
-    
-    const assignStudentToGroup = async (studentId: string, groupId: string | undefined) => {
-        await setStudents(prevStudents => prevStudents.map(s => 
-            s.id === studentId && s.classId === selectedClassId ? { ...s, groupId: groupId } : s
-        ));
     };
 
     return (
@@ -616,9 +639,12 @@ const GroupManagementTab = () => {
                     <CardTitle>分組管理</CardTitle>
                     <CardDescription>為目前選擇的班級建立您自己的小組，並將學生指派到各組。</CardDescription>
                 </div>
-                <Button onClick={handleManageGroups}>
-                    <Users className="mr-2 h-4 w-4" /> 管理我的分組
-                </Button>
+                <div className="flex flex-col items-end gap-2">
+                    <p className="text-sm font-semibold">我的點數餘額: {(teacher?.pointBalance || 0).toLocaleString()}</p>
+                    <Button onClick={openManagementDialog}>
+                        <Users className="mr-2 h-4 w-4" /> 管理我的分組
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent>
                 <div className="mb-4 max-w-xs">
@@ -635,81 +661,111 @@ const GroupManagementTab = () => {
                     </Select>
                 </div>
                 
-                {groups.length === 0 ? (
+                {teacherGroups.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
                         <p>您尚未為此班級建立任何分組。</p>
+                        <Button variant="link" onClick={openManagementDialog}>點此開始管理分組</Button>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto border rounded-md">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>座號</TableHead>
-                                    <TableHead>姓名</TableHead>
-                                    <TableHead className="w-1/3">指派分組</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredStudents.map(student => (
-                                    <TableRow key={student.id}>
-                                        <TableCell>{student.id}</TableCell>
-                                        <TableCell>{student.name}</TableCell>
-                                        <TableCell>
-                                            <Select 
-                                                value={student.groupId || ""} 
-                                                onValueChange={(value) => assignStudentToGroup(student.id, value === "" ? undefined : value)}
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="未分組" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                     <SelectItem value="">未分組</SelectItem>
-                                                    {groups.map(group => (
-                                                        <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        {unassignedStudents.length > 0 && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>未分組</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <ul className="space-y-1 text-sm text-muted-foreground">
+                                        {unassignedStudents.map(student => <li key={student.id}>{student.name}</li>)}
+                                    </ul>
+                                </CardContent>
+                            </Card>
+                        )}
+                        {teacherGroups.map(group => (
+                            <Card key={group.id}>
+                                <CardHeader>
+                                    <CardTitle>{group.name}</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <ul className="space-y-1 text-sm">
+                                        {studentsInClass.filter(s => s.groupId === group.id).map(student => (
+                                            <li key={student.id}>{student.name}</li>
+                                        ))}
+                                    </ul>
+                                </CardContent>
+                            </Card>
+                        ))}
                     </div>
                 )}
             </CardContent>
 
             <Dialog open={isManageGroupsOpen} onOpenChange={setIsManageGroupsOpen}>
-                <DialogContent>
+                <DialogContent className="max-w-4xl">
                     <DialogHeader>
                         <DialogTitle>管理分組 for {classes.find(c => c.id === selectedClassId)?.name}</DialogTitle>
-                        <DialogDescription>新增、編輯或刪除您在此班級的小組。</DialogDescription>
+                        <DialogDescription>在此處新增/編輯組名，並從右側列表中為學生指派分組。</DialogDescription>
                     </DialogHeader>
-                    <div className="py-4 space-y-4">
-                        {groups.map(group => (
-                            <div key={group.id} className="flex items-center gap-2">
-                                <Input 
-                                    value={editingGroupName?.id === group.id ? editingGroupName.name : group.name}
-                                    onFocus={() => setEditingGroupName({ id: group.id, name: group.name })}
-                                    onChange={(e) => setEditingGroupName({ id: group.id, name: e.target.value })}
-                                    onBlur={() => {
-                                        if (editingGroupName?.id === group.id) {
-                                            setGroups(groups.map(g => g.id === group.id ? { ...g, name: editingGroupName.name } : g));
-                                            setEditingGroupName(null);
-                                        }
-                                    }}
-                                />
-                                <Button variant="ghost" size="icon" onClick={() => deleteGroup(group.id)}>
-                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
-                            </div>
-                        ))}
-                        <Button variant="outline" onClick={addGroup}>
-                            <PlusCircle className="mr-2 h-4 w-4" /> 新增組別
-                        </Button>
+                    <div className="grid md:grid-cols-2 gap-8 py-4 max-h-[60vh] overflow-y-auto">
+                        <div className="space-y-4">
+                            <h3 className="font-semibold">編輯組名</h3>
+                            {dialogGroups.map((group, index) => (
+                                <div key={group.id} className="flex items-center gap-2">
+                                    <Input 
+                                        value={group.name}
+                                        onChange={(e) => {
+                                            const newGroups = [...dialogGroups];
+                                            newGroups[index].name = e.target.value;
+                                            setDialogGroups(newGroups);
+                                        }}
+                                    />
+                                    <Button variant="ghost" size="icon" onClick={() => deleteGroupInDialog(group.id)}>
+                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                </div>
+                            ))}
+                            <Button variant="outline" onClick={addGroupInDialog}>
+                                <PlusCircle className="mr-2 h-4 w-4" /> 新增組別
+                            </Button>
+                        </div>
+                        <div className="space-y-4">
+                             <h3 className="font-semibold">指派學生</h3>
+                             <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>學生</TableHead>
+                                        <TableHead>分組</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                     {studentsInClass.map(student => (
+                                        <TableRow key={student.id}>
+                                            <TableCell>{student.name}</TableCell>
+                                            <TableCell>
+                                                <Select
+                                                    value={dialogStudentAssignments[student.id] || ''}
+                                                    onValueChange={(value) => {
+                                                        setDialogStudentAssignments(prev => ({ ...prev, [student.id]: value === '' ? undefined : value }));
+                                                    }}
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="未分組" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="">未分組</SelectItem>
+                                                        {dialogGroups.map(group => (
+                                                            <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                             </Table>
+                        </div>
                     </div>
                     <DialogFooter>
                         <DialogClose asChild><Button variant="secondary">取消</Button></DialogClose>
-                        <Button onClick={saveGroups}>儲存分組</Button>
+                        <Button onClick={saveGroupsAndAssignments}>儲存變更</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -852,12 +908,25 @@ const PointsHistoryTab = () => {
 }
 
 export default function TeacherDashboardPage() {
+    const { teacher } = useAuth();
+    if (!teacher) return null;
+
     return (
         <div className="space-y-6">
             <Card>
                 <CardHeader>
-                    <CardTitle>班級與點數管理</CardTitle>
-                    <CardDescription>在此管理班級、學生分組、發放點數與查看歷史紀錄。</CardDescription>
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <CardTitle>你好，{teacher.name}</CardTitle>
+                            <CardDescription>在此管理班級、學生分組、發放點數與查看歷史紀錄。</CardDescription>
+                        </div>
+                        {teacher.role !== 'admin' && (
+                             <div className="text-right">
+                                <p className="text-sm text-muted-foreground">我的點數餘額</p>
+                                <p className="text-2xl font-bold">{teacher.pointBalance?.toLocaleString() || 0}</p>
+                            </div>
+                        )}
+                    </div>
                 </CardHeader>
                 <CardContent>
                    <Tabs defaultValue="students" className="w-full">
