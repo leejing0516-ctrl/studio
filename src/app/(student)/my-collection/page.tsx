@@ -9,10 +9,11 @@ import { Gem, Hourglass, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import type { RedeemedRewardItem, Student } from "@/lib/types";
-
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function MyCollectionPage() {
-  const { student: currentStudent, setStudents } = useAuth();
+  const { student: currentStudent } = useAuth();
   const { toast } = useToast();
   const [isUsing, setIsUsing] = useState<string | null>(null);
 
@@ -22,19 +23,14 @@ export default function MyCollectionPage() {
     setIsUsing(redemption.redemptionId);
     
     try {
-        await setStudents(prev => prev.map(s => {
-            if (s._docId === currentStudent._docId) {
-                return {
-                    ...s,
-                    redeemedRewards: (s.redeemedRewards || []).map(r => 
-                        r.redemptionId === redemption.redemptionId 
-                        ? { ...r, status: 'pending_use' as const } 
-                        : r
-                    )
-                };
-            }
-            return s;
-        }));
+        const updatedRewards = (currentStudent.redeemedRewards || []).map(r => 
+            r.redemptionId === redemption.redemptionId 
+            ? { ...r, status: 'pending_use' as const } 
+            : r
+        );
+        const studentRef = doc(db, 'students', currentStudent._docId);
+        await setDoc(studentRef, { redeemedRewards: updatedRewards }, { merge: true });
+
          toast({
             title: "已提出使用請求",
             description: `您已請求使用「${redemption.reward.name}」。請等待老師同意。`

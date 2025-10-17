@@ -42,6 +42,8 @@ import { subMonths, format, isSameDay, startOfDay, formatDistanceToNow } from "d
 import { zhTW } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { doc, writeBatch } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const chartConfig: ChartConfig = {
   value: {
@@ -92,7 +94,7 @@ export default function StocksPage() {
   const [tradeType, setTradeType] = useState<"buy" | "sell">("buy");
   const [tradeShares, setTradeShares] = useState(0);
   const { toast } = useToast();
-  const { student: currentStudent, setStudents } = useAuth();
+  const { student: currentStudent } = useAuth();
   const { stocks: marketStocks, config: platformConfig } = useSchoolStore();
   
   const studentHolding = selectedStock ? currentStudent?.portfolio.find(item => item.ticker === selectedStock.ticker) : null;
@@ -169,7 +171,7 @@ export default function StocksPage() {
   };
 
   const handleConfirmTrade = async () => {
-    if (!selectedStock || tradeShares <= 0 || !currentStudent) {
+    if (!selectedStock || tradeShares <= 0 || !currentStudent?._docId) {
       toast({
         title: "交易失敗",
         description: "請輸入有效的股數或重新登入。",
@@ -180,75 +182,73 @@ export default function StocksPage() {
     }
 
     const totalCost = Math.round(tradeShares * selectedStock.price);
+    const studentRef = doc(db, 'students', currentStudent._docId);
+    
+    let updatedData: Partial<Student> = {};
 
     try {
-        await setStudents(prevStudents => {
-             return prevStudents.map(student => {
-                if (student.id === currentStudent.id && student.classId === currentStudent.classId) {
-                     if (tradeType === "buy") {
-                        if (student.points < totalCost) {
-                            throw new Error(`您的點數不足。需要 ${totalCost.toLocaleString()} 點。`);
-                        }
-                        
-                        const newPoints = student.points - totalCost;
-                        
-                        const existingHolding = (student.portfolio || []).find(item => item.ticker === selectedStock.ticker);
-                        let newPortfolio: PortfolioItem[];
-                        const todayString = new Date().toISOString();
-
-                        if (existingHolding) {
-                            newPortfolio = (student.portfolio || []).map(item => {
-                                if (item.ticker === selectedStock.ticker) {
-                                    const newShares = item.shares + tradeShares;
-                                    const newTotalCost = item.avgCost * item.shares + totalCost;
-                                    const newAvgCost = newTotalCost / newShares;
-                                    return { ...item, shares: newShares, avgCost: newAvgCost, lastPurchaseDate: todayString };
-                                }
-                                return item;
-                            });
-                        } else {
-                            newPortfolio = [
-                                ...(student.portfolio || []),
-                                {
-                                    ticker: selectedStock.ticker,
-                                    name: selectedStock.name,
-                                    shares: tradeShares,
-                                    avgCost: selectedStock.price,
-                                    lastPurchaseDate: todayString,
-                                },
-                            ];
-                        }
-                        return { ...student, points: newPoints, portfolio: newPortfolio };
-
-                    } else { // Sell
-                        const holding = (student.portfolio || []).find(item => item.ticker === selectedStock.ticker);
-                        if (!holding || holding.shares < tradeShares) {
-                            throw new Error(`您沒有足夠的 ${selectedStock.name} 股份可供出售。`);
-                        }
-                        if (holding.lastPurchaseDate && isSameDay(new Date(holding.lastPurchaseDate), startOfDay(new Date()))) {
-                            throw new Error("今日買入的股票，當日不可賣出。");
-                        }
-
-                        const newPoints = student.points + totalCost;
-                        
-                        const newPortfolio = (student.portfolio || []).map(item => {
-                            if (item.ticker === selectedStock.ticker) {
-                                return { ...item, shares: item.shares - tradeShares };
-                            }
-                            return item;
-                        }).filter(item => item.shares > 0);
-
-                        return { ...student, points: newPoints, portfolio: newPortfolio };
-                    }
-                }
-                return student;
-            })
-        });
+      if (tradeType === 'buy') {
+        if (currentStudent.points < totalCost) {
+          throw new Error(`您的點數不足。需要 ${totalCost.toLocaleString()} 點。`);
+        }
         
-        toast({
-            title: `${tradeType === 'buy' ? '買入' : '賣出'}成功！`,
-            description: `您已成功${tradeType === 'buy' ? '買入' : '賣出'} ${tradeShares} 股 ${selectedStock.name}。`,
-        });
+        const newPoints = currentStudent.points - totalCost;
+        
+        const existingHolding = (currentStudent.portfolio || []).find(item => item.ticker === selectedStock.ticker);
+        let newPortfolio: PortfolioItem[];
+        const todayString = new Date().toISOString();
+
+        if (existingHolding) {
+            newPortfolio = (currentStudent.portfolio || []).map(item => {
+                if (item.ticker === selectedStock.ticker) {
+                    const newShares = item.shares + tradeShares;
+                    const newTotalCost = item.avgCost * item.shares + totalCost;
+                    const newAvgCost = newTotalCost / newShares;
+                    return { ...item, shares: newShares, avgCost: newAvgCost, lastPurchaseDate: todayString };
+                }
+                return item;
+            });
+        } else {
+            newPortfolio = [
+                ...(currentStudent.portfolio || []),
+                {
+                    ticker: selectedStock.ticker,
+                    name: selectedStock.name,
+                    shares: tradeShares,
+                    avgCost: selectedStock.price,
+                    lastPurchaseDate: todayString,
+                },
+            ];
+        }
+        updatedData = { points: newPoints, portfolio: newPortfolio };
+
+      } else { // Sell
+          const holding = (currentStudent.portfolio || []).find(item => item.ticker === selectedStock.ticker);
+          if (!holding || holding.shares < tradeShares) {
+              throw new Error(`您沒有足夠的 ${selectedStock.name} 股份可供出售。`);
+          }
+          if (holding.lastPurchaseDate && isSameDay(new Date(holding.lastPurchaseDate), startOfDay(new Date()))) {
+              throw new Error("今日買入的股票，當日不可賣出。");
+          }
+
+          const newPoints = currentStudent.points + totalCost;
+          
+          const newPortfolio = (currentStudent.portfolio || []).map(item => {
+              if (item.ticker === selectedStock.ticker) {
+                  return { ...item, shares: item.shares - tradeShares };
+              }
+              return item;
+          }).filter(item => item.shares > 0);
+
+          updatedData = { points: newPoints, portfolio: newPortfolio };
+      }
+
+      await writeBatch(db).update(studentRef, updatedData).commit();
+
+      toast({
+          title: `${tradeType === 'buy' ? '買入' : '賣出'}成功！`,
+          description: `您已成功${tradeType === 'buy' ? '買入' : '賣出'} ${tradeShares} 股 ${selectedStock.name}。`,
+      });
 
     } catch (error: any) {
         console.error("Stock trade failed:", error);

@@ -33,6 +33,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format, intervalToDuration } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const Countdown = ({ to }: { to: string }) => {
   const [duration, setDuration] = useState({ days: 0, hours: 0, minutes: 0 });
@@ -76,7 +78,7 @@ const Countdown = ({ to }: { to: string }) => {
 
 export default function FundraisingPage() {
   const { config: platformConfig, classes } = useSchoolStore();
-  const { student: currentStudent, setStudents, setPlatformConfig } = useAuth();
+  const { student: currentStudent } = useAuth();
   const { toast } = useToast();
 
   const [isDonateDialogOpen, setIsDonateDialogOpen] = useState(false);
@@ -103,7 +105,7 @@ export default function FundraisingPage() {
   };
 
   const handleConfirmDonation = async () => {
-    if (!selectedProject || !currentStudent || !donationAmount || donationAmount <= 0) {
+    if (!selectedProject || !currentStudent?._docId || !donationAmount || donationAmount <= 0) {
         toast({ title: "錯誤", description: "請輸入有效的捐款金額。", variant: "destructive" });
         return;
     }
@@ -121,33 +123,36 @@ export default function FundraisingPage() {
         date: new Date().toISOString(),
     };
 
-    await setStudents(prev => prev.map(s => 
-        s.id === currentStudent.id && s.classId === currentStudent.classId
-        ? { ...s, points: s.points - donationAmount }
-        : s
-    ));
-    
-    await setPlatformConfig({
-        fundraisingProjects: (platformConfig?.fundraisingProjects || []).map(p => {
-            if (p.id === selectedProject.id) {
-                const updatedProject = {
-                    ...p,
-                    currentAmount: p.currentAmount + donationAmount,
-                    donations: [...p.donations, newDonation]
-                };
-                if (updatedProject.currentAmount >= updatedProject.goal) {
-                    updatedProject.status = 'completed';
-                    toast({ title: "目標達成！", description: `恭喜「${"updatedProject.title"}」專案成功達標！感謝您的貢獻！` });
-                }
-                return updatedProject;
-            }
-            return p;
-        })
-    });
-    
-    toast({ title: "捐款成功！", description: `感謝您為「${selectedProject.title}」專案貢獻 ${donationAmount.toLocaleString()} 點！` });
-    setIsDonateDialogOpen(false);
-    setDonationAmount(10);
+    try {
+      const studentRef = doc(db, 'students', currentStudent._docId);
+      await setDoc(studentRef, { points: currentStudent.points - donationAmount }, { merge: true });
+
+      const configRef = doc(db, 'config', 'main');
+      const updatedProjects = (platformConfig?.fundraisingProjects || []).map(p => {
+          if (p.id === selectedProject.id) {
+              const updatedProject = {
+                  ...p,
+                  currentAmount: p.currentAmount + donationAmount,
+                  donations: [...p.donations, newDonation]
+              };
+              if (updatedProject.currentAmount >= updatedProject.goal) {
+                  updatedProject.status = 'completed';
+                  toast({ title: "目標達成！", description: `恭喜「${updatedProject.title}」專案成功達標！感謝您的貢獻！` });
+              }
+              return updatedProject;
+          }
+          return p;
+      });
+
+      await setDoc(configRef, { fundraisingProjects: updatedProjects }, { merge: true });
+
+      toast({ title: "捐款成功！", description: `感謝您為「${selectedProject.title}」專案貢獻 ${donationAmount.toLocaleString()} 點！` });
+      setIsDonateDialogOpen(false);
+      setDonationAmount(10);
+    } catch(e) {
+      console.error(e);
+      toast({ title: "捐款失敗", description: "更新資料時發生錯誤。", variant: "destructive" });
+    }
   };
   
   const ProjectCard = ({ project }: { project: FundraisingProject }) => {

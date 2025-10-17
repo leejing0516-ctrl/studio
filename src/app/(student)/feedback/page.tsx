@@ -18,9 +18,11 @@ import { useAuth } from "@/context/AuthContext";
 import { useSchoolStore } from "@/store/useSchoolStore";
 import { Mail, Send, Loader2 } from "lucide-react";
 import type { Feedback } from "@/lib/types";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function FeedbackPage() {
-  const { student, setPlatformConfig } = useAuth();
+  const { student } = useAuth();
   const { config: platformConfig } = useSchoolStore();
   const { toast } = useToast();
   
@@ -47,9 +49,10 @@ export default function FeedbackPage() {
     };
 
     try {
-        await setPlatformConfig({
+        const configRef = doc(db, 'config', 'main');
+        await setDoc(configRef, {
             feedback: [...(platformConfig?.feedback || []), newFeedback],
-        });
+        }, { merge: true });
         toast({ title: "意見已成功送出！", description: "感謝您的寶貴意見，校長將會看到您的訊息。" });
         setMessage("");
     } catch (error: any) {

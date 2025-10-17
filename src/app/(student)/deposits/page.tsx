@@ -28,7 +28,7 @@ import { addDays, format, isAfter, startOfDay } from "date-fns";
 import type { FixedDeposit, Student } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { doc, Transaction } from "firebase/firestore";
+import { doc, runTransaction, Transaction } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 const depositDurations = [
@@ -38,7 +38,7 @@ const depositDurations = [
 ];
 
 export default function DepositsPage() {
-  const { student: currentStudent, runTransaction } = useAuth();
+  const { student: currentStudent } = useAuth();
   const { config: platformConfig } = useSchoolStore();
   const { toast } = useToast();
 
@@ -68,15 +68,11 @@ export default function DepositsPage() {
         toast({ title: "金額錯誤", description: "存款金額必須是 100 的倍數。", variant: "destructive" });
         return;
     }
-    if (currentStudent.points < amount) {
-        toast({ title: "定存失敗", description: `您的點數不足。目前只有 ${Math.round(currentStudent.points).toLocaleString()} 點。`, variant: "destructive" });
-        return;
-    }
     
     setIsSubmitting(true);
 
     try {
-        await runTransaction(async (transaction: Transaction) => {
+        await runTransaction(db, async (transaction: Transaction) => {
             const studentRef = doc(db, "students", currentStudent._docId!);
             const studentDoc = await transaction.get(studentRef);
 

@@ -60,6 +60,8 @@ import { useSchoolStore } from "@/store/useSchoolStore";
 import { useAuth } from "@/context/AuthContext";
 import { TEACHER_PASSWORD } from "@/lib/placeholder-data";
 import Logo from "@/components/logo";
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function TeacherLayout({ children }: { children: React.ReactNode; }) {
   const pathname = usePathname();
@@ -70,7 +72,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode;
     config: platformConfig,
     teachers,
   } = useSchoolStore();
-  const { teacher, handleLogout, setTeachers, isLoading, setAuthInfo } = useAuth();
+  const { teacher, handleLogout, isLoading, setAuthInfo } = useAuth();
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -121,7 +123,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode;
   }
 
   const handleChangePassword = async () => {
-     if (!teacher) return;
+     if (!teacher?._docId) return;
     setIsSaving(true);
     if (newPassword !== confirmPassword) {
         toast({ title: "密碼不符", description: "新密碼與確認密碼不相符。", variant: "destructive" });
@@ -142,12 +144,8 @@ export default function TeacherLayout({ children }: { children: React.ReactNode;
     }
 
      try {
-        await setTeachers(currentTeachers => currentTeachers.map(t => {
-            if (t.id === teacher.id) {
-                return { ...t, password: newPassword };
-            }
-            return t;
-        }));
+        const teacherRef = doc(db, 'teachers', teacher._docId);
+        await setDoc(teacherRef, { password: newPassword }, { merge: true });
         
         toast({ title: "密碼已更新", description: "您的密碼已成功更新。" });
         setIsSettingsOpen(false);
@@ -266,7 +264,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode;
         {isImpersonating && (
           <div className="sticky top-0 z-30 flex items-center justify-center gap-2 bg-yellow-400 p-2 text-center text-sm font-semibold text-yellow-900">
             <AlertTriangle className="h-4 w-4" />
-            <span>您正在以 {teacher.name} 的身份模擬登入。</span>
+            <span>您正在以 {teacher.name} 的身分模擬登入。</span>
             <Button size="sm" variant="link" className="h-auto p-0 text-yellow-900 underline" onClick={handleStopImpersonating}>
               返回校長身份
             </Button>

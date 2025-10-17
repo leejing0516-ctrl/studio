@@ -5,7 +5,7 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
-import type { Reward, Student } from "@/lib/types";
+import type { Reward, Student, PlatformConfig } from "@/lib/types";
 import { Coins, ShoppingCart, School, Users, Building, GraduationCap, Loader2 } from "lucide-react";
 import {
   AlertDialog,
@@ -23,19 +23,20 @@ import { useSchoolStore } from "@/store/useSchoolStore";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { doc, runTransaction, Transaction } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function RewardsPage() {
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isRedeeming, setIsRedeeming] = useState(false);
   const { toast } = useToast();
-  const { student, setStudents, setPlatformConfig } = useAuth();
+  const { student } = useAuth();
   const { config: platformConfig, teachers, loading: storeLoading } = useSchoolStore();
 
   const allRewards = platformConfig?.rewards || [];
 
-  // Direct computation on each render. This is safer than useMemo with complex dependencies.
-  const { classRewards, schoolRewards } = (() => {
+  const { classRewards, schoolRewards } = useMemo(() => {
     if (!student || storeLoading || !allRewards.length || !teachers.length) {
       return { classRewards: [], schoolRewards: [] };
     }
@@ -55,7 +56,7 @@ export default function RewardsPage() {
       classRewards: availableRewards.filter(r => r.scope === 'class'),
       schoolRewards: availableRewards.filter(r => r.scope === 'school'),
     };
-  })();
+  },[student, storeLoading, allRewards, teachers]);
 
 
   const handleRedeemClick = (reward: Reward) => {
@@ -80,7 +81,7 @@ export default function RewardsPage() {
   };
 
   const handleConfirmRedeem = async () => {
-    if (!selectedReward || !student) {
+    if (!selectedReward || !student?._docId) {
         setIsConfirmOpen(false);
         return;
     };
@@ -88,40 +89,48 @@ export default function RewardsPage() {
     setIsRedeeming(true);
 
     try {
-        await setStudents(prev => prev.map(s => {
-            if (s.id === student.id && s.classId === student.classId) {
-                if (s.points < selectedReward.cost) {
-                    throw new Error("點數不足。");
-                }
-                const updatedStudent: Student = {
-                    ...s,
-                    points: s.points - selectedReward.cost,
-                    redeemedRewards: [
-                        ...(s.redeemedRewards || []),
-                        {
-                            redemptionId: `redeem-${Date.now()}`,
-                            reward: selectedReward,
-                            status: 'collected',
-                            redemptionDate: new Date().toISOString(),
-                        },
-                    ],
-                };
-                return updatedStudent;
+        await runTransaction(db, async (transaction: Transaction) => {
+            const studentRef = doc(db, "students", student._docId!);
+            const studentDoc = await transaction.get(studentRef);
+
+            if (!studentDoc.exists()) {
+                throw new Error("找不到您的學生資料。");
             }
-            return s;
-        }));
+            
+            const currentStudentData = studentDoc.data() as Student;
+            if (currentStudentData.points < selectedReward.cost) {
+                throw new Error("點數不足。");
+            }
 
-        const updatedRewards = allRewards.map(r => {
-             if (r.id === selectedReward.id) {
-                if (r.stock <= 0) {
-                    throw new Error("此獎勵已無庫存。");
-                }
-                return { ...r, stock: r.stock - 1 };
-             }
-             return r;
+            const configRef = doc(db, "config", "main");
+            const configDoc = await transaction.get(configRef);
+            if (!configDoc.exists()) {
+                throw new Error("找不到平台設定。");
+            }
+            const currentPlatformConfig = configDoc.data() as PlatformConfig;
+            const currentRewards = currentPlatformConfig.rewards || [];
+            
+            const rewardToUpdate = currentRewards.find(r => r.id === selectedReward.id);
+            if (!rewardToUpdate || rewardToUpdate.stock <= 0) {
+                throw new Error("此獎勵已無庫存。");
+            }
+
+            const updatedRewards = currentRewards.map(r => 
+                r.id === selectedReward.id ? { ...r, stock: r.stock - 1 } : r
+            );
+            
+            transaction.update(configRef, { rewards: updatedRewards });
+
+            const newPoints = currentStudentData.points - selectedReward.cost;
+            const newRedeemedReward = {
+                redemptionId: `redeem-${Date.now()}`,
+                reward: selectedReward,
+                status: 'collected' as const,
+                redemptionDate: new Date().toISOString(),
+            };
+            const updatedRedeemedRewards = [...(currentStudentData.redeemedRewards || []), newRedeemedReward];
+            transaction.update(studentRef, { points: newPoints, redeemedRewards: updatedRedeemedRewards });
         });
-
-        await setPlatformConfig({ rewards: updatedRewards });
 
         toast({
             title: "兌換成功！",
@@ -252,5 +261,3 @@ export default function RewardsPage() {
     </>
   );
 }
-
-    
