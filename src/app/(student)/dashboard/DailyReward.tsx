@@ -10,10 +10,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import type { Student, PointRecord } from "@/lib/types";
 import { startOfDay, formatISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const DailyReward = () => {
-    const { student, setStudents, setPlatformConfig } = useAuth();
-    const { config: platformConfig } = useSchoolStore();
+    const { student } = useAuth();
+    const { config: platformConfig, setConfig: setStoreConfig } = useSchoolStore();
     const { toast } = useToast();
 
     const [isClaiming, setIsClaiming] = useState(false);
@@ -53,61 +55,51 @@ const DailyReward = () => {
     };
 
     const handleDialogClose = useCallback(async (open: boolean) => {
-        if (!open && rewardResult !== null && student) {
+        if (!open && rewardResult !== null && student?._docId) {
             const currentStudent = student;
             const pointsAwarded = rewardResult;
+            const studentRef = doc(db, "students", student._docId);
 
-            if (pointsAwarded > 0) {
-                const currentSchoolFunds = platformConfig?.schoolFunds || 0;
-                if (currentSchoolFunds < pointsAwarded) {
-                    toast({
-                        title: "簽到失敗",
-                        description: "學校資金不足，無法發放今日獎勵！請通知校長。",
-                        variant: "destructive"
-                    });
-                    setRewardResult(null);
-                    return;
+            try {
+                if (pointsAwarded > 0) {
+                    const currentSchoolFunds = platformConfig?.schoolFunds || 0;
+                    if (currentSchoolFunds < pointsAwarded) {
+                        toast({
+                            title: "簽到失敗",
+                            description: "學校資金不足，無法發放今日獎勵！請通知校長。",
+                            variant: "destructive"
+                        });
+                        setRewardResult(null);
+                        return;
+                    }
+                    
+                    const configRef = doc(db, 'config', 'main');
+                    await setDoc(configRef, { schoolFunds: currentSchoolFunds - pointsAwarded }, { merge: true });
+
+                    const newRecord: PointRecord = {
+                        points: pointsAwarded,
+                        date: new Date().toISOString(),
+                        reason: '每日簽到獎勵',
+                        teacherId: 'system'
+                    };
+
+                    await setDoc(studentRef, {
+                        lastDailyReward: todayStr,
+                        points: (currentStudent.points || 0) + pointsAwarded,
+                        pointHistory: [...(currentStudent.pointHistory || []), newRecord],
+                    }, { merge: true });
+
+                } else {
+                    await setDoc(studentRef, { lastDailyReward: todayStr }, { merge: true });
                 }
-
-                await setPlatformConfig({
-                    schoolFunds: currentSchoolFunds - pointsAwarded
-                });
-
-                const newRecord: PointRecord = {
-                    points: pointsAwarded,
-                    date: new Date().toISOString(),
-                    reason: '每日簽到獎勵',
-                    teacherId: 'system'
-                };
-
-                await setStudents(prevStudents =>
-                    prevStudents.map(s => {
-                        if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
-                            return {
-                                ...s,
-                                lastDailyReward: todayStr,
-                                points: (s.points || 0) + pointsAwarded,
-                                pointHistory: [...(s.pointHistory || []), newRecord],
-                            };
-                        }
-                        return s;
-                    })
-                );
-            } else {
-                 await setStudents(prevStudents =>
-                    prevStudents.map(s => {
-                        if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
-                           return { ...s, lastDailyReward: todayStr };
-                        }
-                        return s;
-                    })
-                );
+            } catch(e: any) {
+                 toast({ title: "儲存失敗", description: e.message, variant: "destructive" });
             }
             
             setRewardResult(null);
         }
         setIsResultDialogOpen(open);
-    }, [rewardResult, student, setStudents, setPlatformConfig, platformConfig, todayStr, toast]);
+    }, [rewardResult, student, platformConfig, todayStr, toast]);
 
 
     if (!canClaim) {

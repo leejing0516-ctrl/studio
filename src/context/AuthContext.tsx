@@ -5,6 +5,8 @@ import React, { createContext, useContext, PropsWithChildren, useEffect, useStat
 import { useRouter } from 'next/navigation';
 import { useSchoolStore } from '@/store/useSchoolStore';
 import type { Student, Teacher } from '@/lib/types';
+import { doc, setDoc, runTransaction, writeBatch, Transaction } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface AuthContextType {
   role: 'student' | 'teacher' | null;
@@ -15,6 +17,11 @@ interface AuthContextType {
   handleLogout: () => void;
   setAuthInfo: (info: { role: 'student' | 'teacher'; docId: string }) => void;
   isLoading: boolean;
+  setStudents: (updater: (prev: Student[]) => Student[]) => Promise<void>;
+  setTeachers: (updater: (prev: Teacher[]) => Teacher[]) => Promise<void>;
+  setClasses: (updater: (prev: any[]) => any[]) => Promise<void>;
+  setPlatformConfig: (data: Partial<any>) => Promise<void>;
+  runTransaction: <T>(updateFunction: (transaction: Transaction) => Promise<T>) => Promise<T>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,7 +34,9 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   const router = useRouter();
   
   const { 
-    students, teachers, loading: isStoreLoading,
+    students, teachers, classes: schoolClasses, config: platformConfig,
+    setStudents: setStoreStudents, setTeachers: setStoreTeachers, setClasses: setStoreClasses,
+    loading: isStoreLoading,
   } = useSchoolStore();
   
   const student = useMemo(() => students.find(s => s._docId === studentDocId) || null, [students, studentDocId]);
@@ -39,9 +48,9 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     const storedTeacherDocId = localStorage.getItem('teacherDocId');
 
     setRole(storedRole);
-    if (storedRole === 'student') {
+    if (storedRole === 'student' && storedStudentDocId) {
         setStudentDocId(storedStudentDocId);
-    } else if (storedRole === 'teacher') {
+    } else if (storedRole === 'teacher' && storedTeacherDocId) {
         setTeacherDocId(storedTeacherDocId);
     }
     setIsAuthLoading(false);
@@ -71,6 +80,51 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     setTeacherDocId(null);
     router.replace("/");
   }, [router]);
+  
+  const setStudentsWithFirestore = async (updater: (prev: Student[]) => Student[]) => {
+      const updatedStudents = updater(students);
+      const batch = writeBatch(db);
+      updatedStudents.forEach(s => {
+          if (s._docId) {
+              const { _docId, ...studentData } = s;
+              batch.set(doc(db, 'students', _docId), studentData, { merge: true });
+          }
+      });
+      await batch.commit();
+  };
+
+  const setTeachersWithFirestore = async (updater: (prev: Teacher[]) => Teacher[]) => {
+      const updatedTeachers = updater(teachers);
+      const batch = writeBatch(db);
+      updatedTeachers.forEach(t => {
+          if (t._docId) {
+              const { _docId, ...teacherData } = t;
+              batch.set(doc(db, 'teachers', _docId), teacherData, { merge: true });
+          }
+      });
+      await batch.commit();
+  };
+  
+  const setClassesWithFirestore = async (updater: (prev: any[]) => any[]) => {
+      const updatedClasses = updater(schoolClasses);
+      const batch = writeBatch(db);
+      updatedClasses.forEach(c => {
+          if (c._docId) {
+             const { _docId, ...classData } = c;
+             batch.set(doc(db, 'classes', _docId), classData, { merge: true });
+          }
+      });
+      await batch.commit();
+  };
+
+  const setPlatformConfigWithFirestore = async (data: Partial<any>) => {
+      const configRef = doc(db, 'config', 'main');
+      await setDoc(configRef, data, { merge: true });
+  };
+  
+  const runTransactionWithFirestore = <T>(updateFunction: (transaction: Transaction) => Promise<T>): Promise<T> => {
+    return runTransaction(db, updateFunction);
+  }
 
   const value = {
     role,
@@ -81,6 +135,11 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     handleLogout,
     setAuthInfo,
     isLoading: isAuthLoading || isStoreLoading,
+    setStudents: setStudentsWithFirestore,
+    setTeachers: setTeachersWithFirestore,
+    setClasses: setClassesWithFirestore,
+    setPlatformConfig: setPlatformConfigWithFirestore,
+    runTransaction: runTransactionWithFirestore,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
