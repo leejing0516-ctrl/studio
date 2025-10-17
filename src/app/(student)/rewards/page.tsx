@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -32,42 +31,36 @@ export default function RewardsPage() {
   const { student, setStudents, setPlatformConfig } = useAuth();
   const { config: platformConfig, teachers } = useSchoolStore();
 
-  const rewards = useMemo(() => platformConfig?.rewards || [], [platformConfig]);
+  const allRewards = useMemo(() => platformConfig?.rewards || [], [platformConfig]);
 
   const { classRewards, schoolRewards } = useMemo(() => {
-    if (!student) return { classRewards: [], schoolRewards: [] };
-    
-    const teachersForClass = teachers.filter(t => Array.isArray(t.classIds) && t.classIds.includes(student.classId));
-    const teacherIdsForClass = teachersForClass.map(t => t.id);
+    if (!student || !allRewards.length || !teachers.length) {
+      return { classRewards: [], schoolRewards: [] };
+    }
 
-    const availableRewards = rewards.filter(reward => {
-        const providerExists = reward.scope === 'school' || teachers.some(t => t.id === reward.providerId);
-        if (!providerExists) {
-            return false;
-        }
+    const availableRewards = allRewards.filter(reward => {
+      // Rule 1: School-wide rewards are always available.
+      if (reward.scope === 'school') {
+        return true;
+      }
 
-        if (reward.scope === 'school') {
-            return true;
-        }
-        
-        if (reward.scope === 'class' && teacherIdsForClass.includes(reward.providerId)) {
-            return true;
-        }
-        
+      // Rule 2: Class-specific rewards are available if the provider (teacher) teaches the student's class.
+      if (reward.scope === 'class') {
         const provider = teachers.find(t => t.id === reward.providerId);
-        if (provider?.role === 'subject_teacher' && provider.classIds.includes(student.classId)) {
-            return true;
-        }
+        // Check if the provider exists and their classIds array includes the student's classId.
+        return provider && provider.classIds?.includes(student.classId);
+      }
 
-        return false;
+      return false;
     });
-        
+
     const classRewards = availableRewards.filter(r => r.scope === 'class');
     const schoolRewards = availableRewards.filter(r => r.scope === 'school');
-
+    
     return { classRewards, schoolRewards };
 
-  }, [rewards, student, teachers]);
+  }, [allRewards, student, teachers]);
+
 
   const handleRedeemClick = (reward: Reward) => {
     if (!student || student.points < reward.cost) {
@@ -122,7 +115,7 @@ export default function RewardsPage() {
             return s;
         }));
 
-        const updatedRewards = rewards.map(r => {
+        const updatedRewards = allRewards.map(r => {
              if (r.id === selectedReward.id) {
                 if (r.stock <= 0) {
                     throw new Error("此獎勵已無庫存。");
@@ -223,6 +216,16 @@ export default function RewardsPage() {
                     {schoolRewards.map((reward) => <RewardCard key={reward.id} reward={reward} />)}
                 </div>
             </section>
+        )}
+        
+        {classRewards.length === 0 && schoolRewards.length === 0 && (
+            <Card className="text-center p-12">
+                <ShoppingCart className="mx-auto h-12 w-12 text-muted-foreground" />
+                <CardTitle className="mt-4">獎勵商店正在補貨中</CardTitle>
+                <CardDescription className="mt-2">
+                    目前沒有可兌換的獎勵品，請稍後再來看看！
+                </CardDescription>
+            </Card>
         )}
       </div>
 
