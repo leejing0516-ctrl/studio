@@ -46,7 +46,7 @@ import { resizeImage, fileToDataUrl } from "@/lib/image-utils";
 export default function TeacherRewardsPage() {
     const { 
         config,
-        isLoading, teachers
+        loading: isLoading, teachers
     } = useSchoolStore();
     const { setPlatformConfig } = useAuth();
     const { toast } = useToast();
