@@ -62,7 +62,7 @@ export default function RankingsPage() {
               </div>
               <div>
                 <CardTitle>Latest Version</CardTitle>
-                <CardDescription>14.2.4</CardDescription>
+                <CardDescription>15.5.6</CardDescription>
               </div>
             </CardHeader>
           </Card>
