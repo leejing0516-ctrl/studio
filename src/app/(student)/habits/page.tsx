@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useContext, useMemo } from "react";
@@ -19,7 +18,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useSchoolStore } from "@/store/useSchoolStore";
 import { PlusCircle, Repeat, Target, Clock, Coins, Check, AlertTriangle, BadgeCheck, CircleOff, Trash2, Goal, Notebook, Eye } from "lucide-react";
 import { addDays, format, isAfter, startOfDay, differenceInDays, isSameDay, isValid } from "date-fns";
-import type { StudentHabit, HabitCheckIn } from "@/lib/types";
+import type { StudentHabit, HabitCheckIn, Student, PointRecord } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -45,11 +44,13 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { db } from "@/lib/firebase";
+import { doc, setDoc, runTransaction } from "firebase/firestore";
 
 const HABIT_DURATION = 21;
 
 export default function HabitsPage() {
-  const { student: currentStudent, setStudents } = useAuth();
+  const { student: currentStudent } = useAuth();
   const { toast } = useToast();
 
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
@@ -73,7 +74,7 @@ export default function HabitsPage() {
 
   const handleHabitRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentStudent || !habitTitle || !habitDescription) {
+    if (!currentStudent?._docId || !habitTitle || !habitDescription) {
       toast({ title: "請填寫完整資訊", variant: "destructive" });
       return;
     }
@@ -93,12 +94,8 @@ export default function HabitsPage() {
       checkIns: [],
     };
 
-    await setStudents(currentStudents => currentStudents.map(s => {
-      if (s.id === currentStudent?.id && s.classId === currentStudent.classId) {
-        return { ...s, habits: [...(s.habits || []), newHabit] };
-      }
-      return s;
-    }));
+    const studentRef = doc(db, 'students', currentStudent._docId);
+    await setDoc(studentRef, { habits: [...(currentStudent.habits || []), newHabit] }, { merge: true });
 
     toast({ title: "申請已送出", description: "您的習慣養成計畫已送出給老師審核。" });
     setIsRequestDialogOpen(false);
@@ -107,24 +104,19 @@ export default function HabitsPage() {
   };
   
   const handleConfirmCheckIn = async () => {
-    if (!currentStudent || !checkInHabit) return;
+    if (!currentStudent?._docId || !checkInHabit) return;
 
     const newCheckIn: HabitCheckIn = {
       date: new Date().toISOString(),
       note: checkInNote,
     };
     
-    await setStudents(currentStudents => currentStudents.map(s => {
-      if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
-        return {
-            ...s,
-            habits: (s.habits || []).map(h => 
-                h.id === checkInHabit.id ? { ...h, checkIns: [...h.checkIns, newCheckIn] } : h
-            )
-        }
-      }
-      return s;
-    }));
+    const updatedHabits = (currentStudent.habits || []).map(h => 
+        h.id === checkInHabit.id ? { ...h, checkIns: [...h.checkIns, newCheckIn] } : h
+    );
+    
+    const studentRef = doc(db, 'students', currentStudent._docId);
+    await setDoc(studentRef, { habits: updatedHabits }, { merge: true });
 
     toast({ title: "打卡成功！", description: "今天的習慣已完成，繼續保持！" });
     setCheckInHabit(null);
@@ -132,17 +124,12 @@ export default function HabitsPage() {
   };
   
   const handleDeleteHabit = async () => {
-    if (!currentStudent || !habitToDelete) return;
+    if (!currentStudent?._docId || !habitToDelete) return;
     
-    await setStudents(currentStudents => currentStudents.map(s => {
-      if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
-        return {
-            ...s,
-            habits: (s.habits || []).filter(h => h.id !== habitToDelete.id)
-        }
-      }
-      return s;
-    }));
+    const updatedHabits = (currentStudent.habits || []).filter(h => h.id !== habitToDelete.id);
+    const studentRef = doc(db, 'students', currentStudent._docId);
+    await setDoc(studentRef, { habits: updatedHabits }, { merge: true });
+
 
     toast({ title: "已刪除計畫", description: "您的習慣養成計畫已被移除。", variant: "destructive"});
     setHabitToDelete(null);

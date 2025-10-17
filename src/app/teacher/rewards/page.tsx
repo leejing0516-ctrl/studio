@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -35,6 +34,8 @@ import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { resizeImage, fileToDataUrl } from "@/lib/image-utils";
 import { cn } from "@/lib/utils";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function TeacherRewardsPage() {
     const { 
@@ -42,11 +43,10 @@ export default function TeacherRewardsPage() {
         loading: isLoading, 
         teachers
     } = useSchoolStore();
-    const { setPlatformConfig } = useAuth();
+    const { teacher } = useAuth();
     const { toast } = useToast();
 
-    const [role, setRole] = useState<string | null>(null);
-    const [teacherId, setTeacherId] = useState<string | null>(null);
+    const [rewardScope, setRewardScope] = useState<'school' | 'class'>('school');
     
     // State for Rewards
     const [isAddRewardDialogOpen, setIsAddRewardDialogOpen] = useState(false);
@@ -55,18 +55,19 @@ export default function TeacherRewardsPage() {
     const [rewardToDelete, setRewardToDelete] = useState<Reward | null>(null);
     const [rewardImageFile, setRewardImageFile] = useState<File | null>(null);
     const [rewardImagePreview, setRewardImagePreview] = useState<string | null>(null);
-    const [rewardScope, setRewardScope] = useState<'school' | 'class'>('school');
 
+    const { role, teacherId } = useMemo(() => ({
+      role: teacher?.role || null,
+      teacherId: teacher?.id || null,
+    }), [teacher]);
 
     useEffect(() => {
-        const storedRole = localStorage.getItem('teacherRole');
-        const storedTeacherId = localStorage.getItem('teacherId');
-        setRole(storedRole);
-        setTeacherId(storedTeacherId);
-        if (storedRole === 'teacher' || storedRole === 'subject_teacher') {
+        if (role === 'teacher' || role === 'subject_teacher') {
             setRewardScope('class');
+        } else {
+            setRewardScope('school');
         }
-    }, []);
+    }, [role]);
     
     const allRewards = platformConfig?.rewards || [];
 
@@ -131,7 +132,9 @@ export default function TeacherRewardsPage() {
             providerId: rewardScope === 'school' ? 'school_admin' : teacherId!,
         };
         
-        await setPlatformConfig({ rewards: [...(allRewards || []), newReward] });
+        const configRef = doc(db, 'config', 'main');
+        await setDoc(configRef, { rewards: [...(platformConfig?.rewards || []), newReward] }, { merge: true });
+
         setIsAddRewardDialogOpen(false);
         toast({
             title: "已新增獎勵",
@@ -174,7 +177,10 @@ export default function TeacherRewardsPage() {
             image: imageUrl
         };
         
-        await setPlatformConfig({ rewards: (allRewards || []).map(r => r.id === updatedReward.id ? updatedReward : r) });
+        const configRef = doc(db, 'config', 'main');
+        const updatedRewards = (platformConfig?.rewards || []).map(r => r.id === updatedReward.id ? updatedReward : r);
+        await setDoc(configRef, { rewards: updatedRewards }, { merge: true });
+
         setIsEditRewardDialogOpen(false);
         setEditingReward(null);
         toast({
@@ -189,7 +195,11 @@ export default function TeacherRewardsPage() {
 
     const handleConfirmDeleteReward = async () => {
         if (!rewardToDelete) return;
-        await setPlatformConfig({ rewards: (allRewards || []).filter(r => r.id !== rewardToDelete!.id) });
+        
+        const configRef = doc(db, 'config', 'main');
+        const updatedRewards = (platformConfig?.rewards || []).filter(r => r.id !== rewardToDelete!.id);
+        await setDoc(configRef, { rewards: updatedRewards }, { merge: true });
+
         toast({
             title: "已刪除獎勵",
             description: `已成功刪除獎勵「${rewardToDelete.name}」。`,

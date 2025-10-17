@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -14,7 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useSchoolStore } from "@/store/useSchoolStore";
 import { Calendar as CalendarIcon, Landmark, AlertTriangle, CheckCircle, Hourglass, Info } from "lucide-react";
 import { format, addDays, startOfDay } from "date-fns";
-import type { Loan, Teacher, PlatformConfig } from "@/lib/types";
+import type { Loan, Teacher, PlatformConfig, Student } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -27,12 +26,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { doc, runTransaction, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const LOAN_LIMIT = 500;
 
 export default function LoansPage() {
-  const { student: currentStudent, setStudents, setPlatformConfig, setTeachers } = useAuth();
-  const { platformConfig, teachers } = useSchoolStore();
+  const { student: currentStudent } = useAuth();
+  const { config: platformConfig, teachers } = useSchoolStore();
   const { toast } = useToast();
 
   const [loanAmount, setLoanAmount] = useState<number | "">(100);
@@ -45,9 +46,9 @@ export default function LoansPage() {
   const pendingLoan = useMemo(() => currentStudent?.loans?.find(l => l.status === 'pending'), [currentStudent]);
   const loanInterestRate = platformConfig?.loanInterestRate || 0.005; // Default 0.5% daily interest
 
-  const handleLoanRequest = (e: React.FormEvent) => {
+  const handleLoanRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!repaymentDate || !currentStudent || !loanAmount) return;
+    if (!repaymentDate || !currentStudent?._docId || !loanAmount) return;
     if (loanAmount <= 0 || loanAmount > LOAN_LIMIT) {
         toast({ title: "無效的金額", description: `貸款金額必須介於 1 至 ${LOAN_LIMIT.toLocaleString()} 之間。`, variant: "destructive" });
         return;
@@ -67,13 +68,9 @@ export default function LoansPage() {
       interestRate: loanInterestRate,
       interest: 0,
     };
-
-    setStudents(currentStudents => currentStudents.map(s => {
-      if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
-        return { ...s, loans: [...(s.loans || []), newLoan] };
-      }
-      return s;
-    }));
+    
+    const studentRef = doc(db, "students", currentStudent._docId);
+    await setDoc(studentRef, { loans: [...(currentStudent.loans || []), newLoan] }, { merge: true });
 
     toast({ title: "申請已送出", description: "您的貸款申請已送出給老師審核。" });
     setLoanAmount(100);
@@ -86,8 +83,8 @@ export default function LoansPage() {
     setIsConfirmRepayOpen(true);
   };
   
-  const handleConfirmRepay = () => {
-    if (!loanToRepay || !currentStudent) return;
+  const handleConfirmRepay = async () => {
+    if (!loanToRepay || !currentStudent?._docId) return;
     
     const totalRepayment = Math.ceil(loanToRepay.amount + loanToRepay.interest);
     if (currentStudent.points < totalRepayment) {
@@ -96,32 +93,54 @@ export default function LoansPage() {
         return;
     }
 
-    // Repay points to the approver
-    if (loanToRepay.approverId) {
-      if (loanToRepay.approverId === 'principal') {
-          setPlatformConfig({ schoolFunds: (platformConfig?.schoolFunds || 0) + totalRepayment });
-      } else {
-          setTeachers(currentTeachers => currentTeachers.map(t => 
-              t.id === loanToRepay.approverId ? { ...t, pointBalance: (t.pointBalance || 0) + totalRepayment } : t
-          ));
-      }
-    }
-    
-    // Update student's state
-    setStudents(currentStudents => currentStudents.map(s => {
-        if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
-            return {
-                ...s,
-                points: s.points - totalRepayment,
-                loans: s.loans.map(l => l.id === loanToRepay.id ? { ...l, status: 'repaid' as const } : l)
-            };
+    try {
+      await runTransaction(db, async (transaction) => {
+        const studentRef = doc(db, "students", currentStudent._docId!);
+        const studentDoc = await transaction.get(studentRef);
+        if (!studentDoc.exists()) throw new Error("找不到學生資料");
+        
+        const studentData = studentDoc.data() as Student;
+        if (studentData.points < totalRepayment) {
+          throw new Error(`您的點數不足。需要 ${totalRepayment.toLocaleString()} 點。`);
         }
-        return s;
-    }));
 
-    toast({ title: "還款成功！", description: `您已成功償還 ${totalRepayment.toLocaleString()} 點。` });
-    setIsConfirmRepayOpen(false);
-    setLoanToRepay(null);
+        // Repay points to the approver
+        if (loanToRepay.approverId) {
+          if (loanToRepay.approverId === 'principal') {
+              const configRef = doc(db, 'config', 'main');
+              const configDoc = await transaction.get(configRef);
+              if (configDoc.exists()) {
+                const currentConfig = configDoc.data() as PlatformConfig;
+                transaction.update(configRef, { schoolFunds: (currentConfig.schoolFunds || 0) + totalRepayment });
+              }
+          } else {
+              const teacherDoc = teachers.find(t => t.id === loanToRepay.approverId);
+              if (teacherDoc?._docId) {
+                const teacherRef = doc(db, 'teachers', teacherDoc._docId);
+                const teacherSnap = await transaction.get(teacherRef);
+                if (teacherSnap.exists()) {
+                    const teacherData = teacherSnap.data() as Teacher;
+                    transaction.update(teacherRef, { pointBalance: (teacherData.pointBalance || 0) + totalRepayment });
+                }
+              }
+          }
+        }
+        
+        // Update student's state
+        const updatedLoans = studentData.loans.map(l => l.id === loanToRepay.id ? { ...l, status: 'repaid' as const } : l);
+        transaction.update(studentRef, {
+            points: studentData.points - totalRepayment,
+            loans: updatedLoans
+        });
+      });
+
+      toast({ title: "還款成功！", description: `您已成功償還 ${totalRepayment.toLocaleString()} 點。` });
+      setIsConfirmRepayOpen(false);
+      setLoanToRepay(null);
+    } catch(e: any) {
+        toast({ title: "還款失敗", description: e.message || '發生未知錯誤', variant: "destructive" });
+        setIsConfirmRepayOpen(false);
+    }
   };
 
 
@@ -289,5 +308,3 @@ export default function LoansPage() {
     </div>
   );
 }
-
-    
