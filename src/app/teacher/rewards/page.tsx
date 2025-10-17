@@ -9,21 +9,14 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
+  CardFooter,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from "@/components/ui/table";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Teacher, Reward } from "@/lib/types";
-import { PlusCircle, Edit, Trash2, Loader2, Coins, ImageOff, GraduationCap, Building } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Loader2, Coins, ImageOff, GraduationCap, Building, ShoppingCart } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -41,6 +34,7 @@ import { useSchoolStore } from "@/store/useSchoolStore";
 import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { resizeImage, fileToDataUrl } from "@/lib/image-utils";
+import { cn } from "@/lib/utils";
 
 export default function TeacherRewardsPage() {
     const { 
@@ -76,14 +70,18 @@ export default function TeacherRewardsPage() {
     
     const allRewards = platformConfig?.rewards || [];
 
-    const teacherRewards =
-      !role || !teacherId || role === 'admin'
-        ? []
-        : allRewards.filter((r) => r.providerId === teacherId);
+    const teacherRewards = useMemo(() => {
+      if (!role || !teacherId || role === 'admin') return [];
+      return allRewards.filter((r) => r.providerId === teacherId);
+    }, [allRewards, role, teacherId]);
 
-    const schoolRewards = allRewards.filter(r => r.scope === 'school');
+    const schoolRewards = useMemo(() => {
+        return allRewards.filter(r => r.scope === 'school');
+    }, [allRewards]);
     
-    const allClassRewards = allRewards.filter(r => r.scope === 'class' && teachers.some(t => t.id === r.providerId));
+    const allClassRewards = useMemo(() => {
+        return allRewards.filter(r => r.scope === 'class' && teachers.some(t => t.id === r.providerId));
+    }, [allRewards, teachers]);
 
 
     const handleRewardImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -208,74 +206,66 @@ export default function TeacherRewardsPage() {
         )
     }
 
-    const RewardsTable = ({ rewards: tableRewards, isReadOnly = false }: { rewards: Reward[], isReadOnly?: boolean }) => (
-        <div className="overflow-x-auto">
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>獎勵</TableHead>
-                        <TableHead>費用</TableHead>
-                        <TableHead>庫存</TableHead>
-                        {isReadOnly && <TableHead>提供者</TableHead>}
-                        <TableHead className="text-right">操作</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {tableRewards.length > 0 ? tableRewards.map((reward) => (
-                        <TableRow key={reward.id}>
-                            <TableCell className="flex items-center gap-4">
-                                <Image src={reward.image} alt={reward.name} width={64} height={64} className="rounded-md object-cover" />
-                                <div>
-                                    <p className="font-medium">{reward.name}</p>
-                                    <p className="text-sm text-muted-foreground">{reward.description}</p>
-                                </div>
-                            </TableCell>
-                            <TableCell>
-                                <div className="flex items-center gap-1 font-semibold text-primary">
-                                    <Coins className="h-4 w-4" />
-                                    {Math.round(reward.cost).toLocaleString()}
-                                </div>
-                            </TableCell>
-                            <TableCell>{reward.stock}</TableCell>
-                            {isReadOnly && (
-                                <TableCell>{(teachers || []).find(t => t.id === reward.providerId)?.name || '學校'}</TableCell>
-                            )}
-                            <TableCell className="text-right">
-                                 <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleEditRewardClick(reward)} disabled={isReadOnly}>
-                                    <Edit className="h-4 w-4" />
-                                </Button>
-                                <AlertDialog open={!!rewardToDelete && rewardToDelete.id === reward.id} onOpenChange={(open) => !open && setRewardToDelete(null)}>
-                                    <AlertDialogTrigger asChild>
-                                         <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteRewardClick(reward)} disabled={isReadOnly}>
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                您確定要刪除獎勵「{reward.name}」嗎？此操作無法復原。
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>取消</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => handleConfirmDeleteReward()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            </TableCell>
-                        </TableRow>
-                    )) : (
-                        <TableRow>
-                            <TableCell colSpan={isReadOnly ? 5 : 4} className="h-24 text-center">
-                                目前沒有獎勵。
-                            </TableCell>
-                        </TableRow>
-                    )}
-                </TableBody>
-            </Table>
-        </div>
-    );
+    const RewardCard = ({ reward }: { reward: Reward }) => (
+         <Card key={reward.id} className={cn(
+             "flex flex-col overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1 duration-300",
+             reward.scope === 'school' ? "bg-reward-card-school text-reward-card-school-foreground" : "bg-reward-card-class text-reward-card-class-foreground"
+         )}>
+            <div className="relative h-48 w-full">
+            <Image
+                src={reward.image}
+                alt={reward.name}
+                fill
+                className="object-cover"
+                data-ai-hint="reward item"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            />
+            <Badge 
+                className="absolute top-2 right-2 bg-background/30 text-foreground border-none"
+            >
+                {reward.scope === 'school' ? <Building className="mr-1.5" /> : <GraduationCap className="mr-1.5" />}
+                {reward.scope === 'school' ? '學校提供' : '班級限定'}
+            </Badge>
+            </div>
+            <CardHeader>
+                <CardTitle>{reward.name}</CardTitle>
+                <CardDescription className="text-current/80">{reward.description}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow">
+                <p className="text-sm text-current/80">庫存：{reward.stock}</p>
+            </CardContent>
+            <CardFooter className="flex justify-between items-center bg-black/10 p-4 mt-auto">
+                <div className="flex items-center gap-2 font-bold text-lg text-current">
+                    <Coins className="h-5 w-5" />
+                    <span>{reward.cost.toLocaleString()}</span>
+                </div>
+                <div className="flex gap-2">
+                    <Button onClick={() => handleEditRewardClick(reward)} variant="secondary" size="sm">
+                        <Edit className="mr-2 h-4 w-4"/>編輯
+                    </Button>
+                     <AlertDialog open={!!rewardToDelete && rewardToDelete.id === reward.id} onOpenChange={(open) => !open && setRewardToDelete(null)}>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm" onClick={() => handleDeleteRewardClick(reward)}>
+                                <Trash2 className="mr-2 h-4 w-4" />刪除
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    您確定要刪除獎勵「{reward.name}」嗎？此操作無法復原。
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>取消</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleConfirmDeleteReward()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </div>
+            </CardFooter>
+        </Card>
+    )
 
     return (
         <div className="space-y-6 animate-in fade-in-0 duration-500">
@@ -283,9 +273,9 @@ export default function TeacherRewardsPage() {
                 <Tabs defaultValue="school" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="school">學校獎勵</TabsTrigger>
-                        <TabsTrigger value="class">班級獎勵 (僅檢視)</TabsTrigger>
+                        <TabsTrigger value="class">所有班級獎勵 (僅檢視)</TabsTrigger>
                     </TabsList>
-                    <TabsContent value="school">
+                    <TabsContent value="school" className="mt-4">
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <div>
@@ -297,19 +287,38 @@ export default function TeacherRewardsPage() {
                                     新增學校獎勵
                                 </Button>
                             </CardHeader>
-                            <CardContent>
-                                <RewardsTable rewards={schoolRewards} />
+                            <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                {schoolRewards.map(reward => <RewardCard key={reward.id} reward={reward} />)}
                             </CardContent>
                         </Card>
                     </TabsContent>
-                    <TabsContent value="class">
+                    <TabsContent value="class" className="mt-4">
                         <Card>
                              <CardHeader>
                                 <CardTitle>所有班級獎勵</CardTitle>
                                 <CardDescription>檢視所有班級老師建立的獎勵。</CardDescription>
                             </CardHeader>
-                            <CardContent>
-                                <RewardsTable rewards={allClassRewards} isReadOnly={true} />
+                            <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                {allClassRewards.map((reward) => (
+                                     <Card key={reward.id} className="opacity-80">
+                                        <CardHeader>
+                                            <div className="flex justify-between items-start">
+                                                <CardTitle>{reward.name}</CardTitle>
+                                                <Badge variant="secondary">{teachers.find(t => t.id === reward.providerId)?.name}</Badge>
+                                            </div>
+                                            <CardDescription>{reward.description}</CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                             <p className="text-sm text-muted-foreground">庫存：{reward.stock}</p>
+                                        </CardContent>
+                                        <CardFooter>
+                                            <div className="flex items-center gap-2 font-bold text-lg text-primary">
+                                                <Coins className="h-5 w-5" />
+                                                <span>{reward.cost.toLocaleString()}</span>
+                                            </div>
+                                        </CardFooter>
+                                    </Card>
+                                ))}
                             </CardContent>
                         </Card>
                     </TabsContent>
@@ -326,8 +335,8 @@ export default function TeacherRewardsPage() {
                             新增班級獎勵
                         </Button>
                     </CardHeader>
-                    <CardContent>
-                        <RewardsTable rewards={teacherRewards} />
+                    <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                         {teacherRewards.map(reward => <RewardCard key={reward.id} reward={reward} />)}
                     </CardContent>
                 </Card>
             )}
@@ -455,5 +464,3 @@ export default function TeacherRewardsPage() {
         </div>
     );
 }
-
-    
