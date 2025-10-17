@@ -8,7 +8,9 @@ import { format } from "date-fns";
 import { useSchoolStore } from "@/store/useSchoolStore";
 import { useAuth } from "@/context/AuthContext";
 import { Separator } from "@/components/ui/separator";
-import type { Announcement, Student } from "@/lib/types";
+import type { Announcement } from "@/lib/types";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const AnnouncementList = ({ announcements }: { announcements: Announcement[] }) => (
     <div className="space-y-6">
@@ -30,7 +32,7 @@ const AnnouncementList = ({ announcements }: { announcements: Announcement[] }) 
 
 export default function AnnouncementsPage() {
     const { config: platformConfig, classes } = useSchoolStore();
-    const { student, setStudents } = useAuth();
+    const { student } = useAuth();
 
     const schoolAnnouncements = useMemo(() => {
         return (platformConfig?.announcements || [])
@@ -45,7 +47,7 @@ export default function AnnouncementsPage() {
     }, [classes, student]);
 
     useEffect(() => {
-        if (!student) return;
+        if (!student?._docId) return;
 
         const lastViewTime = student.lastAnnouncementsView ? new Date(student.lastAnnouncementsView).getTime() : 0;
 
@@ -60,21 +62,11 @@ export default function AnnouncementsPage() {
 
         if (hasNew) {
             const now = new Date().toISOString();
-            const updateStudentReadTime = async () => {
-                await setStudents(prevStudents => 
-                    prevStudents.map(s => {
-                        if (s.id === student.id && s.classId === student.classId) {
-                            return { ...s, lastAnnouncementsView: now };
-                        }
-                        return s;
-                    })
-                );
-            };
-            
-            updateStudentReadTime();
+            const studentRef = doc(db, "students", student._docId);
+            setDoc(studentRef, { lastAnnouncementsView: now }, { merge: true });
         }
 
-    }, [student, setStudents, platformConfig, classes]);
+    }, [student, platformConfig, classes]);
 
     return (
         <div className="animate-in fade-in-0 duration-500 space-y-8">

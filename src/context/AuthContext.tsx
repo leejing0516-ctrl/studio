@@ -4,10 +4,7 @@
 import React, { createContext, useContext, PropsWithChildren, useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSchoolStore } from '@/store/useSchoolStore';
-import type { Student, Teacher, PlatformConfig, ClassInfo } from '@/lib/types';
-import { doc, setDoc, addDoc, collection, writeBatch, runTransaction } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { useToast } from '@/hooks/use-toast';
+import type { Student, Teacher } from '@/lib/types';
 
 interface AuthContextType {
   role: 'student' | 'teacher' | null;
@@ -17,12 +14,7 @@ interface AuthContextType {
   teacher: Teacher | null;
   handleLogout: () => void;
   setAuthInfo: (info: { role: 'student' | 'teacher'; docId: string }) => void;
-  setStudents: (updater: (prev: Student[]) => Student[]) => Promise<void>;
-  setTeachers: (updater: (prev: Teacher[]) => Teacher[]) => Promise<void>;
-  setClasses: (updater: (prev: ClassInfo[]) => ClassInfo[]) => Promise<void>;
-  setPlatformConfig: (updates: Partial<PlatformConfig>) => Promise<void>;
   isLoading: boolean;
-  runTransaction: (updateFunction: (transaction: any) => Promise<any>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,15 +25,9 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   const [teacherDocId, setTeacherDocId] = useState<string | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const router = useRouter();
-  const { toast } = useToast();
   
   const { 
-    students, teachers, classes, config, 
-    setStudents: setStoreStudents, 
-    setTeachers: setStoreTeachers, 
-    setClasses: setStoreClasses,
-    setConfig: setStoreConfig,
-    loading: isStoreLoading,
+    students, teachers, loading: isStoreLoading,
   } = useSchoolStore();
   
   const student = useMemo(() => students.find(s => s._docId === studentDocId) || null, [students, studentDocId]);
@@ -85,150 +71,6 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     setTeacherDocId(null);
     router.replace("/");
   }, [router]);
-  
-  const setStudentsWithDbUpdate = useCallback(async (updater: (prev: Student[]) => Student[]) => {
-      const oldStudents = students;
-      const newStudents = updater(oldStudents);
-      setStoreStudents(newStudents); // Optimistic update
-      
-      try {
-        const batch = writeBatch(db);
-        const changedStudents = newStudents.filter((newStudent) => {
-          const oldStudent = oldStudents.find(s => s._docId === newStudent._docId);
-          return !oldStudent || JSON.stringify(newStudent) !== JSON.stringify(oldStudent);
-        });
-
-        if(changedStudents.length === 0) return;
-
-        changedStudents.forEach((student) => {
-            if (student._docId) {
-                const ref = doc(db, "students", student._docId);
-                const { _docId, ...studentData } = student;
-                batch.set(ref, studentData, { merge: true });
-            }
-        });
-        await batch.commit();
-      } catch (error: any) {
-        console.error("Failed to update students in DB:", error);
-        setStoreStudents(oldStudents); // Revert on failure
-        toast({ title: "學生資料更新失敗", description: "與資料庫同步時發生錯誤。", variant: "destructive" });
-        throw error;
-      }
-  }, [students, setStoreStudents, toast]);
-
-  const setTeachersWithDbUpdate = useCallback(async (updater: (prev: Teacher[]) => Teacher[]) => {
-      const oldTeachers = teachers;
-      const newTeachers = updater(oldTeachers);
-      setStoreTeachers(newTeachers); // Optimistic update
-      
-      try {
-        const batch = writeBatch(db);
-        
-        // Handle creations first
-        const teachersToAdd = newTeachers.filter(t => !t._docId);
-        const addedTeachersWithDocId: Teacher[] = [];
-
-        for (const teacher of teachersToAdd) {
-            const { _docId, ...teacherData } = teacher;
-            const newDocRef = doc(collection(db, "teachers"));
-            batch.set(newDocRef, teacherData);
-            addedTeachersWithDocId.push({ ...teacher, _docId: newDocRef.id });
-        }
-        
-        // Handle modifications
-        const teachersToUpdate = newTeachers.filter(t => {
-            if (!t._docId) return false;
-            const oldTeacher = oldTeachers.find(ot => ot._docId === t._docId);
-            return oldTeacher && JSON.stringify(t) !== JSON.stringify(oldTeacher);
-        });
-        teachersToUpdate.forEach(teacher => {
-            const ref = doc(db, "teachers", teacher._docId!);
-            const { _docId, ...teacherData } = teacher;
-            batch.set(ref, teacherData, { merge: true });
-        });
-
-        // Handle deletions
-        const deletedTeacherIds = oldTeachers
-            .filter(ot => !newTeachers.some(nt => nt._docId === ot._docId))
-            .map(t => t._docId!);
-            
-        deletedTeacherIds.forEach(docId => {
-            const ref = doc(db, "teachers", docId);
-            batch.delete(ref);
-        });
-
-        await batch.commit();
-
-        // Update local state with new docIds for newly created teachers
-        if (addedTeachersWithDocId.length > 0) {
-            const finalTeachers = newTeachers.map(t => {
-                const added = addedTeachersWithDocId.find(at => at.id === t.id);
-                return added || t;
-            });
-            setStoreTeachers(finalTeachers);
-        }
-
-      } catch (error: any) {
-        console.error("Failed to update teachers in DB:", error);
-        setStoreTeachers(oldTeachers); // Revert
-        toast({ title: "教師資料更新失敗", variant: "destructive" });
-        throw error;
-      }
-  }, [teachers, setStoreTeachers, toast]);
-  
-  const setClassesWithDbUpdate = useCallback(async (updater: (prev: ClassInfo[]) => ClassInfo[]) => {
-      const oldClasses = classes;
-      const newClasses = updater(oldClasses);
-      setStoreClasses(newClasses); // Optimistic update
-      
-      try {
-        const batch = writeBatch(db);
-        newClasses.forEach((classInfo) => {
-            const oldClass = oldClasses.find(c => c._docId === classInfo._docId);
-            if (!oldClass || JSON.stringify(classInfo) !== JSON.stringify(oldClass)) {
-                if (classInfo._docId) {
-                    const ref = doc(db, "classes", classInfo._docId);
-                    const { _docId, ...classData } = classInfo;
-                    batch.set(ref, classData, { merge: true });
-                }
-            }
-        });
-        await batch.commit();
-      } catch (error: any) {
-        setStoreClasses(oldClasses); // Revert
-        toast({ title: "班級資料更新失敗", variant: "destructive" });
-        throw error;
-      }
-  }, [classes, setStoreClasses, toast]);
-
-  const setPlatformConfigWithDbUpdate = useCallback(async (updates: Partial<PlatformConfig>) => {
-      const oldConfig = config;
-      const newConfig = { ...oldConfig, ...updates } as PlatformConfig;
-      setStoreConfig(newConfig); // Optimistic update
-      
-      try {
-        const ref = doc(db, "config", "main");
-        await setDoc(ref, updates, { merge: true });
-      } catch (error: any) {
-        setStoreConfig(oldConfig!); // Revert
-        toast({ title: "平台設定更新失敗", variant: "destructive" });
-        throw error;
-      }
-  }, [config, setStoreConfig, toast]);
-
-    const runTransactionWithToast = useCallback(async (updateFunction: (transaction: any) => Promise<any>) => {
-        try {
-            await runTransaction(db, updateFunction);
-        } catch (error: any) {
-            console.error("Transaction failed: ", error);
-            toast({
-                title: "操作失敗",
-                description: error.message || "在執行資料庫交易時發生錯誤。",
-                variant: "destructive",
-            });
-            throw error;
-        }
-    }, [toast]);
 
   const value = {
     role,
@@ -238,12 +80,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     teacher,
     handleLogout,
     setAuthInfo,
-    setStudents: setStudentsWithDbUpdate,
-    setTeachers: setTeachersWithDbUpdate,
-    setClasses: setClassesWithDbUpdate,
-    setPlatformConfig: setPlatformConfigWithDbUpdate,
     isLoading: isAuthLoading || isStoreLoading,
-    runTransaction: runTransactionWithToast,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

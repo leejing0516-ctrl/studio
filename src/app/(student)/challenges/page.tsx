@@ -14,9 +14,11 @@ import { Building, GraduationCap, CheckCircle, Hourglass, PlayCircle, Coins } fr
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function ChallengesPage() {
-    const { student: currentStudent, setStudents } = useAuth();
+    const { student: currentStudent } = useAuth();
     const { config: platformConfig, teachers } = useSchoolStore();
     const { toast } = useToast();
 
@@ -59,8 +61,8 @@ export default function ChallengesPage() {
 
     }, [currentStudent, platformConfig?.challenges, teachers]);
 
-    const handleAcceptChallenge = (challengeId: string) => {
-        if (!currentStudent) return;
+    const handleAcceptChallenge = async (challengeId: string) => {
+        if (!currentStudent?._docId) return;
 
         const newChallenge: StudentChallenge = {
             challengeId,
@@ -68,28 +70,24 @@ export default function ChallengesPage() {
             acceptedDate: new Date().toISOString(),
         };
 
-        setStudents(prev => prev.map(s => 
-            s.id === currentStudent.id && s.classId === currentStudent.classId
-            ? { ...s, challenges: [...(s.challenges || []), newChallenge] }
-            : s
-        ));
+        const studentRef = doc(db, "students", currentStudent._docId);
+        const updatedChallenges = [...(currentStudent.challenges || []), newChallenge];
+        
+        await setDoc(studentRef, { challenges: updatedChallenges }, { merge: true });
         
         const challenge = (platformConfig?.challenges || []).find(c => c.id === challengeId);
         toast({ title: "已接受挑戰！", description: `您已開始挑戰「${challenge?.name}」。` });
     };
 
-    const handleSubmitChallenge = (challengeId: string) => {
-        if (!currentStudent) return;
+    const handleSubmitChallenge = async (challengeId: string) => {
+        if (!currentStudent?._docId) return;
 
-         setStudents(prev => prev.map(s => {
-            if (s.id === currentStudent.id && s.classId === currentStudent.classId) {
-                return {
-                    ...s,
-                    challenges: (s.challenges || []).map(c => c.challengeId === challengeId ? { ...c, status: 'pending_approval' } : c)
-                };
-            }
-            return s;
-        }));
+        const studentRef = doc(db, "students", currentStudent._docId);
+        const updatedChallenges = (currentStudent.challenges || []).map(c => 
+            c.challengeId === challengeId ? { ...c, status: 'pending_approval' as const } : c
+        );
+
+        await setDoc(studentRef, { challenges: updatedChallenges }, { merge: true });
         
         const challenge = (platformConfig?.challenges || []).find(c => c.id === challengeId);
         toast({ title: "已提交審核！", description: `已將「${challenge?.name}」提交給老師審核。` });
