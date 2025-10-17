@@ -49,7 +49,7 @@ export default function TeacherRewardsPage() {
         isLoading, teachers
     } = useSchoolStore();
     const { setPlatformConfig } = useAuth();
-    const rewards = useMemo(() => config?.rewards || [], [config]);
+    const allRewards = config?.rewards || [];
 
     const { toast } = useToast();
 
@@ -76,19 +76,9 @@ export default function TeacherRewardsPage() {
         }
     }, []);
 
-    const allClassRewards = useMemo(() => {
-        return (rewards || []).filter(r => r.scope === 'class' && teachers.some(t => t.id === r.providerId));
-    }, [rewards, teachers]);
-    
-    const schoolRewards = useMemo(() => {
-        return (rewards || []).filter(r => r.scope === 'school');
-    }, [rewards]);
-    
-    const teacherRewards = useMemo(() => {
-        if (!role || !teacherId) return [];
-        if (role === 'admin') return [];
-        return (rewards || []).filter(r => r.providerId === teacherId);
-    }, [rewards, role, teacherId]);
+    const allClassRewards = (allRewards || []).filter(r => r.scope === 'class' && teachers.some(t => t.id === r.providerId));
+    const schoolRewards = (allRewards || []).filter(r => r.scope === 'school');
+    const teacherRewards = (!role || !teacherId || role === 'admin') ? [] : (allRewards || []).filter(r => r.providerId === teacherId);
 
     const handleRewardImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -137,7 +127,7 @@ export default function TeacherRewardsPage() {
             providerId: rewardScope === 'school' ? 'school_admin' : teacherId!,
         };
         
-        await setPlatformConfig({ rewards: [...(rewards || []), newReward] });
+        await setPlatformConfig({ rewards: [...(allRewards || []), newReward] });
         setIsAddRewardDialogOpen(false);
         toast({
             title: "已新增獎勵",
@@ -180,7 +170,7 @@ export default function TeacherRewardsPage() {
             image: imageUrl
         };
         
-        await setPlatformConfig({ rewards: (rewards || []).map(r => r.id === updatedReward.id ? updatedReward : r) });
+        await setPlatformConfig({ rewards: (allRewards || []).map(r => r.id === updatedReward.id ? updatedReward : r) });
         setIsEditRewardDialogOpen(false);
         setEditingReward(null);
         toast({
@@ -195,7 +185,7 @@ export default function TeacherRewardsPage() {
 
     const handleConfirmDeleteReward = async () => {
         if (!rewardToDelete) return;
-        await setPlatformConfig({ rewards: (rewards || []).filter(r => r.id !== rewardToDelete!.id) });
+        await setPlatformConfig({ rewards: (allRewards || []).filter(r => r.id !== rewardToDelete!.id) });
         toast({
             title: "已刪除獎勵",
             description: `已成功刪除獎勵「${rewardToDelete.name}」。`,
@@ -459,3 +449,5 @@ export default function TeacherRewardsPage() {
         </div>
     );
 }
+
+    
