@@ -163,7 +163,6 @@ export default function TeacherLayout({ children }: { children: React.ReactNode;
     { href: "/teacher/teachers", label: "教師管理", icon: Briefcase, roles: ['admin'] },
     { href: "/teacher/classes", label: "班級管理", icon: School, roles: ['admin'] },
     { href: "/teacher/class-rankings", label: "班級排名", icon: Users, roles: ['admin', 'teacher', 'subject_teacher'] },
-    { href: "/teacher/rankings", label: "全校排名", icon: Trophy, roles: ['admin'] },
     { href: "/teacher/announcements", label: "公告管理", icon: Megaphone, roles: ['admin', 'teacher', 'subject_teacher'] },
     { href: "/teacher/feedback", label: "意見信箱", icon: Mail, roles: ['admin'], hasNew: hasNewFeedback },
     { href: "/teacher/rewards", label: "獎勵管理", icon: Gift, roles: ['admin', 'teacher'] },
