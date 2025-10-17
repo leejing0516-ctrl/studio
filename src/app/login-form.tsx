@@ -6,10 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
-import { useSchoolStore } from '@/store/useSchoolStore';
 import { Loader2, ArrowRight } from 'lucide-react';
+import { Class, Teacher, Student } from '@/lib/types';
+import { useSchoolStore } from '@/store/useSchoolStore';
 
-export default function LoginForm() {
+interface LoginFormProps {
+  classes: Class[];
+  teachers: Teacher[];
+}
+
+export default function LoginForm({ classes, teachers }: LoginFormProps) {
   const [classId, setClassId] = useState("");
   const [studentSeatNumber, setStudentSeatNumber] = useState("");
   const [studentPassword, setStudentPassword] = useState("");
@@ -18,7 +24,7 @@ export default function LoginForm() {
   const [teacherPassword, setTeacherPassword] = useState("");
   
   const { handleLogin, isLoading } = useAuth();
-  const { classes, students, teachers } = useSchoolStore();
+  const { students } = useSchoolStore();
 
   const handleStudentLogin = () => {
     // In a real app, you'd likely want to find the student by seat number and class,

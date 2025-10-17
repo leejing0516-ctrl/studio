@@ -1,10 +1,11 @@
+"use client";
 import Image from 'next/image';
 import Logo from '@/components/logo';
 import { useSchoolStore } from '@/store/useSchoolStore';
 import LoginForm from './login-form';
 
 export default function LoginPage() {
-  const config = useSchoolStore.getState().config;
+  const { config, classes, teachers } = useSchoolStore();
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 text-foreground font-sans">
@@ -14,7 +15,7 @@ export default function LoginPage() {
         <p className="text-muted-foreground mt-2 text-lg">為每一個努力的你,獻上更值得的未來。</p>
       </div>
 
-      <LoginForm />
+      <LoginForm classes={classes} teachers={teachers} />
 
       <footer className="mt-12 text-center text-sm text-muted-foreground">
         <p>贊助單位</p>
