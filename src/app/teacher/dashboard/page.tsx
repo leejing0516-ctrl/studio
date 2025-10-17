@@ -441,7 +441,7 @@ const PointsTab = () => {
                                 <SelectContent>
                                     <SelectItem value="selected">已選取的學生 ({selectedStudents.length})</SelectItem>
                                     <SelectItem value="all">全班</SelectItem>
-                                    {teacherGroups.map(g => <SelectItem key={g.id} value={g.id}>分組: {g.name}</SelectItem>)}
+                                    {teacherGroups.filter(g => g.id).map(g => <SelectItem key={g.id} value={g.id}>分組: {g.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -738,7 +738,7 @@ const PointsHistoryTab = () => {
     }, [teacher]);
     
     useEffect(() => {
-        if (availableClasses.length > 0 && !selectedClassId) {
+        if (availableClasses.length > 0 && !availableClasses.some(c => c.id === selectedClassId)) {
             setSelectedClassId(availableClasses[0].id);
         }
     }, [availableClasses, selectedClassId]);
@@ -897,4 +897,3 @@ export default function TeacherDashboardPage() {
         </div>
     );
 }
-
