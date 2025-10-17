@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -5,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import type { Reward, Student } from "@/lib/types";
-import { Coins, ShoppingCart, School, Users, Building, GraduationCap } from "lucide-react";
+import { Coins, ShoppingCart, School, Users, Building, GraduationCap, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,12 +30,14 @@ export default function RewardsPage() {
   const [isRedeeming, setIsRedeeming] = useState(false);
   const { toast } = useToast();
   const { student, setStudents, setPlatformConfig } = useAuth();
-  const { config: platformConfig, teachers } = useSchoolStore();
+  const { config: platformConfig, teachers, loading: storeLoading } = useSchoolStore();
 
   const allRewards = useMemo(() => platformConfig?.rewards || [], [platformConfig]);
 
-  const { classRewards, schoolRewards } = useMemo(() => {
-    if (!student || !allRewards.length || !teachers.length) {
+  const { classRewards, schoolRewards } = (() => {
+    // Direct computation on each render.
+    // Return empty if data is not ready, the top-level loader will handle the UI.
+    if (!student || !allRewards.length || !teachers.length || storeLoading) {
       return { classRewards: [], schoolRewards: [] };
     }
 
@@ -54,12 +57,11 @@ export default function RewardsPage() {
       return false;
     });
 
-    const classRewards = availableRewards.filter(r => r.scope === 'class');
-    const schoolRewards = availableRewards.filter(r => r.scope === 'school');
-    
-    return { classRewards, schoolRewards };
-
-  }, [allRewards, student, teachers]);
+    return {
+      classRewards: availableRewards.filter(r => r.scope === 'class'),
+      schoolRewards: availableRewards.filter(r => r.scope === 'school'),
+    };
+  })();
 
 
   const handleRedeemClick = (reward: Reward) => {
@@ -187,6 +189,14 @@ export default function RewardsPage() {
     </Card>
   )
 
+  if (storeLoading || !student) {
+    return (
+        <div className="flex justify-center items-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+    )
+  }
+
   return (
     <>
       <div className="space-y-8 animate-in fade-in-0 duration-500">
@@ -248,3 +258,5 @@ export default function RewardsPage() {
     </>
   );
 }
+
+    
