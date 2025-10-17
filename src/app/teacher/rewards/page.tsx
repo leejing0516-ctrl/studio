@@ -49,8 +49,6 @@ export default function TeacherRewardsPage() {
         isLoading, teachers
     } = useSchoolStore();
     const { setPlatformConfig } = useAuth();
-    const allRewards = config?.rewards || [];
-
     const { toast } = useToast();
 
     const [role, setRole] = useState<string | null>(null);
@@ -75,10 +73,18 @@ export default function TeacherRewardsPage() {
             setRewardScope('class');
         }
     }, []);
+    
+    const allRewards = config?.rewards || [];
+
+    const teacherRewards =
+      !role || !teacherId || role === 'admin'
+        ? []
+        : allRewards.filter((r) => r.providerId === teacherId);
 
     const schoolRewards = allRewards.filter(r => r.scope === 'school');
+    
     const allClassRewards = allRewards.filter(r => r.scope === 'class' && teachers.some(t => t.id === r.providerId));
-    const teacherRewards = (!role || !teacherId || role === 'admin') ? [] : allRewards.filter(r => r.providerId === teacherId);
+
 
     const handleRewardImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -449,3 +455,5 @@ export default function TeacherRewardsPage() {
         </div>
     );
 }
+
+    
