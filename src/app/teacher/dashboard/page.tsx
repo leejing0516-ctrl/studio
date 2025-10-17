@@ -603,9 +603,9 @@ const GroupManagementTab = () => {
         setIsManageGroupsOpen(false);
     };
     
-    const assignStudentToGroup = async (studentId: string, groupId: string) => {
+    const assignStudentToGroup = async (studentId: string, groupId: string | undefined) => {
         await setStudents(prevStudents => prevStudents.map(s => 
-            s.id === studentId && s.classId === selectedClassId ? { ...s, groupId: groupId === "" ? undefined : groupId } : s
+            s.id === studentId && s.classId === selectedClassId ? { ...s, groupId: groupId } : s
         ));
     };
 
@@ -657,13 +657,13 @@ const GroupManagementTab = () => {
                                         <TableCell>
                                             <Select 
                                                 value={student.groupId || ""} 
-                                                onValueChange={(value) => assignStudentToGroup(student.id, value)}
+                                                onValueChange={(value) => assignStudentToGroup(student.id, value === "" ? undefined : value)}
                                             >
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="未分組" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="">未分組</SelectItem>
+                                                     <SelectItem value="">未分組</SelectItem>
                                                     {groups.map(group => (
                                                         <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
                                                     ))}
@@ -741,7 +741,7 @@ const PointsHistoryTab = () => {
         if (availableClasses.length > 0 && !selectedClassId) {
             setSelectedClassId(availableClasses[0].id);
         }
-    }, [availableClasses]);
+    }, [availableClasses, selectedClassId]);
 
     const historyData = useMemo(() => {
         if (!selectedClassId || !selectedTeacherId) return [];
