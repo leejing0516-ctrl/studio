@@ -8,76 +8,59 @@ import { useSchoolStore } from '@/store/useSchoolStore';
 import { Announcement, Challenge, Class, Fundraising, Habit, Pet, PlatformConfig, Stock, Student, Teacher } from '@/lib/types';
 
 interface AppDataContextType {
-  loading: boolean;
+  dataLoaded: boolean;
 }
 
-const AppDataContext = createContext<AppDataContextType>({ loading: true });
+const AppDataContext = createContext<AppDataContextType>({ dataLoaded: false });
 
 export const useAppData = () => useContext(AppDataContext);
 
 export const AppDataProvider = ({ children }: { children: React.ReactNode }) => {
   const setSchoolStore = useSchoolStore(state => state.setData);
-  const [loading, setLoading] = useState(true);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   useEffect(() => {
-    const unsubscribers = [
-      onSnapshot(collection(db, "students"), (snapshot) => {
-        const students = snapshot.docs.map(doc => ({ ...doc.data(), _docId: doc.id } as Student));
-        setSchoolStore({ students });
-      }),
-      onSnapshot(collection(db, "teachers"), (snapshot) => {
-        const teachers = snapshot.docs.map(doc => ({ ...doc.data(), _docId: doc.id } as Teacher));
-        setSchoolStore({ teachers });
-      }),
-      onSnapshot(collection(db, "classes"), (snapshot) => {
-        const classes = snapshot.docs.map(doc => ({ ...doc.data(), _docId: doc.id } as Class));
-        setSchoolStore({ classes });
-      }),
-       onSnapshot(collection(db, "announcements"), (snapshot) => {
-        const announcements = snapshot.docs.map(doc => ({ ...doc.data(), _docId: doc.id } as Announcement));
-        setSchoolStore({ announcements });
-      }),
-      onSnapshot(collection(db, "challenges"), (snapshot) => {
-        const challenges = snapshot.docs.map(doc => ({ ...doc.data(), _docId: doc.id } as Challenge));
-        setSchoolStore({ challenges });
-      }),
-      onSnapshot(collection(db, "rewards"), (snapshot) => {
-        const rewards = snapshot.docs.map(doc => ({ ...doc.data(), _docId: doc.id } as any));
-        setSchoolStore({ rewards });
-      }),
-       onSnapshot(collection(db, "habits"), (snapshot) => {
-        const habits = snapshot.docs.map(doc => ({ ...doc.data(), _docId: doc.id } as Habit));
-        setSchoolStore({ habits });
-      }),
-       onSnapshot(collection(db, "pets"), (snapshot) => {
-        const pets = snapshot.docs.map(doc => ({ ...doc.data(), _docId: doc.id } as Pet));
-        setSchoolStore({ pets });
-      }),
-      onSnapshot(collection(db, "stocks"), (snapshot) => {
-        const stocks = snapshot.docs.map(doc => ({ ...doc.data(), _docId: doc.id } as Stock));
-        setSchoolStore({ stocks });
-      }),
-      onSnapshot(collection(db, "fundraising"), (snapshot) => {
-        const fundraising = snapshot.docs.map(doc => ({ ...doc.data(), _docId: doc.id } as Fundraising));
-        setSchoolStore({ fundraising });
-      }),
-      onSnapshot(doc(db, "config", "platform"), (snapshot) => {
-        const config = snapshot.data() as PlatformConfig;
-        setSchoolStore({ config });
-      }),
+    const collections: { name: string; key: keyof ReturnType<typeof useSchoolStore.getState> }[] = [
+      { name: 'students', key: 'students' },
+      { name: 'teachers', key: 'teachers' },
+      { name: 'classes', key: 'classes' },
+      { name: 'announcements', key: 'announcements' },
+      { name: 'challenges', key: 'challenges' },
+      { name: 'rewards', key: 'rewards' },
+      { name: 'habits', key: 'habits' },
+      { name: 'pets', key: 'pets' },
+      { name: 'stocks', key: 'stocks' },
+      { name: 'fundraising', key: 'fundraising' },
     ];
 
-    const initialLoad = Promise.all(unsubscribers).then(() => {
-        setTimeout(() => setLoading(false), 500); // Add a small delay to prevent flash of loading
+    const unsubs = collections.map(({ name, key }) => 
+      onSnapshot(collection(db, name), (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ ...doc.data(), _docId: doc.id }));
+        setSchoolStore({ [key]: data } as any);
+      })
+    );
+
+    const unsubConfig = onSnapshot(doc(db, "config", "platform"), (snapshot) => {
+      const config = snapshot.data() as PlatformConfig;
+      setSchoolStore({ config });
     });
 
+    // Mark that initial data setup is in progress.
+    // The actual data will be populated asynchronously.
+    if (!dataLoaded) {
+      setDataLoaded(true);
+    }
+    
     return () => {
-      unsubscribers.forEach(unsubscribe => unsubscribe());
+      unsubs.forEach(unsub => unsub());
+      unsubConfig();
     };
-  }, [setSchoolStore]);
+  // The dependency array is intentionally empty to run this effect only once on mount.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <AppDataContext.Provider value={{ loading }}>
+    <AppDataContext.Provider value={{ dataLoaded }}>
       {children}
     </AppDataContext.Provider>
   );
