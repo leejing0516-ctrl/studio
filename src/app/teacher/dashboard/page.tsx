@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { subDays, isAfter } from 'date-fns';
 import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const StudentManagementTab = () => {
     const { toast } = useToast();
@@ -463,10 +464,9 @@ const PointsTab = () => {
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="w-[50px]">
-                                        <input
-                                        type="checkbox"
-                                        onChange={(e) => {
-                                            if (e.target.checked) {
+                                        <Checkbox
+                                        onCheckedChange={(checked) => {
+                                            if (checked) {
                                                 setSelectedStudents(filteredStudents.map(s => s.id));
                                             } else {
                                                 setSelectedStudents([]);
@@ -487,11 +487,10 @@ const PointsTab = () => {
                             {filteredStudents.length > 0 ? filteredStudents.map(student => (
                                 <TableRow key={student.id}>
                                     <TableCell>
-                                        <input
-                                            type="checkbox"
+                                        <Checkbox
                                             checked={selectedStudents.includes(student.id)}
-                                            onChange={(e) => {
-                                                if (e.target.checked) {
+                                            onCheckedChange={(checked) => {
+                                                if (checked) {
                                                     setSelectedStudents([...selectedStudents, student.id]);
                                                 } else {
                                                     setSelectedStudents(selectedStudents.filter(id => id !== student.id));
@@ -606,7 +605,7 @@ const GroupManagementTab = () => {
     
     const assignStudentToGroup = async (studentId: string, groupId: string) => {
         await setStudents(prevStudents => prevStudents.map(s => 
-            s.id === studentId && s.classId === selectedClassId ? { ...s, groupId: groupId } : s
+            s.id === studentId && s.classId === selectedClassId ? { ...s, groupId: groupId === "" ? undefined : groupId } : s
         ));
     };
 
@@ -739,10 +738,10 @@ const PointsHistoryTab = () => {
     }, [teacher]);
     
     useEffect(() => {
-        if (availableClasses.length > 0 && !availableClasses.find(c => c.id === selectedClassId)) {
+        if (availableClasses.length > 0 && !selectedClassId) {
             setSelectedClassId(availableClasses[0].id);
         }
-    }, [availableClasses, selectedClassId]);
+    }, [availableClasses]);
 
     const historyData = useMemo(() => {
         if (!selectedClassId || !selectedTeacherId) return [];
@@ -898,3 +897,5 @@ export default function TeacherDashboardPage() {
         </div>
     );
 }
+
+    
