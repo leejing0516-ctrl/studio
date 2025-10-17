@@ -41,7 +41,7 @@ import {
 import { subDays, isAfter } from 'date-fns';
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
-import { doc, writeBatch } from "firebase/firestore";
+import { doc, writeBatch, deleteDoc, setDoc, collection } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 const StudentManagementTab = () => {
@@ -169,7 +169,21 @@ const StudentManagementTab = () => {
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="icon" onClick={() => { setStudentToEdit(student); setEditStudentName(student.name); setIsEditStudentOpen(true); }}><Edit className="h-4 w-4"/></Button>
                                         <Button variant="ghost" size="icon" onClick={() => { setStudentToResetPassword(student); setIsResetPasswordOpen(true); }}><KeySquare className="h-4 w-4"/></Button>
-                                        <Button variant="ghost" size="icon" onClick={() => setStudentToDelete(student)} className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4"/></Button>
+                                        <AlertDialog open={!!studentToDelete && studentToDelete.id === student.id} onOpenChange={(open) => !open && setStudentToDelete(null)}>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" onClick={() => setStudentToDelete(student)} className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4"/></Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>確定刪除?</AlertDialogTitle>
+                                                    <AlertDialogDescription>您確定要刪除學生 {student.name} 嗎? 此動作無法復原。</AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>取消</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={handleDeleteStudent}>確定刪除</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
                                     </TableCell>
                                 </TableRow>
                             )) : (
@@ -248,20 +262,6 @@ const StudentManagementTab = () => {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-            
-            {/* Delete Student Alert */}
-            <AlertDialog open={!!studentToDelete} onOpenChange={(open) => !open && setStudentToDelete(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>確定刪除?</AlertDialogTitle>
-                        <AlertDialogDescription>您確定要刪除學生 {studentToDelete?.name} 嗎? 此動作無法復原。</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setStudentToDelete(null)}>取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteStudent}>確定刪除</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </Card>
     );
 }
@@ -532,7 +532,6 @@ const GroupManagementTab = () => {
     const [selectedClassId, setSelectedClassId] = useState<string>('');
     const [isManageGroupsOpen, setIsManageGroupsOpen] = useState(false);
     
-    // State for the management dialog
     const [dialogGroups, setDialogGroups] = useState<ClassGroup[]>([]);
     const [newGroupName, setNewGroupName] = useState("");
     const [dialogStudentAssignments, setDialogStudentAssignments] = useState<{ [studentId: string]: string | undefined }>({});
@@ -596,7 +595,6 @@ const GroupManagementTab = () => {
 
     const deleteGroupInDialog = (groupId: string) => {
         setDialogGroups(dialogGroups.filter(g => g.id !== groupId));
-        // Also unassign students from the deleted group
         const newAssignments = { ...dialogStudentAssignments };
         Object.keys(newAssignments).forEach(studentId => {
             if (newAssignments[studentId] === groupId) {

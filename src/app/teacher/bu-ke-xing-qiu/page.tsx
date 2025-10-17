@@ -24,7 +24,7 @@ import { Loader2, BookUp, AlertTriangle, Upload, Download } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import type { Student, PointRecord } from "@/lib/types";
 import { doc, writeBatch, Transaction, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -32,6 +32,7 @@ import Papa from "papaparse";
 import { Separator } from "@/components/ui/separator";
 import { useSchoolStore } from "@/store/useSchoolStore";
 import { useAuth } from "@/context/AuthContext";
+import { runTransaction } from "firebase/firestore";
 
 interface BuKeRecord {
     studentId: string;
@@ -48,8 +49,8 @@ const gradeMap: { [key: string]: string } = { "1": "一", "2": "二", "3": "三"
 const classMap: { [key: string]: string } = { "1": "甲班", "2": "乙班" };
 
 export default function BuKeXingQiuPage() {
-    const { students, classes, isLoading, platformConfig } = useSchoolStore();
-    const { setStudents, runTransaction, teacher } = useAuth();
+    const { students, classes, isLoading, config: platformConfig } = useSchoolStore();
+    const { teacher } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
 
@@ -131,28 +132,27 @@ export default function BuKeXingQiuPage() {
         setIsProcessing(true);
 
         const studentDataMap = new Map(parsedCsvData.map(item => [`${item.classId}-${item.studentId}`, item]));
+        const batch = writeBatch(db);
+
+        students.forEach(student => {
+            const key = `${student.classId}-${student.id}`;
+            if (studentDataMap.has(key) && student._docId) {
+                const csvData = studentDataMap.get(key)!;
+                const studentRef = doc(db, "students", student._docId);
+                batch.update(studentRef, {
+                    readingEnergy: csvData.buKeEnergyThisMonth,
+                    buKeMonth: csvData.buKeMonth,
+                    buKeEnergyThisMonth: csvData.buKeEnergyThisMonth,
+                    buKeBooksThisMonth: csvData.buKeBooksThisMonth,
+                    buKeLevel: csvData.buKeLevel,
+                    buKeTotalEnergy: csvData.buKeTotalEnergy,
+                    buKeTotalBooks: csvData.buKeTotalBooks,
+                });
+            }
+        });
         
         try {
-            await setStudents(currentStudents => 
-                currentStudents.map(student => {
-                    const key = `${student.classId}-${student.id}`;
-                    if (studentDataMap.has(key)) {
-                        const csvData = studentDataMap.get(key)!;
-                        return {
-                            ...student,
-                            readingEnergy: csvData.buKeEnergyThisMonth,
-                            buKeMonth: csvData.buKeMonth,
-                            buKeEnergyThisMonth: csvData.buKeEnergyThisMonth,
-                            buKeBooksThisMonth: csvData.buKeBooksThisMonth,
-                            buKeLevel: csvData.buKeLevel,
-                            buKeTotalEnergy: csvData.buKeTotalEnergy,
-                            buKeTotalBooks: csvData.buKeTotalBooks,
-                        };
-                    }
-                    return student;
-                })
-            );
-
+            await batch.commit();
             toast({
                 title: `匯入完成`,
                 description: `已成功為 ${parsedCsvData.length} 位學生更新布可星球資料。`
@@ -180,18 +180,15 @@ export default function BuKeXingQiuPage() {
         const totalPointsToAward = studentsToConvert.reduce((sum, s) => sum + Math.floor((s.readingEnergy || 0) * conversionRate), 0);
         
         try {
-            await runTransaction(async (transaction: Transaction) => {
+            await runTransaction(db, async (transaction: Transaction) => {
                 const configRef = doc(db, 'config', 'main');
-                const studentRefsAndData = await Promise.all(studentsToConvert.map(async student => {
-                    if (!student._docId) return null;
-                    const studentRef = doc(db, 'students', student._docId);
-                    const studentDoc = await transaction.get(studentRef);
-                    return { ref: studentRef, data: studentDoc.data() as Student, docExists: studentDoc.exists() };
-                }));
-                
-                if (!platformConfig) throw new Error("平台設定尚未載入。");
+                const configDoc = await transaction.get(configRef);
 
-                const schoolFunds = platformConfig.schoolFunds || 0;
+                if (!configDoc.exists()) {
+                    throw new Error("找不到平台設定。");
+                }
+                const currentPlatformConfig = configDoc.data();
+                const schoolFunds = currentPlatformConfig.schoolFunds || 0;
 
                 if (schoolFunds < totalPointsToAward) {
                     throw new Error(`需要 ${totalPointsToAward.toLocaleString()} 點，但學校資金僅剩 ${schoolFunds.toLocaleString()} 點。`);
@@ -199,10 +196,14 @@ export default function BuKeXingQiuPage() {
 
                 transaction.update(configRef, { schoolFunds: schoolFunds - totalPointsToAward });
                 
-                for (const studentInfo of studentRefsAndData) {
-                    if (!studentInfo || !studentInfo.docExists) continue;
+                for (const student of studentsToConvert) {
+                    if (!student._docId) continue;
+                    
+                    const studentRef = doc(db, "students", student._docId);
+                    const studentDoc = await transaction.get(studentRef);
+                    if (!studentDoc.exists()) continue;
 
-                    const { ref: studentRef, data: studentData } = studentInfo;
+                    const studentData = studentDoc.data() as Student;
                     const energyToConvert = studentData.readingEnergy || 0;
                     if (energyToConvert <= 0) continue;
                     
@@ -367,5 +368,3 @@ export default function BuKeXingQiuPage() {
         </div>
     );
 }
-
-    

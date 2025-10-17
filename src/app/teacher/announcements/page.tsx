@@ -33,7 +33,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -42,6 +41,8 @@ import { useAuth } from "@/context/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { Separator } from "@/components/ui/separator";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 
 export default function TeacherAnnouncementsPage() {
@@ -50,7 +51,7 @@ export default function TeacherAnnouncementsPage() {
         config: platformConfig,
         loading: isLoading
     } = useSchoolStore();
-    const { setClasses, setPlatformConfig, teacher } = useAuth();
+    const { teacher } = useAuth();
 
     const { toast } = useToast();
 
@@ -93,7 +94,7 @@ export default function TeacherAnnouncementsPage() {
     }, [classes, selectedClassId]);
 
 
-    const handleAddAnnouncement = (event: React.FormEvent<HTMLFormElement>) => {
+    const handleAddAnnouncement = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
         const title = formData.get("title") as string;
@@ -114,16 +115,13 @@ export default function TeacherAnnouncementsPage() {
         };
         
         if (announcementType === 'school') {
-            const currentAnnouncements = platformConfig?.announcements || [];
-            setPlatformConfig({ announcements: [...currentAnnouncements, newAnnouncement] });
+            const configRef = doc(db, 'config', 'main');
+            await setDoc(configRef, { announcements: [...(platformConfig?.announcements || []), newAnnouncement] }, { merge: true });
             toast({ title: "學校公告已發布" });
         } else if (announcementType === 'class' && selectedClassId) {
-             setClasses(currentClasses => currentClasses.map(c => {
-                if (c.id === selectedClassId) {
-                    return { ...c, announcements: [...(c.announcements || []), newAnnouncement] };
-                }
-                return c;
-             }));
+             const classRef = doc(db, 'classes', selectedClassId);
+             const currentClass = classes.find(c => c.id === selectedClassId);
+             await setDoc(classRef, { announcements: [...(currentClass?.announcements || []), newAnnouncement] }, { merge: true });
              toast({ title: "班級公告已發布" });
         }
         
@@ -136,7 +134,7 @@ export default function TeacherAnnouncementsPage() {
         setIsEditAnnouncementDialogOpen(true);
     };
 
-    const handleUpdateAnnouncement = (event: React.FormEvent<HTMLFormElement>) => {
+    const handleUpdateAnnouncement = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!editingAnnouncement) return;
 
@@ -151,17 +149,18 @@ export default function TeacherAnnouncementsPage() {
         };
 
         if (announcementType === 'school') {
+            const configRef = doc(db, 'config', 'main');
             const updatedAnnouncements = (platformConfig?.announcements || []).map(ann => 
                 ann.id === updatedAnnouncement.id ? updatedAnnouncement : ann
             );
-            setPlatformConfig({ announcements: updatedAnnouncements });
+            await setDoc(configRef, { announcements: updatedAnnouncements }, { merge: true });
         } else if (announcementType === 'class' && selectedClassId) {
-            setClasses(currentClasses => currentClasses.map(c => {
-                if (c.id === selectedClassId) {
-                    return { ...c, announcements: (c.announcements || []).map(ann => ann.id === updatedAnnouncement.id ? updatedAnnouncement : ann) };
-                }
-                return c;
-             }));
+            const classRef = doc(db, 'classes', selectedClassId);
+            const currentClass = classes.find(c => c.id === selectedClassId);
+            const updatedClassAnnouncements = (currentClass?.announcements || []).map(ann => 
+                ann.id === updatedAnnouncement.id ? updatedAnnouncement : ann
+            );
+            await setDoc(classRef, { announcements: updatedClassAnnouncements }, { merge: true });
         }
 
         toast({ title: "公告已更新" });
@@ -174,19 +173,18 @@ export default function TeacherAnnouncementsPage() {
         setAnnouncementType(type);
     };
   
-    const handleConfirmDeleteAnnouncement = () => {
+    const handleConfirmDeleteAnnouncement = async () => {
         if (!announcementToDelete) return;
 
         if (announcementType === 'school') {
+            const configRef = doc(db, 'config', 'main');
             const updatedAnnouncements = (platformConfig?.announcements || []).filter(ann => ann.id !== announcementToDelete.id);
-            setPlatformConfig({ announcements: updatedAnnouncements });
+            await setDoc(configRef, { announcements: updatedAnnouncements }, { merge: true });
         } else if (announcementType === 'class' && selectedClassId) {
-            setClasses(currentClasses => currentClasses.map(c => {
-                if (c.id === selectedClassId) {
-                    return { ...c, announcements: (c.announcements || []).filter(ann => ann.id !== announcementToDelete.id) };
-                }
-                return c;
-            }));
+            const classRef = doc(db, 'classes', selectedClassId);
+            const currentClass = classes.find(c => c.id === selectedClassId);
+            const updatedClassAnnouncements = (currentClass?.announcements || []).filter(ann => ann.id !== announcementToDelete.id);
+            await setDoc(classRef, { announcements: updatedClassAnnouncements }, { merge: true });
         }
 
         toast({ title: "公告已刪除", variant: "destructive" });
@@ -222,7 +220,7 @@ export default function TeacherAnnouncementsPage() {
                             <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleEditAnnouncementClick(ann, type)}>
                                 <Edit className="h-4 w-4" />
                             </Button>
-                            <AlertDialog>
+                            <AlertDialog open={!!announcementToDelete && announcementToDelete.id === ann.id} onOpenChange={(open) => !open && setAnnouncementToDelete(null)}>
                                 <AlertDialogTrigger asChild>
                                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteAnnouncementClick(ann, type)}>
                                         <Trash2 className="h-4 w-4" />
@@ -416,20 +414,6 @@ export default function TeacherAnnouncementsPage() {
                     </form>
                 </DialogContent>
             </Dialog>
-            <AlertDialog open={!!announcementToDelete} onOpenChange={(open) => !open && setAnnouncementToDelete(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            您確定要刪除公告「{announcementToDelete?.title}」嗎？此操作無法復原。
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setAnnouncementToDelete(null)}>取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleConfirmDeleteAnnouncement()} className={buttonVariants({ variant: "destructive" })}>確定刪除</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
     )
 }

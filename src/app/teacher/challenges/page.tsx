@@ -33,25 +33,22 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useSchoolStore } from "@/store/useSchoolStore";
 import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function TeacherChallengesPage() {
     const { 
         classes,
         isLoading, platformConfig, teachers
     } = useSchoolStore();
-    const { setPlatformConfig } = useAuth();
-
+    const { teacher } = useAuth();
     const { toast } = useToast();
-
-    const [role, setRole] = useState<string | null>(null);
-    const [teacherId, setTeacherId] = useState<string | null>(null);
     
     // State for Challenges
     const [isAddChallengeDialogOpen, setIsAddChallengeDialogOpen] = useState(false);
@@ -60,15 +57,16 @@ export default function TeacherChallengesPage() {
     const [challengeToDelete, setChallengeToDelete] = useState<Challenge | null>(null);
     const [challengeScope, setChallengeScope] = useState<'school' | 'class'>('school');
 
+    const role = teacher?.role;
+    const teacherId = teacher?.id;
+
     useEffect(() => {
-        const storedRole = localStorage.getItem('teacherRole');
-        const storedTeacherId = localStorage.getItem('teacherId');
-        setRole(storedRole);
-        setTeacherId(storedTeacherId);
-        if (storedRole === 'teacher' || storedRole === 'subject_teacher') {
+        if (role === 'teacher' || role === 'subject_teacher') {
             setChallengeScope('class');
+        } else {
+            setChallengeScope('school');
         }
-    }, []);
+    }, [role]);
 
     const allChallenges = useMemo(() => platformConfig?.challenges || [], [platformConfig]);
 
@@ -105,7 +103,8 @@ export default function TeacherChallengesPage() {
             providerId: challengeScope === 'school' ? 'school_admin' : teacherId!,
         };
 
-        await setPlatformConfig({ challenges: [...(platformConfig?.challenges || []), newChallenge] });
+        const configRef = doc(db, 'config', 'main');
+        await setDoc(configRef, { challenges: [...(platformConfig?.challenges || []), newChallenge] }, { merge: true });
         
         toast({ title: "已新增挑戰", description: `已成功新增挑戰「${name}」。` });
         setIsAddChallengeDialogOpen(false);
@@ -133,10 +132,10 @@ export default function TeacherChallengesPage() {
             points,
         };
         
-        await setPlatformConfig({ 
+        const configRef = doc(db, 'config', 'main');
+        await setDoc(configRef, { 
             challenges: (platformConfig?.challenges || []).map(c => c.id === updatedChallenge.id ? updatedChallenge : c) 
-        });
-
+        }, { merge: true });
 
         toast({ title: "已更新挑戰", description: `已成功更新挑戰「${name}」。` });
         setIsEditChallengeDialogOpen(false);
@@ -150,7 +149,8 @@ export default function TeacherChallengesPage() {
     const handleConfirmDeleteChallenge = async () => {
         if (!challengeToDelete) return;
         
-        await setPlatformConfig({ challenges: (platformConfig?.challenges || []).filter(c => c.id !== challengeToDelete.id) });
+        const configRef = doc(db, 'config', 'main');
+        await setDoc(configRef, { challenges: (platformConfig?.challenges || []).filter(c => c.id !== challengeToDelete.id) }, { merge: true });
 
         toast({ title: "已刪除挑戰", description: `已成功刪除挑戰「${challengeToDelete.name}」。`, variant: "destructive" });
         setChallengeToDelete(null);
@@ -216,7 +216,7 @@ export default function TeacherChallengesPage() {
                     </TableRow>
                 )) : (
                     <TableRow>
-                        <TableCell colSpan={isReadOnly ? 5 : 5} className="h-24 text-center">目前沒有挑戰。</TableCell>
+                        <TableCell colSpan={5} className="h-24 text-center">目前沒有挑戰。</TableCell>
                     </TableRow>
                 )}
             </TableBody>
