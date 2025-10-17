@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   Card,
@@ -45,8 +44,9 @@ import { resizeImage, fileToDataUrl } from "@/lib/image-utils";
 
 export default function TeacherRewardsPage() {
     const { 
-        config,
-        loading: isLoading, teachers
+        config: platformConfig,
+        loading: isLoading, 
+        teachers
     } = useSchoolStore();
     const { setPlatformConfig } = useAuth();
     const { toast } = useToast();
@@ -74,7 +74,7 @@ export default function TeacherRewardsPage() {
         }
     }, []);
     
-    const allRewards = config?.rewards || [];
+    const allRewards = platformConfig?.rewards || [];
 
     const teacherRewards =
       !role || !teacherId || role === 'admin'
@@ -455,5 +455,3 @@ export default function TeacherRewardsPage() {
         </div>
     );
 }
-
-    
