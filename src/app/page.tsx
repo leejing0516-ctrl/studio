@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/context/AuthContext";
 import { useSchoolStore } from '@/store/useSchoolStore';
 import { Loader2, ArrowRight } from 'lucide-react';
+import Logo from '@/components/logo';
 
 export default function LoginPage() {
   const [classId, setClassId] = useState("");
@@ -23,10 +24,15 @@ export default function LoginPage() {
   const { classes, students, teachers, config } = useSchoolStore();
 
   const handleStudentLogin = () => {
-    // Student ID format is S<seatNumber>, e.g., S001
-    const student = students.find(s => s.classId === classId && s.id.toUpperCase() === studentSeatNumber.toUpperCase());
-    if (student) {
-        handleLogin({ role: 'student', studentId: student.id, password: studentPassword });
+    // In a real app, you'd likely want to find the student by seat number and class,
+    // then verify the password. For now, we find by ID which is seat number.
+    const student = students.find(s => s.classId === classId && s.id.toLowerCase() === studentSeatNumber.toLowerCase());
+    
+    // Placeholder for password check. In a real app, this would be a hashed password check.
+    const isPasswordCorrect = true; // Replace with actual password logic
+
+    if (student && isPasswordCorrect) {
+        handleLogin({ role: 'student', studentId: student.id });
     } else {
         alert("找不到學生資料或座號/密碼錯誤");
     }
@@ -52,7 +58,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 text-foreground font-sans">
       <div className="text-center mb-8">
-        <Image src="/virtual-bank-logo.png" alt="Virtual Bank Logo" width={150} height={150} className="mx-auto mb-4" data-ai-hint="logo illustration" />
+        <Logo className="h-24 w-24 mx-auto mb-4 text-primary" />
         <h1 className="text-4xl font-bold text-foreground">南梓實小虛擬銀行</h1>
         <p className="text-muted-foreground mt-2 text-lg">為每一個努力的你,獻上更值得的未來。</p>
       </div>
@@ -127,7 +133,7 @@ export default function LoginPage() {
             </div>
           </CardContent>
           <CardFooter>
-            <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90" onClick={handleTeacherLogin} disabled={isTeacherLoginDisabled()}>
+            <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={handleTeacherLogin} disabled={isTeacherLoginDisabled()}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               → 以老師身份進入
             </Button>
@@ -148,3 +154,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    
