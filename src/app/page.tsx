@@ -20,10 +20,7 @@ export default function LoginPage() {
   const { handleLogin, isLoading } = useAuth();
   const { classes, students, teachers, config } = useSchoolStore();
 
-  const filteredStudents = classId ? students.filter(s => s.classId === classId) : [];
-
   const handleStudentLogin = () => {
-    // Note: This matches the login logic from the screenshot where seat number is used.
     const student = students.find(s => s.classId === classId && s.seatNumber === parseInt(studentSeatNumber, 10));
     if (student) {
         handleLogin({ role: 'student', studentId: student.id, password: studentPassword });
@@ -37,7 +34,7 @@ export default function LoginPage() {
   }
 
   const isStudentLoginDisabled = () => {
-    return isLoading || !classId || !studentSeatNumber; // Password might be optional for some configurations
+    return isLoading || !classId || !studentSeatNumber;
   }
 
   const isTeacherLoginDisabled = () => {
@@ -45,25 +42,25 @@ export default function LoginPage() {
   }
   
   const pageStyle = {
-    '--background': config?.theme.background || '0 0% 100%',
-    '--foreground': config?.theme.foreground || '0 0% 3.9%',
-    '--primary': config?.theme.primary || '0 0% 9%',
-    '--primary-foreground': config?.theme.primaryForeground || '0 0% 98%',
-    '--card': config?.theme.card || '0 0% 100%',
-    '--card-foreground': config?.theme.cardForeground || '0 0% 3.9%',
-    '--popover': config?.theme.popover || '0 0% 100%',
-    '--popover-foreground': config?.theme.popoverForeground || '0 0% 3.9%',
-    '--secondary': config?.theme.secondary || '0 0% 96.1%',
-    '--secondary-foreground': config?.theme.secondaryForeground || '0 0% 9%',
-    '--muted': config?.theme.muted || '0 0% 96.1%',
-    '--muted-foreground': config?.theme.mutedForeground || '0 0% 45.1%',
-    '--accent': config?.theme.accent || '0 0% 96.1%',
-    '--accent-foreground': config?.theme.accentForeground || '0 0% 9%',
-    '--destructive': config?.theme.destructive || '0 84.2% 60.2%',
-    '--destructive-foreground': config?.theme.destructiveForeground || '0 0% 98%',
-    '--border': config?.theme.border || '0 0% 89.8%',
-    '--input': config?.theme.input || '0 0% 89.8%',
-    '--ring': config?.theme.ring || '0 0% 3.9%',
+    '--background': `hsl(${config?.theme.background || '0 0% 100%'})`,
+    '--foreground': `hsl(${config?.theme.foreground || '0 0% 3.9%'})`,
+    '--primary': `hsl(${config?.theme.primary || '0 0% 9%'})`,
+    '--primary-foreground': `hsl(${config?.theme.primaryForeground || '0 0% 98%'})`,
+    '--card': `hsl(${config?.theme.card || '0 0% 100%'})`,
+    '--card-foreground': `hsl(${config?.theme.cardForeground || '0 0% 3.9%'})`,
+    '--popover': `hsl(${config?.theme.popover || '0 0% 100%'})`,
+    '--popover-foreground': `hsl(${config?.theme.popoverForeground || '0 0% 3.9%'})`,
+    '--secondary': `hsl(${config?.theme.secondary || '0 0% 96.1%'})`,
+    '--secondary-foreground': `hsl(${config?.theme.secondaryForeground || '0 0% 9%'})`,
+    '--muted': `hsl(${config?.theme.muted || '0 0% 96.1%'})`,
+    '--muted-foreground': `hsl(${config?.theme.mutedForeground || '0 0% 45.1%'})`,
+    '--accent': `hsl(${config?.theme.accent || '0 0% 96.1%'})`,
+    '--accent-foreground': `hsl(${config?.theme.accentForeground || '0 0% 9%'})`,
+    '--destructive': `hsl(${config?.theme.destructive || '0 84.2% 60.2%'})`,
+    '--destructive-foreground': `hsl(${config?.theme.destructiveForeground || '0 0% 98%'})`,
+    '--border': `hsl(${config?.theme.border || '0 0% 89.8%'})`,
+    '--input': `hsl(${config?.theme.input || '0 0% 89.8%'})`,
+    '--ring': `hsl(${config?.theme.ring || '0 0% 3.9%'})`,
     '--radius': config?.theme.radius || '0.5rem'
   } as React.CSSProperties;
 
@@ -103,11 +100,11 @@ export default function LoginPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="student-password">密碼</Label>
-              <Input id="student-password" type="password" placeholder="請輸入您的密碼" value={studentPassword} onChange={e => setStudentPassword(e.target.value)} />
+              <Input id="student-password" type="password" placeholder="目前登入不需密碼" value={studentPassword} onChange={e => setStudentPassword(e.target.value)} disabled/>
             </div>
           </CardContent>
           <CardFooter>
-            <Button className="w-full bg-[#8B4513] hover:bg-[#A0522D] text-white" onClick={handleStudentLogin} disabled={isStudentLoginDisabled()}>
+            <Button className="w-full bg-primary text-primary-foreground" onClick={handleStudentLogin} disabled={isStudentLoginDisabled()}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               登入
             </Button>
@@ -141,7 +138,7 @@ export default function LoginPage() {
             </div>
           </CardContent>
           <CardFooter>
-            <Button className="w-full" variant="outline" onClick={handleTeacherLogin} disabled={isTeacherLoginDisabled()}>
+            <Button className="w-full" variant="secondary" onClick={handleTeacherLogin} disabled={isTeacherLoginDisabled()}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               → 以老師身份進入
             </Button>
