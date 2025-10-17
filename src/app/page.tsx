@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
 import { useSchoolStore } from '@/store/useSchoolStore';
-import { Loader2, User, Building } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const [classId, setClassId] = useState("");
@@ -80,11 +79,11 @@ export default function LoginPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
         {/* Student Login */}
-        <Card className="bg-card/80">
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-2xl">
-              <User />
-              學生登入
+             <CardTitle className="flex items-center gap-2 text-2xl">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-muted-foreground"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                學生登入
             </CardTitle>
             <CardDescription>選擇您的班級,並使用老師提供的編號和密碼登入。</CardDescription>
           </CardHeader>
@@ -109,8 +108,8 @@ export default function LoginPage() {
               <Input id="student-password" type="password" placeholder="目前登入不需密碼" value={studentPassword} onChange={e => setStudentPassword(e.target.value)} disabled/>
             </div>
           </CardContent>
-          <CardFooter>
-            <Button className="w-full bg-primary text-primary-foreground" onClick={handleStudentLogin} disabled={isStudentLoginDisabled()}>
+          <CardFooter className="flex-col items-center">
+            <Button className="w-full" onClick={handleStudentLogin} disabled={isStudentLoginDisabled()}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               登入
             </Button>
@@ -118,11 +117,11 @@ export default function LoginPage() {
         </Card>
 
         {/* Teacher Login */}
-        <Card className="bg-card/80">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-2xl">
-              <Building />
-              老師/校長入口
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-muted-foreground"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><line x1="3" x2="21" y1="9" y2="9"></line><line x1="9" x2="9" y1="21" y2="9"></line></svg>
+                老師/校長入口
             </CardTitle>
             <CardDescription>管理您的教室、獎勵學生點數、為獎勵商店補貨以及管理學生名單。</CardDescription>
           </CardHeader>
@@ -143,8 +142,8 @@ export default function LoginPage() {
               <Input id="teacher-password" type="password" placeholder="請輸入您的密碼" value={teacherPassword} onChange={(e) => setTeacherPassword(e.target.value)} />
             </div>
           </CardContent>
-          <CardFooter>
-            <Button className="w-full" variant="secondary" onClick={handleTeacherLogin} disabled={isTeacherLoginDisabled()}>
+          <CardFooter className="flex-col items-center">
+            <Button className="w-full" onClick={handleTeacherLogin} disabled={isTeacherLoginDisabled()}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               → 以老師身份進入
             </Button>
