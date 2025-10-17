@@ -38,7 +38,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import Papa from "papaparse";
+import { subDays, isAfter } from 'date-fns';
+import { cn } from "@/lib/utils";
 
 const StudentManagementTab = () => {
     const { toast } = useToast();
@@ -717,6 +718,140 @@ const GroupManagementTab = () => {
     )
 }
 
+const PointsHistoryTab = () => {
+    const { teacher } = useAuth();
+    const { students, classes, teachers } = useSchoolStore();
+    const [selectedClassId, setSelectedClassId] = useState('');
+    const [selectedTeacherId, setSelectedTeacherId] = useState('');
+    const [timeframe, setTimeframe] = useState(20);
+
+    const availableClasses = useMemo(() => {
+        if (!teacher) return [];
+        if (teacher.role === 'admin') return classes;
+        const teacherClassIds = teacher.classIds || [];
+        return classes.filter(c => teacherClassIds.includes(c.id));
+    }, [teacher, classes]);
+
+    useEffect(() => {
+        if (teacher) {
+            setSelectedTeacherId(teacher.id);
+        }
+    }, [teacher]);
+    
+    useEffect(() => {
+        if (availableClasses.length > 0 && !availableClasses.find(c => c.id === selectedClassId)) {
+            setSelectedClassId(availableClasses[0].id);
+        }
+    }, [availableClasses, selectedClassId]);
+
+    const historyData = useMemo(() => {
+        if (!selectedClassId || !selectedTeacherId) return [];
+
+        const cutoffDate = subDays(new Date(), timeframe);
+        const classStudents = students.filter(s => s.classId === selectedClassId);
+
+        return classStudents.map(student => {
+            const relevantHistory = (student.pointHistory || []).filter(record => 
+                isAfter(new Date(record.date), cutoffDate) && record.teacherId === selectedTeacherId
+            );
+
+            const totalIssued = relevantHistory
+                .filter(r => r.points > 0)
+                .reduce((sum, r) => sum + r.points, 0);
+
+            const totalDeducted = relevantHistory
+                .filter(r => r.points < 0)
+                .reduce((sum, r) => sum + r.points, 0);
+
+            const netChange = totalIssued + totalDeducted;
+
+            return {
+                studentId: student.id,
+                studentName: student.name,
+                totalIssued,
+                totalDeducted,
+                netChange
+            };
+        }).sort((a,b) => a.studentId.localeCompare(b.studentId));
+
+    }, [students, selectedClassId, selectedTeacherId, timeframe]);
+    
+    const selectedTeacher = teachers.find(t => t.id === selectedTeacherId);
+    const selectedClass = classes.find(c => c.id === selectedClassId);
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>點數歷史查詢</CardTitle>
+                <CardDescription>查詢指定老師在特定班級的點數發放與扣除總計 (最近 {timeframe} 天)。</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="grid md:grid-cols-2 gap-4 mb-6">
+                    {teacher?.role === 'admin' && (
+                        <div>
+                            <Label htmlFor="teacher-select">選擇老師</Label>
+                            <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
+                                <SelectTrigger id="teacher-select">
+                                    <SelectValue placeholder="請選擇老師" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {teachers.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+                     <div>
+                        <Label htmlFor="class-select-history">選擇班級</Label>
+                        <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                            <SelectTrigger id="class-select-history">
+                                <SelectValue placeholder="請選擇班級" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableClasses.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+
+                <div className="border rounded-md">
+                    <div className="p-4 bg-muted/50">
+                        <h3 className="font-semibold">班級發放總表</h3>
+                        <p className="text-sm text-muted-foreground">
+                            {selectedTeacher?.name} 老師在 {selectedClass?.name} 班級, 最近 {timeframe} 天的點數紀錄。
+                        </p>
+                    </div>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>學生</TableHead>
+                                <TableHead>發放總計</TableHead>
+                                <TableHead>扣除總計</TableHead>
+                                <TableHead>淨變動</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {historyData.length > 0 ? historyData.map(data => (
+                                <TableRow key={data.studentId}>
+                                    <TableCell>{data.studentName}</TableCell>
+                                    <TableCell className="text-green-600 font-medium">+{data.totalIssued.toLocaleString()}</TableCell>
+                                    <TableCell className={cn(data.totalDeducted < 0 ? "text-red-600" : "text-muted-foreground", "font-medium")}>{data.totalDeducted.toLocaleString()}</TableCell>
+                                    <TableCell className={cn(data.netChange > 0 ? "text-green-600" : data.netChange < 0 ? "text-red-600" : "text-muted-foreground", "font-bold")}>
+                                        {data.netChange > 0 ? '+' : ''}{data.netChange.toLocaleString()}
+                                    </TableCell>
+                                </TableRow>
+                            )) : (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="h-24 text-center">此條件下沒有點數歷史紀錄。</TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
+
 export default function TeacherDashboardPage() {
     return (
         <div className="space-y-6">
@@ -744,15 +879,7 @@ export default function TeacherDashboardPage() {
                         <PointsTab />
                       </TabsContent>
                        <TabsContent value="history" className="mt-4">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>點數歷史</CardTitle>
-                                <CardDescription>即將推出：查看您在各班級的點數發放歷史紀錄。</CardDescription>
-                            </CardHeader>
-                             <CardContent>
-                                <p className="text-muted-foreground text-center py-12">此功能正在開發中。</p>
-                             </CardContent>
-                        </Card>
+                        <PointsHistoryTab />
                       </TabsContent>
                        <TabsContent value="approvals" className="mt-4">
                         <Card>
