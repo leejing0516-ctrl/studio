@@ -114,7 +114,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode;
        return;
     }
     
-    setAuthInfo({ role: 'teacher', docId: originalAdmin._docId });
+    setAuthInfo({ role: 'admin', docId: originalAdmin._docId });
     localStorage.removeItem('impersonator');
 
     toast({ title: "已返回校長身份" });
@@ -202,7 +202,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode;
           <div className="flex items-center gap-2 px-2">
             <Logo className="h-8 w-8" />
             <span className="text-lg font-semibold group-data-[collapsible=icon]:hidden">
-              南梓實小虛擬銀行
+              {platformConfig?.platformName || '虛擬銀行'}
             </span>
           </div>
         </SidebarHeader>
