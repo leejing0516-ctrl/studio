@@ -534,6 +534,7 @@ const GroupManagementTab = () => {
     
     // State for the management dialog
     const [dialogGroups, setDialogGroups] = useState<ClassGroup[]>([]);
+    const [newGroupName, setNewGroupName] = useState("");
     const [dialogStudentAssignments, setDialogStudentAssignments] = useState<{ [studentId: string]: string | undefined }>({});
 
     const availableClasses = useMemo(() => {
@@ -580,11 +581,18 @@ const GroupManagementTab = () => {
     };
 
     const addGroupInDialog = () => {
-        const newGroup: ClassGroup = { id: `group-${Date.now()}`, name: `新的分組 ${dialogGroups.length + 1}` };
+        if (!newGroupName.trim()) {
+            toast({title: "請輸入新組名", variant: "destructive"});
+            return;
+        }
+        const newGroup: ClassGroup = { id: `group-${Date.now()}`, name: newGroupName.trim() };
         setDialogGroups([...dialogGroups, newGroup]);
+        setNewGroupName("");
     };
 
-
+    const updateGroupNameInDialog = (groupId: string, newName: string) => {
+        setDialogGroups(dialogGroups.map(g => g.id === groupId ? {...g, name: newName} : g));
+    };
 
     const deleteGroupInDialog = (groupId: string) => {
         setDialogGroups(dialogGroups.filter(g => g.id !== groupId));
@@ -699,72 +707,76 @@ const GroupManagementTab = () => {
             </CardContent>
 
             <Dialog open={isManageGroupsOpen} onOpenChange={setIsManageGroupsOpen}>
-                <DialogContent className="max-w-4xl">
+                <DialogContent className="max-w-4xl bg-muted">
                     <DialogHeader>
-                        <DialogTitle>管理分組 for {classes.find(c => c.id === selectedClassId)?.name}</DialogTitle>
-                        <DialogDescription>在此處新增/編輯組名，並從右側列表中為學生指派分組。</DialogDescription>
+                        <DialogTitle>管理我的分組 - {classes.find(c => c.id === selectedClassId)?.name}</DialogTitle>
+                        <DialogDescription>在此建立您個人的小組，並將學生指派到對應的小組中。</DialogDescription>
                     </DialogHeader>
-                    <div className="grid md:grid-cols-2 gap-8 py-4 max-h-[60vh] overflow-y-auto">
-                        <div className="space-y-4">
-                            <h3 className="font-semibold">編輯組名</h3>
-                            {dialogGroups.map((group, index) => (
-                                <div key={group.id} className="flex items-center gap-2">
+                    <div className="grid md:grid-cols-2 gap-8 py-4 max-h-[60vh] overflow-y-auto px-1">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-lg">小組列表</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="flex gap-2">
                                     <Input 
-                                        value={group.name}
-                                        onChange={(e) => {
-                                            const newGroups = [...dialogGroups];
-                                            newGroups[index].name = e.target.value;
-                                            setDialogGroups(newGroups);
-                                        }}
+                                        placeholder="輸入新組名" 
+                                        value={newGroupName} 
+                                        onChange={(e) => setNewGroupName(e.target.value)}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addGroupInDialog(); }}}
                                     />
-                                    <Button variant="ghost" size="icon" onClick={() => deleteGroupInDialog(group.id)}>
-                                        <Trash2 className="h-4 w-4 text-destructive" />
-                                    </Button>
+                                    <Button onClick={addGroupInDialog}>新增</Button>
                                 </div>
-                            ))}
-                            <Button variant="outline" onClick={addGroupInDialog}>
-                                <PlusCircle className="mr-2 h-4 w-4" /> 新增組別
-                            </Button>
-                        </div>
-                        <div className="space-y-4">
-                             <h3 className="font-semibold">指派學生</h3>
-                             <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>學生</TableHead>
-                                        <TableHead>分組</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                     {studentsInClass.map(student => (
-                                        <TableRow key={student.id}>
-                                            <TableCell>{student.name}</TableCell>
-                                            <TableCell>
-                                                <Select
-                                                    value={dialogStudentAssignments[student.id] || ''}
-                                                    onValueChange={(value) => {
-                                                        setDialogStudentAssignments(prev => ({ ...prev, [student.id]: value === '' ? undefined : value }));
-                                                    }}
-                                                >
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="未分組" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="">未分組</SelectItem>
-                                                        {dialogGroups.map(group => (
-                                                            <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </TableCell>
-                                        </TableRow>
+                                <div className="space-y-2">
+                                    {dialogGroups.map((group) => (
+                                        <div key={group.id} className="flex items-center gap-2">
+                                            <Input 
+                                                value={group.name}
+                                                onChange={(e) => updateGroupNameInDialog(group.id, e.target.value)}
+                                            />
+                                            <Button variant="ghost" size="icon" onClick={() => deleteGroupInDialog(group.id)}>
+                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                            </Button>
+                                        </div>
                                     ))}
-                                </TableBody>
-                             </Table>
-                        </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-lg">學生指派</CardTitle>
+                            </CardHeader>
+                             <CardContent className="space-y-2">
+                                 <div className="flex justify-between font-semibold text-sm text-muted-foreground px-2">
+                                     <span>學生姓名</span>
+                                     <span>指派分組</span>
+                                 </div>
+                                {studentsInClass.map(student => (
+                                    <div key={student.id} className="flex items-center justify-between p-2 rounded-md hover:bg-background/50">
+                                        <Label className="font-medium">{student.name}</Label>
+                                        <Select
+                                            value={dialogStudentAssignments[student.id] || ''}
+                                            onValueChange={(value) => {
+                                                setDialogStudentAssignments(prev => ({ ...prev, [student.id]: value === '' ? undefined : value }));
+                                            }}
+                                        >
+                                            <SelectTrigger className="w-[180px]">
+                                                <SelectValue placeholder="未分組" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="">未分組</SelectItem>
+                                                {dialogGroups.map(group => (
+                                                    <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                ))}
+                             </CardContent>
+                        </Card>
                     </div>
-                    <DialogFooter>
-                        <DialogClose asChild><Button variant="secondary">取消</Button></DialogClose>
+                    <DialogFooter className="bg-muted pb-4 px-6 rounded-b-lg -m-6 pt-4 mt-4">
+                        <Button variant="ghost" onClick={() => setIsManageGroupsOpen(false)}>取消</Button>
                         <Button onClick={saveGroupsAndAssignments}>儲存變更</Button>
                     </DialogFooter>
                 </DialogContent>
