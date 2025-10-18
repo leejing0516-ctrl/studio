@@ -1,32 +1,31 @@
+
 "use client";
 import { LoginForm } from "./login-form";
-import { useCollection, useFirestore } from "@/firebase";
-import { collection } from "firebase/firestore";
-import { type Class, type Teacher } from "@/store/school-store";
-import { useMemo } from "react";
+import { useSchoolStore } from "@/store/school-store";
+import { useEffect } from "react";
 
 export default function Home() {
-  const firestore = useFirestore();
+  // We go back to using the mock data from the store for stability.
+  const { classes, teachers, fetchInitialData } = useSchoolStore();
 
-  const classesQuery = useMemo(() => firestore ? collection(firestore, 'classes') : null, [firestore]);
-  const teachersQuery = useMemo(() => firestore ? collection(firestore, 'teachers') : null, [firestore]);
+  useEffect(() => {
+    // Ensure mock data is loaded on the client
+    fetchInitialData();
+  }, [fetchInitialData]);
 
-  const { data: classes, isLoading: classesLoading } = useCollection<Class>(classesQuery);
-  const { data: teachers, isLoading: teachersLoading } = useCollection<Teacher>(teachersQuery);
-
-  if (classesLoading || teachersLoading) {
-    return (
-        <main className="flex min-h-screen flex-col items-center justify-center bg-light-teal p-8">
-            <div>Loading classroom data...</div>
-        </main>
-    );
-  }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-light-teal p-8">
-      <div className="w-full max-w-md">
-        <LoginForm classes={classes || []} teachers={teachers || []} />
+    <main className="flex min-h-screen flex-col items-center justify-center p-8">
+      <div className="text-center mb-10">
+          <h1 className="text-4xl md:text-5xl font-bold text-primary">歡迎來到南梓實小虛擬銀行</h1>
+          <p className="text-lg text-foreground/80 mt-2">您通往金融素養的門戶，在這裡學習金錢知識既有回報又充滿樂趣！</p>
       </div>
+      
+      <LoginForm classes={classes} teachers={teachers} />
+
+      <footer className="mt-12 text-center text-sm text-foreground/60">
+        <p>© 2025 南梓實小虛擬銀行, 版權所有。</p>
+      </footer>
     </main>
   );
 }

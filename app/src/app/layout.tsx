@@ -7,8 +7,8 @@ import { Toaster } from "@/components/ui/toaster";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "FinLit Classroom",
-  description: "Financial literacy for the next generation",
+  title: "南梓實小虛擬銀行",
+  description: "金融素養的門戶",
 };
 
 export default function RootLayout({

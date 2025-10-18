@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -66,8 +67,8 @@ export function ManageRewardsDialog({
     });
 
     toast({
-      title: "Success!",
-      description: "Rewards have been updated.",
+      title: "成功!",
+      description: "獎勵已更新。",
     });
     setIsOpen(false);
   };
@@ -79,9 +80,9 @@ export function ManageRewardsDialog({
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Manage Rewards</DialogTitle>
+          <DialogTitle>管理獎勵</DialogTitle>
           <DialogDescription>
-            Add, edit, or remove items in the reward store.
+            新增、編輯或移除獎勵商店中的物品。
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-96 pr-6">
@@ -93,12 +94,12 @@ export function ManageRewardsDialog({
               >
                 <div className="col-span-5">
                   <Label htmlFor={`name-${reward.id}`} className="sr-only">
-                    Name
+                    名稱
                   </Label>
                   <Input
                     id={`name-${reward.id}`}
                     value={reward.name}
-                    placeholder="Reward Name"
+                    placeholder="獎勵名稱"
                     onChange={(e) =>
                       handleFieldChange(reward.id, "name", e.target.value)
                     }
@@ -106,13 +107,13 @@ export function ManageRewardsDialog({
                 </div>
                 <div className="col-span-3">
                   <Label htmlFor={`cost-${reward.id}`} className="sr-only">
-                    Cost
+                    價格
                   </Label>
                   <Input
                     id={`cost-${reward.id}`}
                     type="number"
                     value={reward.cost}
-                    placeholder="Cost"
+                    placeholder="價格"
                     onChange={(e) =>
                       handleFieldChange(reward.id, "cost", Number(e.target.value))
                     }
@@ -120,13 +121,13 @@ export function ManageRewardsDialog({
                 </div>
                 <div className="col-span-3">
                   <Label htmlFor={`stock-${reward.id}`} className="sr-only">
-                    Stock
+                    庫存
                   </Label>
                   <Input
                     id={`stock-${reward.id}`}
                     type="number"
                     value={reward.stock}
-                    placeholder="Stock"
+                    placeholder="庫存"
                     onChange={(e) =>
                       handleFieldChange(reward.id, "stock", Number(e.target.value))
                     }
@@ -143,10 +144,10 @@ export function ManageRewardsDialog({
         </ScrollArea>
         <DialogFooter className="sm:justify-between">
             <Button variant="outline" onClick={handleAddNew}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Add New
+                <PlusCircle className="mr-2 h-4 w-4" /> 新增
             </Button>
           <Button onClick={handleSaveChanges} type="submit">
-            Save Changes
+            儲存變更
           </Button>
         </DialogFooter>
       </DialogContent>

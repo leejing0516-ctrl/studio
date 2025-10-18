@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -7,7 +8,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -19,15 +19,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useUserStore } from "@/store/user-store";
-import { type Class, type Teacher, type Student } from "@/store/school-store";
-import Logo from "@/components/logo";
+import { type Class, type Teacher } from "@/store/school-store";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { addStudent, getStudentByName } from "@/lib/firestore-actions";
-import { signInAnonymously } from "firebase/auth";
-import { useAuth } from "@/firebase";
+import { User, Building } from "lucide-react";
 
+// NOTE: This component is now a generic login form container.
+// The actual layout is controlled by the parent page (page.tsx).
+// This component provides the state and logic for both student and teacher forms.
 
 export function LoginForm({
   classes,
@@ -36,178 +35,142 @@ export function LoginForm({
   classes: Class[];
   teachers: Teacher[];
 }) {
-  const [userType, setUserType] = useState("student");
   const [selectedClass, setSelectedClass] = useState("");
+  const [studentId, setStudentId] = useState("");
+  const [studentPassword, setStudentPassword] = useState("");
+
   const [selectedTeacher, setSelectedTeacher] = useState("");
-  const [studentName, setStudentName] = useState("");
-  const [password, setPassword] = useState("");
+  const [teacherPassword, setTeacherPassword] = useState("");
+
   const router = useRouter();
-  const { login } = useUserStore();
   const { toast } = useToast();
-  const auth = useAuth();
 
-  const handleLogin = async () => {
-     if (!auth) {
-        toast({ title: "Login Failed", description: "Authentication service is not ready.", variant: "destructive" });
-        return;
+  const handleStudentLogin = async () => {
+    // Placeholder login logic
+    if (!selectedClass || !studentId || !studentPassword) {
+      toast({ title: "登入失敗", description: "所有欄位均為必填項。", variant: "destructive" });
+      return;
     }
-    
-    // Ensure anonymous user is signed in for backend operations
-    if (!auth.currentUser) {
-        try {
-            await signInAnonymously(auth);
-        } catch (error) {
-            toast({ title: "Authentication Error", description: "Could not connect to the service.", variant: "destructive" });
-            return;
-        }
+    console.log("Student login attempt:", { selectedClass, studentId, studentPassword });
+    toast({ title: "學生登入成功（模擬）", description: "正在將您導向..." });
+    // In a real scenario, you'd verify credentials, then:
+    // sessionStorage.setItem('userType', 'student');
+    // sessionStorage.setItem('userId', 'student-id-from-db');
+    // sessionStorage.setItem('userName', 'student-name-from-db');
+    // router.push("/student-dashboard");
+  };
+
+  const handleTeacherLogin = async () => {
+    // Placeholder login logic
+    if (!selectedTeacher || !teacherPassword) {
+      toast({ title: "登入失敗", description: "請選擇您的帳號並輸入密碼。", variant: "destructive" });
+      return;
     }
-
-
-    if (userType === "student") {
-      if (!studentName || !selectedClass) {
-        toast({ title: "Login Failed", description: "Please enter your name and select a class.", variant: "destructive" });
-        return;
-      }
-      
-      let student = await getStudentByName(studentName);
-
-      if (!student) {
-         toast({ title: "New Profile Created", description: `Welcome, ${studentName}! A new profile has been created for you.` });
-          const newStudentData: Omit<Student, 'id'> = {
-            name: studentName,
-            classId: selectedClass,
-            points: 1000, 
-            assets: [],
-          };
-          const newStudentId = await addStudent(newStudentData);
-          if (!newStudentId) {
-            toast({ title: "Creation Failed", description: "Could not create a new student profile.", variant: "destructive" });
-            return;
-          }
-          student = { ...newStudentData, id: newStudentId };
-      }
-      
-      login({
-        id: student.id,
-        name: student.name,
-        type: "student" as const,
-      });
-      router.push("/student-dashboard");
-
-    } else if (userType === "teacher") {
-      if (!selectedTeacher || !password) {
-        toast({ title: "Login Failed", description: "Please select your name and enter the password.", variant: "destructive" });
-        return;
-      }
-      const teacher = teachers.find((t) => t.id === selectedTeacher);
-      // NOTE: This is a demo password. In a real app, use Firebase Auth for teachers.
-      if (teacher && password === "password") { 
-        login({
-          id: teacher.id,
-          name: teacher.name,
-          type: "teacher" as const,
-        });
+     // NOTE: This is a demo password.
+    if (teacherPassword === "password") {
+        const teacher = teachers.find(t => t.id === selectedTeacher);
+        sessionStorage.setItem('userType', 'teacher');
+        sessionStorage.setItem('teacherId', selectedTeacher);
+        sessionStorage.setItem('userName', teacher?.name || 'Teacher');
+        toast({ title: "老師登入成功", description: "正在將您導向..." });
         router.push("/teacher-dashboard");
-      } else {
-        toast({ title: "Login Failed", description: "Invalid teacher credentials.", variant: "destructive" });
-      }
+    } else {
+        toast({ title: "登入失敗", description: "密碼錯誤。", variant: "destructive" });
     }
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader className="items-center">
-        <Logo />
-        <CardTitle className="mt-4 text-2xl font-bold text-primary">
-          FinLit Classroom
-        </CardTitle>
-        <CardDescription>
-          Welcome! Please select your role to log in.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
+      {/* Student Login Card */}
+      <Card>
+        <CardHeader className="items-center">
+          <div className="bg-primary/10 p-3 rounded-full">
+            <User className="w-8 h-8 text-primary" />
+          </div>
+          <CardTitle className="text-xl font-bold mt-2">學生登入</CardTitle>
+          <CardDescription>選擇您的班級，並使用老師提供的編號和密碼登入。</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
           <div>
-            <Label htmlFor="user-type">I am a...</Label>
-            <Select onValueChange={setUserType} defaultValue={userType}>
-              <SelectTrigger id="user-type">
-                <SelectValue placeholder="Select your role" />
+            <Label htmlFor="class">班級</Label>
+            <Select onValueChange={setSelectedClass} value={selectedClass}>
+              <SelectTrigger id="class">
+                <SelectValue placeholder="請選擇班級" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="student">Student</SelectItem>
-                <SelectItem value="teacher">Teacher</SelectItem>
+                {(classes || []).map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
+          <div>
+            <Label htmlFor="student-id">學生座號</Label>
+            <Input
+              id="student-id"
+              placeholder="請輸入您的座號 (例如: S001)"
+              value={studentId}
+              onChange={(e) => setStudentId(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="student-password">密碼</Label>
+            <Input
+              id="student-password"
+              type="password"
+              placeholder="請輸入您的密碼"
+              value={studentPassword}
+              onChange={(e) => setStudentPassword(e.target.value)}
+            />
+          </div>
+          <Button onClick={handleStudentLogin} className="w-full mt-2">
+            → 登入
+          </Button>
+        </CardContent>
+      </Card>
 
-          {userType === "student" && (
-            <>
-              <div>
-                <Label htmlFor="student-name">Your Name</Label>
-                <Input
-                  id="student-name"
-                  placeholder="Enter your full name"
-                  value={studentName}
-                  onChange={(e) => setStudentName(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="class">Class</Label>
-                <Select onValueChange={setSelectedClass} value={selectedClass}>
-                  <SelectTrigger id="class">
-                    <SelectValue placeholder="Select your class" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(classes || []).map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </>
-          )}
-
-          {userType === "teacher" && (
-            <>
-              <div>
-                <Label htmlFor="teacher">Teacher</Label>
-                <Select
-                  onValueChange={setSelectedTeacher}
-                  value={selectedTeacher}
-                >
-                  <SelectTrigger id="teacher">
-                    <SelectValue placeholder="Select your name" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(teachers || []).map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-            </>
-          )}
-        </div>
-      </CardContent>
-      <CardFooter>
-        <Button onClick={handleLogin} className="w-full bg-accent hover:bg-accent/90">
-          Login
-        </Button>
-      </CardFooter>
-    </Card>
+      {/* Teacher Login Card */}
+      <Card>
+        <CardHeader className="items-center">
+          <div className="bg-primary/10 p-3 rounded-full">
+            <Building className="w-8 h-8 text-primary" />
+          </div>
+          <CardTitle className="text-xl font-bold mt-2">老師/校長入口</CardTitle>
+          <CardDescription>管理您的教室、獎勵學生點數、為獎勵商店補貨以及管理學生名單。</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="teacher">教師帳號</Label>
+            <Select onValueChange={setSelectedTeacher} value={selectedTeacher}>
+              <SelectTrigger id="teacher">
+                <SelectValue placeholder="請選擇您的帳號" />
+              </SelectTrigger>
+              <SelectContent>
+                {(teachers || []).map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="teacher-password">密碼</Label>
+            <Input
+              id="teacher-password"
+              type="password"
+              placeholder="請輸入您的密碼"
+              value={teacherPassword}
+              onChange={(e) => setTeacherPassword(e.target.value)}
+            />
+          </div>
+          <Button onClick={handleTeacherLogin} variant="outline" className="w-full mt-2">
+             → 以老師身份進入
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

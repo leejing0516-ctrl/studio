@@ -5,37 +5,35 @@
 
 @layer base {
   :root {
-    --background: 204 60% 96.1%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 355 100% 97%;
+    --foreground: 355 25% 25%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 355 100% 99%;
+    --card-foreground: 355 25% 25%;
 
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 174 68% 38%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 345 45% 45%;
+    --primary-foreground: 355 100% 97%;
 
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
 
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 30 89% 54%;
-    --accent-foreground: 210 40% 98%;
+    
+    --accent: 345 45% 45%;
+    --accent-foreground: 355 100% 97%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 174 68% 38%;
+    --border: 355 50% 85%;
+    --input: 355 70% 92%;
+    --ring: 345 45% 45%;
 
     --radius: 0.5rem;
-    
-    --light-teal-bg: 175 70% 95%;
   }
 
   .dark {
@@ -48,7 +46,7 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 174 68% 38%;
+    --primary: 345 45% 55%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 217.2 32.6% 17.5%;
@@ -57,7 +55,7 @@
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 30 89% 54%;
+    --accent: 345 45% 55%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 62.8% 30.6%;
@@ -65,9 +63,7 @@
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 174 68% 38%;
-
-    --light-teal-bg: 175 30% 10%;
+    --ring: 345 45% 55%;
   }
 }
 
@@ -77,8 +73,5 @@
   }
   body {
     @apply bg-background text-foreground;
-  }
-  .bg-light-teal {
-    background-color: hsl(var(--light-teal-bg));
   }
 }
