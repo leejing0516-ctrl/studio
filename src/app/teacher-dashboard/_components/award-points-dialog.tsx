@@ -71,21 +71,15 @@ export function AwardPointsDialog({
       return;
     }
     
-    try {
-      awardPoints(firestore, selectedStudent, points);
-      const student = studentsInClass?.find(s => s.id === selectedStudent);
-      toast({
-        title: "成功!",
-        description: `已獎勵 ${points} 點給 ${student?.name}。`,
-      });
-      setIsOpen(false);
-    } catch (error: any) {
-      toast({
-        title: "錯誤",
-        description: error.message || "獎勵點數時發生未知的錯誤。",
-        variant: "destructive",
-      });
-    }
+    // The awardPoints function is now non-blocking and handles its own errors
+    awardPoints(firestore, selectedStudent, points);
+    
+    const student = studentsInClass?.find(s => s.id === selectedStudent);
+    toast({
+      title: "成功!",
+      description: `已獎勵 ${points} 點給 ${student?.name}。`,
+    });
+    setIsOpen(false);
   };
 
   return (

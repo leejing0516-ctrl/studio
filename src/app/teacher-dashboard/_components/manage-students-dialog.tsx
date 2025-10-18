@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { type Student, type Class } from "@/lib/mock-data";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { PlusCircle, Trash2 } from "lucide-react";
+import { PlusCircle } from "lucide-react";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
 import { addStudent } from "@/lib/firestore-actions";
@@ -41,7 +41,7 @@ export function ManageStudentsDialog({
   const [newStudentName, setNewStudentName] = useState<string>("");
 
   const classesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'classes') : null, [firestore]);
-  const { data: classes, isLoading: classesLoading } = useCollection<Class>(classesQuery);
+  const { data: classes } = useCollection<Class>(classesQuery);
 
   const studentsQuery = useMemoFirebase(() => {
     if (!firestore || !selectedClass) return null;

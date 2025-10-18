@@ -62,7 +62,6 @@ export function ManageRewardsDialog({
 
     // Use a for...of loop to handle async operations correctly
     for (const reward of editedRewards) {
-      try {
         if (reward.id.startsWith('new-')) {
           if (reward.name && reward.cost > 0) {
               addReward(firestore, { name: reward.name, cost: reward.cost, stock: reward.stock });
@@ -73,15 +72,6 @@ export function ManageRewardsDialog({
               updateReward(firestore, reward.id, { name: reward.name, cost: reward.cost, stock: reward.stock });
           }
         }
-      } catch (error: any) {
-        toast({
-          title: "錯誤",
-          description: `更新獎勵 "${reward.name}" 時發生錯誤: ${error.message}`,
-          variant: "destructive",
-        });
-        // Stop processing further if one fails
-        return;
-      }
     }
 
     toast({
