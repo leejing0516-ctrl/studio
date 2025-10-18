@@ -17,8 +17,6 @@ import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { mockStudentData } from "@/lib/mock-data";
-
 
 const rewardIcons = [
     <Ticket className="w-8 h-8 text-accent" />,
@@ -38,10 +36,13 @@ export default function RewardStore() {
     }
   }, [user, router]);
   
-  // This is a workaround to ensure we have student data on this page
-  // In a real app, you'd have a more robust way of ensuring data is loaded
-  const student = user ? getStudentById(user.id) || mockStudentData.find(s => s.id === user.id) : null;
-  const studentPoints = student?.points ?? 0;
+  const student = user ? getStudentById(user.id) : null;
+
+  if (!user || !student) {
+    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
+  }
+  
+  const studentPoints = student.points;
 
   const handleRedeem = (rewardId: string) => {
     if (!user) return;
@@ -52,10 +53,6 @@ export default function RewardStore() {
       variant: result.success ? "default" : "destructive",
     });
   };
-
-  if (!user) {
-    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
-  }
 
   return (
     <div className="flex min-h-screen flex-col bg-light-teal">

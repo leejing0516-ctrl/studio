@@ -61,7 +61,9 @@ interface SchoolStoreState {
   };
   fetchInitialData: () => void;
   getStudentById: (id: string) => Student | undefined;
+  getStudentByName: (name: string) => Student | undefined;
   getStudentsByClass: (classId: string) => Student[];
+  addStudent: (student: Student) => void;
   awardPoints: (studentId: string, amount: number) => void;
   redeemReward: (studentId: string, rewardId: string) => { success: boolean, message: string };
   addReward: (reward: Omit<Reward, 'id'>) => void;
@@ -97,8 +99,18 @@ export const useSchoolStore = create<SchoolStoreState>((set, get) => ({
     return get().students.find((s) => s.id === id);
   },
   
+  getStudentByName: (name) => {
+    return get().students.find((s) => s.name.toLowerCase() === name.toLowerCase());
+  },
+
   getStudentsByClass: (classId) => {
     return get().students.filter((s) => s.classId === classId);
+  },
+
+  addStudent: (student) => {
+    set((state) => ({
+      students: [...state.students, student]
+    }))
   },
 
   awardPoints: (studentId, amount) => {

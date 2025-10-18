@@ -21,9 +21,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useUserStore } from "@/store/user-store";
-import type { Class, Teacher } from "@/store/school-store";
+import { useSchoolStore, type Class, type Teacher, type Student } from "@/store/school-store";
 import Logo from "@/components/logo";
 import { Input } from "@/components/ui/input";
+import { mockStudentData } from "@/lib/mock-data";
 
 export function LoginForm({
   classes,
@@ -39,22 +40,33 @@ export function LoginForm({
   const [password, setPassword] = useState("");
   const router = useRouter();
   const { login } = useUserStore();
+  const { getStudentByName, addStudent } = useSchoolStore();
 
   const handleLogin = () => {
     if (userType === "student" && studentName && selectedClass) {
-      // In a real app, you'd fetch student data. Here we simulate it.
-      const student = {
-        id: `student-${Date.now()}`,
-        name: studentName,
-        classId: selectedClass,
-        points: 1000,
-        assets: [],
+      let student = getStudentByName(studentName);
+
+      if (!student) {
+        student = {
+          id: `student-${Date.now()}`,
+          name: studentName,
+          classId: selectedClass,
+          points: 1000, // Default points for new student
+          assets: [],
+          type: 'student'
+        } as Omit<Student, 'type'>;
+        addStudent(student as Student); // Cast needed here, store manages the type
+      }
+      
+      const userToLogin = {
+        ...student,
         type: "student" as const,
       };
-      login(student);
+
+      login(userToLogin);
       router.push("/student-dashboard");
+
     } else if (userType === "teacher" && selectedTeacher && password) {
-      // In a real app, you'd authenticate the teacher.
       const teacher = teachers.find((t) => t.id === selectedTeacher);
       if (teacher && password === "password") { // Demo password
         login({
@@ -166,3 +178,4 @@ export function LoginForm({
     </Card>
   );
 }
+

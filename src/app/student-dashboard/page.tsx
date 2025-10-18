@@ -14,30 +14,28 @@ import {
 } from "@/components/ui/card";
 import { Medal, ShoppingCart, TrendingUp, User } from "lucide-react";
 import Header from "@/components/header";
-import { mockStudentData } from "@/lib/mock-data";
 
 export default function StudentDashboard() {
-  const { user, logout } = useUserStore();
+  const { user } = useUserStore();
   const { getStudentById } = useSchoolStore();
   const router = useRouter();
 
-  // Redirect if not a logged-in student
   useEffect(() => {
     if (!user || user.type !== "student") {
       router.push("/");
     }
   }, [user, router]);
 
-  if (!user || user.type !== "student") {
+  const student = user ? getStudentById(user.id) : null;
+
+  if (!user || user.type !== "student" || !student) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-light-teal">
-        Loading...
+        Loading... or redirecting...
       </div>
     );
   }
 
-  // In a real app, this data would come from your store/backend
-  const student = getStudentById(user.id) || mockStudentData.find(s => s.id === user.id);
   const studentPoints = student?.points || 0;
   
   return (
