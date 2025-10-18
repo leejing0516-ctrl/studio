@@ -3,7 +3,7 @@
 
 import { useUserStore } from "@/store/user-store";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -24,7 +24,7 @@ export default function StudentDashboard() {
   const hasHydrated = useHydration();
   const firestore = useFirestore();
 
-  const studentRef = useMemoFirebase(() => user ? doc(firestore, 'students', user.id) : null, [firestore, user]);
+  const studentRef = useMemoFirebase(() => (user && firestore) ? doc(firestore, 'students', user.id) : null, [firestore, user]);
   const { data: student, isLoading, error } = useDoc<Student>(studentRef);
 
   useEffect(() => {
@@ -33,7 +33,7 @@ export default function StudentDashboard() {
     }
   }, [user, hasHydrated, router]);
 
-  if (!hasHydrated) {
+  if (!hasHydrated || isLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
   
@@ -41,8 +41,9 @@ export default function StudentDashboard() {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
   }
   
-  if (isLoading || !student) {
+  if (!student) {
     if (error) console.error(error);
+    // This can happen briefly while data is loading or if the doc doesn't exist
     return (
       <div className="flex min-h-screen items-center justify-center bg-light-teal">
         Loading student data...

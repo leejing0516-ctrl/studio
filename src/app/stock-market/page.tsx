@@ -32,7 +32,7 @@ export default function StockMarket() {
   const hasHydrated = useHydration();
   const firestore = useFirestore();
 
-  const stocksQuery = useMemoFirebase(() => collection(firestore, 'stocks'), [firestore]);
+  const stocksQuery = useMemoFirebase(() => firestore ? collection(firestore, 'stocks') : null, [firestore]);
   const { data: stocks, isLoading: stocksLoading } = useCollection<Stock>(stocksQuery);
 
   const studentRef = useMemoFirebase(() => user ? doc(firestore, 'students', user.id) : null, [firestore, user]);
@@ -47,6 +47,8 @@ export default function StockMarket() {
   // Simulate stock price updates every 5 seconds
   useEffect(() => {
     const interval = setInterval(() => {
+      // This now needs to be an action that updates firestore
+      // For now, we can call a function that would do this.
       // In a real app this would be a cloud function.
       if (stocks) {
         updateStockPrices(stocks);
@@ -55,12 +57,16 @@ export default function StockMarket() {
     return () => clearInterval(interval);
   }, [stocks]);
 
-  if (!hasHydrated || !student || studentLoading || stocksLoading) {
+  if (!hasHydrated || studentLoading || stocksLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
   
   if (!user || user.type !== 'student') {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
+  }
+
+  if (!student) {
+    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading student data...</div>;
   }
 
   const portfolioValue = student.assets.reduce((total, asset) => {

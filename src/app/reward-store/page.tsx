@@ -35,7 +35,7 @@ export default function RewardStore() {
   const hasHydrated = useHydration();
   const firestore = useFirestore();
 
-  const rewardsQuery = useMemoFirebase(() => collection(firestore, 'rewards'), [firestore]);
+  const rewardsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'rewards') : null, [firestore]);
   const { data: rewards, isLoading: rewardsLoading } = useCollection<Reward>(rewardsQuery);
 
   const studentRef = useMemoFirebase(() => user ? doc(firestore, 'students', user.id) : null, [firestore, user]);
@@ -67,12 +67,18 @@ export default function RewardStore() {
     }
   };
   
-  if (!hasHydrated || !student || studentLoading || rewardsLoading) {
+  if (!hasHydrated || studentLoading || rewardsLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
   
   if (!user || user.type !== 'student') {
+    // This state will be brief, but it's a good practice to handle it.
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
+  }
+  
+  if (!student) {
+    // This can happen if the student document doesn't exist or there's an error.
+    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading student data...</div>;
   }
   
   const studentPoints = student.points;
