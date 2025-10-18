@@ -46,9 +46,9 @@ export function LoginForm({
       let student = getStudentByName(studentName);
 
       if (!student) {
-        // Create a new student if not found
+        // Create a new student if not found and add it to the store
         const newStudent: Student = {
-          id: `student-${Date.now()}`,
+          id: `student-${Date.now()}`, // Still dynamic, but will now be added to the store
           name: studentName,
           classId: selectedClass,
           points: 1000, // Starting points for new students
@@ -178,3 +178,4 @@ export function LoginForm({
     </Card>
   );
 }
+

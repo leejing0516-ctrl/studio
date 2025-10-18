@@ -110,7 +110,7 @@ export const useSchoolStore = create<SchoolStoreState>((set, get) => ({
   addStudent: (student) => {
     set((state) => ({
       students: [...state.students, student]
-    }))
+    }));
   },
 
   awardPoints: (studentId, amount) => {
