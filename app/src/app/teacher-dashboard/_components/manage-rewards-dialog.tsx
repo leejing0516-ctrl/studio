@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,10 +13,13 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { useSchoolStore, type Reward } from "@/store/school-store";
+import { type Reward } from "@/store/school-store";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PlusCircle, Trash2 } from "lucide-react";
+import { useCollection, useFirestore } from "@/firebase";
+import { collection } from "firebase/firestore";
+import { addReward, updateReward } from "@/lib/firestore-actions";
 
 export function ManageRewardsDialog({
   isOpen,
@@ -25,13 +28,22 @@ export function ManageRewardsDialog({
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
 }) {
-  const { rewards, addReward, updateReward } = useSchoolStore();
-  const [editedRewards, setEditedRewards] = useState<Reward[]>(rewards);
+  const firestore = useFirestore();
+  const rewardsQuery = useMemo(() => collection(firestore, 'rewards'), [firestore]);
+  const { data: rewards, isLoading } = useCollection<Reward>(rewardsQuery);
+
+  const [editedRewards, setEditedRewards] = useState<Reward[]>([]);
   const { toast } = useToast();
+  
+  useEffect(() => {
+    if (rewards) {
+        setEditedRewards(rewards);
+    }
+  }, [rewards]);
 
   const handleFieldChange = (
     id: string,
-    field: keyof Reward,
+    field: keyof Omit<Reward, 'id'>,
     value: string | number
   ) => {
     setEditedRewards(
@@ -48,15 +60,12 @@ export function ManageRewardsDialog({
   };
 
   const handleSaveChanges = () => {
-    // This logic would be more complex with a real backend
     editedRewards.forEach(reward => {
-      const originalReward = rewards.find(r => r.id === reward.id);
-      if (!originalReward) {
-        // It's a new reward
+      const originalReward = rewards?.find(r => r.id === reward.id);
+      if (reward.id.startsWith('new-')) {
         addReward({ name: reward.name, cost: reward.cost, stock: reward.stock });
-      } else if (JSON.stringify(originalReward) !== JSON.stringify(reward)) {
-        // It's an updated reward
-        updateReward(reward);
+      } else if (originalReward && JSON.stringify(originalReward) !== JSON.stringify(reward)) {
+        updateReward(reward.id, { name: reward.name, cost: reward.cost, stock: reward.stock });
       }
     });
 
@@ -81,6 +90,7 @@ export function ManageRewardsDialog({
         </DialogHeader>
         <ScrollArea className="h-96 pr-6">
           <div className="space-y-4 py-4">
+            {isLoading && <p>Loading rewards...</p>}
             {editedRewards.map((reward) => (
               <div
                 key={reward.id}

@@ -25,6 +25,9 @@ import { useSchoolStore, type Class, type Teacher, type Student } from "@/store/
 import Logo from "@/components/logo";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { addStudent, getStudentByName } from "@/lib/firestore-actions";
+import { useAuth } from "@/firebase";
+import { signInAnonymously } from "firebase/auth";
 
 export function LoginForm({
   classes,
@@ -40,29 +43,43 @@ export function LoginForm({
   const [password, setPassword] = useState("");
   const router = useRouter();
   const { login } = useUserStore();
-  const { getStudentByName, addStudent } = useSchoolStore();
   const { toast } = useToast();
+  const auth = useAuth();
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
+    // Ensure anonymous sign-in to Firebase Auth
+    if (!auth.currentUser) {
+      try {
+        await signInAnonymously(auth);
+      } catch (error) {
+        console.error("Anonymous sign-in failed", error);
+        toast({ title: "Login Failed", description: "Could not connect to the service.", variant: "destructive" });
+        return;
+      }
+    }
+    
     if (userType === "student") {
       if (!studentName || !selectedClass) {
         toast({ title: "Login Failed", description: "Please enter your name and select a class.", variant: "destructive" });
         return;
       }
       
-      let student = getStudentByName(studentName);
+      let student = await getStudentByName(studentName);
 
       if (!student) {
          toast({ title: "New Profile Created", description: `Welcome, ${studentName}! A new profile has been created for you.` });
-          const newStudent: Student = {
-            id: `student-${Date.now()}`,
+          const newStudentData: Omit<Student, 'id'> = {
             name: studentName,
             classId: selectedClass,
             points: 1000, 
             assets: [],
           };
-          addStudent(newStudent);
-          student = newStudent;
+          const newStudentId = await addStudent(newStudentData);
+          if (!newStudentId) {
+             toast({ title: "Creation Failed", description: "Could not create a new profile.", variant: "destructive" });
+             return;
+          }
+          student = { ...newStudentData, id: newStudentId };
       }
       
       login({

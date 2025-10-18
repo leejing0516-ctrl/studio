@@ -1,0 +1,103 @@
+
+{
+  "entities": {
+    "Student": {
+      "title": "Student",
+      "type": "object",
+      "description": "Represents a student in the FinLit Classroom application.",
+      "properties": {
+        "name": { "type": "string", "description": "The student's name." },
+        "classId": { "type": "string", "description": "ID of the class the student belongs to." },
+        "points": { "type": "number", "description": "The number of points the student has accumulated." },
+        "assets": {
+          "type": "array",
+          "description": "List of stocks the student owns.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "stockId": { "type": "string" },
+              "quantity": { "type": "number" },
+              "purchasePrice": { "type": "number" }
+            },
+            "required": ["stockId", "quantity", "purchasePrice"]
+          }
+        }
+      },
+      "required": ["name", "classId", "points"]
+    },
+    "Teacher": {
+      "title": "Teacher",
+      "type": "object",
+      "description": "Represents a teacher.",
+      "properties": {
+        "name": { "type": "string", "description": "The teacher's name." }
+      },
+      "required": ["name"]
+    },
+    "Class": {
+        "title": "Class",
+        "type": "object",
+        "description": "Represents a class section.",
+        "properties": {
+            "name": { "type": "string", "description": "The name of the class." }
+        },
+        "required": ["name"]
+    },
+    "Reward": {
+      "title": "Reward",
+      "type": "object",
+      "description": "Represents a reward item available in the reward store.",
+      "properties": {
+        "name": { "type": "string", "description": "The name of the reward item." },
+        "cost": { "type": "number", "description": "The cost of the reward item in points." },
+        "stock": { "type": "number", "description": "How many are available." }
+      },
+      "required": ["name", "cost", "stock"]
+    },
+    "Stock": {
+      "title": "Stock",
+      "type": "object",
+      "description": "Represents a stock available in the virtual stock market.",
+      "properties": {
+        "name": { "type": "string", "description": "The name of the company." },
+        "ticker": { "type": "string", "description": "The ticker symbol of the stock." },
+        "price": { "type": "number", "description": "The current price of the stock." },
+        "history": {
+            "type": "array",
+            "description": "A recent history of the stock price.",
+            "items": { "type": "number" }
+        }
+      },
+      "required": ["name", "ticker", "price", "history"]
+    }
+  },
+  "auth": {
+    "providers": [
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "collections": {
+      "students": {
+        "schema": { "$ref": "#/entities/Student" },
+        "description": "Stores individual student data."
+      },
+      "teachers": {
+        "schema": { "$ref": "#/entities/Teacher" },
+        "description": "Stores teacher data."
+      },
+      "classes": {
+        "schema": { "$ref": "#/entities/Class" },
+        "description": "Stores class data."
+      },
+      "rewards": {
+        "schema": { "$ref": "#/entities/Reward" },
+        "description": "Stores reward items for the store."
+      },
+      "stocks": {
+        "schema": { "$ref": "#/entities/Stock" },
+        "description": "Stores stock information for the market."
+      }
+    }
+  }
+}
