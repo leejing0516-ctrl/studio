@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -22,7 +21,6 @@ export default function StudentDashboard() {
   const router = useRouter();
   const firestore = useFirestore();
 
-  // Redirect if not logged in
   useEffect(() => {
     if (!isSessionLoading && !sessionUser) {
       router.push("/");
@@ -46,14 +44,10 @@ export default function StudentDashboard() {
 
   const isLoading = isSessionLoading || studentLoading || stocksLoading;
 
-  // This is the crucial part. We show a loading screen until the `useSimpleUser` hook
-  // has confirmed the user's status and the data from firestore is loading.
   if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-background">載入中...</div>;
   }
   
-  // After loading, if there's still no session user or student data, it means they shouldn't be here.
-  // The useEffect above will handle the redirect, but this prevents rendering the page content.
   if (!sessionUser || !student) {
      return <div className="flex min-h-screen items-center justify-center bg-background">正在重導向...</div>;
   }

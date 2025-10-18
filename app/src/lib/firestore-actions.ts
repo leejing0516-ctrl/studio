@@ -1,4 +1,3 @@
-
 'use client';
 import { 
     collection, 
@@ -25,7 +24,7 @@ export const addStudent = async (firestore: Firestore, studentData: Omit<Student
     }
 };
 
-export const getStudentByName = async (firestore: Firestore, name: string): Promise<Student | null> => {
+export const getStudentByName = async (firestore: Firestore, name: string): Promise<(Student & { id: string }) | null> => {
     const q = query(collection(firestore, "students"), where("name", "==", name));
     try {
         const querySnapshot = await getDocs(q);
@@ -33,7 +32,7 @@ export const getStudentByName = async (firestore: Firestore, name: string): Prom
             return null;
         }
         const studentDoc = querySnapshot.docs[0];
-        return { id: studentDoc.id, ...studentDoc.data() } as Student;
+        return { id: studentDoc.id, ...studentDoc.data() } as (Student & { id: string });
     } catch(e) {
         console.error("Error getting student by name: ", e);
         return null;
@@ -86,7 +85,7 @@ export const addReward = async (firestore: Firestore, rewardData: Omit<Reward, '
     }
 };
 
-export const updateReward = async (firestore: Firestore, rewardId: string, rewardData: Partial<Reward>) => {
+export const updateReward = async (firestore: Firestore, rewardId: string, rewardData: Partial<Omit<Reward, 'id'>>) => {
     const rewardRef = doc(firestore, "rewards", rewardId);
     try {
         await updateDoc(rewardRef, rewardData);

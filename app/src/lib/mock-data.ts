@@ -1,12 +1,12 @@
-
 export interface StudentAsset {
   stockId: string;
   quantity: number;
   purchasePrice: number;
 }
 
+// id is now optional on the base type, but required on fetched documents.
 export interface Student {
-  id: string;
+  id?: string;
   name: string;
   classId: string;
   points: number;
