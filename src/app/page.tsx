@@ -1,19 +1,87 @@
 "use client";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { LoginForm } from "./login-form";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, useUser, useAuth } from "@/firebase";
 import { collection } from "firebase/firestore";
 import { type Class, type Teacher } from "@/lib/mock-data";
+import { useToast } from "@/hooks/use-toast";
+import { initiateAnonymousSignIn } from "@/firebase/auth";
+import { getStudentByName } from "@/lib/firestore-actions";
 
 export default function Home() {
   const firestore = useFirestore();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
+  const { toast } = useToast();
 
-  const classesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'classes') : null, [firestore]);
+  const shouldFetchData = !isUserLoading;
+
+  // Defer Firestore queries until Firebase Auth is ready.
+  const classesQuery = useMemoFirebase(() => shouldFetchData && firestore ? collection(firestore, 'classes') : null, [firestore, shouldFetchData]);
   const { data: classes, isLoading: classesLoading } = useCollection<Class>(classesQuery);
 
-  const teachersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'teachers') : null, [firestore]);
+  const teachersQuery = useMemoFirebase(() => shouldFetchData && firestore ? collection(firestore, 'teachers') : null, [firestore, shouldFetchData]);
   const { data: teachers, isLoading: teachersLoading } = useCollection<Teacher>(teachersQuery);
 
-  const isDataReady = !classesLoading && !teachersLoading && !!classes && !!teachers;
+  useEffect(() => {
+    // Initiate sign-in only when auth is ready and there's no user.
+    if (shouldFetchData && !user) {
+      initiateAnonymousSignIn(auth);
+    }
+  }, [auth, user, shouldFetchData]);
+
+  const handleStudentLogin = async (loginDetails: { classId: string; name: string; pass: string }) => {
+    if (!firestore) {
+        toast({ title: "錯誤", description: "資料庫尚未初始化，請稍後再試。", variant: "destructive" });
+        return;
+    }
+    if (!loginDetails.classId || !loginDetails.name || !loginDetails.pass) {
+      toast({ title: "登入失敗", description: "所有欄位均為必填項。", variant: "destructive" });
+      return;
+    }
+    
+    if (loginDetails.pass !== 'password') {
+      toast({ title: "登入失敗", description: "密碼錯誤。", variant: "destructive" });
+      return;
+    }
+
+    const student = await getStudentByName(firestore, loginDetails.name);
+
+    if (student && student.classId === loginDetails.classId) {
+        sessionStorage.setItem('userType', 'student');
+        sessionStorage.setItem('userId', student.id);
+        sessionStorage.setItem('userName', student.name);
+        toast({ title: "學生登入成功", description: "正在將您導向..." });
+        router.push("/student-dashboard");
+    } else {
+        toast({ title: "登入失敗", description: "找不到該學生或班級不正確。", variant: "destructive" });
+    }
+  };
+
+  const handleTeacherLogin = async (loginDetails: { teacherId: string; pass: string }) => {
+    if (!loginDetails.teacherId || !loginDetails.pass) {
+      toast({ title: "登入失敗", description: "請選擇您的帳號並輸入密碼。", variant: "destructive" });
+      return;
+    }
+    
+    if (loginDetails.pass === "password") {
+        const teacher = teachers?.find(t => t.id === loginDetails.teacherId);
+        if (teacher) {
+            sessionStorage.setItem('userType', 'teacher');
+            sessionStorage.setItem('teacherId', teacher.id);
+            sessionStorage.setItem('userName', teacher.name);
+            toast({ title: "老師登入成功", description: "正在將您導向..." });
+            router.push("/teacher-dashboard");
+        }
+    } else {
+        toast({ title: "登入失敗", description: "密碼錯誤。", variant: "destructive" });
+    }
+  };
+
+  // The system is ready only when auth is checked AND data is loaded.
+  const isSystemReady = !isUserLoading && !classesLoading && !teachersLoading && !!classes && !!teachers;
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-background">
@@ -22,8 +90,14 @@ export default function Home() {
           <p className="text-lg text-foreground/80 mt-2">您通往金融素養的門戶，在這裡學習金錢知識既有回報又充滿樂趣！</p>
       </div>
       
-      {isDataReady ? (
-        <LoginForm classes={classes} teachers={teachers} />
+      {isSystemReady ? (
+        <LoginForm 
+            classes={classes} 
+            teachers={teachers} 
+            onStudentLogin={handleStudentLogin}
+            onTeacherLogin={handleTeacherLogin}
+            isAuthLoading={isUserLoading}
+        />
       ) : (
         <div className="text-primary">載入教室資料中...</div>
       )}

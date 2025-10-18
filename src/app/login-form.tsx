@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,18 +19,23 @@ import {
 } from "@/components/ui/select";
 import { type Class, type Teacher } from "@/lib/mock-data";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
 import { User, Building } from "lucide-react";
-import { useAuth, useUser, useFirestore } from "@/firebase";
-import { initiateAnonymousSignIn } from "@/firebase/auth";
-import { getStudentByName } from "@/lib/firestore-actions";
+
+type StudentLoginDetails = { classId: string; name: string; pass: string; };
+type TeacherLoginDetails = { teacherId: string; pass: string; };
 
 export function LoginForm({
   classes,
   teachers,
+  onStudentLogin,
+  onTeacherLogin,
+  isAuthLoading,
 }: {
   classes: Class[];
   teachers: Teacher[];
+  onStudentLogin: (details: StudentLoginDetails) => void;
+  onTeacherLogin: (details: TeacherLoginDetails) => void;
+  isAuthLoading: boolean;
 }) {
   const [selectedClass, setSelectedClass] = useState("");
   const [studentName, setStudentName] = useState("");
@@ -40,67 +44,8 @@ export function LoginForm({
   const [selectedTeacher, setSelectedTeacher] = useState("");
   const [teacherPassword, setTeacherPassword] = useState("");
 
-  const router = useRouter();
-  const { toast } = useToast();
-  const auth = useAuth();
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
-
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      initiateAnonymousSignIn(auth);
-    }
-  }, [auth, user, isUserLoading]);
-
-  const handleStudentLogin = async () => {
-    if (!firestore) {
-        toast({ title: "錯誤", description: "資料庫尚未初始化，請稍後再試。", variant: "destructive" });
-        return;
-    }
-    if (!selectedClass || !studentName || !studentPassword) {
-      toast({ title: "登入失敗", description: "所有欄位均為必填項。", variant: "destructive" });
-      return;
-    }
-    
-    if (studentPassword !== 'password') {
-      toast({ title: "登入失敗", description: "密碼錯誤。", variant: "destructive" });
-      return;
-    }
-
-    const student = await getStudentByName(firestore, studentName);
-
-    if (student && student.classId === selectedClass) {
-        sessionStorage.setItem('userType', 'student');
-        sessionStorage.setItem('userId', student.id);
-        sessionStorage.setItem('userName', student.name);
-        toast({ title: "學生登入成功", description: "正在將您導向..." });
-        router.push("/student-dashboard");
-    } else {
-        toast({ title: "登入失敗", description: "找不到該學生或班級不正確。", variant: "destructive" });
-    }
-  };
-
-  const handleTeacherLogin = async () => {
-    if (!selectedTeacher || !teacherPassword) {
-      toast({ title: "登入失敗", description: "請選擇您的帳號並輸入密碼。", variant: "destructive" });
-      return;
-    }
-    
-    if (teacherPassword === "password") {
-        const teacher = teachers.find(t => t.id === selectedTeacher);
-        if (teacher) {
-            sessionStorage.setItem('userType', 'teacher');
-            sessionStorage.setItem('teacherId', teacher.id);
-            sessionStorage.setItem('userName', teacher.name);
-            toast({ title: "老師登入成功", description: "正在將您導向..." });
-            router.push("/teacher-dashboard");
-        }
-    } else {
-        toast({ title: "登入失敗", description: "密碼錯誤。", variant: "destructive" });
-    }
-  };
-
-  // Final safety check. If for any reason the props are not ready, render nothing.
+  // Safety check: if props are not ready, render nothing.
+  // This prevents rendering an empty form and is a key part of the fix.
   if (!classes || !teachers || classes.length === 0 || teachers.length === 0) {
     return null;
   }
@@ -150,7 +95,7 @@ export function LoginForm({
               onChange={(e) => setStudentPassword(e.target.value)}
             />
           </div>
-          <Button onClick={handleStudentLogin} className="w-full mt-2" disabled={isUserLoading}>
+          <Button onClick={() => onStudentLogin({ classId: selectedClass, name: studentName, pass: studentPassword })} className="w-full mt-2" disabled={isAuthLoading}>
             → 登入
           </Button>
         </CardContent>
@@ -190,7 +135,7 @@ export function LoginForm({
               onChange={(e) => setTeacherPassword(e.target.value)}
             />
           </div>
-          <Button onClick={handleTeacherLogin} variant="outline" className="w-full mt-2">
+          <Button onClick={() => onTeacherLogin({ teacherId: selectedTeacher, pass: teacherPassword })} variant="outline" className="w-full mt-2" disabled={isAuthLoading}>
              → 以老師身份進入
           </Button>
         </CardContent>
