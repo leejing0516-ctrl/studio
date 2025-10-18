@@ -15,10 +15,7 @@ import { Input } from "@/components/ui/input";
 import { type Student, type Class } from "@/lib/mock-data";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { PlusCircle, Trash2 } from "lucide-react";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, query, where } from "firebase/firestore";
-import { addStudent } from "@/lib/firestore-actions";
+import { PlusCircle } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -27,6 +24,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+
+const MOCK_CLASSES: Class[] = [
+    { id: '1', name: '一年甲班' },
+    { id: '2', name: '二年乙班' },
+];
+
+const MOCK_STUDENTS = [
+    {id: 's1', name: '陳小明', classId: '1'},
+    {id: 's2', name: '林美麗', classId: '1'},
+    {id: 's3', name: '黃大為', classId: '2'},
+];
+
 export function ManageStudentsDialog({
   isOpen,
   setIsOpen,
@@ -34,21 +43,13 @@ export function ManageStudentsDialog({
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
 }) {
-  const firestore = useFirestore();
   const { toast } = useToast();
 
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [newStudentName, setNewStudentName] = useState<string>("");
 
-  const classesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'classes') : null, [firestore]);
-  const { data: classes, isLoading: classesLoading } = useCollection<Class>(classesQuery);
-
-  const studentsQuery = useMemoFirebase(() => {
-    if (!firestore || !selectedClass) return null;
-    return query(collection(firestore, 'students'), where('classId', '==', selectedClass));
-  }, [firestore, selectedClass]);
-  const { data: studentsInClass, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
-
+  const studentsInClass = MOCK_STUDENTS.filter(s => s.classId === selectedClass);
+  
   useEffect(() => {
     if (!isOpen) {
       setSelectedClass("");
@@ -57,27 +58,9 @@ export function ManageStudentsDialog({
   }, [isOpen]);
 
   const handleAddStudent = () => {
-    if (!firestore || !selectedClass || !newStudentName) {
-      toast({
-        title: "輸入無效",
-        description: "請選擇班級並輸入新學生的姓名。",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const newStudentData = {
-      name: newStudentName,
-      classId: selectedClass,
-      points: 0,
-      assets: [],
-    };
-    
-    addStudent(firestore, newStudentData);
-
     toast({
-      title: "成功!",
-      description: `已將 ${newStudentName} 加入班級。`,
+      title: "功能正在重建中",
+      description: "此功能暫時停用。",
     });
     setNewStudentName("");
   };
@@ -99,7 +82,7 @@ export function ManageStudentsDialog({
                   <SelectValue placeholder="選擇一個班級以查看學生" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(classes || []).map((c) => (
+                  {MOCK_CLASSES.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name}
                     </SelectItem>
@@ -113,10 +96,9 @@ export function ManageStudentsDialog({
                     <h3 className="text-sm font-medium text-muted-foreground mt-4">班級名冊</h3>
                     <ScrollArea className="h-48 rounded-md border">
                         <div className="p-4">
-                            {studentsLoading && <p>載入學生中...</p>}
-                            {(studentsInClass || []).length > 0 ? (
+                            {studentsInClass.length > 0 ? (
                                 <ul className="space-y-2">
-                                    {studentsInClass?.map(student => (
+                                    {studentsInClass.map(student => (
                                         <li key={student.id} className="text-sm">{student.name}</li>
                                     ))}
                                 </ul>

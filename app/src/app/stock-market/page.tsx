@@ -7,8 +7,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -18,46 +16,28 @@ import {
   YAxis,
 } from "recharts";
 import { Button } from "@/components/ui/button";
-import { useCollection, useDoc, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc } from "firebase/firestore";
 import { type Student, type Stock } from "@/lib/mock-data";
-import { updateStockPrices } from "@/lib/firestore-actions";
-import { useSimpleUser } from "@/hooks/use-simple-user";
+
+
+const MOCK_STOCKS: Stock[] = [
+    { id: 'stock-1', name: '虛擬科技', ticker: 'VRT', price: 150.23, history: Array.from({length: 30}, () => Math.random() * 50 + 120) },
+    { id: 'stock-2', name: '夢想實業', ticker: 'DRM', price: 88.54, history: Array.from({length: 30}, () => Math.random() * 40 + 70) },
+];
+
+const MOCK_STUDENT: Student = {
+    id: 's1',
+    name: '陳小明',
+    classId: '1',
+    points: 500,
+    assets: [
+        { stockId: 'stock-1', quantity: 10, purchasePrice: 140.00 },
+        { stockId: 'stock-2', quantity: 5, purchasePrice: 90.00 },
+    ]
+};
 
 export default function StockMarket() {
-  const { user: sessionUser, isLoading: isSessionLoading } = useSimpleUser('student');
-  const router = useRouter();
-  const firestore = useFirestore();
-
-  useEffect(() => {
-    if (!isSessionLoading && (!sessionUser)) {
-      router.push("/");
-    }
-  }, [sessionUser, isSessionLoading, router]);
-
-  const stocksQuery = useMemoFirebase(() => firestore ? collection(firestore, 'stocks') : null, [firestore]);
-  const { data: stocks, isLoading: stocksLoading } = useCollection<Stock>(stocksQuery);
-
-  const studentRef = useMemoFirebase(() => (sessionUser && firestore) ? doc(firestore, 'students', sessionUser.id) : null, [firestore, sessionUser]);
-  const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
-
-  
-  useEffect(() => {
-    if (!firestore) return;
-    const interval = setInterval(() => {
-        updateStockPrices(firestore);
-    }, 15000); // Increased interval to 15s to reduce write frequency
-    return () => clearInterval(interval);
-  }, [firestore]);
-
-  const isLoading = isSessionLoading || studentLoading || stocksLoading;
-
-  if (isLoading || !sessionUser || !student) {
-    return <div className="flex min-h-screen items-center justify-center bg-background">載入中...</div>;
-  }
-
-  const portfolioValue = (student.assets || []).reduce((total, asset) => {
-      const stock = stocks?.find(s => s.id === asset.stockId);
+  const portfolioValue = (MOCK_STUDENT.assets || []).reduce((total, asset) => {
+      const stock = MOCK_STOCKS.find(s => s.id === asset.stockId);
       return total + (stock ? stock.price * asset.quantity : 0);
     }, 0);
 
@@ -73,7 +53,7 @@ export default function StockMarket() {
                 虛擬股票市場
               </h1>
               <div className="space-y-4">
-                {(stocks || []).map((stock) => (
+                {MOCK_STOCKS.map((stock) => (
                   <Card key={stock.id} className="overflow-hidden">
                     <div className="p-4">
                         <div className="flex justify-between items-start">
@@ -122,10 +102,10 @@ export default function StockMarket() {
                         <CardTitle>我的資產</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        {(student?.assets || []).length > 0 ? (
+                        {(MOCK_STUDENT?.assets || []).length > 0 ? (
                              <ul className="space-y-2">
-                                {student.assets.map(asset => {
-                                    const stock = stocks?.find(s => s.id === asset.stockId);
+                                {MOCK_STUDENT.assets.map(asset => {
+                                    const stock = MOCK_STOCKS.find(s => s.id === asset.stockId);
                                     return stock ? (
                                         <li key={asset.stockId} className="flex justify-between items-center text-sm">
                                             <span>{stock.ticker}: {asset.quantity} 股</span>

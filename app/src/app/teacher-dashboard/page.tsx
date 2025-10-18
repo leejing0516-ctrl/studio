@@ -10,34 +10,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AwardPointsDialog } from "./_components/award-points-dialog";
 import { ManageRewardsDialog } from "./_components/manage-rewards-dialog";
-import { useSimpleUser } from "@/hooks/use-simple-user";
 import { ManageStudentsDialog } from "./_components/manage-students-dialog";
 
 export default function TeacherDashboard() {
-  const { user, isLoading } = useSimpleUser('teacher');
   const router = useRouter();
 
   const [isAwardPointsOpen, setIsAwardPointsOpen] = useState(false);
   const [isManageRewardsOpen, setIsManageRewardsOpen] = useState(false);
   const [isManageStudentsOpen, setIsManageStudentsOpen] = useState(false);
-
-
-  useEffect(() => {
-    if (!isLoading && !user) {
-      router.push("/");
-    }
-  }, [user, isLoading, router]);
-
-  if (isLoading || !user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        載入中...
-      </div>
-    );
-  }
 
   return (
     <>

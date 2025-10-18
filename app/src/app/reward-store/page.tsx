@@ -10,14 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Gem, Ticket, ToyBrick } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { useCollection, useDoc, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc } from "firebase/firestore";
-import { type Student, type Reward } from "@/lib/mock-data";
-import { redeemReward } from "@/lib/firestore-actions";
-import { useSimpleUser } from "@/hooks/use-simple-user";
+import { type Reward } from "@/lib/mock-data";
 
 const rewardIcons = [
     <Ticket key="1" className="w-8 h-8 text-accent" />,
@@ -25,51 +18,19 @@ const rewardIcons = [
     <ToyBrick key="3" className="w-8 h-8 text-destructive" />,
 ];
 
+const MOCK_REWARDS: Reward[] = [
+    {id: 'r1', name: '鉛筆', cost: 100, stock: 50},
+    {id: 'r2', name: '橡皮擦', cost: 150, stock: 40},
+    {id: 'r3', name: '神秘盒子', cost: 1000, stock: 5},
+];
+
+const studentPoints = 500; // Mock data
+
 export default function RewardStore() {
-  const { user: sessionUser, isLoading: isSessionLoading } = useSimpleUser('student');
-  const { toast } = useToast();
-  const router = useRouter();
-  const firestore = useFirestore();
-
-  useEffect(() => {
-    if (!isSessionLoading && !sessionUser) {
-      router.push("/");
-    }
-  }, [sessionUser, isSessionLoading, router]);
-
-  const rewardsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'rewards') : null, [firestore]);
-  const { data: rewards, isLoading: rewardsLoading } = useCollection<Reward>(rewardsQuery);
-
-  const studentRef = useMemoFirebase(() => (sessionUser && firestore) ? doc(firestore, 'students', sessionUser.id) : null, [firestore, sessionUser]);
-  const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
   
-  const handleRedeem = async (rewardId: string) => {
-    if (!sessionUser || !student || !firestore) return;
-    const reward = rewards?.find(r => r.id === rewardId);
-    if (!reward) return;
-
-    try {
-      await redeemReward(firestore, sessionUser.id, rewardId);
-      toast({
-        title: "成功!",
-        description: `您已成功兌換 ${reward.name}！`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "哦喔！",
-        description: error.message || "兌換獎勵時發生錯誤。",
-        variant: "destructive",
-      });
-    }
+  const handleRedeem = (reward: Reward) => {
+    alert(`Redeem functionality for ${reward.name} is under reconstruction.`);
   };
-  
-  const isLoading = isSessionLoading || studentLoading || rewardsLoading;
-
-  if (isLoading || !sessionUser || !student) {
-    return <div className="flex min-h-screen items-center justify-center bg-background">載入中...</div>;
-  }
-  
-  const studentPoints = student.points;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -84,7 +45,7 @@ export default function RewardStore() {
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {(rewards || []).map((reward, index) => (
+            {MOCK_REWARDS.map((reward, index) => (
               <Card key={reward.id} className="flex flex-col">
                 <CardHeader className="items-center">
                   <div className="p-4 bg-primary/10 rounded-full">
@@ -102,7 +63,7 @@ export default function RewardStore() {
                 </CardContent>
                 <CardFooter>
                   <Button
-                    onClick={() => handleRedeem(reward.id)}
+                    onClick={() => handleRedeem(reward)}
                     disabled={studentPoints < reward.cost || reward.stock === 0}
                     className="w-full bg-accent hover:bg-accent/90"
                   >
