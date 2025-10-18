@@ -14,12 +14,24 @@ const Header = () => {
     sessionStorage.clear();
     router.push("/");
   };
+  
+  const handleNavigateHome = () => {
+    if (user) {
+        if (user.type === 'student') {
+            router.push('/student-dashboard');
+        } else if (user.type === 'teacher') {
+            router.push('/teacher-dashboard');
+        }
+    } else {
+        router.push('/');
+    }
+  }
 
   return (
     <header className="bg-card/80 backdrop-blur-sm shadow-sm sticky top-0 z-50">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center cursor-pointer" onClick={() => user ? (user.type === 'student' ? router.push('/student-dashboard') : router.push('/teacher-dashboard')) : router.push('/')}>
+          <div className="flex items-center cursor-pointer" onClick={handleNavigateHome}>
             <Logo />
             <span className="font-bold text-primary ml-2">南梓實小虛擬銀行</span>
           </div>

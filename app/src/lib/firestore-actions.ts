@@ -1,3 +1,4 @@
+
 'use client';
 import { 
     collection, 
@@ -26,14 +27,21 @@ export const addStudent = async (firestore: Firestore, studentData: Omit<Student
 };
 
 export const getStudentByName = async (name: string): Promise<Student | null> => {
+    // This is one of the few places it's okay to get a temporary instance,
+    // as it's used pre-login before the main app's firestore is available.
     const firestore = getFirestore(); 
     const q = query(collection(firestore, "students"), where("name", "==", name));
-    const querySnapshot = await getDocs(q);
-    if (querySnapshot.empty) {
+    try {
+        const querySnapshot = await getDocs(q);
+        if (querySnapshot.empty) {
+            return null;
+        }
+        const studentDoc = querySnapshot.docs[0];
+        return { id: studentDoc.id, ...studentDoc.data() } as Student;
+    } catch(e) {
+        console.error("Error getting student by name: ", e);
         return null;
     }
-    const studentDoc = querySnapshot.docs[0];
-    return { id: studentDoc.id, ...studentDoc.data() } as Student;
 };
 
 export const awardPoints = (firestore: Firestore, studentId: string, amount: number) => {
@@ -94,24 +102,24 @@ export const updateReward = async (firestore: Firestore, rewardId: string, rewar
 
 export const updateStockPrices = async (firestore: Firestore) => {
     const stocksRef = collection(firestore, "stocks");
-    const snapshot = await getDocs(stocksRef);
-    if (snapshot.empty) return;
-
-    const batch = writeBatch(firestore);
-
-    snapshot.docs.forEach(stockDoc => {
-        const stock = stockDoc.data() as Stock;
-        const change = (Math.random() - 0.5) * (stock.price * 0.1);
-        const newPrice = Math.max(1, stock.price + change);
-        const newHistory = [...(stock.history || []).slice(-99), newPrice];
-        
-        batch.update(stockDoc.ref, {
-            price: newPrice,
-            history: newHistory,
-        });
-    });
-
     try {
+        const snapshot = await getDocs(stocksRef);
+        if (snapshot.empty) return;
+
+        const batch = writeBatch(firestore);
+
+        snapshot.docs.forEach(stockDoc => {
+            const stock = stockDoc.data() as Stock;
+            const change = (Math.random() - 0.5) * (stock.price * 0.1);
+            const newPrice = Math.max(1, stock.price + change);
+            const newHistory = [...(stock.history || []).slice(-99), newPrice];
+            
+            batch.update(stockDoc.ref, {
+                price: newPrice,
+                history: newHistory,
+            });
+        });
+
         await batch.commit();
     } catch (e) {
         console.error("Error updating stock prices in batch: ", e);

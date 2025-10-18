@@ -1,7 +1,6 @@
 
 "use client";
 import { LoginForm } from "./login-form";
-import { useEffect } from "react";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection } from "firebase/firestore";
 import { type Class, type Teacher } from "@/lib/mock-data";

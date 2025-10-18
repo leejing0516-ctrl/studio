@@ -1,3 +1,4 @@
+
 export interface StudentAsset {
   stockId: string;
   quantity: number;
