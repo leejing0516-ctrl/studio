@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useUserStore } from "@/store/user-store";
@@ -23,10 +24,10 @@ export default function StudentDashboard() {
   const hasHydrated = useHydration();
   const firestore = useFirestore();
 
-  const studentRef = useMemoFirebase(() => user ? doc(firestore, 'students', user.id) : null, [firestore, user]);
+  const studentRef = useMemoFirebase(() => (user && firestore) ? doc(firestore, 'students', user.id) : null, [firestore, user]);
   const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
 
-  const stocksQuery = useMemoFirebase(() => collection(firestore, 'stocks'), [firestore]);
+  const stocksQuery = useMemoFirebase(() => firestore ? collection(firestore, 'stocks') : null, [firestore]);
   const { data: stocks, isLoading: stocksLoading } = useCollection<Stock>(stocksQuery);
 
   useEffect(() => {
@@ -37,7 +38,7 @@ export default function StudentDashboard() {
 
   const portfolioValue = useMemo(() => {
     if (!student || !stocks) return 0;
-    return student.assets.reduce((total, asset) => {
+    return (student.assets || []).reduce((total, asset) => {
       const stock = stocks.find(s => s.id === asset.stockId);
       return total + (stock ? stock.price * asset.quantity : 0);
     }, 0);
@@ -118,7 +119,7 @@ export default function StudentDashboard() {
                   <ShoppingCart className="mr-2 text-accent" />
                   Reward Store
                 </CardTitle>
-              </CardHeader>
+              </Header>
               <CardContent>
                 <p className="text-muted-foreground mb-4">
                   Use your points to redeem awesome rewards.

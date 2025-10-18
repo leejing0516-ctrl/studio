@@ -15,7 +15,7 @@ import { useUserStore } from "@/store/user-store";
 import { Gem, Ticket, ToyBrick } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { useHydration } from "@/hooks/use-hydration";
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, doc } from "firebase/firestore";
@@ -38,7 +38,7 @@ export default function RewardStore() {
   const rewardsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'rewards') : null, [firestore]);
   const { data: rewards, isLoading: rewardsLoading } = useCollection<Reward>(rewardsQuery);
 
-  const studentRef = useMemoFirebase(() => user ? doc(firestore, 'students', user.id) : null, [firestore, user]);
+  const studentRef = useMemoFirebase(() => (user && firestore) ? doc(firestore, 'students', user.id) : null, [firestore, user]);
   const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
 
   useEffect(() => {

@@ -1,3 +1,4 @@
+
 "use client";
 import Header from "@/components/header";
 import {
@@ -31,10 +32,10 @@ export default function StockMarket() {
   const hasHydrated = useHydration();
   const firestore = useFirestore();
 
-  const stocksQuery = useMemoFirebase(() => collection(firestore, 'stocks'), [firestore]);
+  const stocksQuery = useMemoFirebase(() => firestore ? collection(firestore, 'stocks') : null, [firestore]);
   const { data: stocks, isLoading: stocksLoading } = useCollection<Stock>(stocksQuery);
 
-  const studentRef = useMemoFirebase(() => user ? doc(firestore, 'students', user.id) : null, [firestore, user]);
+  const studentRef = useMemoFirebase(() => (user && firestore) ? doc(firestore, 'students', user.id) : null, [firestore, user]);
   const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
 
   useEffect(() => {
@@ -47,12 +48,11 @@ export default function StockMarket() {
   // updating stock prices for all users in real-time.
   useEffect(() => {
     const interval = setInterval(() => {
-      if (stocks && stocks.length > 0) {
-        updateStockPrices(); // No longer passing stocks directly
-      }
+        // No need to check for stocks, the action fetches them.
+        updateStockPrices();
     }, 5000);
     return () => clearInterval(interval);
-  }, [stocks]);
+  }, []);
 
   if (!hasHydrated || studentLoading || stocksLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading market data...</div>;
@@ -66,7 +66,7 @@ export default function StockMarket() {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading student data...</div>;
   }
 
-  const portfolioValue = student.assets.reduce((total, asset) => {
+  const portfolioValue = (student.assets || []).reduce((total, asset) => {
       const stock = stocks?.find(s => s.id === asset.stockId);
       return total + (stock ? stock.price * asset.quantity : 0);
     }, 0);
