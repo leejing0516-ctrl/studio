@@ -13,7 +13,7 @@ import Header from "@/components/header";
 
 export default function StudentDashboard() {
   const router = useRouter();
-
+  
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />

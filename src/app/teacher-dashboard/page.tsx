@@ -10,9 +10,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { AwardPointsDialog } from "./_components/award-points-dialog";
+import { ManageRewardsDialog } from "./_components/manage-rewards-dialog";
+import { ManageStudentsDialog } from "./_components/manage-students-dialog";
 
 export default function TeacherDashboard() {
   const router = useRouter();
+
+  const [isAwardPointsOpen, setIsAwardPointsOpen] = useState(false);
+  const [isManageRewardsOpen, setIsManageRewardsOpen] = useState(false);
+  const [isManageStudentsOpen, setIsManageStudentsOpen] = useState(false);
 
   return (
     <>
@@ -33,7 +41,7 @@ export default function TeacherDashboard() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button disabled>
+                  <Button onClick={() => setIsAwardPointsOpen(true)}>
                     獎勵點數
                   </Button>
                 </CardContent>
@@ -46,7 +54,7 @@ export default function TeacherDashboard() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button variant="outline" disabled>
+                  <Button onClick={() => setIsManageRewardsOpen(true)} variant="outline">
                     管理獎勵
                   </Button>
                 </CardContent>
@@ -59,7 +67,7 @@ export default function TeacherDashboard() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button variant="outline" disabled>
+                  <Button onClick={() => setIsManageStudentsOpen(true)} variant="outline">
                     管理學生
                   </Button>
                 </CardContent>
@@ -68,6 +76,18 @@ export default function TeacherDashboard() {
           </div>
         </main>
       </div>
+      <AwardPointsDialog
+        isOpen={isAwardPointsOpen}
+        setIsOpen={setIsAwardPointsOpen}
+      />
+      <ManageRewardsDialog
+        isOpen={isManageRewardsOpen}
+        setIsOpen={setIsManageRewardsOpen}
+      />
+       <ManageStudentsDialog
+        isOpen={isManageStudentsOpen}
+        setIsOpen={setIsManageStudentsOpen}
+      />
     </>
   );
 }

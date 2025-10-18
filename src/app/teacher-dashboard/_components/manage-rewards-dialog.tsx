@@ -16,9 +16,12 @@ import { type Reward } from "@/lib/mock-data";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PlusCircle, Trash2 } from "lucide-react";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection } from "firebase/firestore";
-import { addReward, updateReward } from "@/lib/firestore-actions";
+
+const MOCK_REWARDS: Reward[] = [
+    {id: 'r1', name: '鉛筆', cost: 100, stock: 50},
+    {id: 'r2', name: '橡皮擦', cost: 150, stock: 40},
+    {id: 'r3', name: '神秘盒子', cost: 1000, stock: 5},
+];
 
 export function ManageRewardsDialog({
   isOpen,
@@ -27,18 +30,15 @@ export function ManageRewardsDialog({
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
 }) {
-  const firestore = useFirestore();
-  const rewardsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'rewards') : null, [firestore]);
-  const { data: rewards, isLoading } = useCollection<Reward>(rewardsQuery);
   
   const [editedRewards, setEditedRewards] = useState<Reward[]>([]);
   const { toast } = useToast();
   
   useEffect(() => {
-    if (rewards && isOpen) {
-      setEditedRewards(JSON.parse(JSON.stringify(rewards)));
+    if (isOpen) {
+      setEditedRewards(JSON.parse(JSON.stringify(MOCK_REWARDS)));
     }
-  }, [rewards, isOpen]);
+  }, [isOpen]);
 
   const handleFieldChange = (
     id: string,
@@ -58,25 +58,9 @@ export function ManageRewardsDialog({
   };
 
   const handleSaveChanges = () => {
-    if (!firestore) return;
-
-    // Use a for...of loop to handle async operations correctly
-    for (const reward of editedRewards) {
-        if (reward.id.startsWith('new-')) {
-          if (reward.name && reward.cost > 0) {
-              addReward(firestore, { name: reward.name, cost: reward.cost, stock: reward.stock });
-          }
-        } else {
-          const originalReward = rewards?.find(r => r.id === reward.id);
-          if (JSON.stringify(originalReward) !== JSON.stringify(reward)) {
-              updateReward(firestore, reward.id, { name: reward.name, cost: reward.cost, stock: reward.stock });
-          }
-        }
-    }
-
     toast({
-      title: "成功!",
-      description: "獎勵已成功更新。",
+      title: "功能正在重建中",
+      description: "此功能暫時停用。",
     });
     setIsOpen(false);
   };
@@ -92,7 +76,7 @@ export function ManageRewardsDialog({
         </DialogHeader>
         <ScrollArea className="h-96 pr-6">
           <div className="space-y-4 py-4">
-            {isLoading ? <p>載入獎勵中...</p> : (editedRewards || []).map((reward) => (
+            {(editedRewards || []).map((reward) => (
               <div
                 key={reward.id}
                 className="grid grid-cols-12 items-center gap-2 p-2 rounded-md border"
