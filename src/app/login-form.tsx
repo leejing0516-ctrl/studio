@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,11 +18,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { type Class, type Teacher, useSchoolStore } from "@/store/school-store";
+import { type Class, type Teacher } from "@/store/school-store";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { User, Building } from "lucide-react";
-import { useUserStore } from "@/store/user-store";
+import { useAuth, useUser } from "@/firebase";
+import { initiateAnonymousSignIn } from "@/firebase/non-blocking-login";
+import { getStudentByName } from "@/lib/firestore-actions";
 
 export function LoginForm({
   classes,
@@ -32,7 +34,7 @@ export function LoginForm({
   teachers: Teacher[];
 }) {
   const [selectedClass, setSelectedClass] = useState("");
-  const [studentId, setStudentId] = useState("");
+  const [studentName, setStudentName] = useState(""); // Changed from studentId
   const [studentPassword, setStudentPassword] = useState("");
 
   const [selectedTeacher, setSelectedTeacher] = useState("");
@@ -40,24 +42,41 @@ export function LoginForm({
 
   const router = useRouter();
   const { toast } = useToast();
-  const login = useUserStore((state) => state.login);
-  const { getStudentById } = useSchoolStore.getState();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
 
+  // On mount, if not logged in, sign in anonymously.
+  // This is required for security rules to work later.
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      initiateAnonymousSignIn(auth);
+    }
+  }, [auth, user, isUserLoading]);
 
+  // Handle student login with name
   const handleStudentLogin = async () => {
-    if (!selectedClass || !studentId || !studentPassword) {
+    if (!selectedClass || !studentName || !studentPassword) {
       toast({ title: "登入失敗", description: "所有欄位均為必填項。", variant: "destructive" });
       return;
     }
     
-    // Demo logic: any student ID with 'password' works for the selected class
-    const student = getStudentById(studentId);
-    if (student && studentPassword === 'password' && student.classId === selectedClass) {
-        login({ id: student.id, name: student.name, type: 'student' });
+    // DEMO LOGIC: Use 'password' for any student.
+    if (studentPassword !== 'password') {
+      toast({ title: "登入失敗", description: "密碼錯誤。", variant: "destructive" });
+      return;
+    }
+
+    const student = await getStudentByName(studentName);
+
+    if (student && student.classId === selectedClass) {
+        // We don't use Firebase Auth for students, just sessionStorage for simplicity in this demo
+        sessionStorage.setItem('userType', 'student');
+        sessionStorage.setItem('userId', student.id);
+        sessionStorage.setItem('userName', student.name);
         toast({ title: "學生登入成功", description: "正在將您導向..." });
         router.push("/student-dashboard");
     } else {
-        toast({ title: "登入失敗", description: "學生座號、密碼或班級不正確。", variant: "destructive" });
+        toast({ title: "登入失敗", description: "找不到該學生或班級不正確。", variant: "destructive" });
     }
   };
 
@@ -67,15 +86,15 @@ export function LoginForm({
       return;
     }
     
-    // Demo logic: any selected teacher with 'password' works
+    // DEMO LOGIC: Use 'password' for any teacher.
     if (teacherPassword === "password") {
         const teacher = teachers.find(t => t.id === selectedTeacher);
         if (teacher) {
-            login({ id: teacher.id, name: teacher.name, type: 'teacher' });
+            sessionStorage.setItem('userType', 'teacher');
+            sessionStorage.setItem('teacherId', teacher.id);
+            sessionStorage.setItem('userName', teacher.name);
             toast({ title: "老師登入成功", description: "正在將您導向..." });
             router.push("/teacher-dashboard");
-        } else {
-             toast({ title: "登入失敗", description: "找不到教師帳號。", variant: "destructive" });
         }
     } else {
         toast({ title: "登入失敗", description: "密碼錯誤。", variant: "destructive" });
@@ -91,7 +110,7 @@ export function LoginForm({
             <User className="w-8 h-8 text-primary" />
           </div>
           <CardTitle className="text-xl font-bold mt-2">學生登入</CardTitle>
-          <CardDescription>選擇您的班級，並使用老師提供的編號和密碼登入。</CardDescription>
+          <CardDescription>選擇您的班級，並使用老師提供的姓名和密碼登入。</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
@@ -110,12 +129,12 @@ export function LoginForm({
             </Select>
           </div>
           <div>
-            <Label htmlFor="student-id">學生座號</Label>
+            <Label htmlFor="student-name">學生姓名</Label>
             <Input
-              id="student-id"
-              placeholder="請輸入您的座號 (例如: S001)"
-              value={studentId}
-              onChange={(e) => setStudentId(e.target.value)}
+              id="student-name"
+              placeholder="請輸入您的姓名 (例如: 陳小明)"
+              value={studentName}
+              onChange={(e) => setStudentName(e.target.value)}
             />
           </div>
           <div>
@@ -128,7 +147,7 @@ export function LoginForm({
               onChange={(e) => setStudentPassword(e.target.value)}
             />
           </div>
-          <Button onClick={handleStudentLogin} className="w-full mt-2">
+          <Button onClick={handleStudentLogin} className="w-full mt-2" disabled={isUserLoading}>
             → 登入
           </Button>
         </CardContent>

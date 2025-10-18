@@ -10,15 +10,15 @@ import {
     updateDoc,
     increment,
     runTransaction,
-    writeBatch
+    writeBatch,
+    Firestore
 } from "firebase/firestore";
 import type { Student, Stock, Reward } from "@/store/school-store";
-import { initializeFirebase } from "@/firebase";
 
-const { firestore } = initializeFirebase();
+// Note: We get the firestore instance passed to functions now to avoid initialization issues.
 
 // Student Actions
-export const addStudent = async (studentData: Omit<Student, 'id'>) => {
+export const addStudent = async (firestore: Firestore, studentData: Omit<Student, 'id'>) => {
     try {
         const docRef = await addDoc(collection(firestore, "students"), studentData);
         return docRef.id;
@@ -29,6 +29,9 @@ export const addStudent = async (studentData: Omit<Student, 'id'>) => {
 };
 
 export const getStudentByName = async (name: string): Promise<Student | null> => {
+    // This is tricky without passing firestore. For login, we'll use a temporary instance.
+    // In a real app, you'd want a better way to handle this, like a singleton service.
+    const firestore = getFirestore(); 
     const q = query(collection(firestore, "students"), where("name", "==", name));
     const querySnapshot = await getDocs(q);
     if (querySnapshot.empty) {
@@ -38,8 +41,9 @@ export const getStudentByName = async (name: string): Promise<Student | null> =>
     return { id: studentDoc.id, ...studentDoc.data() } as Student;
 };
 
-export const awardPoints = (studentId: string, amount: number) => {
+export const awardPoints = (firestore: Firestore, studentId: string, amount: number) => {
     const studentRef = doc(firestore, "students", studentId);
+    // This is a non-blocking update, good for fire-and-forget
     updateDoc(studentRef, {
         points: increment(amount)
     }).catch(e => console.error("Error awarding points: ", e));
@@ -47,6 +51,8 @@ export const awardPoints = (studentId: string, amount: number) => {
 
 // Reward Actions
 export const redeemReward = async (studentId: string, rewardId: string) => {
+    // Also using a temp instance here.
+    const firestore = getFirestore();
     const studentRef = doc(firestore, "students", studentId);
     const rewardRef = doc(firestore, "rewards", rewardId);
 
@@ -84,7 +90,7 @@ export const redeemReward = async (studentId: string, rewardId: string) => {
     }
 };
 
-export const addReward = async (rewardData: Omit<Reward, 'id'>) => {
+export const addReward = async (firestore: Firestore, rewardData: Omit<Reward, 'id'>) => {
     try {
         await addDoc(collection(firestore, "rewards"), rewardData);
     } catch (e) {
@@ -92,7 +98,7 @@ export const addReward = async (rewardData: Omit<Reward, 'id'>) => {
     }
 };
 
-export const updateReward = async (rewardId: string, rewardData: Partial<Reward>) => {
+export const updateReward = async (firestore: Firestore, rewardId: string, rewardData: Partial<Reward>) => {
     const rewardRef = doc(firestore, "rewards", rewardId);
     try {
         await updateDoc(rewardRef, rewardData);
@@ -103,11 +109,7 @@ export const updateReward = async (rewardId: string, rewardData: Partial<Reward>
 
 
 // Stock Actions (simulation) - This simulates a cloud function.
-export const updateStockPrices = async () => {
-    if (!firestore) {
-        console.error("Firestore not initialized for stock update");
-        return;
-    }
+export const updateStockPrices = async (firestore: Firestore) => {
     const stocksRef = collection(firestore, "stocks");
     const snapshot = await getDocs(stocksRef);
     if (snapshot.empty) return;

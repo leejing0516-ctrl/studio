@@ -1,16 +1,28 @@
+
 "use client";
 
 import { useRouter } from "next/navigation";
 import Logo from "./logo";
 import { Button } from "./ui/button";
-import { useUserStore } from "@/store/user-store";
+import { useEffect, useState } from "react";
 
 const Header = () => {
   const router = useRouter();
-  const { user, logout } = useUserStore();
+  const [userName, setUserName] = useState<string | null>(null);
+  
+  useEffect(() => {
+    // This component will only render on the client,
+    // so it's safe to access sessionStorage here.
+    setUserName(sessionStorage.getItem('userName'));
+  }, []);
+
 
   const handleLogout = () => {
-    logout();
+    sessionStorage.removeItem('userId');
+    sessionStorage.removeItem('teacherId');
+    sessionStorage.removeItem('userName');
+    sessionStorage.removeItem('userType');
+    
     router.push("/");
   };
 
@@ -23,9 +35,9 @@ const Header = () => {
             <span className="font-bold text-primary ml-2">南梓實小虛擬銀行</span>
           </div>
           <div className="flex items-center space-x-4">
-            {user && (
+            {userName && (
               <span className="text-sm text-muted-foreground">
-                歡迎, {user.name}
+                歡迎, {userName}
               </span>
             )}
             <Button onClick={handleLogout} variant="ghost" size="sm">

@@ -9,13 +9,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useSchoolStore, type Reward } from "@/store/school-store";
-import { useUserStore } from "@/store/user-store";
 import { Gem, Ticket, ToyBrick } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
-import { useHydration } from "@/hooks/use-hydration";
+import { useEffect, useState } from "react";
+import { useCollection, useDoc, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, doc } from "firebase/firestore";
+import { type Student, type Reward } from "@/store/school-store";
+import { redeemReward } from "@/lib/firestore-actions";
 
 const rewardIcons = [
     <Ticket key="1" className="w-8 h-8 text-accent" />,
@@ -23,40 +24,70 @@ const rewardIcons = [
     <ToyBrick key="3" className="w-8 h-8 text-destructive" />,
 ]
 
+function useSimpleUser() {
+    const [user, setUser] = useState<{id: string, name: string, type: string} | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const id = sessionStorage.getItem('userId');
+        const name = sessionStorage.getItem('userName');
+        const type = sessionStorage.getItem('userType');
+        
+        if (id && name && type === 'student') {
+            setUser({ id, name, type });
+        }
+        setIsLoading(false);
+    }, []);
+
+    return { user, isLoading };
+}
+
 export default function RewardStore() {
-  const { user } = useUserStore();
-  const { rewards, getStudentById, redeemReward } = useSchoolStore();
+  const { user: sessionUser, isLoading: isSessionLoading } = useSimpleUser();
   const { toast } = useToast();
   const router = useRouter();
-  const hasHydrated = useHydration();
+  const firestore = useFirestore();
 
-  const student = useMemo(() => {
-    if (!user) return null;
-    return getStudentById(user.id);
-  }, [user, getStudentById]);
+  const rewardsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'rewards') : null, [firestore]);
+  const { data: rewards, isLoading: rewardsLoading } = useCollection<Reward>(rewardsQuery);
+
+  const studentRef = useMemoFirebase(() => (sessionUser && firestore) ? doc(firestore, 'students', sessionUser.id) : null, [firestore, sessionUser]);
+  const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
 
   useEffect(() => {
-    if (hasHydrated && (!user || user.type !== 'student')) {
+    if (!isSessionLoading && (!sessionUser || sessionUser.type !== 'student')) {
       router.push("/");
     }
-  }, [user, hasHydrated, router]);
+  }, [sessionUser, isSessionLoading, router]);
   
-  const handleRedeem = (rewardId: string) => {
-    if (!user) return;
-    const result = redeemReward(user.id, rewardId);
-    toast({
-      title: result.success ? "成功!" : "失敗",
-      description: result.message,
-      variant: result.success ? "default" : "destructive",
-    });
+  const handleRedeem = async (rewardId: string) => {
+    if (!sessionUser || !student) return;
+    const reward = rewards?.find(r => r.id === rewardId);
+    if (!reward) return;
+
+    try {
+      // Pass student and reward points to the action
+      await redeemReward(sessionUser.id, rewardId);
+      toast({
+        title: "成功!",
+        description: "獎勵已成功兌換！",
+      });
+    } catch (error: any) {
+      toast({
+        title: "哦喔！",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
   
-  if (!hasHydrated || !user || !student) {
+  const isLoading = isSessionLoading || studentLoading || rewardsLoading;
+
+  if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-background">Loading...</div>;
   }
   
-  if (user.type !== 'student') {
-    // This state will be brief, but it's a good practice to handle it.
+  if (!sessionUser || !student) {
     return <div className="flex min-h-screen items-center justify-center bg-background">Redirecting...</div>;
   }
   

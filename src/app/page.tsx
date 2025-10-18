@@ -1,17 +1,19 @@
 
 "use client";
 import { LoginForm } from "./login-form";
-import { useSchoolStore } from "@/store/school-store";
 import { useEffect } from "react";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection } from "firebase/firestore";
+import { type Class, type Teacher } from "@/store/school-store";
 
 export default function Home() {
-  // We go back to using the mock data from the store for stability.
-  const { classes, teachers, fetchInitialData } = useSchoolStore();
+  const firestore = useFirestore();
 
-  useEffect(() => {
-    // Ensure mock data is loaded on the client
-    fetchInitialData();
-  }, [fetchInitialData]);
+  const classesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'classes') : null, [firestore]);
+  const { data: classes, isLoading: classesLoading } = useCollection<Class>(classesQuery);
+
+  const teachersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'teachers') : null, [firestore]);
+  const { data: teachers, isLoading: teachersLoading } = useCollection<Teacher>(teachersQuery);
 
 
   return (
@@ -21,7 +23,11 @@ export default function Home() {
           <p className="text-lg text-foreground/80 mt-2">您通往金融素養的門戶，在這裡學習金錢知識既有回報又充滿樂趣！</p>
       </div>
       
-      <LoginForm classes={classes} teachers={teachers} />
+      {classesLoading || teachersLoading ? (
+        <div>Loading classroom data...</div>
+      ) : (
+        <LoginForm classes={classes || []} teachers={teachers || []} />
+      )}
 
       <footer className="mt-12 text-center text-sm text-foreground/60">
         <p>© 2025 南梓實小虛擬銀行, 版權所有。</p>

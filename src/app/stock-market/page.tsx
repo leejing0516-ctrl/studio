@@ -7,10 +7,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useUserStore } from "@/store/user-store";
-import { useSchoolStore } from "@/store/school-store";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -20,42 +18,66 @@ import {
   YAxis,
 } from "recharts";
 import { Button } from "@/components/ui/button";
-import { useHydration } from "@/hooks/use-hydration";
+import { useCollection, useDoc, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, doc } from "firebase/firestore";
+import { type Student, type Stock } from "@/store/school-store";
+import { updateStockPrices } from "@/lib/firestore-actions";
+
+function useSimpleUser() {
+    const [user, setUser] = useState<{id: string, name: string, type: string} | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const id = sessionStorage.getItem('userId');
+        const name = sessionStorage.getItem('userName');
+        const type = sessionStorage.getItem('userType');
+        
+        if (id && name && type === 'student') {
+            setUser({ id, name, type });
+        }
+        setIsLoading(false);
+    }, []);
+
+    return { user, isLoading };
+}
 
 export default function StockMarket() {
-  const { user } = useUserStore();
-  const { getStudentById, stocks, updateStockPrices } = useSchoolStore();
+  const { user: sessionUser, isLoading: isSessionLoading } = useSimpleUser();
   const router = useRouter();
-  const hasHydrated = useHydration();
-  
-  const student = useMemo(() => {
-    if (!user) return null;
-    return getStudentById(user.id);
-  }, [user, getStudentById]);
+  const firestore = useFirestore();
+
+  const stocksQuery = useMemoFirebase(() => firestore ? collection(firestore, 'stocks') : null, [firestore]);
+  const { data: stocks, isLoading: stocksLoading } = useCollection<Stock>(stocksQuery);
+
+  const studentRef = useMemoFirebase(() => (sessionUser && firestore) ? doc(firestore, 'students', sessionUser.id) : null, [firestore, sessionUser]);
+  const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
 
   useEffect(() => {
-    if (hasHydrated && (!user || user.type !== 'student')) {
+    if (!isSessionLoading && (!sessionUser || sessionUser.type !== 'student')) {
       router.push("/");
     }
-  }, [user, hasHydrated, router]);
+  }, [sessionUser, isSessionLoading, router]);
   
   useEffect(() => {
+    if (!firestore) return;
     const interval = setInterval(() => {
-        updateStockPrices();
+        updateStockPrices(firestore);
     }, 5000);
     return () => clearInterval(interval);
-  }, [updateStockPrices]);
+  }, [firestore]);
 
-  if (!hasHydrated || !user || !student) {
+  const isLoading = isSessionLoading || studentLoading || stocksLoading;
+
+  if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-background">Loading...</div>;
   }
   
-  if (user.type !== 'student') {
+  if (!sessionUser || !student) {
     return <div className="flex min-h-screen items-center justify-center bg-background">Redirecting...</div>;
   }
 
   const portfolioValue = (student.assets || []).reduce((total, asset) => {
-      const stock = stocks.find(s => s.id === asset.stockId);
+      const stock = stocks?.find(s => s.id === asset.stockId);
       return total + (stock ? stock.price * asset.quantity : 0);
     }, 0);
 
@@ -66,7 +88,6 @@ export default function StockMarket() {
       <main className="flex-grow p-4 md:p-8">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Main Content: Stock List */}
             <div className="lg:col-span-2">
               <h1 className="text-3xl font-bold text-primary mb-6">
                 虛擬股票市場
@@ -106,7 +127,6 @@ export default function StockMarket() {
               </div>
             </div>
 
-            {/* Sidebar: Portfolio */}
             <div className="lg:col-span-1 space-y-6">
                 <Card>
                     <CardHeader>
@@ -125,7 +145,7 @@ export default function StockMarket() {
                         {student?.assets.length > 0 ? (
                              <ul className="space-y-2">
                                 {student.assets.map(asset => {
-                                    const stock = stocks.find(s => s.id === asset.stockId);
+                                    const stock = stocks?.find(s => s.id === asset.stockId);
                                     return stock ? (
                                         <li key={asset.stockId} className="flex justify-between items-center text-sm">
                                             <span>{stock.ticker}: {asset.quantity} 股</span>

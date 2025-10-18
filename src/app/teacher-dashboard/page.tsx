@@ -1,3 +1,4 @@
+
 "use client";
 
 import Header from "@/components/header";
@@ -9,39 +10,49 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useUserStore } from "@/store/user-store";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AwardPointsDialog } from "./_components/award-points-dialog";
 import { ManageRewardsDialog } from "./_components/manage-rewards-dialog";
-import { useHydration } from "@/hooks/use-hydration";
+
+function useSimpleUser() {
+    const [user, setUser] = useState<{id: string, name: string, type: string} | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const id = sessionStorage.getItem('teacherId');
+        const name = sessionStorage.getItem('userName');
+        const type = sessionStorage.getItem('userType');
+        
+        if (id && name && type === 'teacher') {
+            setUser({ id, name, type });
+        } else {
+            setUser(null);
+        }
+        setIsLoading(false);
+    }, []);
+
+    return { user, isLoading };
+}
+
 
 export default function TeacherDashboard() {
-  const { user } = useUserStore();
+  const { user, isLoading } = useSimpleUser();
   const router = useRouter();
-  const hasHydrated = useHydration();
 
   const [isAwardPointsOpen, setIsAwardPointsOpen] = useState(false);
   const [isManageRewardsOpen, setIsManageRewardsOpen] = useState(false);
 
   useEffect(() => {
-    if (hasHydrated && (!user || user.type !== "teacher")) {
+    if (!isLoading && !user) {
       router.push("/");
     }
-  }, [user, hasHydrated, router]);
+  }, [user, isLoading, router]);
 
-  if (!hasHydrated || !user) {
+  if (isLoading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         Loading...
-      </div>
-    );
-  }
-
-  if (user.type !== "teacher") {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        Redirecting...
       </div>
     );
   }

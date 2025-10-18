@@ -13,10 +13,13 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { useSchoolStore, type Reward } from "@/store/school-store";
+import { type Reward } from "@/store/school-store";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PlusCircle, Trash2 } from "lucide-react";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, doc } from "firebase/firestore";
+import { addReward, updateReward } from "@/lib/firestore-actions";
 
 export function ManageRewardsDialog({
   isOpen,
@@ -25,13 +28,18 @@ export function ManageRewardsDialog({
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
 }) {
-  const { rewards, addReward, updateReward } = useSchoolStore();
+  const firestore = useFirestore();
+  const rewardsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'rewards') : null, [firestore]);
+  const { data: rewards, isLoading } = useCollection<Reward>(rewardsQuery);
+  
   const [editedRewards, setEditedRewards] = useState<Reward[]>([]);
   const { toast } = useToast();
   
   useEffect(() => {
-    // Sync with the main store when the dialog opens or rewards change
-    setEditedRewards(rewards);
+    if (rewards) {
+      // Sync with the main store when the dialog opens or rewards change
+      setEditedRewards(rewards.map(r => ({...r}))); // Create a deep copy
+    }
   }, [rewards, isOpen]);
 
   const handleFieldChange = (
@@ -47,24 +55,26 @@ export function ManageRewardsDialog({
   };
   
   const handleAddNew = () => {
-    // A temporary ID for the key, the store will create a real one
     const tempId = `new-${Date.now()}`; 
     setEditedRewards([...editedRewards, { id: tempId, name: "", cost: 0, stock: 0}]);
   };
 
-  const handleSaveChanges = () => {
-    editedRewards.forEach(reward => {
-      // Check if it's a new reward (with a temporary id)
+  const handleSaveChanges = async () => {
+    if (!firestore) return;
+
+    for (const reward of editedRewards) {
       if (reward.id.startsWith('new-')) {
-        // Simple validation
         if (reward.name && reward.cost > 0) {
-            addReward({ name: reward.name, cost: reward.cost, stock: reward.stock });
+            await addReward(firestore, { name: reward.name, cost: reward.cost, stock: reward.stock });
         }
       } else {
-        // It's an existing reward, so update it
-        updateReward(reward);
+        const originalReward = rewards?.find(r => r.id === reward.id);
+        // Only update if something changed
+        if (JSON.stringify(originalReward) !== JSON.stringify(reward)) {
+            await updateReward(firestore, reward.id, { name: reward.name, cost: reward.cost, stock: reward.stock });
+        }
       }
-    });
+    }
 
     toast({
       title: "成功!",
@@ -72,9 +82,6 @@ export function ManageRewardsDialog({
     });
     setIsOpen(false);
   };
-  
-  // Note: a delete function is not implemented in the store for this example.
-  // A real app would have a `deleteReward` action.
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -87,7 +94,7 @@ export function ManageRewardsDialog({
         </DialogHeader>
         <ScrollArea className="h-96 pr-6">
           <div className="space-y-4 py-4">
-            {editedRewards.map((reward) => (
+            {isLoading ? <p>Loading rewards...</p> : editedRewards.map((reward) => (
               <div
                 key={reward.id}
                 className="grid grid-cols-12 items-center gap-2 p-2 rounded-md border"
