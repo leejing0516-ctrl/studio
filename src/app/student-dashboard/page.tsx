@@ -2,9 +2,8 @@
 "use client";
 
 import { useUserStore } from "@/store/user-store";
-import { useSchoolStore } from "@/store/school-store";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,29 +14,35 @@ import {
 import { Medal, ShoppingCart, TrendingUp, User } from "lucide-react";
 import Header from "@/components/header";
 import { useHydration } from "@/hooks/use-hydration";
+import { useDoc, useFirestore, useMemoFirebase } from "@/firebase";
+import { doc } from "firebase/firestore";
+import type { Student } from "@/store/school-store";
 
 export default function StudentDashboard() {
   const { user } = useUserStore();
-  const { getStudentById } = useSchoolStore();
   const router = useRouter();
   const hasHydrated = useHydration();
+  const firestore = useFirestore();
+
+  const studentRef = useMemoFirebase(() => user ? doc(firestore, 'students', user.id) : null, [firestore, user]);
+  const { data: student, isLoading, error } = useDoc<Student>(studentRef);
 
   useEffect(() => {
-    // Only redirect if hydration is complete and there's no user, or user is not a student.
     if (hasHydrated && (!user || user.type !== "student")) {
       router.push("/");
     }
   }, [user, hasHydrated, router]);
 
-  // While hydrating, or if there's no user, show a loading state.
-  if (!hasHydrated || !user || user.type !== "student") {
+  if (!hasHydrated) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
   
-  const student = getStudentById(user.id);
-
-  // If user is logged in, but student data is not found (e.g., mismatch), show a specific loading state.
-  if (!student) {
+  if (!user || user.type !== "student") {
+    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
+  }
+  
+  if (isLoading || !student) {
+    if (error) console.error(error);
     return (
       <div className="flex min-h-screen items-center justify-center bg-light-teal">
         Loading student data...
@@ -77,9 +82,9 @@ export default function StudentDashboard() {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">$1,250.00</div>
+                <div className="text-2xl font-bold">$0.00</div>
                 <p className="text-xs text-muted-foreground">
-                  +5.2% from last week
+                  (Asset calculation coming soon)
                 </p>
               </CardContent>
             </Card>
@@ -89,9 +94,9 @@ export default function StudentDashboard() {
                  <User className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">#5</div>
+                <div className="text-2xl font-bold">N/A</div>
                 <p className="text-xs text-muted-foreground">
-                  Top 10% of your class
+                  (Ranking coming soon)
                 </p>
               </CardContent>
             </Card>

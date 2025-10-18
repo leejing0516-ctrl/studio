@@ -31,12 +31,20 @@ export default function TeacherDashboard() {
     }
   }, [user, hasHydrated, router]);
 
-  if (!hasHydrated || !user || user.type !== "teacher") {
+  if (!hasHydrated) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-light-teal">
         Loading...
       </div>
     );
+  }
+  
+  if (!user || user.type !== "teacher") {
+      return (
+          <div className="flex min-h-screen items-center justify-center bg-light-teal">
+              Redirecting...
+          </div>
+      );
   }
 
   return (
