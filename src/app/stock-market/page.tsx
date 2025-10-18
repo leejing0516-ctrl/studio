@@ -8,9 +8,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useUserStore } from "@/store/user-store";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   LineChart,
   Line,
@@ -20,50 +19,61 @@ import {
   YAxis,
 } from "recharts";
 import { Button } from "@/components/ui/button";
-import { useHydration } from "@/hooks/use-hydration";
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, doc } from "firebase/firestore";
 import { type Student, type Stock } from "@/store/school-store";
 import { updateStockPrices } from "@/lib/firestore-actions";
 
+function useSimpleUser() {
+    const [user, setUser] = useState<{id: string, name: string, type: string} | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const id = sessionStorage.getItem('studentId');
+        const name = sessionStorage.getItem('userName');
+        const type = sessionStorage.getItem('userType');
+        if (id && name && type) {
+            setUser({ id, name, type });
+        }
+        setIsLoading(false);
+    }, []);
+
+    return { user, isLoading };
+}
+
+
 export default function StockMarket() {
-  const { user } = useUserStore();
+  const { user, isLoading: isUserLoading } = useSimpleUser();
   const router = useRouter();
-  const hasHydrated = useHydration();
   const firestore = useFirestore();
+
+  const studentId = user?.id;
 
   const stocksQuery = useMemoFirebase(() => firestore ? collection(firestore, 'stocks') : null, [firestore]);
   const { data: stocks, isLoading: stocksLoading } = useCollection<Stock>(stocksQuery);
 
-  const studentRef = useMemoFirebase(() => (user && firestore) ? doc(firestore, 'students', user.id) : null, [firestore, user]);
+  const studentRef = useMemoFirebase(() => (studentId && firestore) ? doc(firestore, 'students', studentId) : null, [firestore, studentId]);
   const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
 
   useEffect(() => {
-    if (hasHydrated && (!user || user.type !== 'student')) {
+    if (!isUserLoading && (!user || user.type !== 'student')) {
       router.push("/");
     }
-  }, [user, hasHydrated, router]);
+  }, [user, isUserLoading, router]);
   
-  // This simulates a cloud function running in the background,
-  // updating stock prices for all users in real-time.
   useEffect(() => {
     const interval = setInterval(() => {
-        // No need to check for stocks, the action fetches them.
         updateStockPrices();
     }, 5000);
     return () => clearInterval(interval);
   }, []);
 
-  if (!hasHydrated || studentLoading || stocksLoading) {
+  if (isUserLoading || studentLoading || stocksLoading || !student) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading market data...</div>;
   }
   
   if (!user || user.type !== 'student') {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
-  }
-
-  if (!student) {
-    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading student data...</div>;
   }
 
   const portfolioValue = (student.assets || []).reduce((total, asset) => {
@@ -78,7 +88,6 @@ export default function StockMarket() {
       <main className="flex-grow p-4 md:p-8">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Main Content: Stock List */}
             <div className="lg:col-span-2">
               <h1 className="text-3xl font-bold text-primary mb-6">
                 Virtual Stock Market
@@ -118,7 +127,6 @@ export default function StockMarket() {
               </div>
             </div>
 
-            {/* Sidebar: Portfolio */}
             <div className="lg:col-span-1 space-y-6">
                 <Card>
                     <CardHeader>

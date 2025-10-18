@@ -11,16 +11,33 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { type Reward } from "@/store/school-store";
-import { useUserStore } from "@/store/user-store";
 import { Gem, Ticket, ToyBrick } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { useHydration } from "@/hooks/use-hydration";
+import { useEffect, useState } from "react";
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, doc } from "firebase/firestore";
 import { type Student } from "@/store/school-store";
 import { redeemReward } from "@/lib/firestore-actions";
+
+
+function useSimpleUser() {
+    const [user, setUser] = useState<{id: string, name: string, type: string} | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const id = sessionStorage.getItem('studentId');
+        const name = sessionStorage.getItem('userName');
+        const type = sessionStorage.getItem('userType');
+        if (id && name && type) {
+            setUser({ id, name, type });
+        }
+        setIsLoading(false);
+    }, []);
+
+    return { user, isLoading };
+}
+
 
 const rewardIcons = [
     <Ticket key="1" className="w-8 h-8 text-accent" />,
@@ -29,23 +46,24 @@ const rewardIcons = [
 ]
 
 export default function RewardStore() {
-  const { user } = useUserStore();
+  const { user, isLoading: isUserLoading } = useSimpleUser();
   const { toast } = useToast();
   const router = useRouter();
-  const hasHydrated = useHydration();
   const firestore = useFirestore();
+
+  const studentId = user?.id;
 
   const rewardsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'rewards') : null, [firestore]);
   const { data: rewards, isLoading: rewardsLoading } = useCollection<Reward>(rewardsQuery);
 
-  const studentRef = useMemoFirebase(() => (user && firestore) ? doc(firestore, 'students', user.id) : null, [firestore, user]);
+  const studentRef = useMemoFirebase(() => (studentId && firestore) ? doc(firestore, 'students', studentId) : null, [firestore, studentId]);
   const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
 
   useEffect(() => {
-    if (hasHydrated && (!user || user.type !== 'student')) {
+    if (!isUserLoading && (!user || user.type !== 'student')) {
       router.push("/");
     }
-  }, [user, hasHydrated, router]);
+  }, [user, isUserLoading, router]);
   
   const handleRedeem = async (rewardId: string) => {
     if (!user || !student) return;
@@ -67,18 +85,12 @@ export default function RewardStore() {
     }
   };
   
-  if (!hasHydrated || studentLoading || rewardsLoading) {
+  if (isUserLoading || studentLoading || rewardsLoading || !student) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
   
   if (!user || user.type !== 'student') {
-    // This state will be brief, but it's a good practice to handle it.
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
-  }
-  
-  if (!student) {
-    // This can happen if the student document doesn't exist or there's an error.
-    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading student data...</div>;
   }
   
   const studentPoints = student.points;

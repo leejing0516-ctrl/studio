@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,14 +20,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useUserStore } from "@/store/user-store";
 import { type Class, type Teacher, type Student } from "@/store/school-store";
 import Logo from "@/components/logo";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { addStudent, getStudentByName } from "@/lib/firestore-actions";
 import { signInAnonymously } from "firebase/auth";
-import { useAuth } from "@/firebase";
+import { useAuth, useUser } from "@/firebase";
 
 
 export function LoginForm({
@@ -43,9 +42,20 @@ export function LoginForm({
   const [studentName, setStudentName] = useState("");
   const [password, setPassword] = useState("");
   const router = useRouter();
-  const { login } = useUserStore();
   const { toast } = useToast();
   const auth = useAuth();
+  const { user: firebaseUser, isUserLoading } = useUser();
+
+  // Redirect if user is already logged in
+  useEffect(() => {
+    if (firebaseUser) {
+        // This is a simplification. A real app might need to distinguish
+        // between student and teacher users in Firebase Auth (e.g. using custom claims)
+        // and redirect accordingly. For now, we assume any logged in user is a student.
+        router.push("/student-dashboard");
+    }
+  }, [firebaseUser, router]);
+
 
   const handleLogin = async () => {
      if (!auth) {
@@ -62,7 +72,6 @@ export function LoginForm({
             return;
         }
     }
-
 
     if (userType === "student") {
       if (!studentName || !selectedClass) {
@@ -88,11 +97,18 @@ export function LoginForm({
           student = { ...newStudentData, id: newStudentId };
       }
       
-      login({
-        id: student.id,
-        name: student.name,
-        type: "student" as const,
-      });
+      // Instead of a local store, we now rely on Firebase Auth state.
+      // We'll use a trick: sign in the user "anonymously" but the app logic
+      // will associate this anonymous user with the student document.
+      // A more robust solution would use custom tokens.
+      // For now, the login is implicit. We just navigate.
+      // We will need to store the student ID to know who is logged in.
+      // We'll use sessionStorage for this simple case.
+      sessionStorage.setItem('studentId', student.id);
+      sessionStorage.setItem('userName', student.name);
+      sessionStorage.setItem('userType', 'student');
+
+
       router.push("/student-dashboard");
 
     } else if (userType === "teacher") {
@@ -103,17 +119,23 @@ export function LoginForm({
       const teacher = teachers.find((t) => t.id === selectedTeacher);
       // NOTE: This is a demo password. In a real app, use Firebase Auth for teachers.
       if (teacher && password === "password") { 
-        login({
-          id: teacher.id,
-          name: teacher.name,
-          type: "teacher" as const,
-        });
+        sessionStorage.setItem('teacherId', teacher.id);
+        sessionStorage.setItem('userName', teacher.name);
+        sessionStorage.setItem('userType', 'teacher');
         router.push("/teacher-dashboard");
       } else {
         toast({ title: "Login Failed", description: "Invalid teacher credentials.", variant: "destructive" });
       }
     }
   };
+
+  if (isUserLoading || firebaseUser) {
+      return (
+          <div className="flex items-center justify-center p-8">
+              Loading...
+          </div>
+      )
+  }
 
   return (
     <Card className="w-full">

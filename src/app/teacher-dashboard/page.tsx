@@ -10,28 +10,43 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useUserStore } from "@/store/user-store";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AwardPointsDialog } from "./_components/award-points-dialog";
 import { ManageRewardsDialog } from "./_components/manage-rewards-dialog";
-import { useHydration } from "@/hooks/use-hydration";
+
+function useSimpleUser() {
+    const [user, setUser] = useState<{id: string, name: string, type: string} | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const id = sessionStorage.getItem('teacherId');
+        const name = sessionStorage.getItem('userName');
+        const type = sessionStorage.getItem('userType');
+        if (id && name && type) {
+            setUser({ id, name, type });
+        }
+        setIsLoading(false);
+    }, []);
+
+    return { user, isLoading };
+}
+
 
 export default function TeacherDashboard() {
-  const { user } = useUserStore();
+  const { user, isLoading: isUserLoading } = useSimpleUser();
   const router = useRouter();
-  const hasHydrated = useHydration();
 
   const [isAwardPointsOpen, setIsAwardPointsOpen] = useState(false);
   const [isManageRewardsOpen, setIsManageRewardsOpen] = useState(false);
 
   useEffect(() => {
-    if (hasHydrated && (!user || user.type !== "teacher")) {
+    if (!isUserLoading && (!user || user.type !== "teacher")) {
       router.push("/");
     }
-  }, [user, hasHydrated, router]);
+  }, [user, isUserLoading, router]);
 
-  if (!hasHydrated) {
+  if (isUserLoading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-light-teal">
         Loading...
@@ -39,7 +54,7 @@ export default function TeacherDashboard() {
     );
   }
   
-  if (!user || user.type !== "teacher") {
+  if (user.type !== "teacher") {
       return (
           <div className="flex min-h-screen items-center justify-center bg-light-teal">
               Redirecting...

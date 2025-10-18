@@ -1,17 +1,34 @@
 
 "use client";
 
-import { useUserStore } from "@/store/user-store";
 import { useRouter } from "next/navigation";
 import Logo from "./logo";
 import { Button } from "./ui/button";
+import { useAuth } from "@/firebase";
+import { useEffect, useState } from "react";
 
 const Header = () => {
-  const { user, logout } = useUserStore();
   const router = useRouter();
+  const auth = useAuth();
+  const [userName, setUserName] = useState<string | null>(null);
+
+  useEffect(() => {
+    // This is a workaround since we removed zustand.
+    // In a real app, user info would be in the Firebase Auth token.
+    setUserName(sessionStorage.getItem('userName'));
+  }, []);
+
 
   const handleLogout = () => {
-    logout();
+    // Clear our session storage "auth"
+    sessionStorage.removeItem('studentId');
+    sessionStorage.removeItem('teacherId');
+    sessionStorage.removeItem('userName');
+    sessionStorage.removeItem('userType');
+
+    // Sign out from firebase if needed (especially if not using anonymous auth)
+    // auth.signOut();
+    
     router.push("/");
   };
 
@@ -24,9 +41,9 @@ const Header = () => {
             <span className="font-bold text-primary ml-2">FinLit Classroom</span>
           </div>
           <div className="flex items-center space-x-4">
-            {user && (
+            {userName && (
               <span className="text-sm text-muted-foreground">
-                Welcome, {user.name}
+                Welcome, {userName}
               </span>
             )}
             <Button onClick={handleLogout} variant="ghost" size="sm">

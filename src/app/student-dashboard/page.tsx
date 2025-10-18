@@ -1,9 +1,8 @@
 
 "use client";
 
-import { useUserStore } from "@/store/user-store";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,28 +12,46 @@ import {
 } from "@/components/ui/card";
 import { Medal, ShoppingCart, TrendingUp, User } from "lucide-react";
 import Header from "@/components/header";
-import { useHydration } from "@/hooks/use-hydration";
 import { useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase";
 import { collection, doc } from "firebase/firestore";
 import type { Student, Stock } from "@/store/school-store";
 
+function useSimpleUser() {
+    const [user, setUser] = useState<{id: string, name: string, type: string} | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const id = sessionStorage.getItem('studentId');
+        const name = sessionStorage.getItem('userName');
+        const type = sessionStorage.getItem('userType');
+        if (id && name && type) {
+            setUser({ id, name, type });
+        }
+        setIsLoading(false);
+    }, []);
+
+    return { user, isLoading };
+}
+
+
 export default function StudentDashboard() {
-  const { user } = useUserStore();
+  const { user, isLoading: isUserLoading } = useSimpleUser();
   const router = useRouter();
-  const hasHydrated = useHydration();
   const firestore = useFirestore();
 
-  const studentRef = useMemoFirebase(() => (user && firestore) ? doc(firestore, 'students', user.id) : null, [firestore, user]);
+  const studentId = user?.id;
+
+  const studentRef = useMemoFirebase(() => (studentId && firestore) ? doc(firestore, 'students', studentId) : null, [firestore, studentId]);
   const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
 
   const stocksQuery = useMemoFirebase(() => firestore ? collection(firestore, 'stocks') : null, [firestore]);
   const { data: stocks, isLoading: stocksLoading } = useCollection<Stock>(stocksQuery);
 
   useEffect(() => {
-    if (hasHydrated && (!user || user.type !== "student")) {
+    if (!isUserLoading && (!user || user.type !== "student")) {
       router.push("/");
     }
-  }, [user, hasHydrated, router]);
+  }, [user, isUserLoading, router]);
 
   const portfolioValue = useMemo(() => {
     if (!student || !stocks) return 0;
@@ -44,7 +61,7 @@ export default function StudentDashboard() {
     }, 0);
   }, [student, stocks]);
 
-  if (!hasHydrated || studentLoading || stocksLoading) {
+  if (isUserLoading || studentLoading || stocksLoading || !student) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
   
@@ -52,14 +69,6 @@ export default function StudentDashboard() {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
   }
   
-  if (!student) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-light-teal">
-        Loading student data...
-      </div>
-    );
-  }
-
   const studentPoints = student.points || 0;
   
   return (
