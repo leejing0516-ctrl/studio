@@ -1,4 +1,3 @@
-
 // Inspired by react-hot-toast library
 import * as React from "react"
 
@@ -123,7 +122,7 @@ export const reducer = (state: State, action: Action): State => {
       }
       return {
         ...state,
-        toasts: state.toasts.filter((t) => t.id !== action.toastId)
+        toasts: state.toasts.filter((t) => t.id !== action.toastId),
       }
   }
 }
