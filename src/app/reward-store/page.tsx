@@ -1,3 +1,4 @@
+
 "use client";
 import Header from "@/components/header";
 import { Button } from "@/components/ui/button";
@@ -31,19 +32,18 @@ export default function RewardStore() {
   const hasHydrated = useHydration();
 
   useEffect(() => {
-    if (hasHydrated && !user) {
+    if (hasHydrated && (!user || user.type !== 'student')) {
       router.push("/");
     }
   }, [user, hasHydrated, router]);
   
-  if (!hasHydrated || !user) {
+  if (!hasHydrated || !user || user.type !== 'student') {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
 
   const student = getStudentById(user.id);
   
   if (!student) {
-    // This can happen briefly while the student data is being loaded or if there's an inconsistency.
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading student data...</div>;
   }
   

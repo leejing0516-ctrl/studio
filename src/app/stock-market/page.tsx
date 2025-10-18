@@ -1,3 +1,4 @@
+
 "use client";
 import Header from "@/components/header";
 import {
@@ -28,7 +29,7 @@ export default function StockMarket() {
   const hasHydrated = useHydration();
 
   useEffect(() => {
-    if (hasHydrated && !user) {
+    if (hasHydrated && (!user || user.type !== 'student')) {
       router.push("/");
     }
   }, [user, hasHydrated, router]);
@@ -41,7 +42,7 @@ export default function StockMarket() {
     return () => clearInterval(interval);
   }, [updateStockPrices]);
 
-  if (!hasHydrated || !user) {
+  if (!hasHydrated || !user || user.type !== 'student') {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
 
