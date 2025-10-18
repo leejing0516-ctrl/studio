@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 /**
  * A simple hook to determine if the component has been hydrated (i.e., rendered on the client).
  * This is useful for avoiding hydration mismatches when dealing with client-side only data
- * like localStorage or sessionStorage.
+ * like sessionStorage or when you need to ensure code runs only on the client after SSR.
  *
  * @returns {boolean} `true` if the component has been hydrated, `false` otherwise.
  */

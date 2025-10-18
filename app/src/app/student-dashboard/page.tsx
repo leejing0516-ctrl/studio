@@ -1,7 +1,6 @@
 "use client";
 
 import { useUserStore } from "@/store/user-store";
-import { useSchoolStore } from "@/store/school-store";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -13,39 +12,52 @@ import {
 } from "@/components/ui/card";
 import { Medal, ShoppingCart, TrendingUp, User } from "lucide-react";
 import Header from "@/components/header";
+import { useHydration } from "@/hooks/use-hydration";
+import { useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase";
+import { collection, doc } from "firebase/firestore";
+import type { Student, Stock } from "@/store/school-store";
 
 export default function StudentDashboard() {
   const { user } = useUserStore();
-  const { getStudentById, stocks } = useSchoolStore();
   const router = useRouter();
-  
+  const hasHydrated = useHydration();
+  const firestore = useFirestore();
+
+  const studentRef = useMemoFirebase(() => (user && firestore) ? doc(firestore, 'students', user.id) : null, [firestore, user]);
+  const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
+
+  const stocksQuery = useMemoFirebase(() => firestore ? collection(firestore, 'stocks') : null, [firestore]);
+  const { data: stocks, isLoading: stocksLoading } = useCollection<Stock>(stocksQuery);
+
   useEffect(() => {
-    // If the user is not logged in, redirect to the login page.
-    // This check runs on the client-side after the component mounts.
-    if (!user) {
+    if (hasHydrated && (!user || user.type !== "student")) {
       router.push("/");
     }
-  }, [user, router]);
-  
-  // While the check is running, or if redirection is in progress, show a loading state.
-  if (!user) {
-    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
-  }
-  
-  const student = getStudentById(user.id);
-  
-  // If for some reason the student data isn't found (e.g., state sync issue), show a loading state.
-  if (!student) {
-    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading student data...</div>;
-  }
+  }, [user, hasHydrated, router]);
 
   const portfolioValue = useMemo(() => {
     if (!student || !stocks) return 0;
-    return student.assets.reduce((total, asset) => {
+    return (student.assets || []).reduce((total, asset) => {
       const stock = stocks.find(s => s.id === asset.stockId);
       return total + (stock ? stock.price * asset.quantity : 0);
     }, 0);
   }, [student, stocks]);
+
+  if (!hasHydrated || studentLoading || stocksLoading) {
+    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
+  }
+  
+  if (!user || user.type !== "student") {
+    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
+  }
+  
+  if (!student) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-light-teal">
+        Loading student data...
+      </div>
+    );
+  }
 
   const studentPoints = student.points || 0;
   
@@ -106,7 +118,7 @@ export default function StudentDashboard() {
                   <ShoppingCart className="mr-2 text-accent" />
                   Reward Store
                 </CardTitle>
-              </CardHeader>
+              </Header>
               <CardContent>
                 <p className="text-muted-foreground mb-4">
                   Use your points to redeem awesome rewards.

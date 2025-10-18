@@ -1,4 +1,3 @@
-
 'use client';
 import { 
     getFirestore, 
@@ -10,11 +9,13 @@ import {
     doc, 
     updateDoc,
     increment,
-    runTransaction
+    runTransaction,
+    writeBatch
 } from "firebase/firestore";
 import type { Student, Stock, Reward } from "@/store/school-store";
 import { initializeFirebase } from "@/firebase";
 
+// This is a client-side file. We get the instance, but it's initialized in the provider.
 const { firestore } = initializeFirebase();
 
 // Student Actions
@@ -40,9 +41,10 @@ export const getStudentByName = async (name: string): Promise<Student | null> =>
 
 export const awardPoints = (studentId: string, amount: number) => {
     const studentRef = doc(firestore, "students", studentId);
+    // This is a non-blocking update, good for fire-and-forget
     updateDoc(studentRef, {
         points: increment(amount)
-    });
+    }).catch(e => console.error("Error awarding points: ", e));
 };
 
 // Reward Actions
@@ -91,17 +93,29 @@ export const updateReward = async (rewardId: string, rewardData: Partial<Reward>
 };
 
 
-// Stock Actions (simulation)
-export const updateStockPrices = (stocks: Stock[]) => {
-    stocks.forEach(stock => {
+// Stock Actions (simulation) - This simulates a cloud function.
+export const updateStockPrices = async () => {
+    const stocksRef = collection(firestore, "stocks");
+    const snapshot = await getDocs(stocksRef);
+    if (snapshot.empty) return;
+
+    const batch = writeBatch(firestore);
+
+    snapshot.docs.forEach(stockDoc => {
+        const stock = stockDoc.data() as Stock;
         const change = (Math.random() - 0.5) * (stock.price * 0.1); // Fluctuate by up to 10%
         const newPrice = Math.max(1, stock.price + change); // Ensure price doesn't go below 1
-        const newHistory = [...stock.history.slice(-99), newPrice];
-
-        const stockRef = doc(firestore, "stocks", stock.id);
-        updateDoc(stockRef, {
+        const newHistory = [...(stock.history || []).slice(-99), newPrice];
+        
+        batch.update(stockDoc.ref, {
             price: newPrice,
             history: newHistory,
         });
     });
+
+    try {
+        await batch.commit();
+    } catch (e) {
+        console.error("Error updating stock prices in batch: ", e);
+    }
 };

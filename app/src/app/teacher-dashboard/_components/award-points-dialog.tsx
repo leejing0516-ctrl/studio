@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,8 +19,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { useSchoolStore, type Student, type Class } from "@/store/school-store";
+import { type Student, type Class } from "@/store/school-store";
 import { useToast } from "@/hooks/use-toast";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, query, where } from "firebase/firestore";
+import { awardPoints } from "@/lib/firestore-actions";
 
 export function AwardPointsDialog({
   isOpen,
@@ -29,17 +32,26 @@ export function AwardPointsDialog({
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
 }) {
-  const { classes, getStudentsByClass, awardPoints } = useSchoolStore();
+  const firestore = useFirestore();
+  const classesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'classes') : null, [firestore]);
+  const { data: classes } = useCollection<Class>(classesQuery);
+
   const [selectedClass, setSelectedClass] = useState<string>("");
-  const [studentsInClass, setStudentsInClass] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<string>("");
   const [points, setPoints] = useState<number>(100);
   const { toast } = useToast();
 
+  const studentsQuery = useMemoFirebase(() => {
+    if (firestore && selectedClass) {
+      return query(collection(firestore, 'students'), where('classId', '==', selectedClass));
+    }
+    return null;
+  }, [firestore, selectedClass]);
+  const { data: studentsInClass, isLoading: studentsLoading } = useCollection<Student>(studentsQuery);
+
+
   const handleClassChange = (classId: string) => {
     setSelectedClass(classId);
-    const students = getStudentsByClass(classId);
-    setStudentsInClass(students);
     setSelectedStudent(""); // Reset student selection
   };
 
@@ -83,7 +95,7 @@ export function AwardPointsDialog({
                 <SelectValue placeholder="Select a class" />
               </SelectTrigger>
               <SelectContent>
-                {classes.map((c) => (
+                {(classes || []).map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name}
                   </SelectItem>
@@ -98,13 +110,13 @@ export function AwardPointsDialog({
             <Select
               onValueChange={setSelectedStudent}
               value={selectedStudent}
-              disabled={!selectedClass}
+              disabled={!selectedClass || studentsLoading}
             >
               <SelectTrigger id="student" className="col-span-3">
-                <SelectValue placeholder="Select a student" />
+                <SelectValue placeholder={studentsLoading ? "Loading..." : "Select a student"} />
               </SelectTrigger>
               <SelectContent>
-                {studentsInClass.map((s) => (
+                {(studentsInClass || []).map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     {s.name}
                   </SelectItem>

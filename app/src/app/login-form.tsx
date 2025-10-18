@@ -20,10 +20,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useUserStore } from "@/store/user-store";
-import { useSchoolStore, type Class, type Teacher, type Student } from "@/store/school-store";
+import { type Class, type Teacher, type Student } from "@/store/school-store";
 import Logo from "@/components/logo";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { addStudent, getStudentByName } from "@/lib/firestore-actions";
+import { signInAnonymously } from "firebase/auth";
+import { useAuth } from "@/firebase";
+
 
 export function LoginForm({
   classes,
@@ -39,29 +43,48 @@ export function LoginForm({
   const [password, setPassword] = useState("");
   const router = useRouter();
   const { login } = useUserStore();
-  const { getStudentByName, addStudent } = useSchoolStore();
   const { toast } = useToast();
+  const auth = useAuth();
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
+     if (!auth) {
+        toast({ title: "Login Failed", description: "Authentication service is not ready.", variant: "destructive" });
+        return;
+    }
+    
+    // Ensure anonymous user is signed in for backend operations
+    if (!auth.currentUser) {
+        try {
+            await signInAnonymously(auth);
+        } catch (error) {
+            toast({ title: "Authentication Error", description: "Could not connect to the service.", variant: "destructive" });
+            return;
+        }
+    }
+
+
     if (userType === "student") {
       if (!studentName || !selectedClass) {
         toast({ title: "Login Failed", description: "Please enter your name and select a class.", variant: "destructive" });
         return;
       }
       
-      let student = getStudentByName(studentName);
+      let student = await getStudentByName(studentName);
 
       if (!student) {
          toast({ title: "New Profile Created", description: `Welcome, ${studentName}! A new profile has been created for you.` });
-          const newStudent: Student = {
-            id: `student-${Date.now()}`,
+          const newStudentData: Omit<Student, 'id'> = {
             name: studentName,
             classId: selectedClass,
             points: 1000, 
             assets: [],
           };
-          addStudent(newStudent);
-          student = newStudent;
+          const newStudentId = await addStudent(newStudentData);
+          if (!newStudentId) {
+            toast({ title: "Creation Failed", description: "Could not create a new student profile.", variant: "destructive" });
+            return;
+          }
+          student = { ...newStudentData, id: newStudentId };
       }
       
       login({
@@ -77,7 +100,8 @@ export function LoginForm({
         return;
       }
       const teacher = teachers.find((t) => t.id === selectedTeacher);
-      if (teacher && password === "password") { // Demo password
+      // NOTE: This is a demo password. In a real app, use Firebase Auth for teachers.
+      if (teacher && password === "password") { 
         login({
           id: teacher.id,
           name: teacher.name,
@@ -134,7 +158,7 @@ export function LoginForm({
                     <SelectValue placeholder="Select your class" />
                   </SelectTrigger>
                   <SelectContent>
-                    {classes.map((c) => (
+                    {(classes || []).map((c) => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.name}
                       </SelectItem>
@@ -157,7 +181,7 @@ export function LoginForm({
                     <SelectValue placeholder="Select your name" />
                   </SelectTrigger>
                   <SelectContent>
-                    {teachers.map((t) => (
+                    {(teachers || []).map((t) => (
                       <SelectItem key={t.id} value={t.id}>
                         {t.name}
                       </SelectItem>

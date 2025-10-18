@@ -9,12 +9,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useSchoolStore } from "@/store/school-store";
+import { type Reward } from "@/store/school-store";
 import { useUserStore } from "@/store/user-store";
 import { Gem, Ticket, ToyBrick } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { useHydration } from "@/hooks/use-hydration";
+import { useCollection, useDoc, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, doc } from "firebase/firestore";
+import { type Student } from "@/store/school-store";
+import { redeemReward } from "@/lib/firestore-actions";
 
 const rewardIcons = [
     <Ticket key="1" className="w-8 h-8 text-accent" />,
@@ -24,39 +29,58 @@ const rewardIcons = [
 
 export default function RewardStore() {
   const { user } = useUserStore();
-  const { rewards, getStudentById, redeemReward } = useSchoolStore();
   const { toast } = useToast();
   const router = useRouter();
+  const hasHydrated = useHydration();
+  const firestore = useFirestore();
+
+  const rewardsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'rewards') : null, [firestore]);
+  const { data: rewards, isLoading: rewardsLoading } = useCollection<Reward>(rewardsQuery);
+
+  const studentRef = useMemoFirebase(() => (user && firestore) ? doc(firestore, 'students', user.id) : null, [firestore, user]);
+  const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
 
   useEffect(() => {
-    if (!user) {
+    if (hasHydrated && (!user || user.type !== 'student')) {
       router.push("/");
     }
-  }, [user, router]);
+  }, [user, hasHydrated, router]);
   
-  if (!user) {
+  const handleRedeem = async (rewardId: string) => {
+    if (!user || !student) return;
+    const reward = rewards?.find(r => r.id === rewardId);
+    if (!reward) return;
+
+    try {
+      await redeemReward(user.id, rewardId, student.points, reward.cost);
+      toast({
+        title: "Success!",
+        description: "Reward redeemed successfully!",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Uh oh!",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+  
+  if (!hasHydrated || studentLoading || rewardsLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
   
-  const student = getStudentById(user.id);
+  if (!user || user.type !== 'student') {
+    // This state will be brief, but it's a good practice to handle it.
+    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
+  }
   
   if (!student) {
-      // This might happen if data is not synced yet, or if student id is invalid
-      return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading student data...</div>;
+    // This can happen if the student document doesn't exist or there's an error.
+    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading student data...</div>;
   }
   
   const studentPoints = student.points;
-
-  const handleRedeem = (rewardId: string) => {
-    if (!user) return;
-    const result = redeemReward(user.id, rewardId);
-
-    toast({
-      title: result.success ? "Success!" : "Uh oh!",
-      description: result.message,
-      variant: result.success ? "default" : "destructive",
-    });
-  };
 
   return (
     <div className="flex min-h-screen flex-col bg-light-teal">
@@ -71,7 +95,7 @@ export default function RewardStore() {
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {rewards.map((reward, index) => (
+            {(rewards || []).map((reward, index) => (
               <Card key={reward.id} className="flex flex-col">
                 <CardHeader className="items-center">
                   <div className="p-4 bg-primary/10 rounded-full">
