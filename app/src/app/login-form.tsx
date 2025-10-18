@@ -24,6 +24,7 @@ import { useUserStore } from "@/store/user-store";
 import type { Class, Teacher } from "@/store/school-store";
 import Logo from "@/components/logo";
 import { Input } from "@/components/ui/input";
+import { mockStudentData } from "@/lib/mock-data";
 
 export function LoginForm({
   classes,
@@ -43,12 +44,20 @@ export function LoginForm({
   const handleLogin = () => {
     if (userType === "student" && studentName && selectedClass) {
       // In a real app, you'd fetch student data. Here we simulate it.
+      // We'll find the first student in the mock data to log in as, or create a default.
+      const studentToLogin = mockStudentData.find(s => s.name.toLowerCase() === studentName.toLowerCase() && s.classId === selectedClass) || {
+        ...mockStudentData[0], // Fallback to the first student
+        id: 'student-1',
+        name: studentName || mockStudentData[0].name,
+        classId: selectedClass,
+      }
+      
       const student = {
-        id: `student-${Date.now()}`,
+        id: studentToLogin.id,
         name: studentName,
         classId: selectedClass,
-        points: 1000,
-        assets: [],
+        points: studentToLogin.points,
+        assets: studentToLogin.assets,
         type: "student" as const,
       };
       login(student);
