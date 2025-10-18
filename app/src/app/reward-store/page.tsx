@@ -13,10 +13,10 @@ import {
 import { useSchoolStore } from "@/store/school-store";
 import { useUserStore } from "@/store/user-store";
 import { Gem, Ticket, ToyBrick } from "lucide-react";
-import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { useHydration } from "@/hooks/use-hydration";
 
 const rewardIcons = [
     <Ticket className="w-8 h-8 text-accent" />,
@@ -29,17 +29,23 @@ export default function RewardStore() {
   const { rewards, redeemReward, getStudentById } = useSchoolStore();
   const { toast } = useToast();
   const router = useRouter();
+  const hasHydrated = useHydration();
 
   useEffect(() => {
-    if (!user) {
+    if (hasHydrated && !user) {
       router.push("/");
     }
-  }, [user, router]);
+  }, [user, hasHydrated, router]);
   
-  const student = user ? getStudentById(user.id) : null;
+  if (!hasHydrated || !user) {
+    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
+  }
 
-  if (!user || !student) {
-    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
+  const student = getStudentById(user.id);
+  
+  if (!student) {
+    // This can happen briefly while the student data is being loaded or if there's an inconsistency.
+    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading student data...</div>;
   }
   
   const studentPoints = student.points;

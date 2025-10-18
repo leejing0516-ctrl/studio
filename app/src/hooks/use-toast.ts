@@ -55,7 +55,7 @@ interface State {
   toasts: ToasterToast[]
 }
 
-const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
+const toastTimeouts = new Map<string, NodeJS.Timeout>()
 
 const addToRemoveQueue = (toastId: string) => {
   if (toastTimeouts.has(toastId)) {
@@ -84,7 +84,9 @@ export const reducer = (state: State, action: Action): State => {
     case "UPDATE_TOAST":
       return {
         ...state,
-        toasts: state.toasts.filter((t) => t.id !== action.toast.id),
+        toasts: state.toasts.map((t) =>
+          t.id === action.toast.id ? { ...t, ...action.toast } : t
+        ),
       }
 
     case "DISMISS_TOAST": {
@@ -155,7 +157,7 @@ function toast(props: Toast) {
       ...props,
       id,
       open: true,
-      onOpenChange: (open: any) => {
+      onOpenChange: (open) => {
         if (!open) dismiss()
       },
     },
