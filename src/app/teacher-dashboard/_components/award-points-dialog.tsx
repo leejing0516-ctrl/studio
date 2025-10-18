@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -20,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { type Student, type Class } from "@/store/school-store";
+import { type Student, type Class } from "@/lib/mock-data";
 import { useToast } from "@/hooks/use-toast";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
@@ -49,12 +48,11 @@ export function AwardPointsDialog({
   const { data: studentsInClass } = useCollection<Student>(studentsQuery);
 
   useEffect(() => {
-    // Reset student selection when class changes
     setSelectedStudent("");
   }, [selectedClass]);
 
   const handleAwardPoints = () => {
-    if (!selectedStudent || points <= 0) {
+    if (!firestore || !selectedStudent || points <= 0) {
       toast({
         title: "輸入無效",
         description: "請選擇一位學生並輸入正數點數。",
@@ -71,7 +69,6 @@ export function AwardPointsDialog({
       description: `已獎勵 ${points} 點給 ${student?.name}。`,
     });
     setIsOpen(false);
-    // Reset form
     setSelectedClass("");
     setSelectedStudent("");
     setPoints(100);

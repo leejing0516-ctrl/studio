@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -13,12 +12,12 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { type Reward } from "@/store/school-store";
+import { type Reward } from "@/lib/mock-data";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PlusCircle, Trash2 } from "lucide-react";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc } from "firebase/firestore";
+import { collection } from "firebase/firestore";
 import { addReward, updateReward } from "@/lib/firestore-actions";
 
 export function ManageRewardsDialog({
@@ -37,8 +36,7 @@ export function ManageRewardsDialog({
   
   useEffect(() => {
     if (rewards) {
-      // Sync with the main store when the dialog opens or rewards change
-      setEditedRewards(rewards.map(r => ({...r}))); // Create a deep copy
+      setEditedRewards(JSON.parse(JSON.stringify(rewards)));
     }
   }, [rewards, isOpen]);
 
@@ -69,7 +67,6 @@ export function ManageRewardsDialog({
         }
       } else {
         const originalReward = rewards?.find(r => r.id === reward.id);
-        // Only update if something changed
         if (JSON.stringify(originalReward) !== JSON.stringify(reward)) {
             await updateReward(firestore, reward.id, { name: reward.name, cost: reward.cost, stock: reward.stock });
         }
@@ -94,7 +91,7 @@ export function ManageRewardsDialog({
         </DialogHeader>
         <ScrollArea className="h-96 pr-6">
           <div className="space-y-4 py-4">
-            {isLoading ? <p>Loading rewards...</p> : editedRewards.map((reward) => (
+            {isLoading ? <p>載入獎勵中...</p> : editedRewards.map((reward) => (
               <div
                 key={reward.id}
                 className="grid grid-cols-12 items-center gap-2 p-2 rounded-md border"
