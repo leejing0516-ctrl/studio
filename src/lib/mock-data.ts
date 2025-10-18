@@ -1,4 +1,3 @@
-
 import type { Student, Teacher, Class, Reward, Stock } from "@/store/school-store";
 
 export const mockClasses: Class[] = [
