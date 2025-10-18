@@ -3,8 +3,6 @@
 import { useRouter } from "next/navigation";
 import Logo from "./logo";
 import { Button } from "./ui/button";
-import { useEffect, useState } from "react";
-import { useAuth } from "firebase/auth";
 import { useSimpleUser } from "@/hooks/use-simple-user";
 
 const Header = () => {
