@@ -17,22 +17,22 @@ import {
   Line,
   Tooltip,
   ResponsiveContainer,
+  XAxis,
+  YAxis,
 } from "recharts";
 import { Button } from "@/components/ui/button";
-import { useHydration } from "@/hooks/use-hydration";
 
 
 export default function StockMarket() {
   const { user } = useUserStore();
   const { stocks, updateStockPrices, getStudentById } = useSchoolStore();
   const router = useRouter();
-  const hasHydrated = useHydration();
 
   useEffect(() => {
-    if (hasHydrated && (!user || user.type !== 'student')) {
+    if (!user || user.type !== 'student') {
       router.push("/");
     }
-  }, [user, hasHydrated, router]);
+  }, [user, router]);
   
   // Simulate stock price updates every 5 seconds
   useEffect(() => {
@@ -42,7 +42,7 @@ export default function StockMarket() {
     return () => clearInterval(interval);
   }, [updateStockPrices]);
 
-  if (!hasHydrated || !user || user.type !== 'student') {
+  if (!user || user.type !== 'student') {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
 
@@ -72,26 +72,32 @@ export default function StockMarket() {
               <div className="space-y-4">
                 {stocks.map((stock) => (
                   <Card key={stock.id} className="overflow-hidden">
-                    <div className="grid grid-cols-1 md:grid-cols-3">
-                      <div className="p-4 col-span-1">
-                        <CardTitle>{stock.name} ({stock.ticker})</CardTitle>
-                        <CardDescription className="text-2xl font-bold text-primary">
-                          ${stock.price.toFixed(2)}
-                        </CardDescription>
-                      </div>
-                      <div className="h-24 md:h-full col-span-1 md:col-span-2">
-                         <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={stock.history.map((price, index) => ({ name: `T-${stock.history.length - index}`, price }))}>
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: "hsl(var(--background))",
-                                        borderColor: "hsl(var(--border))"
-                                    }}
-                                />
-                                <Line type="monotone" dataKey="price" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                      </div>
+                    <div className="p-4">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <CardTitle>{stock.name} ({stock.ticker})</CardTitle>
+                                <CardDescription className="text-2xl font-bold text-primary">
+                                ${stock.price.toFixed(2)}
+                                </CardDescription>
+                            </div>
+                        </div>
+                         <div className="h-48 mt-4">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={stock.history.map((price, index) => ({ name: `T-${stock.history.length - index}`, price }))}
+                                    margin={{ top: 5, right: 20, left: -10, bottom: 5 }}
+                                >
+                                    <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} />
+                                    <Tooltip
+                                        contentStyle={{
+                                            backgroundColor: "hsl(var(--background))",
+                                            borderColor: "hsl(var(--border))"
+                                        }}
+                                    />
+                                    <Line type="monotone" dataKey="price" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
                   </Card>
                 ))}
