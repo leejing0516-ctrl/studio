@@ -3,29 +3,16 @@
 import { useRouter } from "next/navigation";
 import Logo from "./logo";
 import { Button } from "./ui/button";
-import { useSimpleUser } from "@/hooks/use-simple-user";
 
 const Header = () => {
   const router = useRouter();
-  const { user } = useSimpleUser(); // Safely get user info on the client
 
   const handleLogout = () => {
-    // Clear session storage and redirect to home
-    sessionStorage.clear();
     router.push("/");
   };
   
   const handleNavigateHome = () => {
-    // Navigate based on user type, or to login page if no user
-    if (user) {
-        if (user.type === 'student') {
-            router.push('/student-dashboard');
-        } else if (user.type === 'teacher') {
-            router.push('/teacher-dashboard');
-        }
-    } else {
-        router.push('/');
-    }
+    router.push('/');
   }
 
   return (
@@ -37,11 +24,6 @@ const Header = () => {
             <span className="font-bold text-primary ml-2">南梓實小虛擬銀行</span>
           </div>
           <div className="flex items-center space-x-4">
-            {user?.name && (
-              <span className="text-sm text-muted-foreground">
-                歡迎, {user.name}
-              </span>
-            )}
             <Button onClick={handleLogout} variant="ghost" size="sm">
               登出
             </Button>

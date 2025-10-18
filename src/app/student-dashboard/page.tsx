@@ -1,7 +1,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,52 +10,17 @@ import {
 } from "@/components/ui/card";
 import { Medal, ShoppingCart, TrendingUp, User as UserIcon } from "lucide-react";
 import Header from "@/components/header";
-import { useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase";
-import { collection, doc } from "firebase/firestore";
-import type { Student, Stock } from "@/lib/mock-data";
-import { useSimpleUser } from "@/hooks/use-simple-user";
 
 export default function StudentDashboard() {
-  const { user: sessionUser, isLoading: isSessionLoading } = useSimpleUser('student');
   const router = useRouter();
-  const firestore = useFirestore();
 
-  useEffect(() => {
-    if (!isSessionLoading && !sessionUser) {
-      router.push("/");
-    }
-  }, [sessionUser, isSessionLoading, router]);
-
-  const studentRef = useMemoFirebase(() => (sessionUser && firestore) ? doc(firestore, 'students', sessionUser.id) : null, [firestore, sessionUser]);
-  const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
-
-  const stocksQuery = useMemoFirebase(() => firestore ? collection(firestore, 'stocks') : null, [firestore]);
-  const { data: stocks, isLoading: stocksLoading } = useCollection<Stock>(stocksQuery);
-
-
-  const portfolioValue = useMemo(() => {
-    if (!student || !stocks) return 0;
-    return (student.assets || []).reduce((total, asset) => {
-      const stock = stocks.find(s => s.id === asset.stockId);
-      return total + (stock ? stock.price * asset.quantity : 0);
-    }, 0);
-  }, [student, stocks]);
-
-  const isLoading = isSessionLoading || studentLoading || stocksLoading;
-
-  if (isLoading || !sessionUser || !student) {
-    return <div className="flex min-h-screen items-center justify-center bg-background">載入中...</div>;
-  }
-  
-  const studentPoints = student.points || 0;
-  
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
       <main className="flex-grow p-4 md:p-8">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-3xl font-bold text-primary mb-6">
-            歡迎, {sessionUser.name}!
+            歡迎, 學生!
           </h1>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -66,7 +30,7 @@ export default function StudentDashboard() {
                 <Medal className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{studentPoints.toLocaleString()}</div>
+                <div className="text-2xl font-bold">0</div>
                 <p className="text-xs text-muted-foreground">
                   您目前的點數餘額
                 </p>
@@ -80,7 +44,7 @@ export default function StudentDashboard() {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">${portfolioValue.toFixed(2)}</div>
+                <div className="text-2xl font-bold">$0.00</div>
                 <p className="text-xs text-muted-foreground">
                   您目前股票的總價值
                 </p>
