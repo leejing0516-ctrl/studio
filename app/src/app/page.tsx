@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { LoginForm } from "./login-form";
 import { useCollection, useFirestore, useMemoFirebase, useUser, useAuth } from "@/firebase";
@@ -16,19 +16,21 @@ export default function Home() {
   const router = useRouter();
   const { toast } = useToast();
 
+  const shouldFetchData = !isUserLoading;
+
   // Defer Firestore queries until Firebase Auth is ready.
-  const classesQuery = useMemoFirebase(() => !isUserLoading && firestore ? collection(firestore, 'classes') : null, [firestore, isUserLoading]);
+  const classesQuery = useMemoFirebase(() => shouldFetchData && firestore ? collection(firestore, 'classes') : null, [firestore, shouldFetchData]);
   const { data: classes, isLoading: classesLoading } = useCollection<Class>(classesQuery);
 
-  const teachersQuery = useMemoFirebase(() => !isUserLoading && firestore ? collection(firestore, 'teachers') : null, [firestore, isUserLoading]);
+  const teachersQuery = useMemoFirebase(() => shouldFetchData && firestore ? collection(firestore, 'teachers') : null, [firestore, shouldFetchData]);
   const { data: teachers, isLoading: teachersLoading } = useCollection<Teacher>(teachersQuery);
 
   useEffect(() => {
     // Initiate sign-in only when auth is ready and there's no user.
-    if (!isUserLoading && !user) {
+    if (shouldFetchData && !user) {
       initiateAnonymousSignIn(auth);
     }
-  }, [auth, user, isUserLoading]);
+  }, [auth, user, shouldFetchData]);
 
   const handleStudentLogin = async (loginDetails: { classId: string; name: string; pass: string }) => {
     if (!firestore) {
@@ -78,7 +80,7 @@ export default function Home() {
     }
   };
 
-  // The primary loading state now depends on Firebase auth completing its check.
+  // The system is ready only when auth is checked AND data is loaded.
   const isSystemReady = !isUserLoading && !classesLoading && !teachersLoading && !!classes && !!teachers;
 
   return (
