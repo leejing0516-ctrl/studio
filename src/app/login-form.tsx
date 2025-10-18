@@ -18,13 +18,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { type Class, type Teacher } from "@/store/school-store";
+import { type Class, type Teacher } from "@/lib/mock-data";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { User, Building } from "lucide-react";
 import { useAuth, useUser } from "@/firebase";
-import { initiateAnonymousSignIn } from "@/firebase/non-blocking-login";
+import { initiateAnonymousSignIn } from "@/firebase/auth";
 import { getStudentByName } from "@/lib/firestore-actions";
+import { getFirestore } from "firebase/firestore";
 
 export function LoginForm({
   classes,
@@ -34,7 +35,7 @@ export function LoginForm({
   teachers: Teacher[];
 }) {
   const [selectedClass, setSelectedClass] = useState("");
-  const [studentName, setStudentName] = useState(""); // Changed from studentId
+  const [studentName, setStudentName] = useState("");
   const [studentPassword, setStudentPassword] = useState("");
 
   const [selectedTeacher, setSelectedTeacher] = useState("");
@@ -44,32 +45,32 @@ export function LoginForm({
   const { toast } = useToast();
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
+  const firestore = getFirestore();
 
-  // On mount, if not logged in, sign in anonymously.
-  // This is required for security rules to work later.
   useEffect(() => {
     if (!isUserLoading && !user) {
       initiateAnonymousSignIn(auth);
     }
   }, [auth, user, isUserLoading]);
 
-  // Handle student login with name
   const handleStudentLogin = async () => {
+    if (!firestore) {
+        toast({ title: "錯誤", description: "資料庫尚未初始化，請稍後再試。", variant: "destructive" });
+        return;
+    }
     if (!selectedClass || !studentName || !studentPassword) {
       toast({ title: "登入失敗", description: "所有欄位均為必填項。", variant: "destructive" });
       return;
     }
     
-    // DEMO LOGIC: Use 'password' for any student.
     if (studentPassword !== 'password') {
       toast({ title: "登入失敗", description: "密碼錯誤。", variant: "destructive" });
       return;
     }
 
-    const student = await getStudentByName(studentName);
+    const student = await getStudentByName(firestore, studentName);
 
     if (student && student.classId === selectedClass) {
-        // We don't use Firebase Auth for students, just sessionStorage for simplicity in this demo
         sessionStorage.setItem('userType', 'student');
         sessionStorage.setItem('userId', student.id);
         sessionStorage.setItem('userName', student.name);
@@ -86,7 +87,6 @@ export function LoginForm({
       return;
     }
     
-    // DEMO LOGIC: Use 'password' for any teacher.
     if (teacherPassword === "password") {
         const teacher = teachers.find(t => t.id === selectedTeacher);
         if (teacher) {
@@ -103,7 +103,6 @@ export function LoginForm({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
-      {/* Student Login Card */}
       <Card>
         <CardHeader className="items-center">
           <div className="bg-primary/10 p-3 rounded-full">
@@ -153,7 +152,6 @@ export function LoginForm({
         </CardContent>
       </Card>
 
-      {/* Teacher Login Card */}
       <Card>
         <CardHeader className="items-center">
           <div className="bg-primary/10 p-3 rounded-full">

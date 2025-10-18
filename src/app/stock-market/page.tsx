@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -20,31 +20,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, doc } from "firebase/firestore";
-import { type Student, type Stock } from "@/store/school-store";
+import { type Student, type Stock } from "@/lib/mock-data";
 import { updateStockPrices } from "@/lib/firestore-actions";
-
-function useSimpleUser() {
-    const [user, setUser] = useState<{id: string, name: string, type: string} | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        const id = sessionStorage.getItem('userId');
-        const name = sessionStorage.getItem('userName');
-        const type = sessionStorage.getItem('userType');
-        
-        if (id && name && type === 'student') {
-            setUser({ id, name, type });
-        }
-        setIsLoading(false);
-    }, []);
-
-    return { user, isLoading };
-}
+import { useSimpleUser } from "@/hooks/use-simple-user";
 
 export default function StockMarket() {
-  const { user: sessionUser, isLoading: isSessionLoading } = useSimpleUser();
+  const { user: sessionUser, isLoading: isSessionLoading } = useSimpleUser('student');
   const router = useRouter();
   const firestore = useFirestore();
+
+  useEffect(() => {
+    if (!isSessionLoading && (!sessionUser)) {
+      router.push("/");
+    }
+  }, [sessionUser, isSessionLoading, router]);
 
   const stocksQuery = useMemoFirebase(() => firestore ? collection(firestore, 'stocks') : null, [firestore]);
   const { data: stocks, isLoading: stocksLoading } = useCollection<Stock>(stocksQuery);
@@ -52,11 +41,6 @@ export default function StockMarket() {
   const studentRef = useMemoFirebase(() => (sessionUser && firestore) ? doc(firestore, 'students', sessionUser.id) : null, [firestore, sessionUser]);
   const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
 
-  useEffect(() => {
-    if (!isSessionLoading && (!sessionUser || sessionUser.type !== 'student')) {
-      router.push("/");
-    }
-  }, [sessionUser, isSessionLoading, router]);
   
   useEffect(() => {
     if (!firestore) return;
@@ -69,11 +53,11 @@ export default function StockMarket() {
   const isLoading = isSessionLoading || studentLoading || stocksLoading;
 
   if (isLoading) {
-    return <div className="flex min-h-screen items-center justify-center bg-background">Loading...</div>;
+    return <div className="flex min-h-screen items-center justify-center bg-background">載入中...</div>;
   }
-  
+
   if (!sessionUser || !student) {
-    return <div className="flex min-h-screen items-center justify-center bg-background">Redirecting...</div>;
+    return <div className="flex min-h-screen items-center justify-center bg-background">正在重導向...</div>;
   }
 
   const portfolioValue = (student.assets || []).reduce((total, asset) => {
@@ -142,7 +126,7 @@ export default function StockMarket() {
                         <CardTitle>我的資產</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        {student?.assets.length > 0 ? (
+                        {(student?.assets || []).length > 0 ? (
                              <ul className="space-y-2">
                                 {student.assets.map(asset => {
                                     const stock = stocks?.find(s => s.id === asset.stockId);

@@ -1,4 +1,3 @@
-
 "use client";
 
 import Header from "@/components/header";
@@ -14,30 +13,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AwardPointsDialog } from "./_components/award-points-dialog";
 import { ManageRewardsDialog } from "./_components/manage-rewards-dialog";
-
-function useSimpleUser() {
-    const [user, setUser] = useState<{id: string, name: string, type: string} | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        const id = sessionStorage.getItem('teacherId');
-        const name = sessionStorage.getItem('userName');
-        const type = sessionStorage.getItem('userType');
-        
-        if (id && name && type === 'teacher') {
-            setUser({ id, name, type });
-        } else {
-            setUser(null);
-        }
-        setIsLoading(false);
-    }, []);
-
-    return { user, isLoading };
-}
-
+import { useSimpleUser } from "@/hooks/use-simple-user";
 
 export default function TeacherDashboard() {
-  const { user, isLoading } = useSimpleUser();
+  const { user, isLoading } = useSimpleUser('teacher');
   const router = useRouter();
 
   const [isAwardPointsOpen, setIsAwardPointsOpen] = useState(false);
@@ -52,7 +31,7 @@ export default function TeacherDashboard() {
   if (isLoading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        Loading...
+        載入中...
       </div>
     );
   }

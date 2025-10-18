@@ -12,62 +12,44 @@ import {
 import { Gem, Ticket, ToyBrick } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, doc } from "firebase/firestore";
-import { type Student, type Reward } from "@/store/school-store";
+import { type Student, type Reward } from "@/lib/mock-data";
 import { redeemReward } from "@/lib/firestore-actions";
+import { useSimpleUser } from "@/hooks/use-simple-user";
 
 const rewardIcons = [
     <Ticket key="1" className="w-8 h-8 text-accent" />,
     <Gem key="2" className="w-8 h-8 text-primary" />,
     <ToyBrick key="3" className="w-8 h-8 text-destructive" />,
-]
-
-function useSimpleUser() {
-    const [user, setUser] = useState<{id: string, name: string, type: string} | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        const id = sessionStorage.getItem('userId');
-        const name = sessionStorage.getItem('userName');
-        const type = sessionStorage.getItem('userType');
-        
-        if (id && name && type === 'student') {
-            setUser({ id, name, type });
-        }
-        setIsLoading(false);
-    }, []);
-
-    return { user, isLoading };
-}
+];
 
 export default function RewardStore() {
-  const { user: sessionUser, isLoading: isSessionLoading } = useSimpleUser();
+  const { user: sessionUser, isLoading: isSessionLoading } = useSimpleUser('student');
   const { toast } = useToast();
   const router = useRouter();
   const firestore = useFirestore();
+
+  useEffect(() => {
+    if (!isSessionLoading && !sessionUser) {
+      router.push("/");
+    }
+  }, [sessionUser, isSessionLoading, router]);
 
   const rewardsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'rewards') : null, [firestore]);
   const { data: rewards, isLoading: rewardsLoading } = useCollection<Reward>(rewardsQuery);
 
   const studentRef = useMemoFirebase(() => (sessionUser && firestore) ? doc(firestore, 'students', sessionUser.id) : null, [firestore, sessionUser]);
   const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
-
-  useEffect(() => {
-    if (!isSessionLoading && (!sessionUser || sessionUser.type !== 'student')) {
-      router.push("/");
-    }
-  }, [sessionUser, isSessionLoading, router]);
   
   const handleRedeem = async (rewardId: string) => {
-    if (!sessionUser || !student) return;
+    if (!sessionUser || !student || !firestore) return;
     const reward = rewards?.find(r => r.id === rewardId);
     if (!reward) return;
 
     try {
-      // Pass student and reward points to the action
-      await redeemReward(sessionUser.id, rewardId);
+      await redeemReward(firestore, sessionUser.id, rewardId);
       toast({
         title: "成功!",
         description: "獎勵已成功兌換！",
@@ -75,7 +57,7 @@ export default function RewardStore() {
     } catch (error: any) {
       toast({
         title: "哦喔！",
-        description: error.message,
+        description: error.message || "兌換獎勵時發生錯誤。",
         variant: "destructive",
       });
     }
@@ -84,11 +66,11 @@ export default function RewardStore() {
   const isLoading = isSessionLoading || studentLoading || rewardsLoading;
 
   if (isLoading) {
-    return <div className="flex min-h-screen items-center justify-center bg-background">Loading...</div>;
+    return <div className="flex min-h-screen items-center justify-center bg-background">載入中...</div>;
   }
   
   if (!sessionUser || !student) {
-    return <div className="flex min-h-screen items-center justify-center bg-background">Redirecting...</div>;
+     return <div className="flex min-h-screen items-center justify-center bg-background">正在重導向...</div>;
   }
   
   const studentPoints = student.points;
