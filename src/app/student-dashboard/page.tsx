@@ -13,24 +13,29 @@ import {
 } from "@/components/ui/card";
 import { Medal, ShoppingCart, TrendingUp, User } from "lucide-react";
 import Header from "@/components/header";
+import { useHydration } from "@/hooks/use-hydration";
 
 export default function StudentDashboard() {
   const { user } = useUserStore();
   const { getStudentById } = useSchoolStore();
   const router = useRouter();
+  const hasHydrated = useHydration();
 
   useEffect(() => {
-    if (!user || user.type !== "student") {
+    // Only redirect if hydration is complete and there's no user, or user is not a student.
+    if (hasHydrated && (!user || user.type !== "student")) {
       router.push("/");
     }
-  }, [user, router]);
+  }, [user, hasHydrated, router]);
 
-  if (!user || user.type !== "student") {
+  // While hydrating, or if there's no user, show a loading state.
+  if (!hasHydrated || !user || user.type !== "student") {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
   
   const student = getStudentById(user.id);
 
+  // If user is logged in, but student data is not found (e.g., mismatch), show a specific loading state.
   if (!student) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-light-teal">
