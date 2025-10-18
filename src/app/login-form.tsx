@@ -22,10 +22,10 @@ import { type Class, type Teacher } from "@/lib/mock-data";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { User, Building } from "lucide-react";
-import { useAuth, useUser } from "@/firebase";
+import { useAuth, useUser, useFirestore } from "@/firebase";
 import { initiateAnonymousSignIn } from "@/firebase/auth";
 import { getStudentByName } from "@/lib/firestore-actions";
-import { useFirestore } from "firebase/firestore";
+
 
 export function LoginForm({
   classes,
@@ -100,6 +100,12 @@ export function LoginForm({
         toast({ title: "登入失敗", description: "密碼錯誤。", variant: "destructive" });
     }
   };
+
+  const isUIReady = classes.length > 0 && teachers.length > 0;
+
+  if (!isUIReady) {
+    return <div className="text-primary">載入教室資料中...</div>;
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
@@ -186,7 +192,7 @@ export function LoginForm({
               onChange={(e) => setTeacherPassword(e.target.value)}
             />
           </div>
-          <Button onClick={handleTeacherLogin} variant="outline" className="w-full mt-2" disabled={isUserLoading}>
+          <Button onClick={handleTeacherLogin} variant="outline" className="w-full mt-2">
              → 以老師身份進入
           </Button>
         </CardContent>
