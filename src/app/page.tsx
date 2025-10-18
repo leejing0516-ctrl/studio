@@ -1,48 +1,11 @@
-"use client";
-
-import { LoginForm } from "./login-form";
-import { type Class, type Teacher } from "@/lib/mock-data";
-
-// This is now a mock, static component.
-const MOCK_CLASSES: Class[] = [
-    { id: '1', name: '一年甲班' },
-    { id: '2', name: '二年乙班' },
-];
-
-const MOCK_TEACHERS: Teacher[] = [
-    { id: '1', name: '王老師' },
-    { id: '2', name: '林校長' },
-];
-
-
 export default function Home() {
-
-  const handleStudentLogin = () => {
-    alert("登入功能正在重建中。");
-  };
-
-  const handleTeacherLogin = () => {
-    alert("登入功能正在重建中。");
-  };
-
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-background">
-      <div className="text-center mb-10">
-          <h1 className="text-4xl md:text-5xl font-bold text-primary">歡迎來到南梓實小虛擬銀行</h1>
-          <p className="text-lg text-foreground/80 mt-2">您通往金融素養的門戶，在這裡學習金錢知識既有回報又充滿樂趣！</p>
+    <main className="flex min-h-screen flex-col items-center justify-center p-24">
+      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
+        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
+          歡迎來到一個全新的開始。
+        </p>
       </div>
-      
-      <LoginForm 
-          classes={MOCK_CLASSES}
-          teachers={MOCK_TEACHERS}
-          onStudentLogin={handleStudentLogin}
-          onTeacherLogin={handleTeacherLogin}
-          isAuthLoading={false}
-      />
-
-      <footer className="mt-12 text-center text-sm text-foreground/60">
-        <p>© 2025 南梓實小虛擬銀行, 版權所有。</p>
-      </footer>
     </main>
   );
 }
