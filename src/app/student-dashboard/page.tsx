@@ -1,9 +1,8 @@
-
 "use client";
 
 import { useUserStore } from "@/store/user-store";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,9 +13,9 @@ import {
 import { Medal, ShoppingCart, TrendingUp, User } from "lucide-react";
 import Header from "@/components/header";
 import { useHydration } from "@/hooks/use-hydration";
-import { useDoc, useFirestore, useMemoFirebase } from "@/firebase";
-import { doc } from "firebase/firestore";
-import type { Student } from "@/store/school-store";
+import { useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase";
+import { collection, doc } from "firebase/firestore";
+import type { Student, Stock } from "@/store/school-store";
 
 export default function StudentDashboard() {
   const { user } = useUserStore();
@@ -24,8 +23,11 @@ export default function StudentDashboard() {
   const hasHydrated = useHydration();
   const firestore = useFirestore();
 
-  const studentRef = useMemoFirebase(() => (user && firestore) ? doc(firestore, 'students', user.id) : null, [firestore, user]);
-  const { data: student, isLoading, error } = useDoc<Student>(studentRef);
+  const studentRef = useMemoFirebase(() => user ? doc(firestore, 'students', user.id) : null, [firestore, user]);
+  const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
+
+  const stocksQuery = useMemoFirebase(() => collection(firestore, 'stocks'), [firestore]);
+  const { data: stocks, isLoading: stocksLoading } = useCollection<Stock>(stocksQuery);
 
   useEffect(() => {
     if (hasHydrated && (!user || user.type !== "student")) {
@@ -33,7 +35,15 @@ export default function StudentDashboard() {
     }
   }, [user, hasHydrated, router]);
 
-  if (!hasHydrated || isLoading) {
+  const portfolioValue = useMemo(() => {
+    if (!student || !stocks) return 0;
+    return student.assets.reduce((total, asset) => {
+      const stock = stocks.find(s => s.id === asset.stockId);
+      return total + (stock ? stock.price * asset.quantity : 0);
+    }, 0);
+  }, [student, stocks]);
+
+  if (!hasHydrated || studentLoading || stocksLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
   
@@ -42,8 +52,6 @@ export default function StudentDashboard() {
   }
   
   if (!student) {
-    if (error) console.error(error);
-    // This can happen briefly while data is loading or if the doc doesn't exist
     return (
       <div className="flex min-h-screen items-center justify-center bg-light-teal">
         Loading student data...
@@ -83,9 +91,9 @@ export default function StudentDashboard() {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">$0.00</div>
+                <div className="text-2xl font-bold">${portfolioValue.toFixed(2)}</div>
                 <p className="text-xs text-muted-foreground">
-                  (Asset calculation coming soon)
+                  Current value of your stocks
                 </p>
               </CardContent>
             </Card>

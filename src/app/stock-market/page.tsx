@@ -1,4 +1,3 @@
-
 "use client";
 import Header from "@/components/header";
 import {
@@ -10,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { useUserStore } from "@/store/user-store";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import {
   LineChart,
   Line,
@@ -32,7 +31,7 @@ export default function StockMarket() {
   const hasHydrated = useHydration();
   const firestore = useFirestore();
 
-  const stocksQuery = useMemoFirebase(() => firestore ? collection(firestore, 'stocks') : null, [firestore]);
+  const stocksQuery = useMemoFirebase(() => collection(firestore, 'stocks'), [firestore]);
   const { data: stocks, isLoading: stocksLoading } = useCollection<Stock>(stocksQuery);
 
   const studentRef = useMemoFirebase(() => user ? doc(firestore, 'students', user.id) : null, [firestore, user]);
@@ -44,21 +43,19 @@ export default function StockMarket() {
     }
   }, [user, hasHydrated, router]);
   
-  // Simulate stock price updates every 5 seconds
+  // This simulates a cloud function running in the background,
+  // updating stock prices for all users in real-time.
   useEffect(() => {
     const interval = setInterval(() => {
-      // This now needs to be an action that updates firestore
-      // For now, we can call a function that would do this.
-      // In a real app this would be a cloud function.
-      if (stocks) {
-        updateStockPrices(stocks);
+      if (stocks && stocks.length > 0) {
+        updateStockPrices(); // No longer passing stocks directly
       }
     }, 5000);
     return () => clearInterval(interval);
   }, [stocks]);
 
   if (!hasHydrated || studentLoading || stocksLoading) {
-    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
+    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading market data...</div>;
   }
   
   if (!user || user.type !== 'student') {
@@ -104,7 +101,7 @@ export default function StockMarket() {
                                     margin={{ top: 5, right: 20, left: -10, bottom: 5 }}
                                 >
                                     <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} />
+                                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} domain={['dataMin - 5', 'dataMax + 5']} />
                                     <Tooltip
                                         contentStyle={{
                                             backgroundColor: "hsl(var(--background))",
@@ -137,7 +134,7 @@ export default function StockMarket() {
                         <CardTitle>My Assets</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        {student?.assets.length ? (
+                        {student?.assets.length > 0 ? (
                              <ul className="space-y-2">
                                 {student.assets.map(asset => {
                                     const stock = stocks?.find(s => s.id === asset.stockId);

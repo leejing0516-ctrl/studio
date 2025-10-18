@@ -1,4 +1,3 @@
-
 'use client';
 import { 
     getFirestore, 
@@ -10,7 +9,8 @@ import {
     doc, 
     updateDoc,
     increment,
-    runTransaction
+    runTransaction,
+    writeBatch
 } from "firebase/firestore";
 import type { Student, Stock, Reward } from "@/store/school-store";
 import { initializeFirebase } from "@/firebase";
@@ -81,7 +81,7 @@ export const addReward = async (rewardData: Omit<Reward, 'id'>) => {
     }
 };
 
-export const updateReward = async (rewardId: string, rewardData: Partial<Omit<Reward, 'id'>>) => {
+export const updateReward = async (rewardId: string, rewardData: Partial<Reward>) => {
     const rewardRef = doc(firestore, "rewards", rewardId);
     try {
         await updateDoc(rewardRef, rewardData);
@@ -91,17 +91,29 @@ export const updateReward = async (rewardId: string, rewardData: Partial<Omit<Re
 };
 
 
-// Stock Actions (simulation)
-export const updateStockPrices = (stocks: Stock[]) => {
-    stocks.forEach(stock => {
+// Stock Actions (simulation) - This simulates a cloud function.
+export const updateStockPrices = async () => {
+    const stocksRef = collection(firestore, "stocks");
+    const snapshot = await getDocs(stocksRef);
+    if (snapshot.empty) return;
+
+    const batch = writeBatch(firestore);
+
+    snapshot.docs.forEach(stockDoc => {
+        const stock = stockDoc.data() as Stock;
         const change = (Math.random() - 0.5) * (stock.price * 0.1); // Fluctuate by up to 10%
         const newPrice = Math.max(1, stock.price + change); // Ensure price doesn't go below 1
         const newHistory = [...stock.history.slice(-99), newPrice];
-
-        const stockRef = doc(firestore, "stocks", stock.id);
-        updateDoc(stockRef, {
+        
+        batch.update(stockDoc.ref, {
             price: newPrice,
             history: newHistory,
         });
     });
+
+    try {
+        await batch.commit();
+    } catch (e) {
+        console.error("Error updating stock prices in batch: ", e);
+    }
 };
