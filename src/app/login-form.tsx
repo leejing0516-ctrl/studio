@@ -26,7 +26,6 @@ import { useAuth, useUser, useFirestore } from "@/firebase";
 import { initiateAnonymousSignIn } from "@/firebase/auth";
 import { getStudentByName } from "@/lib/firestore-actions";
 
-
 export function LoginForm({
   classes,
   teachers,
@@ -101,10 +100,9 @@ export function LoginForm({
     }
   };
 
-  const isUIReady = classes.length > 0 && teachers.length > 0;
-
-  if (!isUIReady) {
-    return <div className="text-primary">載入教室資料中...</div>;
+  // Final safety check. If for any reason the props are not ready, render nothing.
+  if (!classes || !teachers || classes.length === 0 || teachers.length === 0) {
+    return null;
   }
 
   return (
@@ -125,7 +123,7 @@ export function LoginForm({
                 <SelectValue placeholder="請選擇班級" />
               </SelectTrigger>
               <SelectContent>
-                {(classes || []).map((c) => (
+                {classes.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name}
                   </SelectItem>
@@ -174,7 +172,7 @@ export function LoginForm({
                 <SelectValue placeholder="請選擇您的帳號" />
               </SelectTrigger>
               <SelectContent>
-                {(teachers || []).map((t) => (
+                {teachers.map((t) => (
                   <SelectItem key={t.id} value={t.id}>
                     {t.name}
                   </SelectItem>
