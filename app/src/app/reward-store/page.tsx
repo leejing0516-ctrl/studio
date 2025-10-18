@@ -9,88 +9,77 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { type Reward } from "@/store/school-store";
-import { useUserStore } from "@/store/user-store";
 import { Gem, Ticket, ToyBrick } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { useHydration } from "@/hooks/use-hydration";
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, doc } from "firebase/firestore";
-import { type Student } from "@/store/school-store";
+import { type Student, type Reward } from "@/lib/mock-data";
 import { redeemReward } from "@/lib/firestore-actions";
+import { useSimpleUser } from "@/hooks/use-simple-user";
 
 const rewardIcons = [
     <Ticket key="1" className="w-8 h-8 text-accent" />,
     <Gem key="2" className="w-8 h-8 text-primary" />,
     <ToyBrick key="3" className="w-8 h-8 text-destructive" />,
-]
+];
 
 export default function RewardStore() {
-  const { user } = useUserStore();
+  const { user: sessionUser, isLoading: isSessionLoading } = useSimpleUser();
   const { toast } = useToast();
   const router = useRouter();
-  const hasHydrated = useHydration();
   const firestore = useFirestore();
 
   const rewardsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'rewards') : null, [firestore]);
   const { data: rewards, isLoading: rewardsLoading } = useCollection<Reward>(rewardsQuery);
 
-  const studentRef = useMemoFirebase(() => (user && firestore) ? doc(firestore, 'students', user.id) : null, [firestore, user]);
+  const studentRef = useMemoFirebase(() => (sessionUser && firestore) ? doc(firestore, 'students', sessionUser.id) : null, [firestore, sessionUser]);
   const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
 
   useEffect(() => {
-    if (hasHydrated && (!user || user.type !== 'student')) {
+    if (!isSessionLoading && (!sessionUser || sessionUser.type !== 'student')) {
       router.push("/");
     }
-  }, [user, hasHydrated, router]);
+  }, [sessionUser, isSessionLoading, router]);
   
   const handleRedeem = async (rewardId: string) => {
-    if (!user || !student) return;
+    if (!sessionUser || !student || !firestore) return;
     const reward = rewards?.find(r => r.id === rewardId);
     if (!reward) return;
 
     try {
-      await redeemReward(user.id, rewardId, student.points, reward.cost);
+      await redeemReward(firestore, sessionUser.id, rewardId);
       toast({
-        title: "Success!",
-        description: "Reward redeemed successfully!",
+        title: "成功!",
+        description: "獎勵已成功兌換！",
       });
     } catch (error: any) {
       toast({
-        title: "Uh oh!",
-        description: error.message,
+        title: "哦喔！",
+        description: error.message || "兌換獎勵時發生錯誤。",
         variant: "destructive",
       });
     }
   };
   
-  if (!hasHydrated || studentLoading || rewardsLoading) {
-    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
-  }
-  
-  if (!user || user.type !== 'student') {
-    // This state will be brief, but it's a good practice to handle it.
-    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
-  }
-  
-  if (!student) {
-    // This can happen if the student document doesn't exist or there's an error.
-    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading student data...</div>;
+  const isLoading = isSessionLoading || studentLoading || rewardsLoading;
+
+  if (isLoading || !sessionUser || !student) {
+    return <div className="flex min-h-screen items-center justify-center bg-background">載入中...</div>;
   }
   
   const studentPoints = student.points;
 
   return (
-    <div className="flex min-h-screen flex-col bg-light-teal">
+    <div className="flex min-h-screen flex-col bg-background">
       <Header />
       <main className="flex-grow p-4 md:p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-primary">Reward Store</h1>
+            <h1 className="text-3xl font-bold text-primary">獎勵商店</h1>
             <div className="text-lg font-semibold text-primary">
-              Your Points:{" "}
+              您的點數:{" "}
               <span className="text-accent font-bold">{studentPoints.toLocaleString()}</span>
             </div>
           </div>
@@ -105,10 +94,10 @@ export default function RewardStore() {
                 <CardContent className="flex-grow text-center">
                   <CardTitle>{reward.name}</CardTitle>
                   <CardDescription className="text-lg font-bold text-primary mt-2">
-                    {reward.cost.toLocaleString()} Points
+                    {reward.cost.toLocaleString()} 點
                   </CardDescription>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {reward.stock} available
+                    剩下 {reward.stock} 個
                   </p>
                 </CardContent>
                 <CardFooter>
@@ -117,7 +106,7 @@ export default function RewardStore() {
                     disabled={studentPoints < reward.cost || reward.stock === 0}
                     className="w-full bg-accent hover:bg-accent/90"
                   >
-                    {reward.stock === 0 ? "Out of Stock" : "Redeem"}
+                    {reward.stock === 0 ? "已售完" : "兌換"}
                   </Button>
                 </CardFooter>
               </Card>

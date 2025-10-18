@@ -7,9 +7,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useUserStore } from "@/store/user-store";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -19,50 +18,41 @@ import {
   YAxis,
 } from "recharts";
 import { Button } from "@/components/ui/button";
-import { useHydration } from "@/hooks/use-hydration";
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, doc } from "firebase/firestore";
-import { type Student, type Stock } from "@/store/school-store";
+import { type Student, type Stock } from "@/lib/mock-data";
 import { updateStockPrices } from "@/lib/firestore-actions";
+import { useSimpleUser } from "@/hooks/use-simple-user";
 
 export default function StockMarket() {
-  const { user } = useUserStore();
+  const { user: sessionUser, isLoading: isSessionLoading } = useSimpleUser();
   const router = useRouter();
-  const hasHydrated = useHydration();
   const firestore = useFirestore();
 
   const stocksQuery = useMemoFirebase(() => firestore ? collection(firestore, 'stocks') : null, [firestore]);
   const { data: stocks, isLoading: stocksLoading } = useCollection<Stock>(stocksQuery);
 
-  const studentRef = useMemoFirebase(() => (user && firestore) ? doc(firestore, 'students', user.id) : null, [firestore, user]);
+  const studentRef = useMemoFirebase(() => (sessionUser && firestore) ? doc(firestore, 'students', sessionUser.id) : null, [firestore, sessionUser]);
   const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
 
   useEffect(() => {
-    if (hasHydrated && (!user || user.type !== 'student')) {
+    if (!isSessionLoading && (!sessionUser || sessionUser.type !== 'student')) {
       router.push("/");
     }
-  }, [user, hasHydrated, router]);
+  }, [sessionUser, isSessionLoading, router]);
   
-  // This simulates a cloud function running in the background,
-  // updating stock prices for all users in real-time.
   useEffect(() => {
+    if (!firestore) return;
     const interval = setInterval(() => {
-        // No need to check for stocks, the action fetches them.
-        updateStockPrices();
+        updateStockPrices(firestore);
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [firestore]);
 
-  if (!hasHydrated || studentLoading || stocksLoading) {
-    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading market data...</div>;
-  }
-  
-  if (!user || user.type !== 'student') {
-    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
-  }
+  const isLoading = isSessionLoading || studentLoading || stocksLoading;
 
-  if (!student) {
-    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading student data...</div>;
+  if (isLoading || !sessionUser || !student) {
+    return <div className="flex min-h-screen items-center justify-center bg-background">載入中...</div>;
   }
 
   const portfolioValue = (student.assets || []).reduce((total, asset) => {
@@ -72,15 +62,14 @@ export default function StockMarket() {
 
 
   return (
-    <div className="flex min-h-screen flex-col bg-light-teal">
+    <div className="flex min-h-screen flex-col bg-background">
       <Header />
       <main className="flex-grow p-4 md:p-8">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Main Content: Stock List */}
             <div className="lg:col-span-2">
               <h1 className="text-3xl font-bold text-primary mb-6">
-                Virtual Stock Market
+                虛擬股票市場
               </h1>
               <div className="space-y-4">
                 {(stocks || []).map((stock) => (
@@ -117,47 +106,46 @@ export default function StockMarket() {
               </div>
             </div>
 
-            {/* Sidebar: Portfolio */}
             <div className="lg:col-span-1 space-y-6">
                 <Card>
                     <CardHeader>
-                        <CardTitle>My Portfolio</CardTitle>
+                        <CardTitle>我的投資組合</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-3xl font-bold">${portfolioValue.toFixed(2)}</div>
-                        <p className="text-muted-foreground">Current total value</p>
+                        <p className="text-muted-foreground">目前總價值</p>
                     </CardContent>
                 </Card>
                  <Card>
                     <CardHeader>
-                        <CardTitle>My Assets</CardTitle>
+                        <CardTitle>我的資產</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        {student?.assets.length > 0 ? (
+                        {(student?.assets || []).length > 0 ? (
                              <ul className="space-y-2">
                                 {student.assets.map(asset => {
                                     const stock = stocks?.find(s => s.id === asset.stockId);
                                     return stock ? (
                                         <li key={asset.stockId} className="flex justify-between items-center text-sm">
-                                            <span>{stock.ticker}: {asset.quantity} shares</span>
+                                            <span>{stock.ticker}: {asset.quantity} 股</span>
                                             <span className="font-semibold">${(stock.price * asset.quantity).toFixed(2)}</span>
                                         </li>
                                     ) : null;
                                 })}
                             </ul>
                         ) : (
-                            <p className="text-muted-foreground text-sm">You don't own any stocks yet.</p>
+                            <p className="text-muted-foreground text-sm">您尚未擁有任何股票。</p>
                         )}
                     </CardContent>
                 </Card>
                  <Card>
                     <CardHeader>
-                        <CardTitle>Trade</CardTitle>
+                        <CardTitle>交易</CardTitle>
                     </CardHeader>
                     <CardContent className="text-center">
-                        <p className="text-muted-foreground text-sm mb-4">Trading features coming soon!</p>
-                        <Button disabled>Buy</Button>
-                        <Button variant="outline" className="ml-2" disabled>Sell</Button>
+                        <p className="text-muted-foreground text-sm mb-4">交易功能即將推出!</p>
+                        <Button disabled>買入</Button>
+                        <Button variant="outline" className="ml-2" disabled>賣出</Button>
                     </CardContent>
                 </Card>
             </div>

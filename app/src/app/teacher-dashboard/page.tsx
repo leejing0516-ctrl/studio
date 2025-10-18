@@ -1,4 +1,3 @@
-
 "use client";
 
 import Header from "@/components/header";
@@ -14,46 +13,25 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AwardPointsDialog } from "./_components/award-points-dialog";
 import { ManageRewardsDialog } from "./_components/manage-rewards-dialog";
-import { useHydration } from "@/hooks/use-hydration";
-
-function useSimpleUser() {
-    const [user, setUser] = useState<{id: string, name: string, type: string} | null>(null);
-    const isHydrated = useHydration();
-
-    useEffect(() => {
-        if(isHydrated) {
-            const id = sessionStorage.getItem('teacherId');
-            const name = sessionStorage.getItem('userName');
-            const type = sessionStorage.getItem('userType');
-            if (id && name && type === 'teacher') {
-                setUser({ id, name, type });
-            } else {
-                setUser(null);
-            }
-        }
-    }, [isHydrated]);
-
-    return { user, isHydrated };
-}
-
+import { useSimpleUser } from "@/hooks/use-simple-user";
 
 export default function TeacherDashboard() {
-  const { user, isHydrated } = useSimpleUser();
+  const { user, isLoading } = useSimpleUser('teacher');
   const router = useRouter();
 
   const [isAwardPointsOpen, setIsAwardPointsOpen] = useState(false);
   const [isManageRewardsOpen, setIsManageRewardsOpen] = useState(false);
 
   useEffect(() => {
-    if (isHydrated && !user) {
+    if (!isLoading && !user) {
       router.push("/");
     }
-  }, [user, isHydrated, router]);
+  }, [user, isLoading, router]);
 
-  if (!isHydrated || !user) {
+  if (isLoading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        Loading...
+        載入中...
       </div>
     );
   }

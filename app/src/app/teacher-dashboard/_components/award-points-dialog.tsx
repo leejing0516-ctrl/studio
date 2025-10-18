@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,8 +19,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { useSchoolStore, type Student, type Class } from "@/store/school-store";
+import { type Student, type Class } from "@/lib/mock-data";
 import { useToast } from "@/hooks/use-toast";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, query, where } from "firebase/firestore";
+import { awardPoints } from "@/lib/firestore-actions";
 
 export function AwardPointsDialog({
   isOpen,
@@ -30,22 +32,27 @@ export function AwardPointsDialog({
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
 }) {
-  const { classes, getStudentsByClass, awardPoints } = useSchoolStore();
+  const firestore = useFirestore();
   const [selectedClass, setSelectedClass] = useState<string>("");
-  const [studentsInClass, setStudentsInClass] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<string>("");
   const [points, setPoints] = useState<number>(100);
   const { toast } = useToast();
 
-  const handleClassChange = (classId: string) => {
-    setSelectedClass(classId);
-    const students = getStudentsByClass(classId);
-    setStudentsInClass(students);
-    setSelectedStudent(""); // Reset student selection
-  };
+  const classesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'classes') : null, [firestore]);
+  const { data: classes } = useCollection<Class>(classesQuery);
+
+  const studentsQuery = useMemoFirebase(() => {
+    if (!firestore || !selectedClass) return null;
+    return query(collection(firestore, 'students'), where('classId', '==', selectedClass));
+  }, [firestore, selectedClass]);
+  const { data: studentsInClass } = useCollection<Student>(studentsQuery);
+
+  useEffect(() => {
+    setSelectedStudent("");
+  }, [selectedClass]);
 
   const handleAwardPoints = () => {
-    if (!selectedStudent || points <= 0) {
+    if (!firestore || !selectedStudent || points <= 0) {
       toast({
         title: "輸入無效",
         description: "請選擇一位學生並輸入正數點數。",
@@ -53,14 +60,15 @@ export function AwardPointsDialog({
       });
       return;
     }
-    awardPoints(selectedStudent, points);
-    const student = studentsInClass.find(s => s.id === selectedStudent);
+    
+    awardPoints(firestore, selectedStudent, points);
+
+    const student = studentsInClass?.find(s => s.id === selectedStudent);
     toast({
       title: "成功!",
       description: `已獎勵 ${points} 點給 ${student?.name}。`,
     });
     setIsOpen(false);
-    // Reset form
     setSelectedClass("");
     setSelectedStudent("");
     setPoints(100);
@@ -80,12 +88,12 @@ export function AwardPointsDialog({
             <Label htmlFor="class" className="text-right">
               班級
             </Label>
-            <Select onValueChange={handleClassChange} value={selectedClass}>
+            <Select onValueChange={setSelectedClass} value={selectedClass}>
               <SelectTrigger id="class" className="col-span-3">
                 <SelectValue placeholder="選擇班級" />
               </SelectTrigger>
               <SelectContent>
-                {classes.map((c) => (
+                {(classes || []).map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name}
                   </SelectItem>
@@ -106,9 +114,9 @@ export function AwardPointsDialog({
                 <SelectValue placeholder="選擇學生" />
               </SelectTrigger>
               <SelectContent>
-                {studentsInClass.map((s) => (
+                {(studentsInClass || []).map((s) => (
                   <SelectItem key={s.id} value={s.id}>
-                    {s.name} ({s.id})
+                    {s.name}
                   </SelectItem>
                 ))}
               </SelectContent>
