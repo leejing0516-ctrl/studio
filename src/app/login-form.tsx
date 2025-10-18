@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -19,13 +18,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { type Class, type Teacher } from "@/store/school-store";
+import { type Class, type Teacher, useSchoolStore } from "@/store/school-store";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { User, Building } from "lucide-react";
 import { useUserStore } from "@/store/user-store";
-import { useSchoolStore } from "@/store/school-store";
-
 
 export function LoginForm({
   classes,
@@ -44,17 +41,16 @@ export function LoginForm({
   const router = useRouter();
   const { toast } = useToast();
   const login = useUserStore((state) => state.login);
-  const { getStudentById } = useSchoolStore();
+  const { getStudentById } = useSchoolStore.getState();
 
 
   const handleStudentLogin = async () => {
-    // Placeholder login logic
     if (!selectedClass || !studentId || !studentPassword) {
       toast({ title: "登入失敗", description: "所有欄位均為必填項。", variant: "destructive" });
       return;
     }
     
-    // Demo logic: any student ID with 'password' works
+    // Demo logic: any student ID with 'password' works for the selected class
     const student = getStudentById(studentId);
     if (student && studentPassword === 'password' && student.classId === selectedClass) {
         login({ id: student.id, name: student.name, type: 'student' });
@@ -70,7 +66,8 @@ export function LoginForm({
       toast({ title: "登入失敗", description: "請選擇您的帳號並輸入密碼。", variant: "destructive" });
       return;
     }
-     // NOTE: This is a demo password.
+    
+    // Demo logic: any selected teacher with 'password' works
     if (teacherPassword === "password") {
         const teacher = teachers.find(t => t.id === selectedTeacher);
         if (teacher) {
