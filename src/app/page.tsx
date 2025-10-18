@@ -1,3 +1,4 @@
+
 "use client";
 import { LoginForm } from "./login-form";
 import { useSchoolStore } from "@/store/school-store";
