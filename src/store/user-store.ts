@@ -1,6 +1,13 @@
-
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
+
+// This is a dummy storage object that does nothing.
+// It's used on the server-side where sessionStorage is not available.
+const dummyStorage: StateStorage = {
+  getItem: () => null,
+  setItem: () => {},
+  removeItem: () => {},
+};
 
 type User = {
   id: string;
@@ -9,23 +16,16 @@ type User = {
 };
 
 interface UserState {
-  user: User | null;
+  // Use `undefined` to signify that the user state is still loading from storage.
+  user: User | null | undefined;
   login: (user: User) => void;
   logout: () => void;
 }
 
-// This is a dummy storage object that does nothing.
-// It's used on the server-side where sessionStorage is not available.
-const dummyStorage = {
-  getItem: () => null,
-  setItem: () => {},
-  removeItem: () => {},
-};
-
 export const useUserStore = create<UserState>()(
   persist(
     (set) => ({
-      user: null,
+      user: undefined, // Start with undefined to indicate loading state
       login: (user) => set({ user }),
       logout: () => set({ user: null }),
     }),
@@ -37,6 +37,9 @@ export const useUserStore = create<UserState>()(
       storage: createJSONStorage(() => 
         typeof window !== 'undefined' ? sessionStorage : dummyStorage
       ),
+      // This is crucial: it prevents the store from rehydrating on the server,
+      // avoiding the mismatch between server and client.
+      skipHydration: true, 
     }
   )
 );

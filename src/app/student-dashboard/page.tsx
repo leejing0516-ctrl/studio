@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useUserStore } from "@/store/user-store";
@@ -20,23 +19,36 @@ export default function StudentDashboard() {
   const { getStudentById } = useSchoolStore();
   const router = useRouter();
 
+  // This effect handles redirection and ensures user data is loaded before rendering.
   useEffect(() => {
+    // If the user object is not yet available (still loading from storage), do nothing yet.
+    if (user === undefined) {
+      return; 
+    }
+    // If loading is finished and there's no user or the user is not a student, redirect.
     if (!user || user.type !== "student") {
       router.push("/");
     }
   }, [user, router]);
 
+  // While user is loading from session storage, show a loading state.
+  if (user === undefined) {
+    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
+  }
+
   const student = user ? getStudentById(user.id) : null;
 
-  if (!user || user.type !== "student" || !student) {
+  // If the user is logged in, but we can't find their student data (e.g., mock data mismatch),
+  // show a loading/redirecting state. This is a safeguard.
+  if (!student) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-light-teal">
-        Loading... or redirecting...
+        Loading student data or redirecting...
       </div>
     );
   }
 
-  const studentPoints = student?.points || 0;
+  const studentPoints = student.points || 0;
   
   return (
     <div className="flex min-h-screen flex-col bg-light-teal">

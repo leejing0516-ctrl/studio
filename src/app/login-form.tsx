@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -24,6 +23,7 @@ import { useUserStore } from "@/store/user-store";
 import { useSchoolStore, type Class, type Teacher, type Student } from "@/store/school-store";
 import Logo from "@/components/logo";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 
 export function LoginForm({
   classes,
@@ -39,34 +39,37 @@ export function LoginForm({
   const [password, setPassword] = useState("");
   const router = useRouter();
   const { login } = useUserStore();
-  const { getStudentByName, addStudent } = useSchoolStore();
+  const { getStudentByName } = useSchoolStore();
+  const { toast } = useToast();
 
   const handleLogin = () => {
-    if (userType === "student" && studentName && selectedClass) {
-      let student = getStudentByName(studentName);
+    if (userType === "student") {
+      if (!studentName || !selectedClass) {
+        toast({ title: "Login Failed", description: "Please enter your name and select a class.", variant: "destructive" });
+        return;
+      }
+      
+      const student = getStudentByName(studentName);
 
-      if (!student) {
-        // Create a new student if not found and add it to the store
-        const newStudent: Student = {
-          id: `student-${Date.now()}`,
-          name: studentName,
-          classId: selectedClass,
-          points: 1000, // Starting points for new students
-          assets: [],
-        };
-        addStudent(newStudent);
-        student = newStudent;
+      if (!student || student.classId !== selectedClass) {
+        toast({ title: "Login Failed", description: "Student not found in the selected class. Please check your details.", variant: "destructive" });
+        return;
       }
       
       const userToLogin = {
-        ...student,
+        id: student.id,
+        name: student.name,
         type: "student" as const,
       };
 
       login(userToLogin);
       router.push("/student-dashboard");
 
-    } else if (userType === "teacher" && selectedTeacher && password) {
+    } else if (userType === "teacher") {
+      if (!selectedTeacher || !password) {
+        toast({ title: "Login Failed", description: "Please select your name and enter the password.", variant: "destructive" });
+        return;
+      }
       const teacher = teachers.find((t) => t.id === selectedTeacher);
       if (teacher && password === "password") { // Demo password
         login({
@@ -76,7 +79,7 @@ export function LoginForm({
         });
         router.push("/teacher-dashboard");
       } else {
-        alert("Invalid teacher credentials");
+        toast({ title: "Login Failed", description: "Invalid teacher credentials.", variant: "destructive" });
       }
     }
   };

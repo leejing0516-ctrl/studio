@@ -1,4 +1,3 @@
-
 "use client";
 import Header from "@/components/header";
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,6 @@ import {
 import { useSchoolStore } from "@/store/school-store";
 import { useUserStore } from "@/store/user-store";
 import { Gem, Ticket, ToyBrick } from "lucide-react";
-import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -31,6 +29,9 @@ export default function RewardStore() {
   const router = useRouter();
 
   useEffect(() => {
+    if (user === undefined) {
+      return;
+    }
     if (!user) {
       router.push("/");
     }
@@ -38,7 +39,7 @@ export default function RewardStore() {
   
   const student = user ? getStudentById(user.id) : null;
 
-  if (!user || !student) {
+  if (user === undefined || !student) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
   }
   

@@ -1,4 +1,3 @@
-
 "use client";
 import Header from "@/components/header";
 import {
@@ -11,15 +10,12 @@ import {
 import { useSchoolStore } from "@/store/school-store";
 import { useUserStore } from "@/store/user-store";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import {
   LineChart,
   Line,
-  XAxis,
-  YAxis,
   Tooltip,
   ResponsiveContainer,
-  CartesianGrid,
 } from "recharts";
 import { Button } from "@/components/ui/button";
 
@@ -29,6 +25,9 @@ export default function StockMarket() {
   const router = useRouter();
 
   useEffect(() => {
+    if (user === undefined) {
+        return;
+    }
     if (!user) {
       router.push("/");
     }
@@ -52,7 +51,7 @@ export default function StockMarket() {
     }, 0);
   }, [student, stocks]);
 
-  if (!user || !student) {
+  if (user === undefined || !student) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
   }
 
