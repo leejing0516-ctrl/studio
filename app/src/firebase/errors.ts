@@ -1,97 +1,15 @@
 'use client';
-import { getAuth, type User } from 'firebase/auth';
+// This is a simplified error module for now.
+// It can be expanded later if detailed contextual errors are needed.
 
-type SecurityRuleContext = {
-  path: string;
-  operation: 'get' | 'list' | 'create' | 'update' | 'delete' | 'write';
-  requestResourceData?: any;
-};
-
-interface FirebaseAuthToken {
-  name: string | null;
-  email: string | null;
-  email_verified: boolean;
-  phone_number: string | null;
-  sub: string;
-  firebase: {
-    identities: Record<string, string[]>;
-    sign_in_provider: string;
-    tenant: string | null;
-  };
-}
-
-interface FirebaseAuthObject {
-  uid: string;
-  token: FirebaseAuthToken;
-}
-
-interface SecurityRuleRequest {
-  auth: FirebaseAuthObject | null;
-  method: string;
-  path: string;
-  resource?: {
-    data: any;
-  };
-}
-
-function buildAuthObject(currentUser: User | null): FirebaseAuthObject | null {
-  if (!currentUser) {
-    return null;
-  }
-
-  const token: FirebaseAuthToken = {
-    name: currentUser.displayName,
-    email: currentUser.email,
-    email_verified: currentUser.emailVerified,
-    phone_number: currentUser.phoneNumber,
-    sub: currentUser.uid,
-    firebase: {
-      identities: currentUser.providerData.reduce((acc, p) => {
-        if (p.providerId) {
-          acc[p.providerId] = [p.uid];
-        }
-        return acc;
-      }, {} as Record<string, string[]>),
-      sign_in_provider: currentUser.providerData[0]?.providerId || 'custom',
-      tenant: currentUser.tenantId,
-    },
-  };
-
-  return {
-    uid: currentUser.uid,
-    token: token,
-  };
-}
-
-function buildRequestObject(context: SecurityRuleContext): SecurityRuleRequest {
-  let authObject: FirebaseAuthObject | null = null;
-  try {
-    const firebaseAuth = getAuth();
-    const currentUser = firebaseAuth.currentUser;
-    authObject = buildAuthObject(currentUser);
-  } catch (e) {
-    console.warn("Could not get auth object for error reporting.", e);
-  }
-
-  return {
-    auth: authObject,
-    method: context.operation,
-    path: `/databases/(default)/documents/${context.path}`,
-    ...(context.requestResourceData && { resource: { data: context.requestResourceData } }),
-  };
-}
-
-function buildErrorMessage(requestObject: SecurityRuleRequest): string {
-  return `Missing or insufficient permissions: The following request was denied by Firestore Security Rules:\n${JSON.stringify(requestObject, null, 2)}`;
-}
-
+/**
+ * A custom error class for Firestore permission issues.
+ * For now, it's a standard Error, but it's typed to be distinguished
+ * from other errors in the app.
+ */
 export class FirestorePermissionError extends Error {
-  public readonly request: SecurityRuleRequest;
-
-  constructor(context: SecurityRuleContext) {
-    const requestObject = buildRequestObject(context);
-    super(buildErrorMessage(requestObject));
+  constructor(message: string) {
+    super(message);
     this.name = 'FirestorePermissionError';
-    this.request = requestObject;
   }
 }

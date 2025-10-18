@@ -9,7 +9,6 @@ import {
   DocumentSnapshot,
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 import { useMemoFirebase } from '../provider';
 
 type WithId<T> = T & { id: string };
@@ -51,15 +50,12 @@ export function useDoc<T = any>(
         setIsLoading(false);
       },
       (err: FirestoreError) => {
-        const contextualError = new FirestorePermissionError({
-          operation: 'get',
-          path: stableDocRef.path,
-        })
-        console.error(contextualError.message);
-        setError(contextualError);
+        const genericError = new Error(`Firestore Error: ${err.message}`);
+        console.error(genericError.message);
+        setError(genericError);
         setData(null);
         setIsLoading(false);
-        errorEmitter.emit('permission-error', contextualError);
+        errorEmitter.emit('permission-error', genericError);
       }
     );
 
