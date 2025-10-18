@@ -1,13 +1,5 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
-
-// This is a dummy storage object that does nothing.
-// It's used on the server-side where sessionStorage is not available.
-const dummyStorage: StateStorage = {
-  getItem: () => null,
-  setItem: () => {},
-  removeItem: () => {},
-};
+import { persist, createJSONStorage } from 'zustand/middleware';
 
 type User = {
   id: string;
@@ -16,30 +8,38 @@ type User = {
 };
 
 interface UserState {
-  // Use `undefined` to signify that the user state is still loading from storage.
-  user: User | null | undefined;
+  user: User | null;
   login: (user: User) => void;
   logout: () => void;
 }
 
-export const useUserStore = create<UserState>()(
+// We need to make sure the store is created only on the client side
+// to avoid hydration errors, as sessionStorage is a client-side API.
+const useUserStore = create<UserState>()(
   persist(
     (set) => ({
-      user: undefined, // Start with undefined to indicate loading state
+      user: null,
       login: (user) => set({ user }),
       logout: () => set({ user: null }),
     }),
     {
       name: 'user-storage', // name of the item in the storage (must be unique)
-      // Conditionally choose storage based on the environment.
-      // On the server, use a dummy storage that does nothing.
-      // On the client, use sessionStorage.
-      storage: createJSONStorage(() => 
-        typeof window !== 'undefined' ? sessionStorage : dummyStorage
-      ),
-      // This is crucial: it prevents the store from rehydrating on the server,
-      // avoiding the mismatch between server and client.
-      skipHydration: true, 
+      storage: createJSONStorage(() => sessionStorage), // use sessionStorage
     }
   )
 );
+
+// A custom hook that returns the user from the store, but only after hydration.
+export const useHydratedUserStore = () => {
+    const state = useUserStore();
+    const [hydrated, setHydrated] = useState(false);
+
+    useEffect(() => {
+        setHydrated(true);
+    }, []);
+
+    return hydrated ? state : { user: null, login: state.login, logout: state.logout };
+}
+// We will now directly use the `useUserStore` and combine it with a `useHydration` hook in components
+// This is a cleaner approach than creating a custom wrapper hook.
+export { useUserStore };

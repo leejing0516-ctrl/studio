@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useUserStore } from "@/store/user-store";
-import { useSchoolStore, type Class, type Teacher, type Student } from "@/store/school-store";
+import { useSchoolStore, type Class, type Teacher } from "@/store/school-store";
 import Logo from "@/components/logo";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -56,13 +56,11 @@ export function LoginForm({
         return;
       }
       
-      const userToLogin = {
+      login({
         id: student.id,
         name: student.name,
         type: "student" as const,
-      };
-
-      login(userToLogin);
+      });
       router.push("/student-dashboard");
 
     } else if (userType === "teacher") {

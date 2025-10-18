@@ -13,37 +13,33 @@ import {
 } from "@/components/ui/card";
 import { Medal, ShoppingCart, TrendingUp, User } from "lucide-react";
 import Header from "@/components/header";
+import { useHydration } from "@/hooks/use-hydration";
 
 export default function StudentDashboard() {
   const { user } = useUserStore();
   const { getStudentById } = useSchoolStore();
   const router = useRouter();
+  const hasHydrated = useHydration();
 
-  // This effect handles redirection and ensures user data is loaded before rendering.
   useEffect(() => {
-    // If the user object is not yet available (still loading from storage), do nothing yet.
-    if (user === undefined) {
-      return; 
-    }
-    // If loading is finished and there's no user or the user is not a student, redirect.
-    if (!user || user.type !== "student") {
+    // Only redirect if hydration is complete and there's no user.
+    if (hasHydrated && (!user || user.type !== "student")) {
       router.push("/");
     }
-  }, [user, router]);
+  }, [user, hasHydrated, router]);
 
-  // While user is loading from session storage, show a loading state.
-  if (user === undefined) {
+  // While hydrating, show a loading state.
+  if (!hasHydrated || !user) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
+  
+  const student = getStudentById(user.id);
 
-  const student = user ? getStudentById(user.id) : null;
-
-  // If the user is logged in, but we can't find their student data (e.g., mock data mismatch),
-  // show a loading/redirecting state. This is a safeguard.
+  // If user is logged in, but student data is not found (e.g., mismatch), show a specific loading state.
   if (!student) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-light-teal">
-        Loading student data or redirecting...
+        Loading student data...
       </div>
     );
   }

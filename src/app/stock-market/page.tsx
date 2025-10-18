@@ -18,20 +18,20 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Button } from "@/components/ui/button";
+import { useHydration } from "@/hooks/use-hydration";
+
 
 export default function StockMarket() {
   const { user } = useUserStore();
   const { stocks, updateStockPrices, getStudentById } = useSchoolStore();
   const router = useRouter();
+  const hasHydrated = useHydration();
 
   useEffect(() => {
-    if (user === undefined) {
-        return;
-    }
-    if (!user) {
+    if (hasHydrated && !user) {
       router.push("/");
     }
-  }, [user, router]);
+  }, [user, hasHydrated, router]);
   
   // Simulate stock price updates every 5 seconds
   useEffect(() => {
@@ -41,19 +41,21 @@ export default function StockMarket() {
     return () => clearInterval(interval);
   }, [updateStockPrices]);
 
-  const student = user ? getStudentById(user.id) : null;
+  if (!hasHydrated || !user) {
+    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
+  }
 
-  const portfolioValue = useMemo(() => {
-    if (!student?.assets.length) return 0;
-    return student.assets.reduce((total, asset) => {
+  const student = getStudentById(user.id);
+  
+  if (!student) {
+    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading student data...</div>;
+  }
+
+  const portfolioValue = student.assets.reduce((total, asset) => {
       const stock = stocks.find(s => s.id === asset.stockId);
       return total + (stock ? stock.price * asset.quantity : 0);
     }, 0);
-  }, [student, stocks]);
 
-  if (user === undefined || !student) {
-    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
-  }
 
   return (
     <div className="flex min-h-screen flex-col bg-light-teal">
