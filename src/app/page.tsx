@@ -1,8 +1,8 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoginForm } from "./login-form";
-import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, useUser, useAuth } from "@/firebase";
 import { collection } from "firebase/firestore";
 import { type Class, type Teacher } from "@/lib/mock-data";
 import { useToast } from "@/hooks/use-toast";
@@ -65,12 +65,14 @@ export default function Home() {
             sessionStorage.setItem('userName', teacher.name);
             toast({ title: "老師登入成功", description: "正在將您導向..." });
             router.push("/teacher-dashboard");
+        } else {
+             toast({ title: "登入失敗", description: "找不到教師帳號。", variant: "destructive" });
         }
     } else {
         toast({ title: "登入失敗", description: "密碼錯誤。", variant: "destructive" });
     }
   };
-
+  
   const isLoading = isUserLoading || classesLoading || teachersLoading;
 
   return (
