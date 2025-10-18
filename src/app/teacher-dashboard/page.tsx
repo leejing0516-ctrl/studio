@@ -1,4 +1,3 @@
-
 "use client";
 
 import Header from "@/components/header";
@@ -14,39 +13,42 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AwardPointsDialog } from "./_components/award-points-dialog";
 import { ManageRewardsDialog } from "./_components/manage-rewards-dialog";
+import { useHydration } from "@/hooks/use-hydration";
+
 
 function useSimpleUser() {
     const [user, setUser] = useState<{id: string, name: string, type: string} | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const hasHydrated = useHydration();
 
     useEffect(() => {
-        const id = sessionStorage.getItem('teacherId');
-        const name = sessionStorage.getItem('userName');
-        const type = sessionStorage.getItem('userType');
-        if (id && name && type) {
-            setUser({ id, name, type });
+        if(hasHydrated) {
+            const id = sessionStorage.getItem('teacherId');
+            const name = sessionStorage.getItem('userName');
+            const type = sessionStorage.getItem('userType');
+            if (id && name && type) {
+                setUser({ id, name, type });
+            }
         }
-        setIsLoading(false);
-    }, []);
+    }, [hasHydrated]);
 
-    return { user, isLoading };
+    return { user, hasHydrated };
 }
 
 
 export default function TeacherDashboard() {
-  const { user, isLoading: isUserLoading } = useSimpleUser();
+  const { user, hasHydrated } = useSimpleUser();
   const router = useRouter();
 
   const [isAwardPointsOpen, setIsAwardPointsOpen] = useState(false);
   const [isManageRewardsOpen, setIsManageRewardsOpen] = useState(false);
 
   useEffect(() => {
-    if (!isUserLoading && (!user || user.type !== "teacher")) {
+    if (hasHydrated && (!user || user.type !== "teacher")) {
       router.push("/");
     }
-  }, [user, isUserLoading, router]);
+  }, [user, hasHydrated, router]);
 
-  if (isUserLoading || !user) {
+  if (!hasHydrated || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-light-teal">
         Loading...

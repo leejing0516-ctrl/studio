@@ -1,33 +1,28 @@
-
 "use client";
 
 import { useRouter } from "next/navigation";
 import Logo from "./logo";
 import { Button } from "./ui/button";
-import { useAuth } from "@/firebase";
 import { useEffect, useState } from "react";
+import { useHydration } from "@/hooks/use-hydration";
 
 const Header = () => {
   const router = useRouter();
-  const auth = useAuth();
   const [userName, setUserName] = useState<string | null>(null);
+  const hasHydrated = useHydration();
 
   useEffect(() => {
-    // This is a workaround since we removed zustand.
-    // In a real app, user info would be in the Firebase Auth token.
-    setUserName(sessionStorage.getItem('userName'));
-  }, []);
+    if (hasHydrated) {
+        setUserName(sessionStorage.getItem('userName'));
+    }
+  }, [hasHydrated]);
 
 
   const handleLogout = () => {
-    // Clear our session storage "auth"
     sessionStorage.removeItem('studentId');
     sessionStorage.removeItem('teacherId');
     sessionStorage.removeItem('userName');
     sessionStorage.removeItem('userType');
-
-    // Sign out from firebase if needed (especially if not using anonymous auth)
-    // auth.signOut();
     
     router.push("/");
   };

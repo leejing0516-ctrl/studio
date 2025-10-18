@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -46,15 +45,17 @@ export function LoginForm({
   const auth = useAuth();
   const { user: firebaseUser, isUserLoading } = useUser();
 
-  // Redirect if user is already logged in
+  // Redirect if user is already logged in via session
   useEffect(() => {
-    if (firebaseUser) {
-        // This is a simplification. A real app might need to distinguish
-        // between student and teacher users in Firebase Auth (e.g. using custom claims)
-        // and redirect accordingly. For now, we assume any logged in user is a student.
-        router.push("/student-dashboard");
+    if (sessionStorage.getItem('studentId') || sessionStorage.getItem('teacherId')) {
+        const type = sessionStorage.getItem('userType');
+        if (type === 'student') {
+            router.push("/student-dashboard");
+        } else if (type === 'teacher') {
+            router.push("/teacher-dashboard");
+        }
     }
-  }, [firebaseUser, router]);
+  }, [router]);
 
 
   const handleLogin = async () => {
@@ -97,13 +98,6 @@ export function LoginForm({
           student = { ...newStudentData, id: newStudentId };
       }
       
-      // Instead of a local store, we now rely on Firebase Auth state.
-      // We'll use a trick: sign in the user "anonymously" but the app logic
-      // will associate this anonymous user with the student document.
-      // A more robust solution would use custom tokens.
-      // For now, the login is implicit. We just navigate.
-      // We will need to store the student ID to know who is logged in.
-      // We'll use sessionStorage for this simple case.
       sessionStorage.setItem('studentId', student.id);
       sessionStorage.setItem('userName', student.name);
       sessionStorage.setItem('userType', 'student');
@@ -129,7 +123,7 @@ export function LoginForm({
     }
   };
 
-  if (isUserLoading || firebaseUser) {
+  if (isUserLoading) {
       return (
           <div className="flex items-center justify-center p-8">
               Loading...

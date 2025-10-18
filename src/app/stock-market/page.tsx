@@ -1,4 +1,3 @@
-
 "use client";
 import Header from "@/components/header";
 import {
@@ -23,27 +22,29 @@ import { useCollection, useDoc, useFirestore, useMemoFirebase } from "@/firebase
 import { collection, doc } from "firebase/firestore";
 import { type Student, type Stock } from "@/store/school-store";
 import { updateStockPrices } from "@/lib/firestore-actions";
+import { useHydration } from "@/hooks/use-hydration";
 
 function useSimpleUser() {
     const [user, setUser] = useState<{id: string, name: string, type: string} | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const hasHydrated = useHydration();
 
     useEffect(() => {
-        const id = sessionStorage.getItem('studentId');
-        const name = sessionStorage.getItem('userName');
-        const type = sessionStorage.getItem('userType');
-        if (id && name && type) {
-            setUser({ id, name, type });
+        if (hasHydrated) {
+            const id = sessionStorage.getItem('studentId');
+            const name = sessionStorage.getItem('userName');
+            const type = sessionStorage.getItem('userType');
+            if (id && name && type) {
+                setUser({ id, name, type });
+            }
         }
-        setIsLoading(false);
-    }, []);
+    }, [hasHydrated]);
 
-    return { user, isLoading };
+    return { user, hasHydrated };
 }
 
 
 export default function StockMarket() {
-  const { user, isLoading: isUserLoading } = useSimpleUser();
+  const { user, hasHydrated } = useSimpleUser();
   const router = useRouter();
   const firestore = useFirestore();
 
@@ -56,10 +57,10 @@ export default function StockMarket() {
   const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
 
   useEffect(() => {
-    if (!isUserLoading && (!user || user.type !== 'student')) {
+    if (hasHydrated && (!user || user.type !== 'student')) {
       router.push("/");
     }
-  }, [user, isUserLoading, router]);
+  }, [user, hasHydrated, router]);
   
   useEffect(() => {
     const interval = setInterval(() => {
@@ -68,7 +69,7 @@ export default function StockMarket() {
     return () => clearInterval(interval);
   }, []);
 
-  if (isUserLoading || studentLoading || stocksLoading || !student) {
+  if (!hasHydrated || studentLoading || stocksLoading || !student) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading market data...</div>;
   }
   

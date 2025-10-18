@@ -42,26 +42,37 @@ export const awardPoints = (studentId: string, amount: number) => {
     const studentRef = doc(firestore, "students", studentId);
     updateDoc(studentRef, {
         points: increment(amount)
-    });
+    }).catch(e => console.error("Error awarding points: ", e));
 };
 
 // Reward Actions
-export const redeemReward = async (studentId: string, rewardId: string, studentPoints: number, rewardCost: number) => {
+export const redeemReward = async (studentId: string, rewardId: string) => {
     const studentRef = doc(firestore, "students", studentId);
     const rewardRef = doc(firestore, "rewards", rewardId);
 
-    if (studentPoints < rewardCost) {
-        throw new Error("Not enough points.");
-    }
-
     try {
         await runTransaction(firestore, async (transaction) => {
+            const studentDoc = await transaction.get(studentRef);
             const rewardDoc = await transaction.get(rewardRef);
-            if (!rewardDoc.exists() || rewardDoc.data().stock <= 0) {
+
+            if (!studentDoc.exists()) {
+                throw new Error("Student not found.");
+            }
+            if (!rewardDoc.exists()) {
+                throw new Error("Reward not found.");
+            }
+            
+            const studentData = studentDoc.data();
+            const rewardData = rewardDoc.data();
+
+            if (rewardData.stock <= 0) {
                 throw new Error("Reward is out of stock.");
             }
+            if (studentData.points < rewardData.cost) {
+                throw new Error("Not enough points.");
+            }
 
-            transaction.update(studentRef, { points: increment(-rewardCost) });
+            transaction.update(studentRef, { points: increment(-rewardData.cost) });
             transaction.update(rewardRef, { stock: increment(-1) });
         });
     } catch (e) {
@@ -93,6 +104,10 @@ export const updateReward = async (rewardId: string, rewardData: Partial<Reward>
 
 // Stock Actions (simulation) - This simulates a cloud function.
 export const updateStockPrices = async () => {
+    if (!firestore) {
+        console.error("Firestore not initialized for stock update");
+        return;
+    }
     const stocksRef = collection(firestore, "stocks");
     const snapshot = await getDocs(stocksRef);
     if (snapshot.empty) return;
@@ -103,7 +118,7 @@ export const updateStockPrices = async () => {
         const stock = stockDoc.data() as Stock;
         const change = (Math.random() - 0.5) * (stock.price * 0.1); // Fluctuate by up to 10%
         const newPrice = Math.max(1, stock.price + change); // Ensure price doesn't go below 1
-        const newHistory = [...stock.history.slice(-99), newPrice];
+        const newHistory = [...(stock.history || []).slice(-99), newPrice];
         
         batch.update(stockDoc.ref, {
             price: newPrice,

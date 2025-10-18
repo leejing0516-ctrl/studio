@@ -1,4 +1,3 @@
-
 "use client";
 import Header from "@/components/header";
 import { Button } from "@/components/ui/button";
@@ -19,23 +18,25 @@ import { useCollection, useDoc, useFirestore, useMemoFirebase } from "@/firebase
 import { collection, doc } from "firebase/firestore";
 import { type Student } from "@/store/school-store";
 import { redeemReward } from "@/lib/firestore-actions";
+import { useHydration } from "@/hooks/use-hydration";
 
 
 function useSimpleUser() {
     const [user, setUser] = useState<{id: string, name: string, type: string} | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const hasHydrated = useHydration();
 
     useEffect(() => {
-        const id = sessionStorage.getItem('studentId');
-        const name = sessionStorage.getItem('userName');
-        const type = sessionStorage.getItem('userType');
-        if (id && name && type) {
-            setUser({ id, name, type });
+        if (hasHydrated) {
+            const id = sessionStorage.getItem('studentId');
+            const name = sessionStorage.getItem('userName');
+            const type = sessionStorage.getItem('userType');
+            if (id && name && type) {
+                setUser({ id, name, type });
+            }
         }
-        setIsLoading(false);
-    }, []);
+    }, [hasHydrated]);
 
-    return { user, isLoading };
+    return { user, hasHydrated };
 }
 
 
@@ -46,7 +47,7 @@ const rewardIcons = [
 ]
 
 export default function RewardStore() {
-  const { user, isLoading: isUserLoading } = useSimpleUser();
+  const { user, hasHydrated } = useSimpleUser();
   const { toast } = useToast();
   const router = useRouter();
   const firestore = useFirestore();
@@ -60,10 +61,10 @@ export default function RewardStore() {
   const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
 
   useEffect(() => {
-    if (!isUserLoading && (!user || user.type !== 'student')) {
+    if (hasHydrated && (!user || user.type !== 'student')) {
       router.push("/");
     }
-  }, [user, isUserLoading, router]);
+  }, [user, hasHydrated, router]);
   
   const handleRedeem = async (rewardId: string) => {
     if (!user || !student) return;
@@ -71,7 +72,7 @@ export default function RewardStore() {
     if (!reward) return;
 
     try {
-      await redeemReward(user.id, rewardId, student.points, reward.cost);
+      await redeemReward(user.id, rewardId);
       toast({
         title: "Success!",
         description: "Reward redeemed successfully!",
@@ -85,7 +86,7 @@ export default function RewardStore() {
     }
   };
   
-  if (isUserLoading || studentLoading || rewardsLoading || !student) {
+  if (!hasHydrated || studentLoading || rewardsLoading || !student) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
   

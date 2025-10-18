@@ -1,12 +1,9 @@
-
 import { useState, useEffect } from 'react';
-
-// THIS FILE IS NO LONGER USED
-// It is kept to prevent breaking imports, but it is not needed
-// with the new simplified auth flow.
 
 /**
  * A simple hook to determine if the component has been hydrated (i.e., rendered on the client).
+ * This is useful for avoiding hydration mismatches when dealing with client-side only data
+ * like sessionStorage or when you need to ensure code runs only on the client after SSR.
  *
  * @returns {boolean} `true` if the component has been hydrated, `false` otherwise.
  */

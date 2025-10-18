@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -15,27 +14,29 @@ import Header from "@/components/header";
 import { useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase";
 import { collection, doc } from "firebase/firestore";
 import type { Student, Stock } from "@/store/school-store";
+import { useHydration } from "@/hooks/use-hydration";
 
 function useSimpleUser() {
     const [user, setUser] = useState<{id: string, name: string, type: string} | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const hasHydrated = useHydration();
 
     useEffect(() => {
-        const id = sessionStorage.getItem('studentId');
-        const name = sessionStorage.getItem('userName');
-        const type = sessionStorage.getItem('userType');
-        if (id && name && type) {
-            setUser({ id, name, type });
+        if (hasHydrated) {
+            const id = sessionStorage.getItem('studentId');
+            const name = sessionStorage.getItem('userName');
+            const type = sessionStorage.getItem('userType');
+            if (id && name && type) {
+                setUser({ id, name, type });
+            }
         }
-        setIsLoading(false);
-    }, []);
+    }, [hasHydrated]);
 
-    return { user, isLoading };
+    return { user, hasHydrated };
 }
 
 
 export default function StudentDashboard() {
-  const { user, isLoading: isUserLoading } = useSimpleUser();
+  const { user, hasHydrated } = useSimpleUser();
   const router = useRouter();
   const firestore = useFirestore();
 
@@ -48,10 +49,10 @@ export default function StudentDashboard() {
   const { data: stocks, isLoading: stocksLoading } = useCollection<Stock>(stocksQuery);
 
   useEffect(() => {
-    if (!isUserLoading && (!user || user.type !== "student")) {
+    if (hasHydrated && (!user || user.type !== "student")) {
       router.push("/");
     }
-  }, [user, isUserLoading, router]);
+  }, [user, hasHydrated, router]);
 
   const portfolioValue = useMemo(() => {
     if (!student || !stocks) return 0;
@@ -61,7 +62,7 @@ export default function StudentDashboard() {
     }, 0);
   }, [student, stocks]);
 
-  if (isUserLoading || studentLoading || stocksLoading || !student) {
+  if (!hasHydrated || studentLoading || stocksLoading || !student) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
   
@@ -145,7 +146,7 @@ export default function StudentDashboard() {
                   <TrendingUp className="mr-2 text-primary" />
                   Virtual Stock Market
                 </CardTitle>
-              </CardHeader>
+              </Header>
               <CardContent>
                 <p className="text-muted-foreground mb-4">
                   Invest your virtual money and watch it grow.
