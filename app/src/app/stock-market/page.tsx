@@ -22,7 +22,6 @@ import {
   CartesianGrid,
 } from "recharts";
 import { Button } from "@/components/ui/button";
-import { mockStudentData } from "@/lib/mock-data";
 
 export default function StockMarket() {
   const { user } = useUserStore();
@@ -43,7 +42,7 @@ export default function StockMarket() {
     return () => clearInterval(interval);
   }, [updateStockPrices]);
 
-  const student = user ? getStudentById(user.id) || mockStudentData.find(s => s.id === user.id) : null;
+  const student = user ? getStudentById(user.id) : null;
 
   const portfolioValue = useMemo(() => {
     if (!student?.assets.length) return 0;
@@ -53,7 +52,7 @@ export default function StockMarket() {
     }, 0);
   }, [student, stocks]);
 
-  if (!user) {
+  if (!user || !student) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
   }
 

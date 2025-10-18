@@ -21,10 +21,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useUserStore } from "@/store/user-store";
-import type { Class, Teacher } from "@/store/school-store";
+import { useSchoolStore, type Class, type Teacher, type Student } from "@/store/school-store";
 import Logo from "@/components/logo";
 import { Input } from "@/components/ui/input";
-import { mockStudentData } from "@/lib/mock-data";
 
 export function LoginForm({
   classes,
@@ -40,30 +39,34 @@ export function LoginForm({
   const [password, setPassword] = useState("");
   const router = useRouter();
   const { login } = useUserStore();
+  const { getStudentByName, addStudent } = useSchoolStore();
 
   const handleLogin = () => {
     if (userType === "student" && studentName && selectedClass) {
-      // In a real app, you'd fetch student data. Here we simulate it.
-      // We'll find the first student in the mock data to log in as, or create a default.
-      const studentToLogin = mockStudentData.find(s => s.name.toLowerCase() === studentName.toLowerCase() && s.classId === selectedClass) || {
-        ...mockStudentData[0], // Fallback to the first student
-        id: 'student-1',
-        name: studentName || mockStudentData[0].name,
-        classId: selectedClass,
+      let student = getStudentByName(studentName);
+
+      if (!student) {
+        // Create a new student if not found
+        const newStudent: Student = {
+          id: `student-${Date.now()}`,
+          name: studentName,
+          classId: selectedClass,
+          points: 1000, // Starting points for new students
+          assets: [],
+        };
+        addStudent(newStudent);
+        student = newStudent;
       }
       
-      const student = {
-        id: studentToLogin.id,
-        name: studentName,
-        classId: selectedClass,
-        points: studentToLogin.points,
-        assets: studentToLogin.assets,
+      const userToLogin = {
+        ...student,
         type: "student" as const,
       };
-      login(student);
+
+      login(userToLogin);
       router.push("/student-dashboard");
+
     } else if (userType === "teacher" && selectedTeacher && password) {
-      // In a real app, you'd authenticate the teacher.
       const teacher = teachers.find((t) => t.id === selectedTeacher);
       if (teacher && password === "password") { // Demo password
         login({
