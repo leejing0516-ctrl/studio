@@ -25,7 +25,7 @@ import { User, Building } from "lucide-react";
 import { useAuth, useUser } from "@/firebase";
 import { initiateAnonymousSignIn } from "@/firebase/auth";
 import { getStudentByName } from "@/lib/firestore-actions";
-import { getFirestore } from "firebase/firestore";
+import { useFirestore } from "firebase/firestore";
 
 export function LoginForm({
   classes,
@@ -45,7 +45,7 @@ export function LoginForm({
   const { toast } = useToast();
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
-  const firestore = getFirestore();
+  const firestore = useFirestore();
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -186,7 +186,7 @@ export function LoginForm({
               onChange={(e) => setTeacherPassword(e.target.value)}
             />
           </div>
-          <Button onClick={handleTeacherLogin} variant="outline" className="w-full mt-2">
+          <Button onClick={handleTeacherLogin} variant="outline" className="w-full mt-2" disabled={isUserLoading}>
              → 以老師身份進入
           </Button>
         </CardContent>
