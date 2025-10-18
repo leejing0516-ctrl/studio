@@ -1,6 +1,7 @@
 "use client";
 
 import { useUserStore } from "@/store/user-store";
+import { useSchoolStore } from "@/store/school-store";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -12,43 +13,39 @@ import {
 } from "@/components/ui/card";
 import { Medal, ShoppingCart, TrendingUp, User } from "lucide-react";
 import Header from "@/components/header";
-import { useHydration } from "@/hooks/use-hydration";
-import { useDoc, useFirestore, useMemoFirebase } from "@/firebase";
-import { doc } from "firebase/firestore";
-import type { Student } from "@/store/school-store";
 
 export default function StudentDashboard() {
   const { user } = useUserStore();
+  const { getStudentById, stocks } = useSchoolStore();
   const router = useRouter();
-  const hasHydrated = useHydration();
-  const firestore = useFirestore();
-
-  const studentRef = useMemoFirebase(() => user ? doc(firestore, 'students', user.id) : null, [firestore, user]);
-  const { data: student, isLoading, error } = useDoc<Student>(studentRef);
-
+  
   useEffect(() => {
-    if (hasHydrated && (!user || user.type !== "student")) {
+    // If the user is not logged in, redirect to the login page.
+    // This check runs on the client-side after the component mounts.
+    if (!user) {
       router.push("/");
     }
-  }, [user, hasHydrated, router]);
-
-  if (!hasHydrated || isLoading) {
+  }, [user, router]);
+  
+  // While the check is running, or if redirection is in progress, show a loading state.
+  if (!user) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
   
-  if (!user || user.type !== "student") {
-    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
-  }
+  const student = getStudentById(user.id);
   
+  // If for some reason the student data isn't found (e.g., state sync issue), show a loading state.
   if (!student) {
-    if (error) console.error(error);
-    // This can happen briefly while data is loading or if the doc doesn't exist
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-light-teal">
-        Loading student data...
-      </div>
-    );
+    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading student data...</div>;
   }
+
+  const portfolioValue = useMemo(() => {
+    if (!student || !stocks) return 0;
+    return student.assets.reduce((total, asset) => {
+      const stock = stocks.find(s => s.id === asset.stockId);
+      return total + (stock ? stock.price * asset.quantity : 0);
+    }, 0);
+  }, [student, stocks]);
 
   const studentPoints = student.points || 0;
   
@@ -82,9 +79,9 @@ export default function StudentDashboard() {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">$0.00</div>
+                <div className="text-2xl font-bold">${portfolioValue.toFixed(2)}</div>
                 <p className="text-xs text-muted-foreground">
-                  (Asset calculation coming soon)
+                  Current value of your stocks
                 </p>
               </CardContent>
             </Card>

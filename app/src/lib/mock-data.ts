@@ -1,7 +1,3 @@
-
-// This file is now deprecated as we are using Firebase.
-// It is kept for reference but will not be used in the application.
-
 import type { Student, Teacher, Class, Reward, Stock } from "@/store/school-store";
 
 export const mockClasses: Class[] = [

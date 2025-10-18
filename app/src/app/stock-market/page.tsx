@@ -7,9 +7,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useSchoolStore } from "@/store/school-store";
 import { useUserStore } from "@/store/user-store";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import {
   LineChart,
   Line,
@@ -19,57 +20,38 @@ import {
   YAxis,
 } from "recharts";
 import { Button } from "@/components/ui/button";
-import { useHydration } from "@/hooks/use-hydration";
-import { useCollection, useDoc, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc } from "firebase/firestore";
-import { type Student, type Stock } from "@/store/school-store";
-import { updateStockPrices } from "@/lib/firestore-actions";
 
 export default function StockMarket() {
   const { user } = useUserStore();
+  const { stocks, getStudentById, updateStockPrices } = useSchoolStore();
   const router = useRouter();
-  const hasHydrated = useHydration();
-  const firestore = useFirestore();
-
-  const stocksQuery = useMemoFirebase(() => collection(firestore, 'stocks'), [firestore]);
-  const { data: stocks, isLoading: stocksLoading } = useCollection<Stock>(stocksQuery);
-
-  const studentRef = useMemoFirebase(() => user ? doc(firestore, 'students', user.id) : null, [firestore, user]);
-  const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
 
   useEffect(() => {
-    if (hasHydrated && (!user || user.type !== 'student')) {
+    if (!user) {
       router.push("/");
     }
-  }, [user, hasHydrated, router]);
+  }, [user, router]);
   
   // Simulate stock price updates every 5 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      // This now needs to be an action that updates firestore
-      // For now, we can call a function that would do this.
-      // In a real app this would be a cloud function.
-      if (stocks) {
-        updateStockPrices(stocks);
-      }
+      updateStockPrices();
     }, 5000);
     return () => clearInterval(interval);
-  }, [stocks]);
+  }, [updateStockPrices]);
 
-  if (!hasHydrated || studentLoading || stocksLoading) {
+  if (!user) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
   
-  if (!user || user.type !== 'student') {
-    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
-  }
+  const student = getStudentById(user.id);
 
   if (!student) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading student data...</div>;
   }
 
   const portfolioValue = student.assets.reduce((total, asset) => {
-      const stock = stocks?.find(s => s.id === asset.stockId);
+      const stock = stocks.find(s => s.id === asset.stockId);
       return total + (stock ? stock.price * asset.quantity : 0);
     }, 0);
 
@@ -86,7 +68,7 @@ export default function StockMarket() {
                 Virtual Stock Market
               </h1>
               <div className="space-y-4">
-                {(stocks || []).map((stock) => (
+                {stocks.map((stock) => (
                   <Card key={stock.id} className="overflow-hidden">
                     <div className="p-4">
                         <div className="flex justify-between items-start">
@@ -136,10 +118,10 @@ export default function StockMarket() {
                         <CardTitle>My Assets</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        {student?.assets.length ? (
+                        {student.assets.length ? (
                              <ul className="space-y-2">
                                 {student.assets.map(asset => {
-                                    const stock = stocks?.find(s => s.id === asset.stockId);
+                                    const stock = stocks.find(s => s.id === asset.stockId);
                                     return stock ? (
                                         <li key={asset.stockId} className="flex justify-between items-center text-sm">
                                             <span>{stock.ticker}: {asset.quantity} shares</span>

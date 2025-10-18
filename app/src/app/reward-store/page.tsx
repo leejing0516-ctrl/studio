@@ -9,17 +9,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { type Reward } from "@/store/school-store";
+import { useSchoolStore } from "@/store/school-store";
 import { useUserStore } from "@/store/user-store";
 import { Gem, Ticket, ToyBrick } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
-import { useHydration } from "@/hooks/use-hydration";
-import { useCollection, useDoc, useFirestore } from "@/firebase";
-import { collection, doc } from "firebase/firestore";
-import { type Student } from "@/store/school-store";
-import { redeemReward } from "@/lib/firestore-actions";
+import { useEffect } from "react";
 
 const rewardIcons = [
     <Ticket key="1" className="w-8 h-8 text-accent" />,
@@ -29,56 +24,39 @@ const rewardIcons = [
 
 export default function RewardStore() {
   const { user } = useUserStore();
+  const { rewards, getStudentById, redeemReward } = useSchoolStore();
   const { toast } = useToast();
   const router = useRouter();
-  const hasHydrated = useHydration();
-  const firestore = useFirestore();
-
-  const rewardsQuery = useMemo(() => collection(firestore, 'rewards'), [firestore]);
-  const { data: rewards, isLoading: rewardsLoading } = useCollection<Reward>(rewardsQuery);
-
-  const studentRef = useMemo(() => user ? doc(firestore, 'students', user.id) : null, [firestore, user]);
-  const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
 
   useEffect(() => {
-    if (hasHydrated && (!user || user.type !== 'student')) {
+    if (!user) {
       router.push("/");
     }
-  }, [user, hasHydrated, router]);
+  }, [user, router]);
   
-  const handleRedeem = async (rewardId: string) => {
-    if (!user || !student) return;
-    const reward = rewards?.find(r => r.id === rewardId);
-    if (!reward) return;
-
-    try {
-      await redeemReward(user.id, rewardId, student.points, reward.cost);
-      toast({
-        title: "Success!",
-        description: "Reward redeemed successfully!",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Uh oh!",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-  
-  if (!hasHydrated || studentLoading || rewardsLoading) {
+  if (!user) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
   
-  if (!user || user.type !== 'student') {
-    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
-  }
+  const student = getStudentById(user.id);
   
   if (!student) {
-    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading student data...</div>;
+      // This might happen if data is not synced yet, or if student id is invalid
+      return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading student data...</div>;
   }
   
   const studentPoints = student.points;
+
+  const handleRedeem = (rewardId: string) => {
+    if (!user) return;
+    const result = redeemReward(user.id, rewardId);
+
+    toast({
+      title: result.success ? "Success!" : "Uh oh!",
+      description: result.message,
+      variant: result.success ? "default" : "destructive",
+    });
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-light-teal">
@@ -93,7 +71,7 @@ export default function RewardStore() {
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {(rewards || []).map((reward, index) => (
+            {rewards.map((reward, index) => (
               <Card key={reward.id} className="flex flex-col">
                 <CardHeader className="items-center">
                   <div className="p-4 bg-primary/10 rounded-full">

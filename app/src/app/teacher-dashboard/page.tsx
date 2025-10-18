@@ -14,36 +14,26 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AwardPointsDialog } from "./_components/award-points-dialog";
 import { ManageRewardsDialog } from "./_components/manage-rewards-dialog";
-import { useHydration } from "@/hooks/use-hydration";
 
 export default function TeacherDashboard() {
   const { user } = useUserStore();
   const router = useRouter();
-  const hasHydrated = useHydration();
 
   const [isAwardPointsOpen, setIsAwardPointsOpen] = useState(false);
   const [isManageRewardsOpen, setIsManageRewardsOpen] = useState(false);
 
   useEffect(() => {
-    if (hasHydrated && (!user || user.type !== "teacher")) {
+    if (!user) {
       router.push("/");
     }
-  }, [user, hasHydrated, router]);
+  }, [user, router]);
 
-  if (!hasHydrated) {
+  if (!user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-light-teal">
         Loading...
       </div>
     );
-  }
-  
-  if (!user || user.type !== "teacher") {
-      return (
-          <div className="flex min-h-screen items-center justify-center bg-light-teal">
-              Redirecting...
-          </div>
-      );
   }
 
   return (
