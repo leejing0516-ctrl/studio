@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { useState, useEffect } from 'react';
 
 type User = {
   id: string;
@@ -22,8 +21,8 @@ export const useUserStore = create<UserState>()(
       logout: () => set({ user: null }),
     }),
     {
-      name: 'user-storage', // name of the item in the storage (must be unique)
-      storage: createJSONStorage(() => sessionStorage), // use sessionStorage
+      name: 'user-storage', 
+      storage: createJSONStorage(() => sessionStorage), 
     }
   )
 );

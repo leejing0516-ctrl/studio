@@ -51,8 +51,8 @@ export function LoginForm({
       
       let student = getStudentByName(studentName);
 
-      if (!student || student.classId !== selectedClass) {
-         toast({ title: "Login Failed", description: "Student not found in the selected class. A new profile will be created for you.", variant: "default" });
+      if (!student) {
+         toast({ title: "New Profile Created", description: `Welcome, ${studentName}! A new profile has been created for you.` });
           const newStudent: Student = {
             id: `student-${Date.now()}`,
             name: studentName,

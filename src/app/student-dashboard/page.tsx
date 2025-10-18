@@ -39,7 +39,7 @@ export default function StudentDashboard() {
   if (!student) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-light-teal">
-        Loading student data... or redirecting
+        Loading student data...
       </div>
     );
   }
