@@ -14,8 +14,7 @@ import { useUserStore } from "@/store/user-store";
 import { Gem, Ticket, ToyBrick } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { useHydration } from "@/hooks/use-hydration";
+import { useEffect, useState } from "react";
 
 const rewardIcons = [
     <Ticket className="w-8 h-8 text-accent" />,
@@ -28,21 +27,24 @@ export default function RewardStore() {
   const { rewards, redeemReward, getStudentById } = useSchoolStore();
   const { toast } = useToast();
   const router = useRouter();
-  const hasHydrated = useHydration();
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (hasHydrated && (!user || user.type !== 'student')) {
+    if (!user || user.type !== 'student') {
       router.push("/");
+    } else {
+      setIsLoading(false);
     }
-  }, [user, hasHydrated, router]);
+  }, [user, router]);
   
-  if (!hasHydrated || !user || user.type !== 'student') {
+  if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
 
-  const student = getStudentById(user.id);
+  const student = getStudentById(user!.id);
   
   if (!student) {
+    // This can happen briefly if the school store data is not yet loaded
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading student data...</div>;
   }
   

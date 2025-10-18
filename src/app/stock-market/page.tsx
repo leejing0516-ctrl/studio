@@ -10,7 +10,7 @@ import {
 import { useSchoolStore } from "@/store/school-store";
 import { useUserStore } from "@/store/user-store";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   LineChart,
   Line,
@@ -18,20 +18,21 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Button } from "@/components/ui/button";
-import { useHydration } from "@/hooks/use-hydration";
 
 
 export default function StockMarket() {
   const { user } = useUserStore();
   const { stocks, updateStockPrices, getStudentById } = useSchoolStore();
   const router = useRouter();
-  const hasHydrated = useHydration();
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (hasHydrated && (!user || user.type !== 'student')) {
+    if (!user || user.type !== 'student') {
       router.push("/");
+    } else {
+      setIsLoading(false);
     }
-  }, [user, hasHydrated, router]);
+  }, [user, router]);
   
   // Simulate stock price updates every 5 seconds
   useEffect(() => {
@@ -41,11 +42,11 @@ export default function StockMarket() {
     return () => clearInterval(interval);
   }, [updateStockPrices]);
 
-  if (!hasHydrated || !user || user.type !== 'student') {
+  if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
 
-  const student = getStudentById(user.id);
+  const student = getStudentById(user!.id);
   
   if (!student) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading student data...</div>;
