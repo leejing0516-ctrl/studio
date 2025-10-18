@@ -48,30 +48,44 @@ export function AwardPointsDialog({
   const { data: studentsInClass } = useCollection<Student>(studentsQuery);
 
   useEffect(() => {
+    // Reset student selection when class changes
     setSelectedStudent("");
   }, [selectedClass]);
 
-  const handleAwardPoints = () => {
-    if (!firestore || !selectedStudent || points <= 0) {
+  // Reset form when dialog closes
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedClass("");
+      setSelectedStudent("");
+      setPoints(100);
+    }
+  }, [isOpen]);
+
+  const handleAwardPoints = async () => {
+    if (!firestore || !selectedStudent || !selectedClass || points <= 0) {
       toast({
         title: "輸入無效",
-        description: "請選擇一位學生並輸入正數點數。",
+        description: "請選擇班級、學生並輸入正數點數。",
         variant: "destructive",
       });
       return;
     }
     
-    awardPoints(firestore, selectedStudent, points);
-
-    const student = studentsInClass?.find(s => s.id === selectedStudent);
-    toast({
-      title: "成功!",
-      description: `已獎勵 ${points} 點給 ${student?.name}。`,
-    });
-    setIsOpen(false);
-    setSelectedClass("");
-    setSelectedStudent("");
-    setPoints(100);
+    try {
+      awardPoints(firestore, selectedStudent, points);
+      const student = studentsInClass?.find(s => s.id === selectedStudent);
+      toast({
+        title: "成功!",
+        description: `已獎勵 ${points} 點給 ${student?.name}。`,
+      });
+      setIsOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "錯誤",
+        description: error.message || "獎勵點數時發生未知的錯誤。",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -108,10 +122,10 @@ export function AwardPointsDialog({
             <Select
               onValueChange={setSelectedStudent}
               value={selectedStudent}
-              disabled={!selectedClass}
+              disabled={!selectedClass || !studentsInClass}
             >
               <SelectTrigger id="student" className="col-span-3">
-                <SelectValue placeholder="選擇學生" />
+                <SelectValue placeholder={!selectedClass ? "請先選擇班級" : "選擇學生"} />
               </SelectTrigger>
               <SelectContent>
                 {(studentsInClass || []).map((s) => (

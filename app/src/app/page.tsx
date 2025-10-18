@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoginForm } from "./login-form";
 import { useCollection, useFirestore, useMemoFirebase, useUser, useAuth } from "@/firebase";
@@ -16,9 +16,11 @@ export default function Home() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const shouldFetchData = !isUserLoading;
+  const [hasInitiatedLogin, setHasInitiatedLogin] = useState(false);
 
-  // Defer Firestore queries until Firebase Auth is ready.
+  // Defer Firestore queries until Firebase Auth is ready and has attempted login.
+  const shouldFetchData = !isUserLoading && hasInitiatedLogin && !!user;
+
   const classesQuery = useMemoFirebase(() => shouldFetchData && firestore ? collection(firestore, 'classes') : null, [firestore, shouldFetchData]);
   const { data: classes, isLoading: classesLoading } = useCollection<Class>(classesQuery);
 
@@ -26,11 +28,13 @@ export default function Home() {
   const { data: teachers, isLoading: teachersLoading } = useCollection<Teacher>(teachersQuery);
 
   useEffect(() => {
-    // Initiate sign-in only when auth is ready and there's no user.
-    if (shouldFetchData && !user) {
+    if (!isUserLoading && !user && !hasInitiatedLogin) {
       initiateAnonymousSignIn(auth);
+      setHasInitiatedLogin(true);
+    } else if (!isUserLoading && user) {
+      setHasInitiatedLogin(true);
     }
-  }, [auth, user, shouldFetchData]);
+  }, [auth, user, isUserLoading, hasInitiatedLogin]);
 
   const handleStudentLogin = async (loginDetails: { classId: string; name: string; pass: string }) => {
     if (!firestore) {
@@ -80,8 +84,7 @@ export default function Home() {
     }
   };
 
-  // The system is ready only when auth is checked AND data is loaded.
-  const isSystemReady = !isUserLoading && !classesLoading && !teachersLoading && !!classes && !!teachers;
+  const isSystemReady = shouldFetchData && !classesLoading && !teachersLoading && !!classes && !!teachers;
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-background">

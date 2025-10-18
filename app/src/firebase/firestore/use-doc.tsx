@@ -33,6 +33,7 @@ export function useDoc<T = any>(
     if (!stableDocRef) {
       setData(null);
       setIsLoading(false);
+      setError(null);
       return;
     }
 

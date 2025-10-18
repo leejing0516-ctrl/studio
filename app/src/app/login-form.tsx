@@ -44,8 +44,6 @@ export function LoginForm({
   const [selectedTeacher, setSelectedTeacher] = useState("");
   const [teacherPassword, setTeacherPassword] = useState("");
 
-  // Safety check: if props are not ready, render nothing.
-  // This prevents rendering an empty form and is a key part of the fix.
   if (!classes || !teachers || classes.length === 0 || teachers.length === 0) {
     return null;
   }

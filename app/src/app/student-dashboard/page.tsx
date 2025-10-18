@@ -44,12 +44,8 @@ export default function StudentDashboard() {
 
   const isLoading = isSessionLoading || studentLoading || stocksLoading;
 
-  if (isLoading) {
+  if (isLoading || !sessionUser || !student) {
     return <div className="flex min-h-screen items-center justify-center bg-background">載入中...</div>;
-  }
-  
-  if (!sessionUser || !student) {
-     return <div className="flex min-h-screen items-center justify-center bg-background">正在重導向...</div>;
   }
   
   const studentPoints = student.points || 0;
