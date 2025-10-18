@@ -1,9 +1,10 @@
+
 "use client";
 
 import { useUserStore } from "@/store/user-store";
 import { useSchoolStore } from "@/store/school-store";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,29 +14,27 @@ import {
 } from "@/components/ui/card";
 import { Medal, ShoppingCart, TrendingUp, User } from "lucide-react";
 import Header from "@/components/header";
+import { useHydration } from "@/hooks/use-hydration";
 
 export default function StudentDashboard() {
   const { user } = useUserStore();
   const { getStudentById } = useSchoolStore();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
+  const hasHydrated = useHydration();
 
   useEffect(() => {
-    // Redirect if there's no user, or user is not a student.
-    if (!user || user.type !== "student") {
+    // Only redirect if hydration is complete and there's no user, or user is not a student.
+    if (hasHydrated && (!user || user.type !== "student")) {
       router.push("/");
-    } else {
-      setIsLoading(false);
     }
-  }, [user, router]);
+  }, [user, hasHydrated, router]);
 
-  // While checking the user, show a loading state.
-  if (isLoading) {
+  // While hydrating, or if there's no user, show a loading state.
+  if (!hasHydrated || !user || user.type !== "student") {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
   
-  // User is guaranteed to be non-null and a student here
-  const student = getStudentById(user!.id);
+  const student = getStudentById(user.id);
 
   // If user is logged in, but student data is not found (e.g., mismatch), show a specific loading state.
   if (!student) {
@@ -54,7 +53,7 @@ export default function StudentDashboard() {
       <main className="flex-grow p-4 md:p-8">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-3xl font-bold text-primary mb-6">
-            Welcome, {user!.name}!
+            Welcome, {user.name}!
           </h1>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
