@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useUserStore } from "@/store/user-store";
@@ -33,8 +32,12 @@ export default function StudentDashboard() {
     }
   }, [user, hasHydrated, router]);
 
-  if (!hasHydrated || !user || user.type !== "student" || isLoading) {
+  if (!hasHydrated || isLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
+  }
+  
+  if (!user || user.type !== "student") {
+    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
   }
   
   if (!student) {

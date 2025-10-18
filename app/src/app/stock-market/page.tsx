@@ -1,4 +1,3 @@
-
 "use client";
 import Header from "@/components/header";
 import {
@@ -57,8 +56,12 @@ export default function StockMarket() {
     return () => clearInterval(interval);
   }, [stocks]);
 
-  if (!hasHydrated || !user || user.type !== 'student' || studentLoading || stocksLoading) {
+  if (!hasHydrated || studentLoading || stocksLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
+  }
+  
+  if (!user || user.type !== 'student') {
+    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
   }
 
   if (!student) {

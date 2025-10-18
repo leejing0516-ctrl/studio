@@ -1,4 +1,3 @@
-
 "use client";
 import Header from "@/components/header";
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useSchoolStore, type Reward } from "@/store/school-store";
+import { type Reward } from "@/store/school-store";
 import { useUserStore } from "@/store/user-store";
 import { Gem, Ticket, ToyBrick } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -67,8 +66,12 @@ export default function RewardStore() {
     }
   };
   
-  if (!hasHydrated || !user || user.type !== 'student' || studentLoading || rewardsLoading) {
+  if (!hasHydrated || studentLoading || rewardsLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
+  }
+  
+  if (!user || user.type !== 'student') {
+    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
   }
   
   if (!student) {
