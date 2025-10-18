@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useUserStore } from "@/store/user-store";
@@ -22,14 +23,14 @@ export default function StudentDashboard() {
   const hasHydrated = useHydration();
 
   useEffect(() => {
-    // Only redirect if hydration is complete and there's no user.
+    // Only redirect if hydration is complete and there's no user, or user is not a student.
     if (hasHydrated && (!user || user.type !== "student")) {
       router.push("/");
     }
   }, [user, hasHydrated, router]);
 
   // While hydrating, or if there's no user, show a loading state.
-  if (!hasHydrated || !user) {
+  if (!hasHydrated || !user || user.type !== "student") {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
   

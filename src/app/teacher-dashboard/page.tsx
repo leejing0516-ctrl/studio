@@ -1,3 +1,4 @@
+
 "use client";
 
 import Header from "@/components/header";
@@ -30,7 +31,7 @@ export default function TeacherDashboard() {
     }
   }, [user, hasHydrated, router]);
 
-  if (!hasHydrated || !user) {
+  if (!hasHydrated || !user || user.type !== "teacher") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-light-teal">
         Loading...
