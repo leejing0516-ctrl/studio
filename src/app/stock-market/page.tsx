@@ -46,18 +46,14 @@ export default function StockMarket() {
     if (!firestore) return;
     const interval = setInterval(() => {
         updateStockPrices(firestore);
-    }, 5000);
+    }, 15000); // Increased interval to 15s to reduce write frequency
     return () => clearInterval(interval);
   }, [firestore]);
 
   const isLoading = isSessionLoading || studentLoading || stocksLoading;
 
-  if (isLoading) {
+  if (isLoading || !sessionUser || !student) {
     return <div className="flex min-h-screen items-center justify-center bg-background">載入中...</div>;
-  }
-
-  if (!sessionUser || !student) {
-    return <div className="flex min-h-screen items-center justify-center bg-background">正在重導向...</div>;
   }
 
   const portfolioValue = (student.assets || []).reduce((total, asset) => {

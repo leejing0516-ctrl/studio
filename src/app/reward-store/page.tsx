@@ -52,7 +52,7 @@ export default function RewardStore() {
       await redeemReward(firestore, sessionUser.id, rewardId);
       toast({
         title: "成功!",
-        description: "獎勵已成功兌換！",
+        description: `您已成功兌換 ${reward.name}！`,
       });
     } catch (error: any) {
       toast({
@@ -65,12 +65,8 @@ export default function RewardStore() {
   
   const isLoading = isSessionLoading || studentLoading || rewardsLoading;
 
-  if (isLoading) {
+  if (isLoading || !sessionUser || !student) {
     return <div className="flex min-h-screen items-center justify-center bg-background">載入中...</div>;
-  }
-  
-  if (!sessionUser || !student) {
-     return <div className="flex min-h-screen items-center justify-center bg-background">正在重導向...</div>;
   }
   
   const studentPoints = student.points;

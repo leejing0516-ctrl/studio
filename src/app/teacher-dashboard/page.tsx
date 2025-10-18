@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { AwardPointsDialog } from "./_components/award-points-dialog";
 import { ManageRewardsDialog } from "./_components/manage-rewards-dialog";
 import { useSimpleUser } from "@/hooks/use-simple-user";
+import { ManageStudentsDialog } from "./_components/manage-students-dialog";
 
 export default function TeacherDashboard() {
   const { user, isLoading } = useSimpleUser('teacher');
@@ -21,6 +22,8 @@ export default function TeacherDashboard() {
 
   const [isAwardPointsOpen, setIsAwardPointsOpen] = useState(false);
   const [isManageRewardsOpen, setIsManageRewardsOpen] = useState(false);
+  const [isManageStudentsOpen, setIsManageStudentsOpen] = useState(false);
+
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -46,7 +49,7 @@ export default function TeacherDashboard() {
               老師儀表板
             </h1>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
               <Card className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <CardTitle>獎勵點數</CardTitle>
@@ -73,6 +76,19 @@ export default function TeacherDashboard() {
                   </Button>
                 </CardContent>
               </Card>
+              <Card className="hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <CardTitle>管理學生</CardTitle>
+                  <CardDescription>
+                    新增或編輯學生名冊。
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button onClick={() => setIsManageStudentsOpen(true)} variant="outline">
+                    管理學生
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </main>
@@ -84,6 +100,10 @@ export default function TeacherDashboard() {
       <ManageRewardsDialog
         isOpen={isManageRewardsOpen}
         setIsOpen={setIsManageRewardsOpen}
+      />
+       <ManageStudentsDialog
+        isOpen={isManageStudentsOpen}
+        setIsOpen={setIsManageStudentsOpen}
       />
     </>
   );

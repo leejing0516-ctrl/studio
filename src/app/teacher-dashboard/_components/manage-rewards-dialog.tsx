@@ -35,7 +35,7 @@ export function ManageRewardsDialog({
   const { toast } = useToast();
   
   useEffect(() => {
-    if (rewards) {
+    if (rewards && isOpen) {
       setEditedRewards(JSON.parse(JSON.stringify(rewards)));
     }
   }, [rewards, isOpen]);
@@ -47,7 +47,7 @@ export function ManageRewardsDialog({
   ) => {
     setEditedRewards(
       editedRewards.map((reward) =>
-        reward.id === id ? { ...reward, [field]: value } : reward
+        reward.id === id ? { ...reward, [field]: Number.isNaN(value) ? '' : value } : reward
       )
     );
   };
@@ -57,25 +57,36 @@ export function ManageRewardsDialog({
     setEditedRewards([...editedRewards, { id: tempId, name: "", cost: 0, stock: 0}]);
   };
 
-  const handleSaveChanges = async () => {
+  const handleSaveChanges = () => {
     if (!firestore) return;
 
+    // Use a for...of loop to handle async operations correctly
     for (const reward of editedRewards) {
-      if (reward.id.startsWith('new-')) {
-        if (reward.name && reward.cost > 0) {
-            await addReward(firestore, { name: reward.name, cost: reward.cost, stock: reward.stock });
+      try {
+        if (reward.id.startsWith('new-')) {
+          if (reward.name && reward.cost > 0) {
+              addReward(firestore, { name: reward.name, cost: reward.cost, stock: reward.stock });
+          }
+        } else {
+          const originalReward = rewards?.find(r => r.id === reward.id);
+          if (JSON.stringify(originalReward) !== JSON.stringify(reward)) {
+              updateReward(firestore, reward.id, { name: reward.name, cost: reward.cost, stock: reward.stock });
+          }
         }
-      } else {
-        const originalReward = rewards?.find(r => r.id === reward.id);
-        if (JSON.stringify(originalReward) !== JSON.stringify(reward)) {
-            await updateReward(firestore, reward.id, { name: reward.name, cost: reward.cost, stock: reward.stock });
-        }
+      } catch (error: any) {
+        toast({
+          title: "錯誤",
+          description: `更新獎勵 "${reward.name}" 時發生錯誤: ${error.message}`,
+          variant: "destructive",
+        });
+        // Stop processing further if one fails
+        return;
       }
     }
 
     toast({
       title: "成功!",
-      description: "獎勵已更新。",
+      description: "獎勵已成功更新。",
     });
     setIsOpen(false);
   };
@@ -91,7 +102,7 @@ export function ManageRewardsDialog({
         </DialogHeader>
         <ScrollArea className="h-96 pr-6">
           <div className="space-y-4 py-4">
-            {isLoading ? <p>載入獎勵中...</p> : editedRewards.map((reward) => (
+            {isLoading ? <p>載入獎勵中...</p> : (editedRewards || []).map((reward) => (
               <div
                 key={reward.id}
                 className="grid grid-cols-12 items-center gap-2 p-2 rounded-md border"
