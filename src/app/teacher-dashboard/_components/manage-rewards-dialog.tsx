@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,13 +13,10 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { type Reward } from "@/store/school-store";
+import { useSchoolStore, type Reward } from "@/store/school-store";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PlusCircle, Trash2 } from "lucide-react";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection } from "firebase/firestore";
-import { addReward, updateReward } from "@/lib/firestore-actions";
 
 export function ManageRewardsDialog({
   isOpen,
@@ -28,18 +25,14 @@ export function ManageRewardsDialog({
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
 }) {
-  const firestore = useFirestore();
-  const rewardsQuery = useMemoFirebase(() => collection(firestore, 'rewards'), [firestore]);
-  const { data: rewards, isLoading } = useCollection<Reward>(rewardsQuery);
-
+  const { rewards, addReward, updateReward } = useSchoolStore();
   const [editedRewards, setEditedRewards] = useState<Reward[]>([]);
   const { toast } = useToast();
   
   useEffect(() => {
-    if (rewards) {
-        setEditedRewards(rewards);
-    }
-  }, [rewards]);
+    // Sync with the main store when the dialog opens or rewards change
+    setEditedRewards(rewards);
+  }, [rewards, isOpen]);
 
   const handleFieldChange = (
     id: string,
@@ -61,19 +54,21 @@ export function ManageRewardsDialog({
 
   const handleSaveChanges = () => {
     editedRewards.forEach(reward => {
-      const originalReward = rewards?.find(r => r.id === reward.id);
+      // Check if it's a new reward (with a temporary id)
       if (reward.id.startsWith('new-')) {
+        // Simple validation
         if (reward.name && reward.cost > 0) {
             addReward({ name: reward.name, cost: reward.cost, stock: reward.stock });
         }
-      } else if (originalReward && JSON.stringify(originalReward) !== JSON.stringify(reward)) {
-        updateReward(reward.id, { name: reward.name, cost: reward.cost, stock: reward.stock });
+      } else {
+        // It's an existing reward, so update it
+        updateReward(reward);
       }
     });
 
     toast({
-      title: "Success!",
-      description: "Rewards have been updated.",
+      title: "成功!",
+      description: "獎勵已更新。",
     });
     setIsOpen(false);
   };
@@ -85,14 +80,13 @@ export function ManageRewardsDialog({
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Manage Rewards</DialogTitle>
+          <DialogTitle>管理獎勵</DialogTitle>
           <DialogDescription>
-            Add, edit, or remove items in the reward store.
+            新增、編輯或移除獎勵商店中的物品。
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-96 pr-6">
           <div className="space-y-4 py-4">
-            {isLoading && <p>Loading rewards...</p>}
             {editedRewards.map((reward) => (
               <div
                 key={reward.id}
@@ -100,12 +94,12 @@ export function ManageRewardsDialog({
               >
                 <div className="col-span-5">
                   <Label htmlFor={`name-${reward.id}`} className="sr-only">
-                    Name
+                    名稱
                   </Label>
                   <Input
                     id={`name-${reward.id}`}
                     value={reward.name}
-                    placeholder="Reward Name"
+                    placeholder="獎勵名稱"
                     onChange={(e) =>
                       handleFieldChange(reward.id, "name", e.target.value)
                     }
@@ -113,13 +107,13 @@ export function ManageRewardsDialog({
                 </div>
                 <div className="col-span-3">
                   <Label htmlFor={`cost-${reward.id}`} className="sr-only">
-                    Cost
+                    價格
                   </Label>
                   <Input
                     id={`cost-${reward.id}`}
                     type="number"
                     value={reward.cost}
-                    placeholder="Cost"
+                    placeholder="價格"
                     onChange={(e) =>
                       handleFieldChange(reward.id, "cost", Number(e.target.value))
                     }
@@ -127,13 +121,13 @@ export function ManageRewardsDialog({
                 </div>
                 <div className="col-span-3">
                   <Label htmlFor={`stock-${reward.id}`} className="sr-only">
-                    Stock
+                    庫存
                   </Label>
                   <Input
                     id={`stock-${reward.id}`}
                     type="number"
                     value={reward.stock}
-                    placeholder="Stock"
+                    placeholder="庫存"
                     onChange={(e) =>
                       handleFieldChange(reward.id, "stock", Number(e.target.value))
                     }
@@ -150,10 +144,10 @@ export function ManageRewardsDialog({
         </ScrollArea>
         <DialogFooter className="sm:justify-between">
             <Button variant="outline" onClick={handleAddNew}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Add New
+                <PlusCircle className="mr-2 h-4 w-4" /> 新增
             </Button>
           <Button onClick={handleSaveChanges} type="submit">
-            Save Changes
+            儲存變更
           </Button>
         </DialogFooter>
       </DialogContent>

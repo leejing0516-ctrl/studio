@@ -47,16 +47,17 @@ export function AwardPointsDialog({
   const handleAwardPoints = () => {
     if (!selectedStudent || points <= 0) {
       toast({
-        title: "Invalid Input",
-        description: "Please select a student and enter a positive point value.",
+        title: "輸入無效",
+        description: "請選擇一位學生並輸入正數點數。",
         variant: "destructive",
       });
       return;
     }
     awardPoints(selectedStudent, points);
+    const student = studentsInClass.find(s => s.id === selectedStudent);
     toast({
-      title: "Success!",
-      description: `Awarded ${points} points to the selected student.`,
+      title: "成功!",
+      description: `已獎勵 ${points} 點給 ${student?.name}。`,
     });
     setIsOpen(false);
     // Reset form
@@ -69,19 +70,19 @@ export function AwardPointsDialog({
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Award Points</DialogTitle>
+          <DialogTitle>獎勵點數</DialogTitle>
           <DialogDescription>
-            Select a class and student to award points.
+            選擇班級和學生以獎勵點數。
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="class" className="text-right">
-              Class
+              班級
             </Label>
             <Select onValueChange={handleClassChange} value={selectedClass}>
               <SelectTrigger id="class" className="col-span-3">
-                <SelectValue placeholder="Select a class" />
+                <SelectValue placeholder="選擇班級" />
               </SelectTrigger>
               <SelectContent>
                 {classes.map((c) => (
@@ -94,7 +95,7 @@ export function AwardPointsDialog({
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="student" className="text-right">
-              Student
+              學生
             </Label>
             <Select
               onValueChange={setSelectedStudent}
@@ -102,12 +103,12 @@ export function AwardPointsDialog({
               disabled={!selectedClass}
             >
               <SelectTrigger id="student" className="col-span-3">
-                <SelectValue placeholder="Select a student" />
+                <SelectValue placeholder="選擇學生" />
               </SelectTrigger>
               <SelectContent>
                 {studentsInClass.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
-                    {s.name}
+                    {s.name} ({s.id})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -115,7 +116,7 @@ export function AwardPointsDialog({
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="points" className="text-right">
-              Points
+              點數
             </Label>
             <Input
               id="points"
@@ -128,7 +129,7 @@ export function AwardPointsDialog({
         </div>
         <DialogFooter>
           <Button onClick={handleAwardPoints} type="submit">
-            Award
+            獎勵
           </Button>
         </DialogFooter>
       </DialogContent>

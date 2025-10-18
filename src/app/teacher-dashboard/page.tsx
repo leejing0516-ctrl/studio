@@ -1,3 +1,4 @@
+
 "use client";
 
 import Header from "@/components/header";
@@ -9,35 +10,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useUserStore } from "@/store/user-store";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AwardPointsDialog } from "./_components/award-points-dialog";
 import { ManageRewardsDialog } from "./_components/manage-rewards-dialog";
 import { useHydration } from "@/hooks/use-hydration";
 
-
-function useSimpleUser() {
-    const [user, setUser] = useState<{id: string, name: string, type: string} | null>(null);
-    const hasHydrated = useHydration();
-
-    useEffect(() => {
-        if(hasHydrated) {
-            const id = sessionStorage.getItem('teacherId');
-            const name = sessionStorage.getItem('userName');
-            const type = sessionStorage.getItem('userType');
-            if (id && name && type) {
-                setUser({ id, name, type });
-            }
-        }
-    }, [hasHydrated]);
-
-    return { user, hasHydrated };
-}
-
-
 export default function TeacherDashboard() {
-  const { user, hasHydrated } = useSimpleUser();
+  const { user } = useUserStore();
   const router = useRouter();
+  const hasHydrated = useHydration();
 
   const [isAwardPointsOpen, setIsAwardPointsOpen] = useState(false);
   const [isManageRewardsOpen, setIsManageRewardsOpen] = useState(false);
@@ -50,54 +33,54 @@ export default function TeacherDashboard() {
 
   if (!hasHydrated || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-light-teal">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         Loading...
       </div>
     );
   }
-  
+
   if (user.type !== "teacher") {
-      return (
-          <div className="flex min-h-screen items-center justify-center bg-light-teal">
-              Redirecting...
-          </div>
-      );
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        Redirecting...
+      </div>
+    );
   }
 
   return (
     <>
-      <div className="flex min-h-screen flex-col bg-light-teal">
+      <div className="flex min-h-screen flex-col bg-background">
         <Header />
         <main className="flex-grow p-4 md:p-8">
           <div className="max-w-7xl mx-auto">
             <h1 className="text-3xl font-bold text-primary mb-6">
-              Teacher Dashboard
+              老師儀表板
             </h1>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <Card className="hover:shadow-lg transition-shadow">
                 <CardHeader>
-                  <CardTitle>Award Points</CardTitle>
+                  <CardTitle>獎勵點數</CardTitle>
                   <CardDescription>
-                    Select a class and student to give points.
+                    選擇班級和學生以給予點數。
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button onClick={() => setIsAwardPointsOpen(true)} className="bg-accent hover:bg-accent/90">
-                    Award Points
+                  <Button onClick={() => setIsAwardPointsOpen(true)}>
+                    獎勵點數
                   </Button>
                 </CardContent>
               </Card>
               <Card className="hover:shadow-lg transition-shadow">
                 <CardHeader>
-                  <CardTitle>Manage Rewards</CardTitle>
+                  <CardTitle>管理獎勵</CardTitle>
                   <CardDescription>
-                    Add, edit, or remove items from the reward store.
+                    新增、編輯或從獎勵商店中移除物品。
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Button onClick={() => setIsManageRewardsOpen(true)} variant="outline">
-                    Manage Rewards
+                    管理獎勵
                   </Button>
                 </CardContent>
               </Card>

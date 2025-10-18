@@ -1,3 +1,4 @@
+
 "use client";
 import Header from "@/components/header";
 import {
@@ -7,8 +8,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useUserStore } from "@/store/user-store";
+import { useSchoolStore } from "@/store/school-store";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -18,43 +21,18 @@ import {
   YAxis,
 } from "recharts";
 import { Button } from "@/components/ui/button";
-import { useCollection, useDoc, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc } from "firebase/firestore";
-import { type Student, type Stock } from "@/store/school-store";
-import { updateStockPrices } from "@/lib/firestore-actions";
 import { useHydration } from "@/hooks/use-hydration";
 
-function useSimpleUser() {
-    const [user, setUser] = useState<{id: string, name: string, type: string} | null>(null);
-    const hasHydrated = useHydration();
-
-    useEffect(() => {
-        if (hasHydrated) {
-            const id = sessionStorage.getItem('studentId');
-            const name = sessionStorage.getItem('userName');
-            const type = sessionStorage.getItem('userType');
-            if (id && name && type) {
-                setUser({ id, name, type });
-            }
-        }
-    }, [hasHydrated]);
-
-    return { user, hasHydrated };
-}
-
-
 export default function StockMarket() {
-  const { user, hasHydrated } = useSimpleUser();
+  const { user } = useUserStore();
+  const { getStudentById, stocks, updateStockPrices } = useSchoolStore();
   const router = useRouter();
-  const firestore = useFirestore();
-
-  const studentId = user?.id;
-
-  const stocksQuery = useMemoFirebase(() => firestore ? collection(firestore, 'stocks') : null, [firestore]);
-  const { data: stocks, isLoading: stocksLoading } = useCollection<Stock>(stocksQuery);
-
-  const studentRef = useMemoFirebase(() => (studentId && firestore) ? doc(firestore, 'students', studentId) : null, [firestore, studentId]);
-  const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
+  const hasHydrated = useHydration();
+  
+  const student = useMemo(() => {
+    if (!user) return null;
+    return getStudentById(user.id);
+  }, [user, getStudentById]);
 
   useEffect(() => {
     if (hasHydrated && (!user || user.type !== 'student')) {
@@ -67,31 +45,32 @@ export default function StockMarket() {
         updateStockPrices();
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [updateStockPrices]);
 
-  if (!hasHydrated || studentLoading || stocksLoading || !student) {
-    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading market data...</div>;
+  if (!hasHydrated || !user || !student) {
+    return <div className="flex min-h-screen items-center justify-center bg-background">Loading...</div>;
   }
   
-  if (!user || user.type !== 'student') {
-    return <div className="flex min-h-screen items-center justify-center bg-light-teal">Redirecting...</div>;
+  if (user.type !== 'student') {
+    return <div className="flex min-h-screen items-center justify-center bg-background">Redirecting...</div>;
   }
 
   const portfolioValue = (student.assets || []).reduce((total, asset) => {
-      const stock = stocks?.find(s => s.id === asset.stockId);
+      const stock = stocks.find(s => s.id === asset.stockId);
       return total + (stock ? stock.price * asset.quantity : 0);
     }, 0);
 
 
   return (
-    <div className="flex min-h-screen flex-col bg-light-teal">
+    <div className="flex min-h-screen flex-col bg-background">
       <Header />
       <main className="flex-grow p-4 md:p-8">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main Content: Stock List */}
             <div className="lg:col-span-2">
               <h1 className="text-3xl font-bold text-primary mb-6">
-                Virtual Stock Market
+                虛擬股票市場
               </h1>
               <div className="space-y-4">
                 {(stocks || []).map((stock) => (
@@ -128,46 +107,47 @@ export default function StockMarket() {
               </div>
             </div>
 
+            {/* Sidebar: Portfolio */}
             <div className="lg:col-span-1 space-y-6">
                 <Card>
                     <CardHeader>
-                        <CardTitle>My Portfolio</CardTitle>
+                        <CardTitle>我的投資組合</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-3xl font-bold">${portfolioValue.toFixed(2)}</div>
-                        <p className="text-muted-foreground">Current total value</p>
+                        <p className="text-muted-foreground">目前總價值</p>
                     </CardContent>
                 </Card>
                  <Card>
                     <CardHeader>
-                        <CardTitle>My Assets</CardTitle>
+                        <CardTitle>我的資產</CardTitle>
                     </CardHeader>
                     <CardContent>
                         {student?.assets.length > 0 ? (
                              <ul className="space-y-2">
                                 {student.assets.map(asset => {
-                                    const stock = stocks?.find(s => s.id === asset.stockId);
+                                    const stock = stocks.find(s => s.id === asset.stockId);
                                     return stock ? (
                                         <li key={asset.stockId} className="flex justify-between items-center text-sm">
-                                            <span>{stock.ticker}: {asset.quantity} shares</span>
+                                            <span>{stock.ticker}: {asset.quantity} 股</span>
                                             <span className="font-semibold">${(stock.price * asset.quantity).toFixed(2)}</span>
                                         </li>
                                     ) : null;
                                 })}
                             </ul>
                         ) : (
-                            <p className="text-muted-foreground text-sm">You don't own any stocks yet.</p>
+                            <p className="text-muted-foreground text-sm">您尚未擁有任何股票。</p>
                         )}
                     </CardContent>
                 </Card>
                  <Card>
                     <CardHeader>
-                        <CardTitle>Trade</CardTitle>
+                        <CardTitle>交易</CardTitle>
                     </CardHeader>
                     <CardContent className="text-center">
-                        <p className="text-muted-foreground text-sm mb-4">Trading features coming soon!</p>
-                        <Button disabled>Buy</Button>
-                        <Button variant="outline" className="ml-2" disabled>Sell</Button>
+                        <p className="text-muted-foreground text-sm mb-4">交易功能即將推出!</p>
+                        <Button disabled>買入</Button>
+                        <Button variant="outline" className="ml-2" disabled>賣出</Button>
                     </CardContent>
                 </Card>
             </div>

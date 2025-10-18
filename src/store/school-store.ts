@@ -74,11 +74,11 @@ interface SchoolStoreState {
 
 export const useSchoolStore = create<SchoolStoreState>((set, get) => ({
   // Initial State from mock data
-  students: mockStudentData,
-  teachers: mockTeachers,
-  classes: mockClasses,
-  rewards: mockRewards,
-  stocks: mockStocks,
+  students: [],
+  teachers: [],
+  classes: [],
+  rewards: [],
+  stocks: [],
   config: {
     interestRate: 0.01, // 1% interest
   },
@@ -179,9 +179,9 @@ export const useSchoolStore = create<SchoolStoreState>((set, get) => ({
   updateStockPrices: () => {
     set(state => ({
         stocks: state.stocks.map(stock => {
-            const change = (Math.random() - 0.5) * (stock.price * 0.1); // Fluctuate by up to 5%
+            const change = (Math.random() - 0.5) * (stock.price * 0.1); // Fluctuate by up to 10%
             const newPrice = Math.max(1, stock.price + change); // Ensure price doesn't go below 1
-            const newHistory = [...stock.history.slice(-9), newPrice];
+            const newHistory = [...stock.history.slice(-99), newPrice];
             return {
                 ...stock,
                 price: newPrice,
