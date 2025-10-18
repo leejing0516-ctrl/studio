@@ -17,22 +17,25 @@ import {
   Line,
   Tooltip,
   ResponsiveContainer,
+  Brush,
   XAxis,
   YAxis,
 } from "recharts";
 import { Button } from "@/components/ui/button";
+import { useHydration } from "@/hooks/use-hydration";
 
 
 export default function StockMarket() {
   const { user } = useUserStore();
   const { stocks, updateStockPrices, getStudentById } = useSchoolStore();
   const router = useRouter();
+  const hasHydrated = useHydration();
 
   useEffect(() => {
-    if (!user || user.type !== 'student') {
+    if (hasHydrated && (!user || user.type !== 'student')) {
       router.push("/");
     }
-  }, [user, router]);
+  }, [user, hasHydrated, router]);
   
   // Simulate stock price updates every 5 seconds
   useEffect(() => {
@@ -42,7 +45,7 @@ export default function StockMarket() {
     return () => clearInterval(interval);
   }, [updateStockPrices]);
 
-  if (!user || user.type !== 'student') {
+  if (!hasHydrated || !user || user.type !== 'student') {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
 
@@ -95,6 +98,7 @@ export default function StockMarket() {
                                         }}
                                     />
                                     <Line type="monotone" dataKey="price" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                                    <Brush dataKey="name" height={30} stroke="hsl(var(--primary))" />
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>
