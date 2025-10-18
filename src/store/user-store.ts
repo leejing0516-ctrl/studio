@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { useState, useEffect } from 'react';
 
 type User = {
   id: string;
@@ -13,9 +14,7 @@ interface UserState {
   logout: () => void;
 }
 
-// We need to make sure the store is created only on the client side
-// to avoid hydration errors, as sessionStorage is a client-side API.
-const useUserStore = create<UserState>()(
+export const useUserStore = create<UserState>()(
   persist(
     (set) => ({
       user: null,
@@ -28,18 +27,3 @@ const useUserStore = create<UserState>()(
     }
   )
 );
-
-// A custom hook that returns the user from the store, but only after hydration.
-export const useHydratedUserStore = () => {
-    const state = useUserStore();
-    const [hydrated, setHydrated] = useState(false);
-
-    useEffect(() => {
-        setHydrated(true);
-    }, []);
-
-    return hydrated ? state : { user: null, login: state.login, logout: state.logout };
-}
-// We will now directly use the `useUserStore` and combine it with a `useHydration` hook in components
-// This is a cleaner approach than creating a custom wrapper hook.
-export { useUserStore };

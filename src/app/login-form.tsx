@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useUserStore } from "@/store/user-store";
-import { useSchoolStore, type Class, type Teacher } from "@/store/school-store";
+import { useSchoolStore, type Class, type Teacher, type Student } from "@/store/school-store";
 import Logo from "@/components/logo";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -39,7 +39,7 @@ export function LoginForm({
   const [password, setPassword] = useState("");
   const router = useRouter();
   const { login } = useUserStore();
-  const { getStudentByName } = useSchoolStore();
+  const { getStudentByName, addStudent } = useSchoolStore();
   const { toast } = useToast();
 
   const handleLogin = () => {
@@ -49,11 +49,19 @@ export function LoginForm({
         return;
       }
       
-      const student = getStudentByName(studentName);
+      let student = getStudentByName(studentName);
 
       if (!student || student.classId !== selectedClass) {
-        toast({ title: "Login Failed", description: "Student not found in the selected class. Please check your details.", variant: "destructive" });
-        return;
+         toast({ title: "Login Failed", description: "Student not found in the selected class. A new profile will be created for you.", variant: "default" });
+          const newStudent: Student = {
+            id: `student-${Date.now()}`,
+            name: studentName,
+            classId: selectedClass,
+            points: 1000, 
+            assets: [],
+          };
+          addStudent(newStudent);
+          student = newStudent;
       }
       
       login({

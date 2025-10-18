@@ -28,7 +28,7 @@ export default function StudentDashboard() {
     }
   }, [user, hasHydrated, router]);
 
-  // While hydrating, show a loading state.
+  // While hydrating, or if there's no user, show a loading state.
   if (!hasHydrated || !user) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
@@ -39,7 +39,7 @@ export default function StudentDashboard() {
   if (!student) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-light-teal">
-        Loading student data...
+        Loading student data... or redirecting
       </div>
     );
   }
