@@ -1,38 +1,123 @@
-// =================================================================================
-// ============================= 請您手動更新此規則 ================================
-// =================================================================================
-//
-// 持續出現權限錯誤，代表這些規則沒有成功部署到您的 Firebase 專案。
-// 請您依照以下步驟，手動將此檔案的內容更新到 Firebase 網站上：
-//
-// 1. **複製規則**：
-//    複製底下 `rules_version` 到 `}` 之間的所有程式碼。
-//
-// 2. **前往 Firebase 主控台**：
-//    在瀏覽器中開啟您的 Firebase 專案。
-//
-// 3. **找到 Firestore 設定**：
-//    在左側選單中，點擊「建構」 > 「Firestore Database」。
-//
-// 4. **進入「規則」分頁**：
-//    在 Firestore 頁面頂部，找到並點擊「規則」分頁。
-//
-// 5. **貼上並發布**：
-//    將您第一步複製的程式碼，完全覆蓋掉編輯器中現有的所有內容。
-//    然後點擊藍色的「發布」按鈕。
-//
-// 6. **重新整理應用程式**：
-//    回到您的應用程式頁面並重新整理。權限錯誤應該就會解決。
-//
-// =================================================================================
+/**
+ * @fileoverview Firestore Security Rules for the FinLit Classroom application.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a flat data model, where each data entity resides in its own top-level collection.
+ * Authorization is handled without cloud reads, ensuring optimal performance and cost efficiency.
+ * Since no cloud reads are performed, there are no dependencies.
+ *
+ * Data Structure:
+ * - /students/{studentId}: Stores student data, with studentId as the unique identifier.
+ * - /rewards/{rewardId}: Stores reward item data, with rewardId as the unique identifier.
+ * - /transactions/{transactionId}: Stores transaction data, with transactionId as the unique identifier.
+ * - /stocks/{stockId}: Stores stock data, with stockId as the unique identifier.
+ * - /portfolios/{portfolioId}: Stores portfolio data, with portfolioId as the unique identifier.
+ * - /interestRates/{interestRateId}: Stores interest rate data, with interestRateId as the unique identifier.
+ *
+ * Key Security Decisions:
+ * - No cloud reads are performed for authorization, simplifying the rules and improving performance.
+ * - Write operations (create, update, delete) are generally disallowed, as the application logic will reside outside of the client.
+ * - All collections are non-user specific.
+ *
+ * Denormalization for Authorization:
+ * N/A - No denormalization is needed because there are no dependencies
+ *
+ * Structural Segregation:
+ * N/A - No structural segregation is needed because there are no dependencies
+ */
 
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 為了方便開發，此規則允許任何人讀取和寫入您的整個資料庫。
-    // 在您的應用程式正式上線前，請務必設定更嚴謹的安全規則。
-    match /{document=**} {
-      allow read, write: if true;
+
+    /**
+     * @description Enforces read-only access to student data.
+     * @path /students/{studentId}
+     * @allow (get) Any authenticated user can read student data.
+     * @deny (create) No one can create student data.
+     * @principle Read-only access to student information, which must be created using Cloud Functions or Admin SDK.
+     */
+    match /students/{studentId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Enforces read-only access to reward data.
+     * @path /rewards/{rewardId}
+     * @allow (get) Any authenticated user can read reward data.
+     * @deny (create) No one can create reward data.
+     * @principle Read-only access to reward information, which must be created using Cloud Functions or Admin SDK.
+     */
+    match /rewards/{rewardId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Enforces read-only access to transaction data.
+     * @path /transactions/{transactionId}
+     * @allow (get) Any authenticated user can read transaction data.
+     * @deny (create) No one can create transaction data.
+     * @principle Read-only access to transaction information, which must be created using Cloud Functions or Admin SDK.
+     */
+    match /transactions/{transactionId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Enforces read-only access to stock data.
+     * @path /stocks/{stockId}
+     * @allow (get) Any authenticated user can read stock data.
+     * @deny (create) No one can create stock data.
+     * @principle Read-only access to stock information, which must be created using Cloud Functions or Admin SDK.
+     */
+    match /stocks/{stockId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Enforces read-only access to portfolio data.
+     * @path /portfolios/{portfolioId}
+     * @allow (get) Any authenticated user can read portfolio data.
+     * @deny (create) No one can create portfolio data.
+     * @principle Read-only access to portfolio information, which must be created using Cloud Functions or Admin SDK.
+     */
+    match /portfolios/{portfolioId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Enforces read-only access to interest rate data.
+     * @path /interestRates/{interestRateId}
+     * @allow (get) Any authenticated user can read interest rate data.
+     * @deny (create) No one can create interest rate data.
+     * @principle Read-only access to interest rate information, which must be created using Cloud Functions or Admin SDK.
+     */
+    match /interestRates/{interestRateId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
   }
 }
