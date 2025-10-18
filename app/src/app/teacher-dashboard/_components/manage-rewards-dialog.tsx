@@ -54,7 +54,7 @@ export function ManageRewardsDialog({
   
   const handleAddNew = () => {
     const tempId = `new-${Date.now()}`; 
-    setEditedRewards([...editedRewards, { id: tempId, name: "", cost: 0, stock: 0, history: []}]);
+    setEditedRewards([...editedRewards, { id: tempId, name: "", cost: 0, stock: 0}]);
   };
 
   const handleSaveChanges = async () => {
