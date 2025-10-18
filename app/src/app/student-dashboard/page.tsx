@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -43,8 +44,12 @@ export default function StudentDashboard() {
 
   const isLoading = isSessionLoading || studentLoading || stocksLoading;
 
-  if (isLoading || !sessionUser || !student) {
+  if (isLoading || !sessionUser) {
     return <div className="flex min-h-screen items-center justify-center bg-background">載入中...</div>;
+  }
+  
+  if (!student) {
+     return <div className="flex min-h-screen items-center justify-center bg-background">正在獲取學生資料...</div>;
   }
   
   const studentPoints = student.points || 0;

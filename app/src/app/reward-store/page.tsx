@@ -1,3 +1,4 @@
+
 "use client";
 import Header from "@/components/header";
 import { Button } from "@/components/ui/button";
@@ -65,8 +66,13 @@ export default function RewardStore() {
   
   const isLoading = isSessionLoading || studentLoading || rewardsLoading;
 
-  if (isLoading || !sessionUser || !student) {
+  if (isLoading || !sessionUser) {
     return <div className="flex min-h-screen items-center justify-center bg-background">載入中...</div>;
+  }
+  
+  if (!student) {
+    // This can happen briefly while student data is loading after session is confirmed
+     return <div className="flex min-h-screen items-center justify-center bg-background">正在獲取學生資料...</div>;
   }
   
   const studentPoints = student.points;

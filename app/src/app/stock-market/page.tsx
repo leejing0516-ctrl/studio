@@ -1,3 +1,4 @@
+
 "use client";
 import Header from "@/components/header";
 import {
@@ -51,8 +52,12 @@ export default function StockMarket() {
 
   const isLoading = isSessionLoading || studentLoading || stocksLoading;
 
-  if (isLoading || !sessionUser || !student) {
+  if (isLoading || !sessionUser) {
     return <div className="flex min-h-screen items-center justify-center bg-background">載入中...</div>;
+  }
+
+  if (!student) {
+    return <div className="flex min-h-screen items-center justify-center bg-background">正在獲取學生資料...</div>;
   }
 
   const portfolioValue = (student.assets || []).reduce((total, asset) => {

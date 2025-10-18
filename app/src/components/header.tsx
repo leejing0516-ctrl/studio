@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -18,7 +19,7 @@ const Header = () => {
     <header className="bg-card/80 backdrop-blur-sm shadow-sm sticky top-0 z-50">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center cursor-pointer" onClick={() => router.push('/')}>
+          <div className="flex items-center cursor-pointer" onClick={() => user ? (user.type === 'student' ? router.push('/student-dashboard') : router.push('/teacher-dashboard')) : router.push('/')}>
             <Logo />
             <span className="font-bold text-primary ml-2">南梓實小虛擬銀行</span>
           </div>
