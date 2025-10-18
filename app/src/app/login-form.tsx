@@ -54,6 +54,10 @@ export function LoginForm({
   }, [auth, user, isUserLoading]);
 
   const handleStudentLogin = async () => {
+    if (!firestore) {
+        toast({ title: "錯誤", description: "資料庫尚未初始化，請稍後再試。", variant: "destructive" });
+        return;
+    }
     if (!selectedClass || !studentName || !studentPassword) {
       toast({ title: "登入失敗", description: "所有欄位均為必填項。", variant: "destructive" });
       return;
