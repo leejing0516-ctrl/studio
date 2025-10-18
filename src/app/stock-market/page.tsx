@@ -16,9 +16,6 @@ import {
   Line,
   Tooltip,
   ResponsiveContainer,
-  Brush,
-  XAxis,
-  YAxis,
 } from "recharts";
 import { Button } from "@/components/ui/button";
 
@@ -76,13 +73,13 @@ export default function StockMarket() {
                 {stocks.map((stock) => (
                   <Card key={stock.id} className="overflow-hidden">
                     <div className="grid grid-cols-1 md:grid-cols-3">
-                      <div className="p-4 col-span-1 flex flex-col justify-center">
+                      <div className="p-4 col-span-1">
                         <CardTitle>{stock.name} ({stock.ticker})</CardTitle>
                         <CardDescription className="text-2xl font-bold text-primary">
                           ${stock.price.toFixed(2)}
                         </CardDescription>
                       </div>
-                      <div className="h-32 md:h-full col-span-1 md:col-span-2 pr-4 pt-4">
+                      <div className="h-24 md:h-full col-span-1 md:col-span-2">
                          <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={stock.history.map((price, index) => ({ name: `T-${stock.history.length - index}`, price }))}>
                                 <Tooltip
@@ -92,9 +89,6 @@ export default function StockMarket() {
                                     }}
                                 />
                                 <Line type="monotone" dataKey="price" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
-                                <Brush dataKey="name" height={30} stroke="hsl(var(--primary))" />
-                                <YAxis domain={['dataMin - 5', 'dataMax + 5']} hide />
-                                <XAxis dataKey="name" hide />
                             </LineChart>
                         </ResponsiveContainer>
                       </div>

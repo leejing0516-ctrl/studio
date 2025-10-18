@@ -21,6 +21,7 @@ export default function StudentDashboard() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Redirect if there's no user, or user is not a student.
     if (!user || user.type !== "student") {
       router.push("/");
     } else {
@@ -28,6 +29,7 @@ export default function StudentDashboard() {
     }
   }, [user, router]);
 
+  // While checking the user, show a loading state.
   if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
@@ -35,6 +37,7 @@ export default function StudentDashboard() {
   // User is guaranteed to be non-null and a student here
   const student = getStudentById(user!.id);
 
+  // If user is logged in, but student data is not found (e.g., mismatch), show a specific loading state.
   if (!student) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-light-teal">
