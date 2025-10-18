@@ -11,7 +11,7 @@ import {
 import { useSchoolStore } from "@/store/school-store";
 import { useUserStore } from "@/store/user-store";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -19,18 +19,20 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Button } from "@/components/ui/button";
+import { useHydration } from "@/hooks/use-hydration";
 
 
 export default function StockMarket() {
   const { user } = useUserStore();
   const { stocks, updateStockPrices, getStudentById } = useSchoolStore();
   const router = useRouter();
+  const hasHydrated = useHydration();
 
   useEffect(() => {
-    if (!user) {
+    if (hasHydrated && !user) {
       router.push("/");
     }
-  }, [user, router]);
+  }, [user, hasHydrated, router]);
   
   // Simulate stock price updates every 5 seconds
   useEffect(() => {
@@ -40,7 +42,7 @@ export default function StockMarket() {
     return () => clearInterval(interval);
   }, [updateStockPrices]);
 
-  if (!user) {
+  if (!hasHydrated || !user) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
 

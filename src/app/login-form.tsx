@@ -40,7 +40,7 @@ export function LoginForm({
   const [password, setPassword] = useState("");
   const router = useRouter();
   const { login } = useUserStore();
-  const { getStudentByName, addStudent } = useSchoolStore();
+  const { getStudentByName, addStudent, students } = useSchoolStore();
   const { toast } = useToast();
 
   const handleLogin = () => {
@@ -53,6 +53,12 @@ export function LoginForm({
       let student = getStudentByName(studentName);
 
       if (!student) {
+         const studentInMockData = students.find(s => s.name.toLowerCase() === studentName.toLowerCase());
+         if (studentInMockData) {
+            toast({ title: "Login Failed", description: `Student ${studentName} exists but is not in the selected class.`, variant: "destructive" });
+            return;
+         }
+
          toast({ title: "New Profile Created", description: `Welcome, ${studentName}! A new profile has been created for you.` });
           const newStudent: Student = {
             id: `student-${Date.now()}`,

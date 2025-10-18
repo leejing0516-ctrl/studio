@@ -16,6 +16,7 @@ import { Gem, Ticket, ToyBrick } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { useHydration } from "@/hooks/use-hydration";
 
 const rewardIcons = [
     <Ticket className="w-8 h-8 text-accent" />,
@@ -28,14 +29,15 @@ export default function RewardStore() {
   const { rewards, redeemReward, getStudentById } = useSchoolStore();
   const { toast } = useToast();
   const router = useRouter();
+  const hasHydrated = useHydration();
 
   useEffect(() => {
-    if (!user) {
+    if (hasHydrated && !user) {
       router.push("/");
     }
-  }, [user, router]);
+  }, [user, hasHydrated, router]);
   
-  if (!user) {
+  if (!hasHydrated || !user) {
     return <div className="flex min-h-screen items-center justify-center bg-light-teal">Loading...</div>;
   }
 
