@@ -27,22 +27,22 @@ const rewardIcons = [
 ];
 
 export default function RewardStore() {
-  const { user: sessionUser, isLoading: isSessionLoading } = useSimpleUser();
+  const { user: sessionUser, isLoading: isSessionLoading } = useSimpleUser('student');
   const { toast } = useToast();
   const router = useRouter();
   const firestore = useFirestore();
+
+  useEffect(() => {
+    if (!isSessionLoading && !sessionUser) {
+      router.push("/");
+    }
+  }, [sessionUser, isSessionLoading, router]);
 
   const rewardsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'rewards') : null, [firestore]);
   const { data: rewards, isLoading: rewardsLoading } = useCollection<Reward>(rewardsQuery);
 
   const studentRef = useMemoFirebase(() => (sessionUser && firestore) ? doc(firestore, 'students', sessionUser.id) : null, [firestore, sessionUser]);
   const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
-
-  useEffect(() => {
-    if (!isSessionLoading && (!sessionUser || sessionUser.type !== 'student')) {
-      router.push("/");
-    }
-  }, [sessionUser, isSessionLoading, router]);
   
   const handleRedeem = async (rewardId: string) => {
     if (!sessionUser || !student || !firestore) return;
@@ -66,13 +66,12 @@ export default function RewardStore() {
   
   const isLoading = isSessionLoading || studentLoading || rewardsLoading;
 
-  if (isLoading || !sessionUser) {
+  if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-background">載入中...</div>;
   }
   
-  if (!student) {
-    // This can happen briefly while student data is loading after session is confirmed
-     return <div className="flex min-h-screen items-center justify-center bg-background">正在獲取學生資料...</div>;
+  if (!sessionUser || !student) {
+     return <div className="flex min-h-screen items-center justify-center bg-background">正在重導向...</div>;
   }
   
   const studentPoints = student.points;

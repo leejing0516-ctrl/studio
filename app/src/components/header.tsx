@@ -8,14 +8,16 @@ import { useSimpleUser } from "@/hooks/use-simple-user";
 
 const Header = () => {
   const router = useRouter();
-  const { user } = useSimpleUser();
+  const { user } = useSimpleUser(); // Safely get user info on the client
 
   const handleLogout = () => {
+    // Clear session storage and redirect to home
     sessionStorage.clear();
     router.push("/");
   };
   
   const handleNavigateHome = () => {
+    // Navigate based on user type, or to login page if no user
     if (user) {
         if (user.type === 'student') {
             router.push('/student-dashboard');

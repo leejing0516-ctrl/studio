@@ -11,8 +11,7 @@ import {
     increment,
     runTransaction,
     writeBatch,
-    Firestore,
-    getFirestore
+    Firestore
 } from "firebase/firestore";
 import type { Student, Stock, Reward } from "@/lib/mock-data";
 
@@ -26,10 +25,7 @@ export const addStudent = async (firestore: Firestore, studentData: Omit<Student
     }
 };
 
-export const getStudentByName = async (name: string): Promise<Student | null> => {
-    // This is one of the few places it's okay to get a temporary instance,
-    // as it's used pre-login before the main app's firestore is available.
-    const firestore = getFirestore(); 
+export const getStudentByName = async (firestore: Firestore, name: string): Promise<Student | null> => {
     const q = query(collection(firestore, "students"), where("name", "==", name));
     try {
         const querySnapshot = await getDocs(q);
@@ -81,7 +77,7 @@ export const redeemReward = async (firestore: Firestore, studentId: string, rewa
     });
 };
 
-export const addReward = async (firestore: Firestore, rewardData: Omit<Reward, 'id' | 'history'>) => {
+export const addReward = async (firestore: Firestore, rewardData: Omit<Reward, 'id'>) => {
     try {
         await addDoc(collection(firestore, "rewards"), rewardData);
     } catch (e) {

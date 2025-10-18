@@ -26,9 +26,15 @@ import { updateStockPrices } from "@/lib/firestore-actions";
 import { useSimpleUser } from "@/hooks/use-simple-user";
 
 export default function StockMarket() {
-  const { user: sessionUser, isLoading: isSessionLoading } = useSimpleUser();
+  const { user: sessionUser, isLoading: isSessionLoading } = useSimpleUser('student');
   const router = useRouter();
   const firestore = useFirestore();
+
+  useEffect(() => {
+    if (!isSessionLoading && (!sessionUser)) {
+      router.push("/");
+    }
+  }, [sessionUser, isSessionLoading, router]);
 
   const stocksQuery = useMemoFirebase(() => firestore ? collection(firestore, 'stocks') : null, [firestore]);
   const { data: stocks, isLoading: stocksLoading } = useCollection<Stock>(stocksQuery);
@@ -36,11 +42,6 @@ export default function StockMarket() {
   const studentRef = useMemoFirebase(() => (sessionUser && firestore) ? doc(firestore, 'students', sessionUser.id) : null, [firestore, sessionUser]);
   const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
 
-  useEffect(() => {
-    if (!isSessionLoading && (!sessionUser || sessionUser.type !== 'student')) {
-      router.push("/");
-    }
-  }, [sessionUser, isSessionLoading, router]);
   
   useEffect(() => {
     if (!firestore) return;
@@ -52,12 +53,12 @@ export default function StockMarket() {
 
   const isLoading = isSessionLoading || studentLoading || stocksLoading;
 
-  if (isLoading || !sessionUser) {
+  if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-background">載入中...</div>;
   }
 
-  if (!student) {
-    return <div className="flex min-h-screen items-center justify-center bg-background">正在獲取學生資料...</div>;
+  if (!sessionUser || !student) {
+    return <div className="flex min-h-screen items-center justify-center bg-background">正在重導向...</div>;
   }
 
   const portfolioValue = (student.assets || []).reduce((total, asset) => {

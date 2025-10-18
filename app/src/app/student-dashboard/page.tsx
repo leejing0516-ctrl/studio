@@ -18,9 +18,16 @@ import type { Student, Stock } from "@/lib/mock-data";
 import { useSimpleUser } from "@/hooks/use-simple-user";
 
 export default function StudentDashboard() {
-  const { user: sessionUser, isLoading: isSessionLoading } = useSimpleUser();
+  const { user: sessionUser, isLoading: isSessionLoading } = useSimpleUser('student');
   const router = useRouter();
   const firestore = useFirestore();
+
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!isSessionLoading && !sessionUser) {
+      router.push("/");
+    }
+  }, [sessionUser, isSessionLoading, router]);
 
   const studentRef = useMemoFirebase(() => (sessionUser && firestore) ? doc(firestore, 'students', sessionUser.id) : null, [firestore, sessionUser]);
   const { data: student, isLoading: studentLoading } = useDoc<Student>(studentRef);
@@ -28,11 +35,6 @@ export default function StudentDashboard() {
   const stocksQuery = useMemoFirebase(() => firestore ? collection(firestore, 'stocks') : null, [firestore]);
   const { data: stocks, isLoading: stocksLoading } = useCollection<Stock>(stocksQuery);
 
-  useEffect(() => {
-    if (!isSessionLoading && (!sessionUser || sessionUser.type !== "student")) {
-      router.push("/");
-    }
-  }, [sessionUser, isSessionLoading, router]);
 
   const portfolioValue = useMemo(() => {
     if (!student || !stocks) return 0;
@@ -44,12 +46,16 @@ export default function StudentDashboard() {
 
   const isLoading = isSessionLoading || studentLoading || stocksLoading;
 
-  if (isLoading || !sessionUser) {
+  // This is the crucial part. We show a loading screen until the `useSimpleUser` hook
+  // has confirmed the user's status and the data from firestore is loading.
+  if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-background">載入中...</div>;
   }
   
-  if (!student) {
-     return <div className="flex min-h-screen items-center justify-center bg-background">正在獲取學生資料...</div>;
+  // After loading, if there's still no session user or student data, it means they shouldn't be here.
+  // The useEffect above will handle the redirect, but this prevents rendering the page content.
+  if (!sessionUser || !student) {
+     return <div className="flex min-h-screen items-center justify-center bg-background">正在重導向...</div>;
   }
   
   const studentPoints = student.points || 0;

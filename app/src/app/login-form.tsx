@@ -26,6 +26,7 @@ import { User, Building } from "lucide-react";
 import { useAuth, useUser } from "@/firebase";
 import { initiateAnonymousSignIn } from "@/firebase/auth";
 import { getStudentByName } from "@/lib/firestore-actions";
+import { getFirestore } from "firebase/firestore";
 
 export function LoginForm({
   classes,
@@ -45,6 +46,7 @@ export function LoginForm({
   const { toast } = useToast();
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
+  const firestore = getFirestore();
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -63,7 +65,7 @@ export function LoginForm({
       return;
     }
 
-    const student = await getStudentByName(studentName);
+    const student = await getStudentByName(firestore, studentName);
 
     if (student && student.classId === selectedClass) {
         sessionStorage.setItem('userType', 'student');
