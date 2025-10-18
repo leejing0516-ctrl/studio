@@ -14,7 +14,8 @@ interface UserState {
   logout: () => void;
 }
 
-// Dummy storage object for server-side rendering
+// This is a dummy storage object that does nothing.
+// It's used on the server-side where sessionStorage is not available.
 const dummyStorage = {
   getItem: () => null,
   setItem: () => {},
@@ -30,7 +31,9 @@ export const useUserStore = create<UserState>()(
     }),
     {
       name: 'user-storage', // name of the item in the storage (must be unique)
-      // Only use sessionStorage on the client side
+      // Conditionally choose storage based on the environment.
+      // On the server, use a dummy storage that does nothing.
+      // On the client, use sessionStorage.
       storage: createJSONStorage(() => 
         typeof window !== 'undefined' ? sessionStorage : dummyStorage
       ),
