@@ -19,7 +19,7 @@ export type SimpleUser = {
  */
 export function useSimpleUser(expectedType?: UserType) {
     const [user, setUser] = useState<SimpleUser | null>(null);
-    // isLoading is crucial. It must start as true.
+    // isLoading is crucial. It must start as true to ensure server and client initial renders match.
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
