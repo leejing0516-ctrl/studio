@@ -1,4 +1,3 @@
-
 "use client";
 import Header from "@/components/header";
 import {
@@ -11,7 +10,7 @@ import {
 import { useSchoolStore } from "@/store/school-store";
 import { useUserStore } from "@/store/user-store";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import {
   LineChart,
   Line,
