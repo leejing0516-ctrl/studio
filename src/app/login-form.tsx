@@ -24,7 +24,6 @@ import { useUserStore } from "@/store/user-store";
 import { useSchoolStore, type Class, type Teacher, type Student } from "@/store/school-store";
 import Logo from "@/components/logo";
 import { Input } from "@/components/ui/input";
-import { mockStudentData } from "@/lib/mock-data";
 
 export function LoginForm({
   classes,
@@ -47,15 +46,16 @@ export function LoginForm({
       let student = getStudentByName(studentName);
 
       if (!student) {
-        student = {
+        // Create a new student if not found and add it to the store
+        const newStudent: Student = {
           id: `student-${Date.now()}`,
           name: studentName,
           classId: selectedClass,
-          points: 1000, // Default points for new student
+          points: 1000, // Starting points for new students
           assets: [],
-          type: 'student'
-        } as Omit<Student, 'type'>;
-        addStudent(student as Student); // Cast needed here, store manages the type
+        };
+        addStudent(newStudent);
+        student = newStudent;
       }
       
       const userToLogin = {
@@ -178,4 +178,3 @@ export function LoginForm({
     </Card>
   );
 }
-

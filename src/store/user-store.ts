@@ -14,6 +14,13 @@ interface UserState {
   logout: () => void;
 }
 
+// Dummy storage object for server-side rendering
+const dummyStorage = {
+  getItem: () => null,
+  setItem: () => {},
+  removeItem: () => {},
+};
+
 export const useUserStore = create<UserState>()(
   persist(
     (set) => ({
@@ -23,7 +30,10 @@ export const useUserStore = create<UserState>()(
     }),
     {
       name: 'user-storage', // name of the item in the storage (must be unique)
-      storage: createJSONStorage(() => sessionStorage), // (optional) by default, 'localStorage' is used
+      // Only use sessionStorage on the client side
+      storage: createJSONStorage(() => 
+        typeof window !== 'undefined' ? sessionStorage : dummyStorage
+      ),
     }
   )
 );
