@@ -1,40 +1,27 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { LoginForm } from "./login-form";
-import { useCollection, useFirestore, useMemoFirebase, useUser, useAuth } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection } from "firebase/firestore";
 import { type Class, type Teacher } from "@/lib/mock-data";
 import { useToast } from "@/hooks/use-toast";
-import { initiateAnonymousSignIn } from "@/firebase/auth";
 import { getStudentByName } from "@/lib/firestore-actions";
 
 export default function Home() {
   const firestore = useFirestore();
-  const auth = useAuth();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
 
-  const [hasInitiatedLogin, setHasInitiatedLogin] = useState(false);
-
-  // Defer Firestore queries until Firebase Auth is ready and has attempted login.
-  const shouldFetchData = !isUserLoading && hasInitiatedLogin && !!user;
+  // Defer Firestore queries until Firebase Auth is ready.
+  const shouldFetchData = !isUserLoading;
 
   const classesQuery = useMemoFirebase(() => shouldFetchData && firestore ? collection(firestore, 'classes') : null, [firestore, shouldFetchData]);
   const { data: classes, isLoading: classesLoading } = useCollection<Class>(classesQuery);
 
   const teachersQuery = useMemoFirebase(() => shouldFetchData && firestore ? collection(firestore, 'teachers') : null, [firestore, shouldFetchData]);
   const { data: teachers, isLoading: teachersLoading } = useCollection<Teacher>(teachersQuery);
-
-  useEffect(() => {
-    if (!isUserLoading && !user && !hasInitiatedLogin) {
-      initiateAnonymousSignIn(auth);
-      setHasInitiatedLogin(true);
-    } else if (!isUserLoading && user) {
-      setHasInitiatedLogin(true);
-    }
-  }, [auth, user, isUserLoading, hasInitiatedLogin]);
 
   const handleStudentLogin = async (loginDetails: { classId: string; name: string; pass: string }) => {
     if (!firestore) {
@@ -84,7 +71,7 @@ export default function Home() {
     }
   };
 
-  const isSystemReady = shouldFetchData && !classesLoading && !teachersLoading && !!classes && !!teachers;
+  const isLoading = isUserLoading || classesLoading || teachersLoading;
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-background">
@@ -93,16 +80,16 @@ export default function Home() {
           <p className="text-lg text-foreground/80 mt-2">您通往金融素養的門戶，在這裡學習金錢知識既有回報又充滿樂趣！</p>
       </div>
       
-      {isSystemReady ? (
+      {isLoading ? (
+         <div className="text-primary">載入教室資料中...</div>
+      ) : (
         <LoginForm 
-            classes={classes} 
-            teachers={teachers} 
+            classes={classes || []} 
+            teachers={teachers || []} 
             onStudentLogin={handleStudentLogin}
             onTeacherLogin={handleTeacherLogin}
             isAuthLoading={isUserLoading}
         />
-      ) : (
-        <div className="text-primary">載入教室資料中...</div>
       )}
 
       <footer className="mt-12 text-center text-sm text-foreground/60">
