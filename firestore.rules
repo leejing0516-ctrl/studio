@@ -2,122 +2,145 @@
  * @fileoverview Firestore Security Rules for the FinLit Classroom application.
  *
  * Core Philosophy:
- * This ruleset enforces a flat data model, where each data entity resides in its own top-level collection.
- * Authorization is handled without cloud reads, ensuring optimal performance and cost efficiency.
- * Since no cloud reads are performed, there are no dependencies.
+ * This ruleset enforces a strict user-ownership model for student data,
+ * ensuring that only the authenticated student (or authorized teachers - not implemented)
+ * can access their profile, transactions, and portfolios. Public read access is granted
+ * to the `rewards` and `stocks` collections.
  *
  * Data Structure:
- * - /students/{studentId}: Stores student data, with studentId as the unique identifier.
- * - /rewards/{rewardId}: Stores reward item data, with rewardId as the unique identifier.
- * - /transactions/{transactionId}: Stores transaction data, with transactionId as the unique identifier.
- * - /stocks/{stockId}: Stores stock data, with stockId as the unique identifier.
- * - /portfolios/{portfolioId}: Stores portfolio data, with portfolioId as the unique identifier.
- * - /interestRates/{interestRateId}: Stores interest rate data, with interestRateId as the unique identifier.
+ * - /students/{studentId}: Student profile data, owned by the student.
+ * - /students/{studentId}/transactions/{transactionId}: Transaction history for each student, owned by the student.
+ * - /students/{studentId}/portfolios/{portfolioId}: Stock portfolios for each student, owned by the student.
+ * - /rewards/{rewardId}: Reward items available in the store (publicly readable).
+ * - /stocks/{stockId}: Stock information for the virtual market (publicly readable).
  *
  * Key Security Decisions:
- * - No cloud reads are performed for authorization, simplifying the rules and improving performance.
- * - Write operations (create, update, delete) are generally disallowed, as the application logic will reside outside of the client.
- * - All collections are non-user specific.
+ * - Students can only access their own data (profile, transactions, portfolios).
+ * - Listing of students is not allowed.
+ * - Rewards and Stocks are publicly readable. Writes for these collections are denied for all.
+ * - Data consistency between the path and the document's internal fields is enforced on create and update.
  *
  * Denormalization for Authorization:
- * N/A - No denormalization is needed because there are no dependencies
+ *  - Path-based ownership is used for student data. The `studentId` in the path is used to determine access to a student's profile, transactions, and portfolios.
+ *  - This approach avoids the need for `get()` calls to parent documents to check ownership.
  *
  * Structural Segregation:
- * N/A - No structural segregation is needed because there are no dependencies
+ *  - Private student data is stored under the `/students/{studentId}` path.
+ *  - Public reward and stock data are stored in the `/rewards` and `/stocks` collections.
  */
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Enforces read-only access to student data.
+     * @description Defines the isSignedIn function for authentication checks
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the request is made by the owner of the document.
+     */
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the request is made by the existing owner of the document.
+     */
+    function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Security rules for student profiles.
      * @path /students/{studentId}
-     * @allow (get) Any authenticated user can read student data.
-     * @deny (create) No one can create student data.
-     * @principle Read-only access to student information, which must be created using Cloud Functions or Admin SDK.
+     * @allow (create) - Authenticated user creates their own profile with matching studentId.
+     *   auth.uid: "user123", request.resource.data.id: "user123"
+     * @allow (get, update, delete) - Authenticated user accesses their own profile.
+     *   auth.uid: "user123", resource.data.id: "user123"
+     * @deny (create) - Authenticated user attempts to create a profile with a mismatched studentId.
+     *   auth.uid: "user123", request.resource.data.id: "otherUser"
+     * @deny (get, update, delete) - Authenticated user attempts to access another user's profile.
+     *   auth.uid: "user123", resource.data.id: "otherUser"
+     * @deny (list) - Listing all students is prohibited.
+     * @principle Enforces document ownership for writes, restricts access to a user's own data tree.
      */
     match /students/{studentId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get: if isOwner(studentId);
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(studentId) && request.resource.data.id == studentId;
+      allow update: if isExistingOwner(studentId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(studentId);
     }
 
     /**
-     * @description Enforces read-only access to reward data.
+     * @description Security rules for student transactions.
+     * @path /students/{studentId}/transactions/{transactionId}
+     * @allow (create) - Authenticated user creates a transaction under their student profile.
+     *   auth.uid: "user123", path: "/students/user123/transactions/tx1"
+     * @allow (get, update, delete) - Authenticated user accesses a transaction under their student profile.
+     *   auth.uid: "user123", path: "/students/user123/transactions/tx1"
+     * @deny (create) - Authenticated user attempts to create a transaction under another user's profile.
+     *   auth.uid: "user123", path: "/students/otherUser/transactions/tx1"
+     * @deny (get, update, delete) - Authenticated user attempts to access a transaction under another user's profile.
+     *   auth.uid: "user123", path: "/students/otherUser/transactions/tx1"
+     * @deny (list) - Listing transactions for another user is prohibited.
+     * @principle Enforces document ownership for writes, restricts access to a user's own data tree.
+     */
+    match /students/{studentId}/transactions/{transactionId} {
+      allow get: if isOwner(studentId);
+      allow list: if isOwner(studentId);
+      allow create: if isSignedIn() && isOwner(studentId) && request.resource.data.studentId == studentId;
+      allow update: if isExistingOwner(studentId) && request.resource.data.studentId == resource.data.studentId;
+      allow delete: if isExistingOwner(studentId);
+    }
+
+    /**
+     * @description Security rules for student portfolios.
+     * @path /students/{studentId}/portfolios/{portfolioId}
+     * @allow (create) - Authenticated user creates a portfolio under their student profile.
+     *   auth.uid: "user123", path: "/students/user123/portfolios/portfolio1"
+     * @allow (get, update, delete) - Authenticated user accesses a portfolio under their student profile.
+     *   auth.uid: "user123", path: "/students/user123/portfolios/portfolio1"
+     * @deny (create) - Authenticated user attempts to create a portfolio under another user's profile.
+     *   auth.uid: "user123", path: "/students/otherUser/portfolios/portfolio1"
+     * @deny (get, update, delete) - Authenticated user attempts to access a portfolio under another user's profile.
+     *   auth.uid: "user123", path: "/students/otherUser/portfolios/portfolio1"
+     * @deny (list) - Listing portfolios for another user is prohibited.
+     * @principle Enforces document ownership for writes, restricts access to a user's own data tree.
+     */
+    match /students/{studentId}/portfolios/{portfolioId} {
+      allow get: if isOwner(studentId);
+      allow list: if isOwner(studentId);
+      allow create: if isSignedIn() && isOwner(studentId) && request.resource.data.studentId == studentId;
+      allow update: if isExistingOwner(studentId) && request.resource.data.studentId == resource.data.studentId;
+      allow delete: if isExistingOwner(studentId);
+    }
+
+    /**
+     * @description Security rules for reward items.
      * @path /rewards/{rewardId}
-     * @allow (get) Any authenticated user can read reward data.
-     * @deny (create) No one can create reward data.
-     * @principle Read-only access to reward information, which must be created using Cloud Functions or Admin SDK.
+     * @allow (get, list) - All users can read reward items.
+     * @deny (create, update, delete) - No users can create, update or delete reward items.
+     * @principle Public read access with restricted writes.
      */
     match /rewards/{rewardId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Enforces read-only access to transaction data.
-     * @path /transactions/{transactionId}
-     * @allow (get) Any authenticated user can read transaction data.
-     * @deny (create) No one can create transaction data.
-     * @principle Read-only access to transaction information, which must be created using Cloud Functions or Admin SDK.
-     */
-    match /transactions/{transactionId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Enforces read-only access to stock data.
+     * @description Security rules for stock information.
      * @path /stocks/{stockId}
-     * @allow (get) Any authenticated user can read stock data.
-     * @deny (create) No one can create stock data.
-     * @principle Read-only access to stock information, which must be created using Cloud Functions or Admin SDK.
+     * @allow (get, list) - All users can read stock information.
+     * @deny (create, update, delete) - No users can create, update, or delete stock information.
+     * @principle Public read access with restricted writes.
      */
     match /stocks/{stockId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Enforces read-only access to portfolio data.
-     * @path /portfolios/{portfolioId}
-     * @allow (get) Any authenticated user can read portfolio data.
-     * @deny (create) No one can create portfolio data.
-     * @principle Read-only access to portfolio information, which must be created using Cloud Functions or Admin SDK.
-     */
-    match /portfolios/{portfolioId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Enforces read-only access to interest rate data.
-     * @path /interestRates/{interestRateId}
-     * @allow (get) Any authenticated user can read interest rate data.
-     * @deny (create) No one can create interest rate data.
-     * @principle Read-only access to interest rate information, which must be created using Cloud Functions or Admin SDK.
-     */
-    match /interestRates/{interestRateId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
   }
 }

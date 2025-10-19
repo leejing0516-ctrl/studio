@@ -1,0 +1,273 @@
+{
+  "entities": {
+    "Student": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Student",
+      "type": "object",
+      "description": "Represents a student in the FinLit Classroom application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Student entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The student's full name."
+        },
+        "email": {
+          "type": "string",
+          "description": "The student's email address.",
+          "format": "email"
+        },
+        "points": {
+          "type": "number",
+          "description": "The number of points the student has accumulated."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "email",
+        "points"
+      ]
+    },
+    "Reward": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Reward",
+      "type": "object",
+      "description": "Represents a reward item available in the reward store.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Reward entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the reward item."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the reward item."
+        },
+        "cost": {
+          "type": "number",
+          "description": "The cost of the reward item in points."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL of the image for this reward item.",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "cost"
+      ]
+    },
+    "Transaction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Transaction",
+      "type": "object",
+      "description": "Represents a transaction of points, either awarding or redeeming.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Transaction entity."
+        },
+        "studentId": {
+          "type": "string",
+          "description": "Reference to Student. (Relationship: Student 1:N Transaction)"
+        },
+        "rewardId": {
+          "type": "string",
+          "description": "Reference to Reward. (Relationship: Reward 1:N Transaction). Null if not a reward redemption."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The amount of points involved in the transaction. Positive for awarding, negative for redeeming."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The date and time of the transaction.",
+          "format": "date-time"
+        },
+        "type": {
+          "type": "string",
+          "description": "The kind of transaction performed, such as reward, interest, bonus or trade."
+        }
+      },
+      "required": [
+        "id",
+        "studentId",
+        "amount",
+        "timestamp"
+      ]
+    },
+    "Stock": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Stock",
+      "type": "object",
+      "description": "Represents a stock in the virtual stock market.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Stock entity."
+        },
+        "ticker": {
+          "type": "string",
+          "description": "The stock ticker symbol."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the company."
+        },
+        "currentPrice": {
+          "type": "number",
+          "description": "The current price of the stock."
+        }
+      },
+      "required": [
+        "id",
+        "ticker",
+        "name",
+        "currentPrice"
+      ]
+    },
+    "Portfolio": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Portfolio",
+      "type": "object",
+      "description": "Represents a student's stock portfolio.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Portfolio entity."
+        },
+        "studentId": {
+          "type": "string",
+          "description": "Reference to Student. (Relationship: Student 1:N Portfolio)"
+        },
+        "stockId": {
+          "type": "string",
+          "description": "Reference to Stock. (Relationship: Stock 1:N Portfolio)"
+        },
+        "quantity": {
+          "type": "number",
+          "description": "The number of shares of the stock held in the portfolio."
+        },
+        "averagePrice": {
+          "type": "number",
+          "description": "The average price paid for the shares in the portfolio."
+        }
+      },
+      "required": [
+        "id",
+        "studentId",
+        "stockId",
+        "quantity",
+        "averagePrice"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/students/{studentId}",
+        "definition": {
+          "entityName": "Student",
+          "schema": {
+            "$ref": "#/backend/entities/Student"
+          },
+          "description": "Stores student profiles. Access is restricted to the student themselves or authorized teachers.",
+          "params": [
+            {
+              "name": "studentId",
+              "description": "The unique identifier for the student."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/students/{studentId}/transactions/{transactionId}",
+        "definition": {
+          "entityName": "Transaction",
+          "schema": {
+            "$ref": "#/backend/entities/Transaction"
+          },
+          "description": "Stores transaction history for each student. Access is restricted to the student or authorized teachers.",
+          "params": [
+            {
+              "name": "studentId",
+              "description": "The unique identifier for the student."
+            },
+            {
+              "name": "transactionId",
+              "description": "The unique identifier for the transaction."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/students/{studentId}/portfolios/{portfolioId}",
+        "definition": {
+          "entityName": "Portfolio",
+          "schema": {
+            "$ref": "#/backend/entities/Portfolio"
+          },
+          "description": "Stores the student's stock portfolios. Access is restricted to the student or authorized teachers.",
+          "params": [
+            {
+              "name": "studentId",
+              "description": "The unique identifier for the student."
+            },
+            {
+              "name": "portfolioId",
+              "description": "The unique identifier for the portfolio."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/rewards/{rewardId}",
+        "definition": {
+          "entityName": "Reward",
+          "schema": {
+            "$ref": "#/backend/entities/Reward"
+          },
+          "description": "Stores reward items available in the reward store. Accessible for browsing by all users.",
+          "params": [
+            {
+              "name": "rewardId",
+              "description": "The unique identifier for the reward."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/stocks/{stockId}",
+        "definition": {
+          "entityName": "Stock",
+          "schema": {
+            "$ref": "#/backend/entities/Stock"
+          },
+          "description": "Stores stock information for the virtual stock market. Accessible for browsing by all users.",
+          "params": [
+            {
+              "name": "stockId",
+              "description": "The unique identifier for the stock."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to support a classroom reward and financial literacy application, \"FinLit Classroom,\" emphasizing secure and scalable data management. It leverages path-based ownership for student-related data and denormalization for authorization independence. The structure separates data with different security postures into distinct collections.\n\nThe `/students/{studentId}` collection stores student profiles, with the `studentId` used for path-based ownership. Each student also has subcollections for their transactions (`/students/{studentId}/transactions`) and portfolios (`/students/{studentId}/portfolios`). This direct hierarchical ownership simplifies security rules and enables efficient data retrieval.\n\nThe `/rewards` collection holds reward items available in the store. This collection is separate from student data, allowing for different security rules. The `/stocks` collection is similar, storing stock information for the virtual market.\n\n**Authorization Independence:**\nAuthorization independence is achieved by using path-based ownership for student-related data. Access to a student's profile, transactions, and portfolios is determined by the `studentId` in the path, eliminating the need for `get()` calls to parent documents. For instance, rules can directly check if `request.auth.uid == studentId` to grant access to `/students/{studentId}`.\n\n**QAPs Support:**\nThe structure supports the required QAPs through structural segregation. Private student data is stored under the `/students/{studentId}` path, ensuring that list operations on `/students` require appropriate authentication and authorization. Public reward and stock data are stored in the `/rewards` and `/stocks` collections, respectively, allowing for more open list operations if needed.\n\nSpecifically:\n\n*   Rules can be written to only allow listing of documents in `/students` by authenticated teachers with suitable roles (if teacher roles are implemented).\n*   Rules can be written that prevent unauthorized access to list or read other students' portfolios and transactions by only matching to the correct student ID."
+  }
+}
