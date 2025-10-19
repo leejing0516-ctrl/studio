@@ -3,7 +3,6 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
-import { FirebaseClientProvider } from "@/firebase/client-provider";
 
 const fontSans = Inter({
   subsets: ["latin"],
@@ -28,9 +27,7 @@ export default function RootLayout({
           fontSans.variable
         )}
       >
-        <FirebaseClientProvider>
-          {children}
-        </FirebaseClientProvider>
+        {children}
         <Toaster />
       </body>
     </html>

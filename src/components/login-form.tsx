@@ -1,5 +1,3 @@
-'use client';
-
 import { ArrowRight, Home, User } from "lucide-react";
 import Image from "next/image";
 import { LoginCard } from "@/components/login-card";
@@ -61,7 +59,7 @@ export function LoginForm() {
               <Select>
                 <SelectTrigger id="teacher-account">
                   <SelectValue placeholder="請選擇您的帳號" />
-                </SelectTrigger>
+                </Trigger>
                 <SelectContent>
                   <SelectItem value="teacher1">王老師</SelectItem>
                   <SelectItem value="teacher2">李老師</SelectItem>
