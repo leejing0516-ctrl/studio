@@ -2,14 +2,14 @@ import Image from "next/image";
 
 export function Logo() {
   return (
-    <div className="relative w-40 h-32">
+    <div className="flex items-center justify-center h-24 w-48 rounded-lg bg-white p-2">
        <Image
-          src="https://picsum.photos/seed/banklogo/200/150"
+          src="https://picsum.photos/seed/banklogo/200/100"
           alt="Virtual Bank Logo"
-          width={200}
-          height={150}
+          width={180}
+          height={90}
           className="object-contain"
-          data-ai-hint="virtual bank kids"
+          data-ai-hint="modern bank logo"
         />
     </div>
   );
