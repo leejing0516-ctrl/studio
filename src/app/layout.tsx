@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { cn } from "@/lib/utils";
-import { FirebaseClientProvider } from "@/firebase/client-provider";
 
 export const metadata: Metadata = {
   title: "FinLit Classroom",
@@ -14,10 +12,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={cn("min-h-screen bg-background font-sans antialiased")}>
-        <FirebaseClientProvider>{children}</FirebaseClientProvider>
-      </body>
+    <html lang="en">
+      <body>{children}</body>
     </html>
   );
 }
