@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>你是哪種工作者？｜貝恩職場人格測驗</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; background: #fff; color: #111; min-height: 100vh; }
+
+  #intro { min-height: 100vh; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 3rem 2rem; text-align: center; }
+  #intro.active { display: flex; }
+  #intro h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1.25rem; }
+  #intro p { font-size: 1.05rem; color: #555; max-width: 500px; line-height: 1.7; margin-bottom: 1rem; }
+  #intro .source { font-size: 0.82rem; color: #aaa; margin-bottom: 2.5rem; }
+  .btn-start { background: #111; color: #fff; border: none; border-radius: 2px; padding: 1rem 3rem; font-size: 1rem; font-weight: 600; cursor: pointer; letter-spacing: 0.04em; }
+  .btn-start:hover { background: #333; }
+
+  #quiz { min-height: 100vh; display: none; flex-direction: column; }
+  #quiz.active { display: flex; }
+  .quiz-header { padding: 1.5rem 3rem 1rem; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; }
+  .quiz-logo { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.12em; color: #bbb; text-transform: uppercase; }
+  .quiz-counter { font-size: 0.85rem; color: #aaa; }
+  .progress-wrap { height: 2px; background: #eee; }
+  .progress-fill { height: 2px; background: #111; transition: width 0.4s ease; }
+
+  .quiz-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4rem 3rem; max-width: 900px; margin: 0 auto; width: 100%; }
+  .quiz-instruction { font-size: 0.88rem; color: #999; font-style: italic; text-align: center; line-height: 1.6; margin-bottom: 3.5rem; }
+
+  .slider-row { width: 100%; }
+  .slider-track { position: relative; width: 100%; height: 52px; display: flex; align-items: center; margin-bottom: 2rem; }
+  .track-bg { position: absolute; left: 0; right: 0; height: 52px; background: #ddd; border-radius: 26px; }
+  .track-fill { position: absolute; left: 0; height: 52px; background: #111; border-radius: 26px; pointer-events: none; }
+  .dots-row { position: absolute; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; padding: 0 26px; }
+  .dot { width: 36px; height: 36px; border-radius: 50%; background: #fff; cursor: pointer; border: none; flex-shrink: 0; transition: transform 0.12s; }
+  .dot:hover { transform: scale(1.18); }
+  .dot.selected { box-shadow: 0 0 0 3px #111; transform: scale(1.2); }
+  .labels-row { display: flex; justify-content: space-between; align-items: flex-start; }
+  .label-left, .label-right { font-size: 1.05rem; line-height: 1.5; max-width: 40%; }
+  .label-right { text-align: right; }
+
+  .quiz-nav { padding: 1.5rem 3rem 2rem; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #eee; }
+  .nav-btn { background: none; border: 1.5px solid #ccc; border-radius: 2px; padding: 0.65rem 1.75rem; font-size: 0.9rem; cursor: pointer; color: #444; }
+  .nav-btn:hover:not(:disabled) { border-color: #111; color: #111; }
+  .nav-btn:disabled { opacity: 0.3; cursor: default; }
+  .nav-btn.primary { background: #111; color: #fff; border-color: #111; }
+  .nav-btn.primary:hover:not(:disabled) { background: #333; }
+  .nav-btn.primary:disabled { background: #ccc; border-color: #ccc; }
+
+  #result { display: none; }
+  #result.active { display: block; }
+  .result-hero { padding: 4rem 3rem; display: flex; align-items: flex-start; gap: 3rem; max-width: 900px; margin: 0 auto; }
+  .result-icon { width: 140px; height: 140px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; flex-shrink: 0; }
+  .result-text h2 { font-size: 2.2rem; font-weight: 700; margin-bottom: 0.35rem; }
+  .result-en { font-size: 0.85rem; color: #999; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.9rem; }
+  .fit-score { font-size: 0.95rem; font-weight: 700; margin-bottom: 1.1rem; }
+  .result-desc { font-size: 1rem; line-height: 1.8; color: #333; max-width: 520px; }
+
+  hr.divider { border: none; border-top: 1px solid #eee; margin: 0 3rem; }
+  .all-scores { padding: 2.5rem 3rem; max-width: 900px; margin: 0 auto; }
+  .all-scores-label { font-size: 0.82rem; color: #999; margin-bottom: 2rem; }
+  .scores-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1.25rem; }
+
+  .score-card { text-align: center; }
+  .score-card-icon { width: 100%; padding-top: 100%; position: relative; margin-bottom: 0.6rem; }
+  .score-card-icon-inner { position: absolute; inset: 0; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+  .score-card-name { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.15rem; }
+  .score-card-num { font-size: 0.9rem; color: #666; }
+
+  .warn-section { background: #fef9ec; border-top: 2px solid #f0c050; padding: 2rem 3rem; max-width: 900px; margin: 0 auto; }
+  .warn-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; color: #b08000; text-transform: uppercase; margin-bottom: 0.6rem; }
+  .warn-text { font-size: 0.95rem; line-height: 1.8; color: #555; }
+  .result-footer { padding: 2rem 3rem; max-width: 900px; margin: 0 auto; }
+  .btn-restart { background: none; border: 1.5px solid #111; border-radius: 2px; padding: 0.7rem 2rem; font-size: 0.9rem; cursor: pointer; color: #111; font-weight: 600; }
+  .btn-restart:hover { background: #111; color: #fff; }
+
+  @media (max-width: 600px) {
+    .quiz-body, .quiz-header, .quiz-nav, .result-hero, .all-scores, .warn-section, .result-footer { padding-left: 1.5rem; padding-right: 1.5rem; }
+    .result-hero { flex-direction: column; gap: 1.5rem; }
+    .scores-grid { grid-template-columns: repeat(3, 1fr); }
+    .label-left, .label-right { font-size: 0.9rem; }
+  }
+</style>
+</head>
+<body>
+
+<section id="intro" class="active">
+  <h1>你是哪種<br>工作者？</h1>
+  <p>以下 10 道題目，每題呈現兩個對立的陳述。<br>請選擇最符合你真實狀態的位置。</p>
+  <p class="source">改編自貝恩顧問公司（Bain & Company）六種職場人格研究<br>原版收錄於萬維鋼《人比AI兇》PART 4〈平庸是一種地心引力〉</p>
+  <button class="btn-start" onclick="startQuiz()">開始測驗</button>
+</section>
+
+<section id="quiz">
+  <div class="quiz-header">
+    <span class="quiz-logo">職場人格測驗</span>
+    <span class="quiz-counter" id="counter">1 / 10</span>
+  </div>
+  <div class="progress-wrap"><div class="progress-fill" id="progress" style="width:10%"></div></div>
+  <div class="quiz-body">
+    <p class="quiz-instruction">以下是兩個對立的陳述。<br>請選擇一個最符合你的位置。</p>
+    <div class="slider-row" id="slider-area"></div>
+  </div>
+  <div class="quiz-nav">
+    <button class="nav-btn" id="prev-btn" onclick="prevQ()" disabled>← 上一題</button>
+    <button class="nav-btn primary" id="next-btn" onclick="nextQ()" disabled>下一題 →</button>
+  </div>
+</section>
+
+<section id="result">
+  <div class="result-hero" id="result-hero"></div>
+  <hr class="divider">
+  <div class="all-scores">
+    <p class="all-scores-label">符合分數代表你的回答與各類型典型輪廓的吻合程度</p>
+    <div class="scores-grid" id="scores-grid"></div>
+  </div>
+  <div class="warn-section" id="warn-section"></div>
+  <div class="result-footer">
+    <button class="btn-restart" onclick="restart()">重新測驗</button>
+  </div>
+</section>
+
+<script>
+// 題目：pos=0 全左，pos=1 全右
+// scores 物件：每個類型在「左端」的得分貢獻
+// 選右端 = 1-pos，會讓左端分低的類型得高分
+const QUESTIONS = [
+  {
+    left: "工作定義了我",
+    right: "工作之外的生活定義了我",
+    // 左：S/P/A 強，右：O/G/E 強
+    weights: { O:-2, G:-1, A:1, E:-1, S:2, P:2 }
+  },
+  {
+    left: "更多錢<strong>會</strong>讓我更快樂",
+    right: "更多錢<strong>不會</strong>讓我更快樂",
+    // 左：S/O 強，右：G/P/A/E 強
+    weights: { O:1, G:-2, A:-1, E:-1, S:3, P:-1 }
+  },
+  {
+    left: "我注重<strong>未來</strong>",
+    right: "我注重<strong>當下</strong>",
+    // 左：P/S/A 強，右：O/E/G 強
+    weights: { O:-1, G:-1, A:1, E:-2, S:2, P:3 }
+  },
+  {
+    left: "我<strong>非常在意</strong>看起來是否成功",
+    right: "我<strong>不在意</strong>看起來是否成功",
+    // 左：S 極強，P 中（在意的是改變而非名聲），右：O/G/A/E
+    weights: { O:-1, G:-2, A:-1, E:-1, S:4, P:1 }
+  },
+  {
+    left: "我是一個勇於<strong>冒險</strong>的人",
+    right: "我是一個<strong>規避風險</strong>的人",
+    // 左：P/E 強，右：O/G/A
+    weights: { O:-2, G:-1, A:-1, E:2, S:1, P:3 }
+  },
+  {
+    left: "我喜歡<strong>可預期性</strong>",
+    right: "我喜歡<strong>多變與改變</strong>",
+    // 左：O/A/G，右：E/P
+    weights: { O:2, G:1, A:1, E:2, S:-1, P:-2 }
+    // 注意：這裡右端得分 = 1-pos，所以 E/P 右端強 → weights 要負
+    // 修正：左強=O/A/G正，右強=E/P負（下面計算時 rightScore = -weight * pos）
+  },
+  {
+    left: "我喜歡<strong>掌控</strong>自己的工作",
+    right: "我喜歡工作中有<strong>明確指示與引導</strong>",
+    // 左：P/E/S/A，右：O/G
+    weights: { O:-2, G:-1, A:1, E:1, S:1, P:2 }
+  },
+  {
+    left: "工作是<strong>個人</strong>努力的成果",
+    right: "工作是<strong>共同</strong>努力的成果",
+    // 左：S/P/A/E，右：G/O
+    // 關鍵區分：S極左（為自己），P較中（為事業但需要夥伴）
+    weights: { O:-1, G:-3, A:1, E:1, S:3, P:0 }
+  },
+  {
+    left: "專業是達到目的的<strong>手段</strong>",
+    right: "專業本身就是<strong>目的</strong>",
+    // 左：P/S/G，右：A/E
+    weights: { O:0, G:1, A:-3, E:-2, S:1, P:2 }
+  },
+  {
+    left: "為他人創造正向改變<strong>是我的使命</strong>",
+    right: "為他人創造正向改變<strong>不是我的義務</strong>",
+    // 左：G/P 強，右：O/S/E/A
+    // 關鍵：P和G都在左，但P是系統改變，G是個人幫助
+    weights: { O:-2, G:3, A:-1, E:-1, S:-2, P:2 }
+  }
+];
+
+const ARCHETYPES = {
+  O: { name:"操作員", en:"Operator", icon:"🏠", bg:"#fce4e4",
+    desc:"對你而言，生活不僅止於工作。你不是不在意工作，只是工作並不定義你這個人。你在職場上不特別渴望突出，反而是優秀的團隊夥伴——你把許多同事視為朋友。因為你在工作之外找到意義，你傾向於喜歡穩定可預期的工作，不輕易在職涯上冒大險。這讓你成為每個組織不可或缺的可靠基石。",
+    warn:"萬維鋼提醒：操作員是最接近平庸「地心引力」的類型。研究顯示，長期從事缺乏精神刺激的工作，70 歲後患輕度認知障礙的風險增加 66%。你不需要成為先鋒者，但值得問自己：有沒有一件事，可以讓你稍微離開地面？" },
+  G: { name:"給予者", en:"Giver", icon:"🌿", bg:"#e4f4e8",
+    desc:"你把工作視為一種奉獻，通常從事致力於幫助他人的工作，非常重視團隊精神，會在工作中建立深厚的關係。你最在意的是自己的付出是否真實地改善了別人的生活。在教育現場，你是學生和老師最重要的守護者。",
+    warn:"萬維鋼提醒：給予者的風險在於「不喜歡變革」。全力栽培學生的老師，可能對 AI 技術課堂之類的新玩法毫不在意。身為領導者，你的給予若能結合對系統改變的勇氣，力量將遠遠更大。" },
+  A: { name:"工匠", en:"Artisan", icon:"🔧", bg:"#e4eef8",
+    desc:"你對自己的技藝充滿熱情，非常享受工作本身帶來的樂趣。你沉迷於專業本身，不太在意到底為組織創造了多大的商業價值。你可能在專業領域非常出色，但相對沒有強烈的組織野心。",
+    warn:"萬維鋼提醒：工匠難有「大成就」，因為格局往往停留在個人精進。身為校長，你的專業深度是資產，但領導力需要你把目光從「把事做好」延伸到「決定什麼事值得做」。" },
+  E: { name:"探索者", en:"Explorer", icon:"☁️", bg:"#fdf4e4",
+    desc:"你重視自由和體驗，喜歡多樣性和刺激。你的認同感不是來自某一份工作，而是來自整個人生的探索。做一份工作久了，覺得無聊就會去嘗試另一份工作。對你而言，人生本身就是目的地。",
+    warn:"萬維鋼提醒：探索者缺乏長期的職業歸屬感，容易在淺嘗之後移往下一個目標。你豐富的跨域視野是優勢，但組織需要你願意在某個方向上持續深耕。" },
+  S: { name:"奮鬥者", en:"Striver", icon:"⭐", bg:"#fceee4",
+    desc:"你渴望成功，有強烈的進取心，並且願意為了工作犧牲個人生活。你目標明確、競爭力極強。和先鋒者不同的是，你工作的核心驅動力是個人的成就與被認可，你把冒險視為必要的麻煩，而非樂趣本身。",
+    warn:"萬維鋼提醒：奮鬥者和先鋒者的關鍵差別——奮鬥者為了自己而戰，先鋒者為了事業而戰。格局有限的奮鬥者成績亮眼，但可能忽略組織和他人的整體利益。問問自己：你追求的成功，是為了誰？" },
+  P: { name:"先鋒者", en:"Pioneer", icon:"🚀", bg:"#ede4f8",
+    desc:"你的目標是改變你所在的組織，甚至改變世界。相比個人成就，你更在意推動系統性的變革。你勇於打破現狀，有極強的風險承受能力，而且你喜歡冒險本身，而非把它視為代價。你是最不容易被「地心引力」拉回地面的類型。",
+    warn:"萬維鋼指出：先鋒者是最不平庸的類型，也是最稀缺的。在台灣教育現場，先鋒者校長正是推動課綱改革、實驗教育的核心力量。你的挑戰是如何在體制內保持先鋒者的靈魂，不被科層的「訓練有素的無能」所磨蝕。" }
+};
+
+const TYPE_ORDER = ['O','G','A','E','S','P'];
+const DOTS = 7;
+let cur = 0;
+let answers = Array(QUESTIONS.length).fill(null);
+
+function startQuiz() {
+  document.getElementById('intro').classList.remove('active');
+  document.getElementById('quiz').classList.add('active');
+  renderQ();
+}
+
+function renderQ() {
+  const q = QUESTIONS[cur];
+  const sel = answers[cur];
+  document.getElementById('counter').textContent = `${cur+1} / ${QUESTIONS.length}`;
+  document.getElementById('progress').style.width = `${Math.round((cur+1)/QUESTIONS.length*100)}%`;
+  document.getElementById('prev-btn').disabled = cur === 0;
+  document.getElementById('next-btn').disabled = sel === null;
+  document.getElementById('next-btn').textContent = cur === QUESTIONS.length-1 ? '查看結果' : '下一題 →';
+
+  const fillPct = sel !== null ? Math.round(sel/(DOTS-1)*100) : 0;
+  let dotsHTML = '';
+  for (let i=0; i<DOTS; i++) {
+    dotsHTML += `<button class="dot${sel===i?' selected':''}" onclick="selectDot(${i})"></button>`;
+  }
+
+  document.getElementById('slider-area').innerHTML = `
+    <div class="slider-track">
+      <div class="track-bg"></div>
+      ${sel!==null ? `<div class="track-fill" style="width:calc(${fillPct}% + ${fillPct===0?'26px':fillPct===100?'26px':'0px'})"></div>` : ''}
+      <div class="dots-row">${dotsHTML}</div>
+    </div>
+    <div class="labels-row">
+      <div class="label-left">${q.left}</div>
+      <div class="label-right">${q.right}</div>
+    </div>`;
+}
+
+function selectDot(i) { answers[cur]=i; document.getElementById('next-btn').disabled=false; renderQ(); }
+function prevQ() { if(cur>0){cur--;renderQ();} }
+function nextQ() {
+  if(answers[cur]===null) return;
+  if(cur<QUESTIONS.length-1){cur++;renderQ();}
+  else showResult();
+}
+
+function calcScores() {
+  // 對每題：pos = answers[qi]/(DOTS-1)，0=全左，1=全右
+  // 每個類型的 weight > 0 → 傾向左端得高分
+  // 每個類型的 weight < 0 → 傾向右端得高分
+  // 貢獻 = weight * (1 - pos*2)  （pos=0時=weight，pos=1時=-weight）
+  const raw = {};
+  TYPE_ORDER.forEach(k => raw[k] = 0);
+
+  answers.forEach((ans, qi) => {
+    if(ans === null) return;
+    const pos = ans/(DOTS-1); // 0..1
+    const q = QUESTIONS[qi];
+    Object.entries(q.weights).forEach(([k, w]) => {
+      // 選左(pos=0): 貢獻 = w；選右(pos=1): 貢獻 = -w
+      raw[k] += w * (1 - 2*pos);
+    });
+  });
+
+  // 每個類型加上基準分，讓所有分數 > 0，再正規化到 46-100
+  const vals = Object.values(raw);
+  const mn = Math.min(...vals), mx = Math.max(...vals);
+  const range = mx - mn;
+  const scores = {};
+  TYPE_ORDER.forEach(k => {
+    if(range === 0) { scores[k] = 70; }
+    else { scores[k] = Math.round(((raw[k]-mn)/range)*54 + 46); }
+  });
+  return scores;
+}
+
+function showResult() {
+  document.getElementById('quiz').classList.remove('active');
+  document.getElementById('result').classList.add('active');
+
+  const scores = calcScores();
+  const topKey = TYPE_ORDER.reduce((a,b) => scores[a]>=scores[b]?a:b);
+  const top = ARCHETYPES[topKey];
+
+  document.getElementById('result-hero').innerHTML = `
+    <div class="result-icon" style="background:${top.bg}">${top.icon}</div>
+    <div class="result-text">
+      <h2>${top.name}</h2>
+      <div class="result-en">${top.en}</div>
+      <div class="fit-score">符合分數：${scores[topKey]} / 100</div>
+      <p class="result-desc">${top.desc}</p>
+    </div>`;
+
+  const othersHTML = TYPE_ORDER
+    .filter(k=>k!==topKey)
+    .sort((a,b)=>scores[b]-scores[a])
+    .map(k=>{
+      const a=ARCHETYPES[k];
+      return `<div class="score-card">
+        <div class="score-card-icon"><div class="score-card-icon-inner" style="background:${a.bg}">${a.icon}</div></div>
+        <div class="score-card-name">${a.name}</div>
+        <div class="score-card-num">${scores[k]} / 100</div>
+      </div>`;
+    }).join('');
+
+  document.getElementById('scores-grid').innerHTML = othersHTML;
+  document.getElementById('warn-section').innerHTML = `
+    <div class="warn-label">萬維鋼給你的提醒</div>
+    <p class="warn-text">${top.warn}</p>`;
+}
+
+function restart() {
+  cur=0; answers=Array(QUESTIONS.length).fill(null);
+  document.getElementById('result').classList.remove('active');
+  document.getElementById('intro').classList.add('active');
+}
+</script>
+</body>
+</html>
