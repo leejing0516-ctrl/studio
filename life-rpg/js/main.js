@@ -441,19 +441,34 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAll();
   });
 
+  function resetVoiceAvatar() {
+    const avatarEl = document.getElementById('assistant-avatar-btn');
+    avatarEl.classList.remove('listening');
+    avatarEl.textContent = '🧚';
+  }
+
   document.getElementById('assistant-avatar-btn').addEventListener('click', () => {
+    const avatarEl = document.getElementById('assistant-avatar-btn');
+
+    // 正在聽的時候再點一下＝取消，這樣卡住或講錯話都有得按
+    if (avatarEl.classList.contains('listening')) {
+      stopVoiceInput();
+      resetVoiceAvatar();
+      return;
+    }
+
     if (!state.assistant.aiEnabled || !state.assistant.aiEndpoint) {
       alert('請先到小助手分頁的「⚙️ 小助手設定」啟用 AI 並填好服務網址，才能用語音新增任務喔');
       return;
     }
-    const avatarEl = document.getElementById('assistant-avatar-btn');
-    if (avatarEl.classList.contains('listening')) return;
     avatarEl.classList.add('listening');
     avatarEl.textContent = '🎤';
+    avatarEl.title = '聆聽中…再點一下可以取消';
 
+    let handled = false;
     startVoiceInput(async transcript => {
-      avatarEl.classList.remove('listening');
-      avatarEl.textContent = '🧚';
+      handled = true;
+      resetVoiceAvatar();
       addAssistantMessage(state, `🎤 聽到：「${transcript}」，正在幫你整理成任務…`, 'chat');
       renderAll();
       try {
@@ -463,9 +478,13 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('語音任務解析失敗：' + err.message);
       }
     }, msg => {
-      avatarEl.classList.remove('listening');
-      avatarEl.textContent = '🧚';
+      handled = true;
+      resetVoiceAvatar();
       alert(msg);
+    }, () => {
+      // 不管有沒有辨識到內容，聆聽結束後畫面一定要恢復，不會卡在錄音狀態
+      if (!handled) resetVoiceAvatar();
+      avatarEl.title = '點一下，用語音新增任務';
     });
   });
 

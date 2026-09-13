@@ -347,7 +347,7 @@ async function checkDailySummary(state) {
     addAssistantMessage(state, reply, 'chat');
   } catch (e) {
     console.error('每日總結失敗', e);
-    addAssistantMessage(state, '（小助手今天的總結產生失敗了，可能是網路或服務設定問題，明天會再試一次）', 'tip');
+    addAssistantMessage(state, `（小助手今天的總結產生失敗了：${e.message}，明天會再試一次）`, 'tip');
   }
   return true;
 }
@@ -357,28 +357,50 @@ async function checkDailySummary(state) {
 let _voiceRecognition = null;
 
 // 用瀏覽器內建的語音辨識（不用另外接服務），辨識完的文字再交給 AI 解析
-function startVoiceInput(onResult, onError) {
+// onEnd 不論成功、失敗、或完全沒偵測到語音都一定會被呼叫，用來保證畫面一定會恢復、不會卡住
+function startVoiceInput(onResult, onError, onEnd) {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
     onError('這個瀏覽器不支援語音輸入，建議用 iPhone/Android 上的 Safari 或 Chrome 試試看');
+    if (onEnd) onEnd();
     return;
   }
   if (_voiceRecognition) return; // 已經在聽了，避免重複啟動
 
+  let settled = false;
   const rec = new SpeechRecognition();
   rec.lang = 'zh-TW';
   rec.interimResults = false;
   rec.maxAlternatives = 1;
-  rec.onresult = e => onResult(e.results[0][0].transcript);
-  rec.onerror = e => onError('語音辨識失敗：' + e.error);
-  rec.onend = () => { _voiceRecognition = null; };
+  rec.onresult = e => { settled = true; onResult(e.results[0][0].transcript); };
+  rec.onerror = e => {
+    settled = true;
+    const NO_SPEECH_ERRORS = ['no-speech', 'aborted'];
+    if (!NO_SPEECH_ERRORS.includes(e.error)) onError('語音辨識失敗：' + e.error);
+  };
+  rec.onend = () => {
+    _voiceRecognition = null;
+    if (onEnd) onEnd();
+  };
   _voiceRecognition = rec;
   try {
     rec.start();
   } catch (e) {
     _voiceRecognition = null;
     onError('語音辨識無法啟動：' + e.message);
+    if (onEnd) onEnd();
   }
+}
+
+// 讓使用者可以主動按一下取消聆聽（例如講錯話、或辨識卡住時）
+function stopVoiceInput() {
+  if (!_voiceRecognition) return;
+  try {
+    _voiceRecognition.abort();
+  } catch (e) {
+    // 忽略
+  }
+  _voiceRecognition = null;
 }
 
 function buildVoiceTaskSystemPrompt() {
