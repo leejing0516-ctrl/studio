@@ -270,18 +270,30 @@ document.addEventListener('DOMContentLoaded', () => {
   const cloudPanel = document.getElementById('cloud-panel');
   cloudBtn.addEventListener('click', () => cloudPanel.classList.toggle('show'));
 
-  document.getElementById('cloud-signup').addEventListener('click', () => {
+  document.getElementById('cloud-signup').addEventListener('click', async () => {
     const email = document.getElementById('cloud-email').value.trim();
     const password = document.getElementById('cloud-password').value;
     if (!email || password.length < 6) { showCloudError('請輸入信箱，密碼至少 6 碼'); return; }
-    cloudSignUp(email, password);
+    const btn = document.getElementById('cloud-signup');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '註冊中…';
+    await cloudSignUp(email, password);
+    btn.disabled = false;
+    btn.textContent = originalText;
   });
 
-  document.getElementById('cloud-signin').addEventListener('click', () => {
+  document.getElementById('cloud-signin').addEventListener('click', async () => {
     const email = document.getElementById('cloud-email').value.trim();
     const password = document.getElementById('cloud-password').value;
     if (!email || !password) { showCloudError('請輸入信箱與密碼'); return; }
-    cloudSignIn(email, password);
+    const btn = document.getElementById('cloud-signin');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '登入中…';
+    await cloudSignIn(email, password);
+    btn.disabled = false;
+    btn.textContent = originalText;
   });
 
   document.getElementById('cloud-signout').addEventListener('click', cloudSignOut);

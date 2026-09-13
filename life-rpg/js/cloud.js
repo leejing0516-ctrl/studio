@@ -73,13 +73,28 @@ function translateAuthError(e) {
     'auth/invalid-credential': '帳號或密碼錯誤',
     'auth/network-request-failed': '網路連線失敗，請稍後再試',
   };
-  return map[e.code] || ('發生錯誤：' + e.message);
+  if (map[e.code]) return map[e.code];
+  if (!e.code) return e.message; // 自訂逾時等訊息本身已經是完整的中文句子
+  return '發生錯誤：' + e.message;
+}
+
+// 手機網路較慢或 Safari 私密瀏覽模式下 Firebase Auth 偶爾會整個卡住不回應，
+// 用逾時保護確保使用者一定會看到結果（成功/失敗/逾時），不會卡在按鈕動不了
+function withTimeout(promise, ms, timeoutMessage) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject({ message: timeoutMessage }), ms)),
+  ]);
 }
 
 async function cloudSignUp(email, password) {
-  if (!_cloudAuth) return;
+  if (!_cloudAuth) { showCloudError('雲端服務尚未準備好，請重新整理頁面後再試一次'); return; }
   try {
-    await _cloudAuth.createUserWithEmailAndPassword(email, password);
+    await withTimeout(
+      _cloudAuth.createUserWithEmailAndPassword(email, password),
+      15000,
+      '註冊逾時，請檢查網路連線後再試一次'
+    );
     hideCloudError();
   } catch (e) {
     showCloudError(translateAuthError(e));
@@ -87,9 +102,13 @@ async function cloudSignUp(email, password) {
 }
 
 async function cloudSignIn(email, password) {
-  if (!_cloudAuth) return;
+  if (!_cloudAuth) { showCloudError('雲端服務尚未準備好，請重新整理頁面後再試一次'); return; }
   try {
-    await _cloudAuth.signInWithEmailAndPassword(email, password);
+    await withTimeout(
+      _cloudAuth.signInWithEmailAndPassword(email, password),
+      15000,
+      '登入逾時，請檢查網路連線後再試一次'
+    );
     hideCloudError();
   } catch (e) {
     showCloudError(translateAuthError(e));
@@ -101,7 +120,7 @@ function cloudSignOut() {
 }
 
 async function cloudResetPassword(email) {
-  if (!_cloudAuth) return;
+  if (!_cloudAuth) { showCloudError('雲端服務尚未準備好，請重新整理頁面後再試一次'); return; }
   if (!email) { showCloudError('請先在上面輸入你的信箱'); return; }
   try {
     await _cloudAuth.sendPasswordResetEmail(email);
