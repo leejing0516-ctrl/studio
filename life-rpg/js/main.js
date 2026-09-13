@@ -355,11 +355,6 @@ document.addEventListener('DOMContentLoaded', () => {
     e.target.value = '';
   });
 
-  document.getElementById('avatar-reset').addEventListener('click', () => {
-    state.character.avatar = null;
-    renderAll();
-  });
-
   document.getElementById('assistant-shuffle').addEventListener('click', () => {
     addAssistantMessage(state, buildDailySuggestion(state), 'suggestion');
     sound.playClick();

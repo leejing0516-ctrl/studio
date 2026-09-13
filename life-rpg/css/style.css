@@ -239,13 +239,6 @@ h1 {
   border: 0;
 }
 
-.avatar-reset-link {
-  font-size: 11px;
-  text-decoration: underline;
-  color: var(--text-dim);
-  margin-top: -4px;
-}
-
 .char-name-row {
   display: flex;
   align-items: center;

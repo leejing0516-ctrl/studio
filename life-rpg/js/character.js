@@ -45,8 +45,6 @@ function renderCharacter(state) {
   document.getElementById('char-name').value = state.character.name;
   const avatarImg = document.getElementById('char-avatar-img');
   if (avatarImg) avatarImg.src = state.character.avatar || DEFAULT_AVATAR_SRC;
-  const resetBtn = document.getElementById('avatar-reset');
-  if (resetBtn) resetBtn.style.display = state.character.avatar ? '' : 'none';
   document.getElementById('char-level').textContent = `Lv. ${info.level}`;
   const pct = Math.min(100, Math.round((info.expIntoLevel / info.expToNext) * 100));
   document.getElementById('char-exp-bar').style.width = pct + '%';
