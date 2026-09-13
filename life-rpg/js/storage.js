@@ -20,6 +20,7 @@ function defaultState() {
     assistant: { log: [], lastSuggestionDate: null, lastVisitDate: null },
     events: [],           // { id, title, domain, date, time, type: 'event'|'deadline', done, googleEventId }
     googleCalendar: { clientId: '' },
+    projects: [],         // { id, title, domain, deadline, granularity, createdDate, subtasks: [{id,title,dueDate,done}] }
   };
 }
 
@@ -35,6 +36,7 @@ function loadState() {
       if (parsed.skills[d.key].lastGain === undefined) parsed.skills[d.key].lastGain = null;
     });
     (parsed.tasks || []).forEach(t => { if (t.googleEventId === undefined) t.googleEventId = null; });
+    (parsed.habits || []).forEach(h => { if (!h.recurrence) h.recurrence = { freq: 'daily', startDate: h.lastDoneDate || todayStr() }; });
     const merged = Object.assign({}, base, parsed);
     merged.stats = Object.assign({}, base.stats, parsed.stats);
     merged.streak = Object.assign({}, base.streak, parsed.streak);

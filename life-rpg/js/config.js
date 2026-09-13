@@ -12,11 +12,27 @@ const EXP_PER_PAGE = 2;
 const BOOK_FINISH_BONUS = 100;
 const EVENT_EXP = 15;
 const READING_CHECKIN_EXP = 15;
+const PROJECT_SUBTASK_EXP = 15;
+const PROJECT_FINISH_BONUS = 150;
 const GOLD_RATE = 0.5; // 每 1 EXP 換算多少金幣
 const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 
 const MONTH_NAMES_ZH = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
 const WEEKDAY_NAMES_ZH = ['日','一','二','三','四','五','六'];
+
+const HABIT_FREQ_OPTIONS = [
+  { value: 'daily',    label: '每日' },
+  { value: 'weekly',   label: '每週' },
+  { value: 'biweekly', label: '雙週' },
+  { value: 'monthlyFirstWeekend', label: '每月第一個週末' },
+  { value: 'quarterly', label: '每季' },
+];
+
+const PROJECT_GRANULARITY_OPTIONS = [
+  { value: 'daily',   label: '拆成每日任務' },
+  { value: 'weekly',  label: '拆成每週任務' },
+  { value: 'monthly', label: '拆成每月任務' },
+];
 
 function goldFor(exp) {
   return Math.round(exp * GOLD_RATE);
@@ -52,6 +68,8 @@ const ACHIEVEMENTS = [
     condition: s => (s.habits || []).some(h => (h.streak || 0) >= 7) },
   { id: 'planner', icon: '🗓️', name: '規劃師', desc: '在行事曆安排第一個活動或截止日',
     condition: s => (s.events || []).length >= 1 },
+  { id: 'first_project', icon: '🎯', name: '築夢踏實', desc: '完成第一個專案',
+    condition: s => (s.projects || []).some(p => p.subtasks.length > 0 && p.subtasks.every(st => st.done)) },
 ];
 
 // 每個技能等級所需經驗值（等級 L 需要累積 EXP）
@@ -77,4 +95,62 @@ function yesterdayStr() {
   const d = new Date();
   d.setDate(d.getDate() - 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function parseDateStr(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function formatDate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function daysBetween(dateStrA, dateStrB) {
+  return Math.round((parseDateStr(dateStrB) - parseDateStr(dateStrA)) / 86400000);
+}
+
+// 判斷某個習慣在某一天是否「該出現」
+function habitDueToday(habit, dateStr) {
+  const rec = habit.recurrence || { freq: 'daily' };
+  const date = parseDateStr(dateStr);
+  const weekday = date.getDay();
+  const dom = date.getDate();
+  const start = parseDateStr(rec.startDate || dateStr);
+
+  switch (rec.freq) {
+    case 'weekly':
+    case 'biweekly': {
+      const weekdays = (rec.weekdays && rec.weekdays.length) ? rec.weekdays : [start.getDay()];
+      if (!weekdays.includes(weekday)) return false;
+      if (rec.freq === 'weekly') return true;
+      const diffWeeks = Math.floor(daysBetween(formatDate(start), dateStr) / 7);
+      return diffWeeks % 2 === 0;
+    }
+    case 'monthlyFirstWeekend':
+      return (weekday === 0 || weekday === 6) && dom <= 7;
+    case 'quarterly': {
+      if (dom !== start.getDate()) return false;
+      const monthsSinceStart = (date.getFullYear() - start.getFullYear()) * 12 + (date.getMonth() - start.getMonth());
+      return monthsSinceStart >= 0 && monthsSinceStart % 3 === 0;
+    }
+    case 'daily':
+    default:
+      return true;
+  }
+}
+
+function describeRecurrence(rec) {
+  if (!rec) return '每日';
+  switch (rec.freq) {
+    case 'weekly':
+    case 'biweekly': {
+      const days = (rec.weekdays || []).map(w => '週' + WEEKDAY_NAMES_ZH[w]).join('、');
+      return (rec.freq === 'weekly' ? '每週' : '雙週') + (days ? `（${days}）` : '');
+    }
+    case 'monthlyFirstWeekend': return '每月第一個週末';
+    case 'quarterly': return '每季';
+    case 'daily':
+    default: return '每日';
+  }
 }

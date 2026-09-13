@@ -12,6 +12,7 @@ function renderAll() {
   renderAssistantWidget(state);
   renderAssistantLog(state);
   renderCalendarTab(state);
+  renderProjects(state);
   saveState(state);
 
   const unlocked = checkAchievements(state);
@@ -61,7 +62,7 @@ function initSoundOnce() {
 document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', initSoundOnce, { once: true });
 
-  ['task-domain', 'habit-domain', 'event-domain'].forEach(id => {
+  ['task-domain', 'habit-domain', 'event-domain', 'project-domain'].forEach(id => {
     const select = document.getElementById(id);
     DOMAINS.forEach(d => {
       const opt = document.createElement('option');
@@ -69,6 +70,31 @@ document.addEventListener('DOMContentLoaded', () => {
       opt.textContent = `${d.icon} ${d.name}`;
       select.appendChild(opt);
     });
+  });
+
+  const habitFreqSelect = document.getElementById('habit-freq');
+  HABIT_FREQ_OPTIONS.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o.value;
+    opt.textContent = o.label;
+    habitFreqSelect.appendChild(opt);
+  });
+
+  const weekdayPicker = document.getElementById('habit-weekday-picker');
+  weekdayPicker.innerHTML = WEEKDAY_NAMES_ZH.map((w, i) => `
+    <label class="weekday-chip"><input type="checkbox" value="${i}" ${i === new Date().getDay() ? 'checked' : ''}>週${w}</label>
+  `).join('');
+  habitFreqSelect.addEventListener('change', () => {
+    const needsWeekday = habitFreqSelect.value === 'weekly' || habitFreqSelect.value === 'biweekly';
+    weekdayPicker.style.display = needsWeekday ? 'flex' : 'none';
+  });
+
+  const granularitySelect = document.getElementById('project-granularity');
+  PROJECT_GRANULARITY_OPTIONS.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o.value;
+    opt.textContent = o.label;
+    granularitySelect.appendChild(opt);
   });
 
   document.getElementById('event-date').value = todayStr();
@@ -132,6 +158,10 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (kind === 'reading') {
         domain = 'reading';
         toggleReadingCheckin(state, id);
+      } else if (kind === 'project') {
+        const found = findSubtask(state, id);
+        domain = found ? found.project.domain : undefined;
+        toggleProjectSubtask(state, id);
       } else {
         domain = (state.tasks.find(t => t.id === id) || {}).domain;
         toggleTask(state, id);
@@ -145,6 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (kind === 'event') deleteEvent(state, id);
       else if (kind === 'habit') deleteHabit(state, id);
       else if (kind === 'reading') deleteBook(state, id);
+      else if (kind === 'project') deleteSubtaskItem(state, id);
       else deleteTask(state, id);
       renderAll();
     }
@@ -156,7 +187,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const name = document.getElementById('habit-name').value;
     const domain = document.getElementById('habit-domain').value;
     const difficulty = document.getElementById('habit-difficulty').value;
-    addHabit(state, name, domain, difficulty);
+    const freq = document.getElementById('habit-freq').value;
+    const weekdays = Array.from(document.querySelectorAll('#habit-weekday-picker input:checked')).map(cb => Number(cb.value));
+    addHabit(state, name, domain, difficulty, { freq, weekdays });
     document.getElementById('habit-name').value = '';
     renderAll();
   });
@@ -287,6 +320,41 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('gcal-connect').addEventListener('click', () => connectGoogle(state));
+
+  // 專案
+  document.getElementById('project-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const title = document.getElementById('project-title').value;
+    const domain = document.getElementById('project-domain').value;
+    const deadline = document.getElementById('project-deadline').value;
+    const granularity = document.getElementById('project-granularity').value;
+    const before = state.projects.length;
+    addProject(state, title, domain, deadline, granularity);
+    if (state.projects.length === before) {
+      alert('截止日期必須在今天之後');
+      return;
+    }
+    document.getElementById('project-title').value = '';
+    document.getElementById('project-deadline').value = '';
+    sound.playComplete();
+    renderAll();
+  });
+
+  document.getElementById('project-list').addEventListener('click', e => {
+    if (e.target.matches('.subtask-check')) {
+      const willBeDone = e.target.checked;
+      const id = e.target.dataset.subtask;
+      const found = findSubtask(state, id);
+      const domain = found ? found.project.domain : undefined;
+      toggleProjectSubtask(state, id);
+      sound[willBeDone ? 'playComplete' : 'playClick']();
+      if (willBeDone && domain) onTaskOrHabitComplete(state, domain);
+      renderAll();
+    } else if (e.target.matches('.del-project')) {
+      deleteProject(state, e.target.dataset.id);
+      renderAll();
+    }
+  });
 
   document.getElementById('gcal-sync').addEventListener('click', async () => {
     const btn = document.getElementById('gcal-sync');

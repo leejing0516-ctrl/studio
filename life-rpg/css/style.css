@@ -453,6 +453,89 @@ ul { list-style: none; padding: 0; margin: 0; }
 .page-input { width: 130px; }
 .badge-done { color: var(--success); font-weight: 700; }
 
+/* ── 習慣頻率 ───────────────────────────── */
+.habit-freq {
+  font-size: 11px;
+  color: var(--purple);
+  background: var(--purple-soft);
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.weekday-picker {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: -8px 0 16px;
+}
+
+.weekday-chip {
+  font-size: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border-dim);
+  border-radius: 999px;
+  padding: 5px 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.weekday-chip input { accent-color: var(--gold); }
+
+.task-item.not-due { opacity: 0.55; }
+.not-due-tag {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-style: italic;
+  white-space: nowrap;
+}
+
+/* ── 專案 ───────────────────────────── */
+.project-item {
+  border-bottom: 1px solid var(--border-dim);
+  padding: 16px 0;
+}
+.project-item:last-child { border-bottom: none; }
+
+.project-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.project-title { font-weight: 700; font-size: 14px; flex: 1; }
+.project-deadline { font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+
+.project-meta {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 6px 0 10px;
+}
+
+.project-subtasks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-left: 4px;
+}
+
+.subtask-item label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.subtask-item input { accent-color: var(--gold); }
+.subtask-item.done .subtask-title { text-decoration: line-through; color: var(--text-dim); }
+.subtask-title { flex: 1; }
+.subtask-date { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+
 /* ── 行事曆 ───────────────────────────── */
 .calendar-nav {
   display: flex;

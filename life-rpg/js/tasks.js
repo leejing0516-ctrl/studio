@@ -1,10 +1,10 @@
-// 把「今日任務、到期活動/截止日、習慣、閱讀」統一成一份今日清單
+// 把「今日任務、到期活動/截止日、今天該做的習慣、閱讀、專案子任務」統一成一份今日清單
 function getTodayChecklist(state) {
   const today = todayStr();
   const calItems = getTodayItems(state); // 今日任務 + 到期活動/截止日
 
   const habitDone = state.habitCompletions[today] || {};
-  const habitItems = state.habits.map(h => ({
+  const habitItems = getDueHabitsToday(state).map(h => ({
     id: h.id, kind: 'habit', title: h.name, domain: h.domain,
     done: !!habitDone[h.id], difficulty: h.difficulty, streak: h.streak || 0,
   }));
@@ -15,7 +15,16 @@ function getTodayChecklist(state) {
     done: !!readingDone[b.id],
   }));
 
-  return calItems.concat(habitItems, readingItems);
+  const projectItems = [];
+  (state.projects || []).forEach(p => {
+    p.subtasks.filter(st => st.dueDate === today).forEach(st => {
+      projectItems.push({
+        id: st.id, kind: 'project', title: `${p.title}｜${st.title}`, domain: p.domain, done: st.done,
+      });
+    });
+  });
+
+  return calItems.concat(habitItems, readingItems, projectItems);
 }
 
 function renderTasks(state) {
@@ -43,6 +52,8 @@ function renderTasks(state) {
       extra = `<span class="habit-streak">連續 ${it.streak} 天</span>`;
     } else if (it.kind === 'reading') {
       exp = READING_CHECKIN_EXP; prefix = '📖 ';
+    } else if (it.kind === 'project') {
+      exp = PROJECT_SUBTASK_EXP; prefix = '🎯 ';
     }
     return `
       <li class="task-item ${it.done ? 'done' : ''}">

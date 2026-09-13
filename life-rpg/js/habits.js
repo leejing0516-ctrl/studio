@@ -4,28 +4,37 @@ function todaysCompletions(state) {
   return state.habitCompletions[today];
 }
 
+function getDueHabitsToday(state) {
+  const today = todayStr();
+  return state.habits.filter(h => habitDueToday(h, today));
+}
+
 function renderHabits(state) {
   const list = document.getElementById('habit-list');
   list.innerHTML = '';
 
   if (state.habits.length === 0) {
-    list.innerHTML = '<li class="empty-hint">還沒有設定任何習慣，新增一個每天養成吧！</li>';
+    list.innerHTML = '<li class="empty-hint">還沒有設定任何習慣，新增一個開始養成吧！</li>';
     return;
   }
 
   const doneMap = todaysCompletions(state);
+  const today = todayStr();
   state.habits.forEach(h => {
     const domain = DOMAINS.find(d => d.key === h.domain);
     const done = !!doneMap[h.id];
+    const dueToday = habitDueToday(h, today);
     const li = document.createElement('li');
-    li.className = 'task-item' + (done ? ' done' : '');
+    li.className = 'task-item' + (done ? ' done' : '') + (dueToday ? '' : ' not-due');
     li.innerHTML = `
       <label class="task-check">
         <input type="checkbox" ${done ? 'checked' : ''} data-id="${h.id}" class="habit-check">
         <span class="task-tag" style="background:${domain.color}">${domain.icon} ${domain.name}</span>
         <span class="task-text">${escapeHtml(h.name)}</span>
-        <span class="habit-streak">🔁 連續 ${h.streak || 0} 天</span>
+        <span class="habit-freq">🔁 ${describeRecurrence(h.recurrence)}</span>
+        <span class="habit-streak">連續 ${h.streak || 0} 天</span>
         <span class="task-exp">+${TASK_EXP[h.difficulty]} EXP</span>
+        ${dueToday ? '' : '<span class="not-due-tag">今天沒排定</span>'}
       </label>
       <button class="icon-btn del-habit" data-id="${h.id}" title="刪除">✕</button>
     `;
@@ -33,11 +42,12 @@ function renderHabits(state) {
   });
 }
 
-function addHabit(state, name, domain, difficulty) {
+function addHabit(state, name, domain, difficulty, recurrence) {
   if (!name.trim()) return;
   state.habits.push({
     id: 'h' + Date.now() + Math.random().toString(36).slice(2, 7),
     name: name.trim(), domain, difficulty, streak: 0, lastDoneDate: null,
+    recurrence: Object.assign({ startDate: todayStr() }, recurrence),
   });
 }
 

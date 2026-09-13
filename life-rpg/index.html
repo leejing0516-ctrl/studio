@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=7">
+<link rel="stylesheet" href="css/style.css?v=8">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
@@ -52,6 +52,7 @@
     <button class="tab-btn" data-tab="tab-assistant">🧚 小助手</button>
     <button class="tab-btn active" data-tab="tab-tasks">📋 今日任務</button>
     <button class="tab-btn" data-tab="tab-habits">🔁 習慣</button>
+    <button class="tab-btn" data-tab="tab-projects">🎯 專案</button>
     <button class="tab-btn" data-tab="tab-calendar">📅 行事曆</button>
     <button class="tab-btn" data-tab="tab-reading">📖 閱讀進度</button>
     <button class="tab-btn" data-tab="tab-rewards">🎁 獎勵商店</button>
@@ -86,7 +87,7 @@
   </div>
 
   <div id="tab-habits" class="tab-panel frame">
-    <p class="tab-hint">習慣每天都會重新出現，持續完成可累積「連續天數」。</p>
+    <p class="tab-hint">持續性的任務：每日、每週固定星期、雙週、每月第一個週末、每季，到期那天會自動出現在今日任務。</p>
     <form id="habit-form" class="inline-form">
       <input type="text" id="habit-name" placeholder="想養成的習慣…（例如：喝水2000ml）" required>
       <select id="habit-domain"></select>
@@ -95,9 +96,23 @@
         <option value="normal" selected>普通 (+15)</option>
         <option value="hard">困難 (+25)</option>
       </select>
+      <select id="habit-freq"></select>
       <button type="submit" class="btn">新增習慣</button>
     </form>
+    <div id="habit-weekday-picker" class="weekday-picker" style="display:none"></div>
     <ul id="habit-list"></ul>
+  </div>
+
+  <div id="tab-projects" class="tab-panel frame">
+    <p class="tab-hint">設定期限與目標，小助手會幫你拆解成每日/每週/每月的小任務，到期當天會自動出現在今日任務。</p>
+    <form id="project-form" class="inline-form">
+      <input type="text" id="project-title" placeholder="專案目標…（例如：12/15 前減肥3公斤）" required>
+      <select id="project-domain"></select>
+      <input type="date" id="project-deadline" required>
+      <select id="project-granularity"></select>
+      <button type="submit" class="btn">🤖 AI 拆解生成任務</button>
+    </form>
+    <ul id="project-list"></ul>
   </div>
 
   <div id="tab-calendar" class="tab-panel frame">
@@ -181,17 +196,18 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="js/config.js?v=7"></script>
-<script src="js/storage.js?v=7"></script>
-<script src="js/sound.js?v=7"></script>
-<script src="js/assistant.js?v=7"></script>
-<script src="js/character.js?v=7"></script>
-<script src="js/tasks.js?v=7"></script>
-<script src="js/habits.js?v=7"></script>
-<script src="js/reading.js?v=7"></script>
-<script src="js/calendar.js?v=7"></script>
-<script src="js/rewards.js?v=7"></script>
-<script src="js/achievements.js?v=7"></script>
-<script src="js/main.js?v=7"></script>
+<script src="js/config.js?v=8"></script>
+<script src="js/storage.js?v=8"></script>
+<script src="js/sound.js?v=8"></script>
+<script src="js/assistant.js?v=8"></script>
+<script src="js/character.js?v=8"></script>
+<script src="js/tasks.js?v=8"></script>
+<script src="js/habits.js?v=8"></script>
+<script src="js/projects.js?v=8"></script>
+<script src="js/reading.js?v=8"></script>
+<script src="js/calendar.js?v=8"></script>
+<script src="js/rewards.js?v=8"></script>
+<script src="js/achievements.js?v=8"></script>
+<script src="js/main.js?v=8"></script>
 </body>
 </html>
