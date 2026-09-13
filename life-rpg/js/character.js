@@ -92,7 +92,7 @@ function drawRadar(state) {
   const ctx = canvas.getContext('2d');
   const w = canvas.width, h = canvas.height;
   const cx = w / 2, cy = h / 2;
-  const radius = Math.min(w, h) / 2 - 34;
+  const radius = Math.min(w, h) / 2 - 46;
   const n = DOMAINS.length;
   const maxLevel = Math.max(5, ...DOMAINS.map(d => levelFromExp(state.skills[d.key].exp).level));
 
@@ -100,8 +100,8 @@ function drawRadar(state) {
 
   // 深色底圖，讓淺色格線與文字對比更明顯，也更有遊戲面板的質感
   const bgGrad = ctx.createLinearGradient(0, 0, w, h);
-  bgGrad.addColorStop(0, '#332752');
-  bgGrad.addColorStop(1, '#1e1836');
+  bgGrad.addColorStop(0, '#2c2444');
+  bgGrad.addColorStop(1, '#181430');
   ctx.fillStyle = bgGrad;
   ctx.beginPath();
   if (ctx.roundRect) {
@@ -110,11 +110,11 @@ function drawRadar(state) {
     ctx.rect(0, 0, w, h);
   }
   ctx.fill();
-  ctx.strokeStyle = 'rgba(227, 171, 92, 0.5)';
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(227, 171, 92, 0.35)';
+  ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  ctx.strokeStyle = 'rgba(232, 209, 156, 0.3)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
   for (let ring = 1; ring <= 4; ring++) {
     ctx.beginPath();
     for (let i = 0; i <= n; i++) {
@@ -127,20 +127,20 @@ function drawRadar(state) {
     ctx.stroke();
   }
 
-  ctx.fillStyle = '#e9e2f5';
+  ctx.fillStyle = '#f5efe4';
   ctx.font = '600 13px "Noto Sans TC", sans-serif';
   ctx.textAlign = 'center';
   DOMAINS.forEach((d, i) => {
     const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
     const x = cx + radius * Math.cos(angle);
     const y = cy + radius * Math.sin(angle);
-    ctx.strokeStyle = 'rgba(232, 209, 156, 0.4)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
     ctx.beginPath();
     ctx.moveTo(cx, cy);
     ctx.lineTo(x, y);
     ctx.stroke();
-    const lx = cx + (radius + 22) * Math.cos(angle);
-    const ly = cy + (radius + 22) * Math.sin(angle);
+    const lx = cx + (radius + 24) * Math.cos(angle);
+    const ly = cy + (radius + 24) * Math.sin(angle);
     ctx.fillText(`${d.icon}${d.name}`, lx, ly);
   });
 
@@ -156,13 +156,13 @@ function drawRadar(state) {
   ctx.closePath();
 
   const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-  grad.addColorStop(0, 'rgba(232, 180, 90, 0.55)');
-  grad.addColorStop(1, 'rgba(168, 109, 224, 0.35)');
+  grad.addColorStop(0, 'rgba(242, 192, 106, 0.6)');
+  grad.addColorStop(1, 'rgba(245, 168, 184, 0.32)');
   ctx.fillStyle = grad;
-  ctx.shadowColor = 'rgba(232, 180, 90, 0.6)';
-  ctx.shadowBlur = 14;
-  ctx.strokeStyle = '#e8b45a';
-  ctx.lineWidth = 2.5;
+  ctx.shadowColor = 'rgba(242, 192, 106, 0.3)';
+  ctx.shadowBlur = 8;
+  ctx.strokeStyle = '#f2c06a';
+  ctx.lineWidth = 2;
   ctx.fill();
   ctx.stroke();
   ctx.shadowBlur = 0;
