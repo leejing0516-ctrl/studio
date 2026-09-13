@@ -39,22 +39,19 @@ body {
 
 h1 {
   text-align: center;
-  font-family: "ZCOOL KuaiLe", "Noto Sans TC", sans-serif;
+  font-family: "ZCOOL QingKe HuangYou", "Noto Sans TC", sans-serif;
   font-weight: 400;
-  font-size: 44px;
-  letter-spacing: 2px;
-  margin: 10px auto 26px;
+  font-size: 52px;
+  letter-spacing: 3px;
+  margin: 12px auto 26px;
   display: table;
-  background: linear-gradient(180deg, #fff8ec 0%, #f6c988 55%, #e3a25c 100%);
+  background: linear-gradient(180deg, #fffdf6 0%, #fffdf6 42%, #f6bd7e 58%, #e8965a 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  -webkit-text-stroke: 2px #fff8ec;
-  text-shadow:
-    0 2px 0 #9a5f26, 2px 0 0 #9a5f26, 0 -2px 0 #9a5f26, -2px 0 0 #9a5f26,
-    1px 2px 0 #9a5f26, -1px 2px 0 #9a5f26, 1px -2px 0 #9a5f26, -1px -2px 0 #9a5f26,
-    2px 2px 0 #9a5f26, -2px 2px 0 #9a5f26, 2px -2px 0 #9a5f26, -2px -2px 0 #9a5f26,
-    0 8px 14px rgba(154, 95, 38, 0.4);
+  -webkit-text-stroke: 4px #8a4a1f;
+  paint-order: stroke fill;
+  text-shadow: 0 5px 0 rgba(90, 54, 20, 0.55), 0 10px 16px rgba(120, 74, 30, 0.35);
 }
 
 /* ── 通用「畫框」樣式（仿遊戲角色卡的金邊裝飾框）──────── */
