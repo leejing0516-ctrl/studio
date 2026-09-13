@@ -3,7 +3,7 @@ const DOMAINS = [
   { key: 'reading',  name: '學業閱讀', icon: '📖', color: '#7dd3fc' },
   { key: 'career',   name: '事業/工作', icon: '💼', color: '#fbbf24' },
   { key: 'health',   name: '健康/體能', icon: '💪', color: '#86efac' },
-  { key: 'finance',  name: '財務',     icon: '💰', color: '#fca5a5' },
+  { key: 'finance',  name: '消費/財務', icon: '💰', color: '#fca5a5' },
   { key: 'social',   name: '人際/家庭', icon: '❤️', color: '#c4b5fd' },
 ];
 
@@ -14,6 +14,10 @@ const EVENT_EXP = 15;
 const READING_CHECKIN_EXP = 15;
 const PROJECT_SUBTASK_EXP = 15;
 const PROJECT_FINISH_BONUS = 150;
+const EXPENSE_LOG_EXP = 5;
+const WEEKLY_BUDGET_BONUS_EXP = 50;
+const MONTHLY_BUDGET_BONUS_EXP = 150;
+const EXPENSE_CATEGORIES = ['餐飲', '交通', '購物', '娛樂', '帳單', '醫療', '其他'];
 const GOLD_RATE = 0.5; // 每 1 EXP 換算多少金幣
 const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 
@@ -70,6 +74,10 @@ const ACHIEVEMENTS = [
     condition: s => (s.events || []).length >= 1 },
   { id: 'first_project', icon: '🎯', name: '築夢踏實', desc: '完成第一個專案',
     condition: s => (s.projects || []).some(p => p.subtasks.length > 0 && p.subtasks.every(st => st.done)) },
+  { id: 'first_expense', icon: '🧾', name: '開始記帳', desc: '記錄第一筆消費',
+    condition: s => (s.expenses || []).length >= 1 },
+  { id: 'budget_keeper', icon: '💪', name: '預算守門員', desc: '守住預算獲得額外獎勵',
+    condition: s => (s.stats.budgetBonusesEarned || 0) >= 1 },
 ];
 
 // 每個技能等級所需經驗值（等級 L 需要累積 EXP）
@@ -95,6 +103,34 @@ function yesterdayStr() {
   const d = new Date();
   d.setDate(d.getDate() - 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function addDays(dateStr, n) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m - 1, d + n);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+}
+
+// 該日期所在週的星期日（週的起始）
+function getWeekStart(dateStr) {
+  const d = parseDateStr(dateStr);
+  d.setDate(d.getDate() - d.getDay());
+  return formatDate(d);
+}
+
+// "YYYY-MM" 月份鍵值
+function getMonthKey(dateStr) {
+  return dateStr.slice(0, 7);
+}
+
+function getMonthStart(dateStr) {
+  return getMonthKey(dateStr) + '-01';
+}
+
+function getNextMonthStart(dateStr) {
+  const d = parseDateStr(getMonthStart(dateStr));
+  d.setMonth(d.getMonth() + 1);
+  return formatDate(d);
 }
 
 function parseDateStr(dateStr) {

@@ -14,13 +14,15 @@ function defaultState() {
     readingCompletions: {}, // { "YYYY-MM-DD": { bookId: true } }
     rewards: [],          // { id, name, cost }
     achievements: [],      // unlocked achievement ids
-    stats: { tasksCompleted: 0, rewardsRedeemed: 0 },
+    stats: { tasksCompleted: 0, rewardsRedeemed: 0, budgetBonusesEarned: 0 },
     streak: { count: 0, lastActiveDate: null },
     log: [],              // { date, text } 簡易活動紀錄，最多保留 50 筆
     assistant: { log: [], lastSuggestionDate: null, lastVisitDate: null },
     events: [],           // { id, title, domain, date, time, type: 'event'|'deadline', done, googleEventId }
     googleCalendar: { clientId: '' },
     projects: [],         // { id, title, domain, deadline, granularity, createdDate, subtasks: [{id,title,dueDate,done}] }
+    expenses: [],         // { id, amount, category, note, date }
+    budget: { weekly: null, monthly: null, lastWeeklyBonusWeek: null, lastMonthlyBonusMonth: null },
     updatedAt: 0,         // 用於雲端同步時比較新舊
   };
 }
@@ -40,6 +42,7 @@ function normalizeState(parsed) {
   merged.streak = Object.assign({}, base.streak, parsed.streak);
   merged.assistant = Object.assign({}, base.assistant, parsed.assistant);
   merged.googleCalendar = Object.assign({}, base.googleCalendar, parsed.googleCalendar);
+  merged.budget = Object.assign({}, base.budget, parsed.budget);
   return merged;
 }
 

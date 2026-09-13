@@ -4,12 +4,6 @@ let _selectedDay = null;
 let _gcalAccessToken = null;
 let _gcalTokenClient = null;
 
-function addDays(dateStr, n) {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const dt = new Date(y, m - 1, d + n);
-  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
-}
-
 function addEvent(state, title, domain, date, time, type) {
   if (!title.trim() || !date) return;
   state.events.push({

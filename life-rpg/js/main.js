@@ -1,5 +1,6 @@
 let state = loadState();
 runDailyCheckIn(state);
+checkBudgetBonuses(state);
 
 // 第一次畫面渲染只是把已載入的資料畫出來，不算「使用者做了新的變更」，
 // 所以先不要 saveState（避免蓋掉 updatedAt，讓雲端同步的新舊比較失真）
@@ -17,6 +18,7 @@ function renderAll() {
   renderAssistantLog(state);
   renderCalendarTab(state);
   renderProjects(state);
+  renderFinance(state);
   if (_skipNextSave) { _skipNextSave = false; } else { saveState(state); }
 
   const unlocked = checkAchievements(state);
@@ -196,6 +198,14 @@ document.addEventListener('DOMContentLoaded', () => {
     opt.value = o.value;
     opt.textContent = o.label;
     granularitySelect.appendChild(opt);
+  });
+
+  const expenseCategorySelect = document.getElementById('expense-category');
+  EXPENSE_CATEGORIES.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    expenseCategorySelect.appendChild(opt);
   });
 
   document.getElementById('event-date').value = todayStr();
@@ -396,6 +406,35 @@ document.addEventListener('DOMContentLoaded', () => {
       renderAll();
     } else if (e.target.matches('.del-readingplan')) {
       deleteReadingPlanItem(state, e.target.dataset.id);
+      renderAll();
+    }
+  });
+
+  // 消費/財務
+  document.getElementById('budget-save').addEventListener('click', () => {
+    const weekly = document.getElementById('budget-weekly').value;
+    const monthly = document.getElementById('budget-monthly').value;
+    saveBudget(state, weekly, monthly);
+    sound.playClick();
+    renderAll();
+  });
+
+  document.getElementById('expense-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const amount = document.getElementById('expense-amount').value;
+    const category = document.getElementById('expense-category').value;
+    const note = document.getElementById('expense-note').value;
+    addExpense(state, amount, category, note);
+    document.getElementById('expense-amount').value = '';
+    document.getElementById('expense-note').value = '';
+    sound.playComplete();
+    onTaskOrHabitComplete(state, 'finance');
+    renderAll();
+  });
+
+  document.getElementById('expense-list').addEventListener('click', e => {
+    if (e.target.matches('.del-expense')) {
+      deleteExpense(state, e.target.dataset.id);
       renderAll();
     }
   });
