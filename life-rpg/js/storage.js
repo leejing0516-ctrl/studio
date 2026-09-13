@@ -76,9 +76,20 @@ function migrateOldState(base) {
   }
 }
 
+let _localSaveFailed = false;
+
 function saveState(state) {
   state.updatedAt = Date.now();
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.error('本機儲存失敗（可能是無痕模式或空間不足）', e);
+    if (!_localSaveFailed && typeof showStorageError === 'function') {
+      _localSaveFailed = true;
+      showStorageError();
+    }
+    return; // 本機都存不進去，就不用再嘗試推上雲端了
+  }
   if (typeof scheduleCloudSave === 'function') scheduleCloudSave();
 }
 

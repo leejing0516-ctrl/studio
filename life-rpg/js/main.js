@@ -53,6 +53,19 @@ function showAchievementToast(a) {
   }, 3200);
 }
 
+function showStorageError() {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.style.maxWidth = '300px';
+  toast.innerHTML = `<span class="toast-icon">⚠️</span><div><div class="toast-title">儲存失敗</div><div class="toast-name" style="font-size:12.5px; font-weight:500;">目前這個瀏覽視窗好像無法儲存資料（例如無痕/隱私模式），建議改用一般視窗開啟，不然改的東西會不見</div></div>`;
+  document.getElementById('toast-container').appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('show'));
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 400);
+  }, 8000);
+}
+
 function switchTab(tabId) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -294,9 +307,17 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
 
-  document.getElementById('char-name').addEventListener('change', e => {
-    state.character.name = e.target.value || '我的角色';
-    renderAll();
+  // 用 input（每次按鍵）而不是 change（要失焦才觸發），避免在手機上快速切換分頁
+  // 導致存檔前來不及觸發、改的名字又跳回去
+  document.getElementById('char-name').addEventListener('input', e => {
+    state.character.name = e.target.value;
+    saveState(state);
+  });
+  document.getElementById('char-name').addEventListener('blur', e => {
+    if (!e.target.value.trim()) {
+      state.character.name = '我的角色';
+      renderAll();
+    }
   });
 
   document.getElementById('avatar-ring').addEventListener('click', () => {
