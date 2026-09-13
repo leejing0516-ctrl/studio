@@ -39,26 +39,22 @@ body {
 
 h1 {
   text-align: center;
-  font-family: "Ma Shan Zheng", "Cinzel Decorative", "Noto Sans TC", serif;
+  font-family: "ZCOOL KuaiLe", "Noto Sans TC", sans-serif;
   font-weight: 400;
-  font-size: 42px;
-  color: #5c4632;
+  font-size: 44px;
   letter-spacing: 2px;
   margin: 10px auto 26px;
   display: table;
+  background: linear-gradient(180deg, #fff8ec 0%, #f6c988 55%, #e3a25c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-stroke: 2px #fff8ec;
   text-shadow:
-    2px 2px 0 rgba(255, 250, 240, 0.75),
-    0 6px 14px rgba(140, 100, 60, 0.22);
-}
-
-h1::after {
-  content: '';
-  display: block;
-  width: 120px;
-  height: 4px;
-  margin: 8px auto 0;
-  background: linear-gradient(90deg, transparent, var(--gold), transparent);
-  border-radius: 999px;
+    0 2px 0 #9a5f26, 2px 0 0 #9a5f26, 0 -2px 0 #9a5f26, -2px 0 0 #9a5f26,
+    1px 2px 0 #9a5f26, -1px 2px 0 #9a5f26, 1px -2px 0 #9a5f26, -1px -2px 0 #9a5f26,
+    2px 2px 0 #9a5f26, -2px 2px 0 #9a5f26, 2px -2px 0 #9a5f26, -2px -2px 0 #9a5f26,
+    0 8px 14px rgba(154, 95, 38, 0.4);
 }
 
 /* ── 通用「畫框」樣式（仿遊戲角色卡的金邊裝飾框）──────── */
