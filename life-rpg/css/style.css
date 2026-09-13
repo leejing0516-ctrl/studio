@@ -39,19 +39,15 @@ body {
 
 h1 {
   text-align: center;
-  font-family: "ZCOOL QingKe HuangYou", "Noto Sans TC", sans-serif;
-  font-weight: 400;
-  font-size: 52px;
-  letter-spacing: 3px;
-  margin: 12px auto 26px;
-  display: table;
-  background: linear-gradient(180deg, #fffdf6 0%, #fffdf6 42%, #f6bd7e 58%, #e8965a 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  -webkit-text-stroke: 4px #8a4a1f;
-  paint-order: stroke fill;
-  text-shadow: 0 5px 0 rgba(90, 54, 20, 0.55), 0 10px 16px rgba(120, 74, 30, 0.35);
+  margin: 10px auto 26px;
+}
+
+.title-logo {
+  display: block;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 380px;
+  height: auto;
 }
 
 /* ── 通用「畫框」樣式（仿遊戲角色卡的金邊裝飾框）──────── */
@@ -1006,7 +1002,7 @@ ul { list-style: none; padding: 0; margin: 0; }
 /* ── 響應式 ───────────────────────────── */
 @media (max-width: 640px) {
   .app { padding-top: 44px; }
-  h1 { font-size: 30px; }
+  .title-logo { max-width: 280px; }
   .char-card { flex-direction: column; align-items: center; }
   .levelup-level { font-size: 40px; }
   .assistant-widget { flex-wrap: wrap; }
