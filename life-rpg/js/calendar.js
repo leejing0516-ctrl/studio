@@ -85,7 +85,8 @@ function renderCalendarMonth(state) {
   label.textContent = `${_calYear} 年 ${MONTH_NAMES_ZH[_calMonth]}`;
 
   const firstDay = new Date(_calYear, _calMonth, 1);
-  const startWeekday = firstDay.getDay();
+  // 週一排最左邊：把原本「日=0」為起點的 getDay() 轉成「一=0」為起點
+  const startWeekday = (firstDay.getDay() + 6) % 7;
   const daysInMonth = new Date(_calYear, _calMonth + 1, 0).getDate();
   const today = todayStr();
 
@@ -94,19 +95,23 @@ function renderCalendarMonth(state) {
     (itemsByDay[it.date] = itemsByDay[it.date] || []).push(it);
   });
 
-  let html = WEEKDAY_NAMES_ZH.map(w => `<div class="cal-weekday">${w}</div>`).join('');
+  let html = WEEKDAY_NAMES_ZH.map((w, i) => `<div class="cal-weekday ${i >= 5 ? 'is-weekend' : ''}">${w}</div>`).join('');
   for (let i = 0; i < startWeekday; i++) html += '<div class="cal-cell empty"></div>';
 
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr = `${_calYear}-${String(_calMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     const dayItems = itemsByDay[dateStr] || [];
     const hasOverdue = dayItems.some(it => !it.done && dateStr < today);
+    const weekday = (new Date(_calYear, _calMonth, d).getDay() + 6) % 7; // 0=一 ... 6=日
+    const holiday = HOLIDAYS_TW[dateStr];
     const classes = ['cal-cell'];
     if (dateStr === today) classes.push('is-today');
     if (dateStr === _selectedDay) classes.push('is-selected');
     if (dayItems.length) classes.push('has-events');
+    if (weekday >= 5) classes.push('is-weekend');
+    if (holiday) classes.push('is-holiday');
     html += `
-      <div class="${classes.join(' ')}" data-date="${dateStr}">
+      <div class="${classes.join(' ')}" data-date="${dateStr}" ${holiday ? `title="${holiday}"` : ''}>
         <span class="cal-daynum">${d}</span>
         ${dayItems.length ? `<span class="cal-dot ${hasOverdue ? 'overdue' : ''}">${dayItems.length}</span>` : ''}
       </div>
