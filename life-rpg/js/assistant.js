@@ -330,15 +330,7 @@ async function callAssistantAI(state, userMessage) {
   return data.reply;
 }
 
-// 晚上十點後，如果今天還沒做過總結，打開 app 時自動請 AI 產生一則
-// （純前端網頁沒有背景執行能力，沒辦法「準時」推播，只能在下次打開時補做）
-async function checkDailySummary(state) {
-  if (!state.assistant.aiEnabled || !state.assistant.aiEndpoint) return false;
-  if (new Date().getHours() < 22) return false;
-  const today = todayStr();
-  if (state.assistant.lastDailySummaryDate === today) return false;
-
-  state.assistant.lastDailySummaryDate = today; // 先標記，避免失敗時每次打開都重試洗版
+async function generateDailySummary(state) {
   try {
     const reply = await callAssistantAI(
       state,
@@ -349,7 +341,28 @@ async function checkDailySummary(state) {
     console.error('每日總結失敗', e);
     addAssistantMessage(state, `（小助手今天的總結產生失敗了：${e.message}，明天會再試一次）`, 'tip');
   }
+}
+
+// 晚上十點後，如果今天還沒做過總結，打開 app 時自動請 AI 產生一則
+// （純前端網頁沒有背景執行能力，沒辦法「準時」推播，只能在下次打開時補做）
+async function checkDailySummary(state) {
+  if (!state.assistant.aiEnabled || !state.assistant.aiEndpoint) return false;
+  if (new Date().getHours() < 22) return false;
+  const today = todayStr();
+  if (state.assistant.lastDailySummaryDate === today) return false;
+
+  state.assistant.lastDailySummaryDate = today; // 先標記，避免失敗時每次打開都重試洗版
+  await generateDailySummary(state);
   return true;
+}
+
+// 手動立即產生一次今日總結（方便測試，或不想等到十點才看）
+async function generateDailySummaryNow(state) {
+  if (!state.assistant.aiEnabled || !state.assistant.aiEndpoint) {
+    throw new Error('請先啟用 AI 並填好服務網址');
+  }
+  await generateDailySummary(state);
+  state.assistant.lastDailySummaryDate = todayStr();
 }
 
 /* ── 語音新增任務 ───────────────────────────── */
@@ -375,8 +388,15 @@ function startVoiceInput(onResult, onError, onEnd) {
   rec.onresult = e => { settled = true; onResult(e.results[0][0].transcript); };
   rec.onerror = e => {
     settled = true;
-    const NO_SPEECH_ERRORS = ['no-speech', 'aborted'];
-    if (!NO_SPEECH_ERRORS.includes(e.error)) onError('語音辨識失敗：' + e.error);
+    if (e.error === 'aborted') return; // 使用者自己按取消，不用顯示訊息
+    const VOICE_ERROR_MESSAGES = {
+      'no-speech': '沒有偵測到聲音，請靠近麥克風、講大聲一點再試一次',
+      'audio-capture': '找不到麥克風，請檢查裝置的麥克風設定',
+      'not-allowed': '沒有取得麥克風權限，請到瀏覽器或系統設定允許使用麥克風',
+      'network': '語音辨識需要網路連線，請檢查網路狀態後再試一次',
+      'service-not-allowed': '瀏覽器封鎖了語音辨識服務',
+    };
+    onError(VOICE_ERROR_MESSAGES[e.error] || ('語音辨識失敗：' + e.error));
   };
   rec.onend = () => {
     _voiceRecognition = null;

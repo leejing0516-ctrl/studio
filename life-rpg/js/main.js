@@ -441,6 +441,20 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAll();
   });
 
+  document.getElementById('assistant-summary-now').addEventListener('click', async () => {
+    const btn = document.getElementById('assistant-summary-now');
+    btn.disabled = true;
+    btn.textContent = '產生中…';
+    try {
+      await generateDailySummaryNow(state);
+    } catch (err) {
+      alert(err.message);
+    }
+    btn.disabled = false;
+    btn.textContent = '🌙 立即產生今日總結';
+    renderAll();
+  });
+
   function resetVoiceAvatar() {
     const avatarEl = document.getElementById('assistant-avatar-btn');
     avatarEl.classList.remove('listening');
@@ -480,7 +494,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }, msg => {
       handled = true;
       resetVoiceAvatar();
-      alert(msg);
+      addAssistantMessage(state, '🎤 ' + msg, 'tip');
+      renderAll();
     }, () => {
       // 不管有沒有辨識到內容，聆聽結束後畫面一定要恢復，不會卡在錄音狀態
       if (!handled) resetVoiceAvatar();
