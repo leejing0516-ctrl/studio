@@ -240,13 +240,22 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('event-list').addEventListener('click', e => {
     if (e.target.matches('.event-check')) {
       const willBeDone = e.target.checked;
-      toggleEventDone(state, e.target.dataset.id);
+      const id = e.target.dataset.id;
+      const kind = e.target.dataset.kind;
+      let domain;
+      if (kind === 'task') {
+        domain = (state.tasks.find(t => t.id === id) || {}).domain;
+        toggleTask(state, id);
+      } else {
+        domain = (state.events.find(ev => ev.id === id) || {}).domain;
+        toggleEventDone(state, id);
+      }
       sound[willBeDone ? 'playComplete' : 'playClick']();
-      const ev = state.events.find(ev => ev.id === e.target.dataset.id);
-      if (willBeDone && ev) onTaskOrHabitComplete(state, ev.domain);
+      if (willBeDone && domain) onTaskOrHabitComplete(state, domain);
       renderAll();
     } else if (e.target.matches('.del-event')) {
-      deleteEvent(state, e.target.dataset.id);
+      const id = e.target.dataset.id;
+      if (e.target.dataset.kind === 'task') deleteTask(state, id); else deleteEvent(state, id);
       renderAll();
     }
   });

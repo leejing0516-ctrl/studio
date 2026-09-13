@@ -37,7 +37,7 @@ function addTask(state, text, domain, difficulty) {
   state.tasks.push({
     id: 't' + Date.now() + Math.random().toString(36).slice(2, 7),
     domain, text: text.trim(), difficulty,
-    date: todayStr(), done: false,
+    date: todayStr(), done: false, googleEventId: null,
   });
 }
 

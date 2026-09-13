@@ -33,6 +33,7 @@ function loadState() {
       if (!parsed.skills[d.key]) parsed.skills[d.key] = { exp: 0, lastGain: null };
       if (parsed.skills[d.key].lastGain === undefined) parsed.skills[d.key].lastGain = null;
     });
+    (parsed.tasks || []).forEach(t => { if (t.googleEventId === undefined) t.googleEventId = null; });
     const merged = Object.assign({}, base, parsed);
     merged.stats = Object.assign({}, base.stats, parsed.stats);
     merged.streak = Object.assign({}, base.streak, parsed.streak);

@@ -36,6 +36,20 @@ function deleteEvent(state, id) {
   state.events = state.events.filter(e => e.id !== id);
 }
 
+/* ── 統一「任務 + 活動」的行事曆視圖 ───────────────────────────── */
+
+function getCalendarItems(state) {
+  const tasks = state.tasks.map(t => ({
+    id: t.id, kind: 'task', title: t.text, domain: t.domain,
+    date: t.date, time: '', done: t.done, googleEventId: t.googleEventId,
+  }));
+  const events = state.events.map(e => ({
+    id: e.id, kind: 'event', title: e.title, domain: e.domain,
+    date: e.date, time: e.time, done: e.done, googleEventId: e.googleEventId, type: e.type,
+  }));
+  return tasks.concat(events);
+}
+
 function renderCalendarMonth(state) {
   const grid = document.getElementById('calendar-grid');
   const label = document.getElementById('calendar-month-label');
@@ -47,9 +61,9 @@ function renderCalendarMonth(state) {
   const daysInMonth = new Date(_calYear, _calMonth + 1, 0).getDate();
   const today = todayStr();
 
-  const eventsByDay = {};
-  state.events.forEach(e => {
-    (eventsByDay[e.date] = eventsByDay[e.date] || []).push(e);
+  const itemsByDay = {};
+  getCalendarItems(state).forEach(it => {
+    (itemsByDay[it.date] = itemsByDay[it.date] || []).push(it);
   });
 
   let html = WEEKDAY_NAMES_ZH.map(w => `<div class="cal-weekday">${w}</div>`).join('');
@@ -57,16 +71,16 @@ function renderCalendarMonth(state) {
 
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr = `${_calYear}-${String(_calMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const dayEvents = eventsByDay[dateStr] || [];
-    const hasOverdue = dayEvents.some(e => !e.done && dateStr < today);
+    const dayItems = itemsByDay[dateStr] || [];
+    const hasOverdue = dayItems.some(it => !it.done && dateStr < today);
     const classes = ['cal-cell'];
     if (dateStr === today) classes.push('is-today');
     if (dateStr === _selectedDay) classes.push('is-selected');
-    if (dayEvents.length) classes.push('has-events');
+    if (dayItems.length) classes.push('has-events');
     html += `
       <div class="${classes.join(' ')}" data-date="${dateStr}">
         <span class="cal-daynum">${d}</span>
-        ${dayEvents.length ? `<span class="cal-dot ${hasOverdue ? 'overdue' : ''}">${dayEvents.length}</span>` : ''}
+        ${dayItems.length ? `<span class="cal-dot ${hasOverdue ? 'overdue' : ''}">${dayItems.length}</span>` : ''}
       </div>
     `;
   }
@@ -84,39 +98,39 @@ function renderEventList(state) {
   const filterLabel = document.getElementById('event-filter-label');
   if (!list) return;
 
-  let events = state.events.slice();
+  let items = getCalendarItems(state);
   if (_selectedDay) {
     filterLabel.textContent = `📌 顯示 ${_selectedDay} 的項目（點同一天可取消篩選）`;
     filterLabel.style.display = 'block';
-    events = events.filter(e => e.date === _selectedDay);
+    items = items.filter(it => it.date === _selectedDay);
   } else {
     filterLabel.style.display = 'none';
   }
 
-  events.sort((a, b) => (a.date + (a.time || '99:99')).localeCompare(b.date + (b.time || '99:99')));
+  items.sort((a, b) => (a.date + (a.time || '99:99')).localeCompare(b.date + (b.time || '99:99')));
   const today = todayStr();
-  const pending = events.filter(e => !e.done);
-  const done = events.filter(e => e.done);
+  const pending = items.filter(it => !it.done);
+  const done = items.filter(it => it.done);
 
-  if (!events.length) {
-    list.innerHTML = '<li class="empty-hint">還沒有安排任何活動或截止日，新增一個吧！</li>';
+  if (!items.length) {
+    list.innerHTML = '<li class="empty-hint">還沒有安排任何任務、活動或截止日，新增一個吧！</li>';
     return;
   }
 
-  const renderItem = (e) => {
-    const d = DOMAINS.find(d => d.key === e.domain);
-    const overdue = !e.done && e.date < today;
-    const icon = e.type === 'deadline' ? '⏰' : '📅';
+  const renderItem = (it) => {
+    const d = DOMAINS.find(d => d.key === it.domain);
+    const overdue = !it.done && it.date < today;
+    const icon = it.kind === 'task' ? '📋' : (it.type === 'deadline' ? '⏰' : '📅');
     return `
-      <li class="task-item ${e.done ? 'done' : ''} ${overdue ? 'overdue' : ''}">
+      <li class="task-item ${it.done ? 'done' : ''} ${overdue ? 'overdue' : ''}">
         <label class="task-check">
-          <input type="checkbox" ${e.done ? 'checked' : ''} data-id="${e.id}" class="event-check">
+          <input type="checkbox" ${it.done ? 'checked' : ''} data-id="${it.id}" data-kind="${it.kind}" class="event-check">
           <span class="task-tag" style="background:${d.color}">${d.icon} ${d.name}</span>
-          <span class="event-date">${icon} ${e.date}${e.time ? ' ' + e.time : ''}</span>
-          <span class="task-text">${escapeHtml(e.title)}</span>
-          ${e.googleEventId ? '<span class="gcal-badge" title="已同步到 Google 日曆">🔗</span>' : ''}
+          <span class="event-date">${icon} ${it.date}${it.time ? ' ' + it.time : ''}</span>
+          <span class="task-text">${escapeHtml(it.title)}</span>
+          ${it.googleEventId ? '<span class="gcal-badge" title="已同步到 Google 日曆">🔗</span>' : ''}
         </label>
-        <button class="icon-btn del-event" data-id="${e.id}" title="刪除">✕</button>
+        <button class="icon-btn del-event" data-id="${it.id}" data-kind="${it.kind}" title="刪除">✕</button>
       </li>
     `;
   };
@@ -167,8 +181,24 @@ function connectGoogle(state) {
   _gcalTokenClient.requestAccessToken();
 }
 
+async function postGoogleEvent(body) {
+  if (!_gcalAccessToken) return null;
+  try {
+    const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${_gcalAccessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.id;
+  } catch (e) {
+    console.error('同步到 Google 日曆失敗', e);
+    return null;
+  }
+}
+
 async function syncEventToGoogle(ev) {
-  if (!_gcalAccessToken) return false;
   const body = {
     summary: ev.title,
     description: ev.type === 'deadline' ? '截止日期（來自人生 RPG）' : '活動（來自人生 RPG）',
@@ -183,28 +213,33 @@ async function syncEventToGoogle(ev) {
     body.start = { date: ev.date };
     body.end = { date: addDays(ev.date, 1) };
   }
+  const id = await postGoogleEvent(body);
+  if (id) { ev.googleEventId = id; return true; }
+  return false;
+}
 
-  try {
-    const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${_gcalAccessToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) return false;
-    const data = await res.json();
-    ev.googleEventId = data.id;
-    return true;
-  } catch (e) {
-    console.error('同步到 Google 日曆失敗', e);
-    return false;
-  }
+async function syncTaskToGoogle(task) {
+  const d = DOMAINS.find(d => d.key === task.domain);
+  const body = {
+    summary: task.text,
+    description: `每日任務${d ? '（' + d.name + '）' : ''}（來自人生 RPG）`,
+    start: { date: task.date },
+    end: { date: addDays(task.date, 1) },
+  };
+  const id = await postGoogleEvent(body);
+  if (id) { task.googleEventId = id; return true; }
+  return false;
 }
 
 async function syncAllToGoogle(state) {
-  const pending = state.events.filter(e => !e.googleEventId);
+  const pendingEvents = state.events.filter(e => !e.googleEventId);
+  const pendingTasks = state.tasks.filter(t => !t.googleEventId);
   let success = 0;
-  for (const ev of pending) {
+  for (const ev of pendingEvents) {
     if (await syncEventToGoogle(ev)) success++;
   }
-  return { success, total: pending.length };
+  for (const t of pendingTasks) {
+    if (await syncTaskToGoogle(t)) success++;
+  }
+  return { success, total: pendingEvents.length + pendingTasks.length };
 }
