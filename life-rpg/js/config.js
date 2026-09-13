@@ -11,6 +11,7 @@ const TASK_EXP = { easy: 10, normal: 15, hard: 25 };
 const EXP_PER_PAGE = 2;
 const BOOK_FINISH_BONUS = 100;
 const EVENT_EXP = 15;
+const READING_CHECKIN_EXP = 15;
 const GOLD_RATE = 0.5; // 每 1 EXP 換算多少金幣
 const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 

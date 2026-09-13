@@ -61,3 +61,23 @@ function logPage(state, id, newPage) {
 function deleteBook(state, id) {
   state.books = state.books.filter(b => b.id !== id);
 }
+
+function todaysReadingCheckins(state) {
+  const today = todayStr();
+  if (!state.readingCompletions[today]) state.readingCompletions[today] = {};
+  return state.readingCompletions[today];
+}
+
+function toggleReadingCheckin(state, bookId) {
+  const book = state.books.find(b => b.id === bookId);
+  if (!book) return;
+  const doneMap = todaysReadingCheckins(state);
+  if (!doneMap[bookId]) {
+    doneMap[bookId] = true;
+    gainExp(state, 'reading', READING_CHECKIN_EXP);
+    addLog(state, `今天有閱讀《${book.title}》，學業閱讀 +${READING_CHECKIN_EXP} EXP ／ +${goldFor(READING_CHECKIN_EXP)} 金幣`);
+  } else {
+    delete doneMap[bookId];
+    gainExp(state, 'reading', -READING_CHECKIN_EXP);
+  }
+}

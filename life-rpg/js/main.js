@@ -126,6 +126,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (kind === 'event') {
         domain = (state.events.find(ev => ev.id === id) || {}).domain;
         toggleEventDone(state, id);
+      } else if (kind === 'habit') {
+        domain = (state.habits.find(h => h.id === id) || {}).domain;
+        toggleHabit(state, id);
+      } else if (kind === 'reading') {
+        domain = 'reading';
+        toggleReadingCheckin(state, id);
       } else {
         domain = (state.tasks.find(t => t.id === id) || {}).domain;
         toggleTask(state, id);
@@ -135,7 +141,11 @@ document.addEventListener('DOMContentLoaded', () => {
       renderAll();
     } else if (e.target.matches('.del-task')) {
       const id = e.target.dataset.id;
-      if (e.target.dataset.kind === 'event') deleteEvent(state, id); else deleteTask(state, id);
+      const kind = e.target.dataset.kind;
+      if (kind === 'event') deleteEvent(state, id);
+      else if (kind === 'habit') deleteHabit(state, id);
+      else if (kind === 'reading') deleteBook(state, id);
+      else deleteTask(state, id);
       renderAll();
     }
   });

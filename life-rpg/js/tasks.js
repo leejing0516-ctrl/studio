@@ -1,7 +1,27 @@
+// 把「今日任務、到期活動/截止日、習慣、閱讀」統一成一份今日清單
+function getTodayChecklist(state) {
+  const today = todayStr();
+  const calItems = getTodayItems(state); // 今日任務 + 到期活動/截止日
+
+  const habitDone = state.habitCompletions[today] || {};
+  const habitItems = state.habits.map(h => ({
+    id: h.id, kind: 'habit', title: h.name, domain: h.domain,
+    done: !!habitDone[h.id], difficulty: h.difficulty, streak: h.streak || 0,
+  }));
+
+  const readingDone = state.readingCompletions[today] || {};
+  const readingItems = state.books.filter(b => !b.done).map(b => ({
+    id: b.id, kind: 'reading', title: `閱讀《${b.title}》`, domain: 'reading',
+    done: !!readingDone[b.id],
+  }));
+
+  return calItems.concat(habitItems, readingItems);
+}
+
 function renderTasks(state) {
   const list = document.getElementById('task-list');
   list.innerHTML = '';
-  const items = getTodayItems(state);
+  const items = getTodayChecklist(state);
 
   if (items.length === 0) {
     list.innerHTML = '<li class="empty-hint">今天還沒有任務，新增一個開始賺 EXP 吧！</li>';
@@ -13,14 +33,24 @@ function renderTasks(state) {
 
   const renderItem = (it) => {
     const domain = DOMAINS.find(d => d.key === it.domain);
-    const exp = it.kind === 'task' ? TASK_EXP[it.difficulty] : EVENT_EXP;
-    const prefix = it.kind === 'event' ? (it.type === 'deadline' ? '⏰ ' : '📅 ') : '';
+    let exp, prefix, extra = '';
+    if (it.kind === 'task') {
+      exp = TASK_EXP[it.difficulty]; prefix = '';
+    } else if (it.kind === 'event') {
+      exp = EVENT_EXP; prefix = it.type === 'deadline' ? '⏰ ' : '📅 ';
+    } else if (it.kind === 'habit') {
+      exp = TASK_EXP[it.difficulty]; prefix = '🔁 ';
+      extra = `<span class="habit-streak">連續 ${it.streak} 天</span>`;
+    } else if (it.kind === 'reading') {
+      exp = READING_CHECKIN_EXP; prefix = '📖 ';
+    }
     return `
       <li class="task-item ${it.done ? 'done' : ''}">
         <label class="task-check">
           <input type="checkbox" ${it.done ? 'checked' : ''} data-id="${it.id}" data-kind="${it.kind}">
           <span class="task-tag" style="background:${domain.color}">${domain.icon} ${domain.name}</span>
           <span class="task-text">${prefix}${escapeHtml(it.title)}</span>
+          ${extra}
           <span class="task-exp">+${exp} EXP</span>
         </label>
         <button class="icon-btn del-task" data-id="${it.id}" data-kind="${it.kind}" title="刪除">✕</button>

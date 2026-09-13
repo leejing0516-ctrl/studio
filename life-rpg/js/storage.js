@@ -11,6 +11,7 @@ function defaultState() {
     books: [],           // { id, title, totalPages, currentPage, done }
     habits: [],          // { id, name, domain, difficulty, streak, lastDoneDate }
     habitCompletions: {}, // { "YYYY-MM-DD": { habitId: true } }
+    readingCompletions: {}, // { "YYYY-MM-DD": { bookId: true } }
     rewards: [],          // { id, name, cost }
     achievements: [],      // unlocked achievement ids
     stats: { tasksCompleted: 0, rewardsRedeemed: 0 },
