@@ -123,22 +123,6 @@ function setTimeValue(prefix, timeStr) {
   minuteEl.value = String(snapped >= 60 ? 0 : snapped).padStart(2, '0');
 }
 
-// 語音辨識 + AI 解析出結果後，先讓使用者確認/修改再真正新增
-function showVoicePreview(parsed) {
-  const isToday = parsed.date === todayStr();
-  document.getElementById('voice-title').value = parsed.title || '';
-  document.getElementById('voice-domain').value = DOMAINS.some(d => d.key === parsed.domain) ? parsed.domain : 'career';
-
-  const kindSel = document.getElementById('voice-kind');
-  kindSel.value = (parsed.kind === 'task' && isToday) ? 'task' : 'event';
-  document.getElementById('voice-date').value = parsed.date || todayStr();
-  document.getElementById('voice-date').style.display = (kindSel.value === 'event') ? '' : 'none';
-  setTimeValue('voice-time', parsed.time || '');
-
-  document.getElementById('voice-preview').style.display = '';
-  document.getElementById('voice-preview').scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-
 let _editTarget = null;
 
 function openEditModal(kind, id) {
@@ -242,7 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', initSoundOnce, { once: true });
   decorateFrames();
 
-  ['task-domain', 'habit-domain', 'event-domain', 'project-domain', 'edit-domain', 'voice-domain'].forEach(id => {
+  ['task-domain', 'habit-domain', 'event-domain', 'project-domain', 'edit-domain'].forEach(id => {
     const select = document.getElementById(id);
     DOMAINS.forEach(d => {
       const opt = document.createElement('option');
@@ -285,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
     expenseCategorySelect.appendChild(opt);
   });
 
-  ['task-time', 'event-time', 'edit-time', 'voice-time'].forEach(populateTimeSelect);
+  ['task-time', 'event-time', 'edit-time'].forEach(populateTimeSelect);
 
   document.getElementById('event-date').value = todayStr();
   document.getElementById('project-start').value = todayStr();
@@ -452,80 +436,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     btn.disabled = false;
     btn.textContent = '🌙 立即產生今日總結';
-    renderAll();
-  });
-
-  function resetVoiceAvatar() {
-    const avatarEl = document.getElementById('assistant-avatar-btn');
-    avatarEl.classList.remove('listening');
-    avatarEl.textContent = '🧚';
-  }
-
-  document.getElementById('assistant-avatar-btn').addEventListener('click', () => {
-    const avatarEl = document.getElementById('assistant-avatar-btn');
-
-    // 正在聽的時候再點一下＝取消，這樣卡住或講錯話都有得按
-    if (avatarEl.classList.contains('listening')) {
-      stopVoiceInput();
-      resetVoiceAvatar();
-      return;
-    }
-
-    if (!state.assistant.aiEnabled || !state.assistant.aiEndpoint) {
-      alert('請先到小助手分頁的「⚙️ 小助手設定」啟用 AI 並填好服務網址，才能用語音新增任務喔');
-      return;
-    }
-    avatarEl.classList.add('listening');
-    avatarEl.textContent = '🎤';
-    avatarEl.title = '聆聽中…再點一下可以取消';
-
-    let handled = false;
-    startVoiceInput(async transcript => {
-      handled = true;
-      resetVoiceAvatar();
-      addAssistantMessage(state, `🎤 聽到：「${transcript}」，正在幫你整理成任務…`, 'chat');
-      renderAll();
-      try {
-        const parsed = await parseVoiceInput(state, transcript);
-        showVoicePreview(parsed);
-      } catch (err) {
-        alert('語音任務解析失敗：' + err.message);
-      }
-    }, msg => {
-      handled = true;
-      resetVoiceAvatar();
-      addAssistantMessage(state, '🎤 ' + msg, 'tip');
-      renderAll();
-    }, () => {
-      // 不管有沒有辨識到內容，聆聽結束後畫面一定要恢復，不會卡在錄音狀態
-      if (!handled) resetVoiceAvatar();
-      avatarEl.title = '點一下，用語音新增任務';
-    });
-  });
-
-  document.getElementById('voice-kind').addEventListener('change', e => {
-    document.getElementById('voice-date').style.display = (e.target.value === 'event') ? '' : 'none';
-  });
-
-  document.getElementById('voice-cancel').addEventListener('click', () => {
-    document.getElementById('voice-preview').style.display = 'none';
-  });
-
-  document.getElementById('voice-confirm').addEventListener('click', () => {
-    const title = document.getElementById('voice-title').value.trim();
-    const domain = document.getElementById('voice-domain').value;
-    const kind = document.getElementById('voice-kind').value;
-    const date = document.getElementById('voice-date').value;
-    const time = getTimeValue('voice-time');
-    if (!title) { alert('請填寫標題'); return; }
-    if (kind === 'event') {
-      if (!date) { alert('請選擇日期'); return; }
-      addEvent(state, title, domain, date, time, 'event');
-    } else {
-      addTask(state, title, domain, 'normal', time);
-    }
-    document.getElementById('voice-preview').style.display = 'none';
-    sound.playClick();
     renderAll();
   });
 

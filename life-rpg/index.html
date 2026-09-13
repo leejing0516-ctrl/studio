@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=39">
+<link rel="stylesheet" href="css/style.css?v=40">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -39,32 +39,12 @@
   </div>
 
   <div class="assistant-widget frame">
-    <div class="assistant-avatar" id="assistant-avatar-btn" title="點一下，用語音新增任務">🧚</div>
+    <div class="assistant-avatar">🧚</div>
     <div class="assistant-bubble">
       <div class="assistant-bubble-label">小助手</div>
       <div id="assistant-bubble-text">嗨，我是你的小助手！</div>
     </div>
     <button id="assistant-shuffle" class="icon-btn" title="換一句">🔄</button>
-  </div>
-
-  <div id="voice-preview" class="voice-preview-card" style="display:none;">
-    <p class="tab-hint" style="margin:0 0 10px;">🎤 語音辨識結果，確認或修改後新增：</p>
-    <div class="inline-form">
-      <input type="text" id="voice-title" placeholder="標題" style="flex:1; min-width:160px;">
-      <select id="voice-domain"></select>
-      <select id="voice-kind">
-        <option value="task">📋 今日任務</option>
-        <option value="event">📅 行事曆活動</option>
-      </select>
-      <input type="date" id="voice-date">
-      <span class="time-picker">
-        <select id="voice-time-hour"></select>:<select id="voice-time-minute"></select>
-      </span>
-    </div>
-    <div class="modal-actions" style="justify-content:flex-start;">
-      <button type="button" id="voice-confirm" class="btn small">✅ 確認新增</button>
-      <button type="button" id="voice-cancel" class="btn small">取消</button>
-    </div>
   </div>
 
   <div class="char-card frame">
@@ -341,20 +321,20 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="js/config.js?v=39"></script>
-<script src="js/storage.js?v=39"></script>
-<script src="js/cloud.js?v=39"></script>
-<script src="js/sound.js?v=39"></script>
-<script src="js/assistant.js?v=39"></script>
-<script src="js/character.js?v=39"></script>
-<script src="js/tasks.js?v=39"></script>
-<script src="js/habits.js?v=39"></script>
-<script src="js/projects.js?v=39"></script>
-<script src="js/reading.js?v=39"></script>
-<script src="js/finance.js?v=39"></script>
-<script src="js/calendar.js?v=39"></script>
-<script src="js/rewards.js?v=39"></script>
-<script src="js/achievements.js?v=39"></script>
-<script src="js/main.js?v=39"></script>
+<script src="js/config.js?v=40"></script>
+<script src="js/storage.js?v=40"></script>
+<script src="js/cloud.js?v=40"></script>
+<script src="js/sound.js?v=40"></script>
+<script src="js/assistant.js?v=40"></script>
+<script src="js/character.js?v=40"></script>
+<script src="js/tasks.js?v=40"></script>
+<script src="js/habits.js?v=40"></script>
+<script src="js/projects.js?v=40"></script>
+<script src="js/reading.js?v=40"></script>
+<script src="js/finance.js?v=40"></script>
+<script src="js/calendar.js?v=40"></script>
+<script src="js/rewards.js?v=40"></script>
+<script src="js/achievements.js?v=40"></script>
+<script src="js/main.js?v=40"></script>
 </body>
 </html>
