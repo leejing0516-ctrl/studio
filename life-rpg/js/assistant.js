@@ -168,7 +168,7 @@ function onMoodCheckin(state, mood) {
   return text;
 }
 
-const MOOD_ICON = { greeting: '👋', suggestion: '💡', praise: '🎉', milestone: '🔥', levelup: '⭐', achievement: '🏆', chat: '💬', tip: '🤖' };
+const MOOD_ICON = { greeting: '👋', suggestion: '💡', praise: '🎉', milestone: '🔥', levelup: '⭐', achievement: '🏆', chat: '💬', tip: '🤖', user: '🙋' };
 
 function renderAssistantWidget(state) {
   const latest = state.assistant.log[0];
@@ -190,4 +190,164 @@ function renderAssistantLog(state) {
       <span class="assistant-msg-date">${m.date}</span>
     </li>
   `).join('');
+}
+
+/* ── 小助手設定（AI 風格、天賦、想要的協助）───────────── */
+
+function renderAssistantSettings(state) {
+  const a = state.assistant;
+  const enabledEl = document.getElementById('assistant-ai-enabled');
+  if (enabledEl) enabledEl.checked = !!a.aiEnabled;
+
+  const endpointEl = document.getElementById('assistant-ai-endpoint');
+  if (endpointEl && document.activeElement !== endpointEl) endpointEl.value = a.aiEndpoint || '';
+
+  const styleEl = document.getElementById('assistant-style');
+  if (styleEl && !styleEl.options.length) {
+    ASSISTANT_STYLE_OPTIONS.forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o.value;
+      opt.textContent = o.label;
+      styleEl.appendChild(opt);
+    });
+  }
+  if (styleEl) styleEl.value = a.style || 'warm';
+
+  const customStyleEl = document.getElementById('assistant-custom-style');
+  if (customStyleEl) {
+    customStyleEl.style.display = (a.style === 'custom') ? '' : 'none';
+    if (document.activeElement !== customStyleEl) customStyleEl.value = a.customStyle || '';
+  }
+
+  const strengthsEl = document.getElementById('assistant-strengths');
+  if (strengthsEl && document.activeElement !== strengthsEl) strengthsEl.value = a.strengths || '';
+
+  const notesEl = document.getElementById('assistant-notes');
+  if (notesEl && document.activeElement !== notesEl) notesEl.value = a.notes || '';
+
+  const wantAnalysisEl = document.getElementById('assistant-want-analysis');
+  if (wantAnalysisEl) wantAnalysisEl.checked = !!a.wantsProgressAnalysis;
+  const wantSuggestionsEl = document.getElementById('assistant-want-suggestions');
+  if (wantSuggestionsEl) wantSuggestionsEl.checked = !!a.wantsTaskSuggestions;
+  const wantEncouragementEl = document.getElementById('assistant-want-encouragement');
+  if (wantEncouragementEl) wantEncouragementEl.checked = !!a.wantsEncouragement;
+
+  const statusEl = document.getElementById('assistant-ai-status');
+  if (statusEl) {
+    statusEl.textContent = a.aiEnabled
+      ? (a.aiEndpoint ? '✅ AI 回覆已啟用' : '⚠️ 已勾選啟用，但還沒填服務網址')
+      : '目前使用免費規則型回覆';
+  }
+}
+
+function saveAssistantSettings(state) {
+  const a = state.assistant;
+  a.aiEnabled = document.getElementById('assistant-ai-enabled').checked;
+  a.aiEndpoint = document.getElementById('assistant-ai-endpoint').value.trim();
+  a.style = document.getElementById('assistant-style').value;
+  a.customStyle = document.getElementById('assistant-custom-style').value.trim();
+  a.strengths = document.getElementById('assistant-strengths').value.trim();
+  a.notes = document.getElementById('assistant-notes').value.trim();
+  a.wantsProgressAnalysis = document.getElementById('assistant-want-analysis').checked;
+  a.wantsTaskSuggestions = document.getElementById('assistant-want-suggestions').checked;
+  a.wantsEncouragement = document.getElementById('assistant-want-encouragement').checked;
+}
+
+// 組合給 AI 的系統提示詞：風格 + 天賦 + 背景 + 希望的協助方向
+function buildAssistantSystemPrompt(state) {
+  const a = state.assistant;
+  const styleText = (a.style === 'custom' && a.customStyle)
+    ? a.customStyle
+    : (ASSISTANT_STYLE_PROMPTS[a.style] || ASSISTANT_STYLE_PROMPTS.warm);
+
+  const wants = [];
+  if (a.wantsProgressAnalysis) wants.push('進度分析（點出哪裡做得好、哪裡卡住）');
+  if (a.wantsTaskSuggestions) wants.push('具體的任務推進建議（下一步該做什麼）');
+  if (a.wantsEncouragement) wants.push('情緒鼓勵與陪伴');
+
+  let prompt = `你是使用者的人生管理 app「我的人生RPG」裡的小助手。${styleText}\n\n`;
+  if (a.strengths) prompt += `使用者的蓋洛普天賦測驗前五大特質：${a.strengths}\n`;
+  if (a.notes) prompt += `使用者想讓你知道的其他背景：${a.notes}\n`;
+  if (wants.length) prompt += `使用者希望你能提供：${wants.join('、')}\n`;
+  prompt += `\n請根據訊息裡附上的使用者目前進度資料來回應，用繁體中文回覆，簡潔但有溫度，避免陳腔濫調的空話，盡量具體。回覆不要太長，大約 2-5 句話。`;
+  return prompt;
+}
+
+// 把目前的任務/習慣/專案進度整理成簡短摘要，餵給 AI 當作上下文
+function buildStateSummaryForAI(state) {
+  const today = todayStr();
+  const lines = [];
+  lines.push(`今天日期：${today}`);
+  lines.push(`角色：${state.character.name}，總等級 Lv.${overallLevelInfo(state).level}`);
+  DOMAINS.forEach(d => {
+    const info = levelFromExp(state.skills[d.key].exp);
+    lines.push(`- ${d.name}：Lv.${info.level}`);
+  });
+  lines.push(`連續行動天數：${state.streak.count} 天`);
+
+  const todayItems = getTodayItems(state);
+  const doneToday = todayItems.filter(it => it.done);
+  const undoneToday = todayItems.filter(it => !it.done);
+  lines.push(`今天已完成 ${doneToday.length} 項，未完成 ${undoneToday.length} 項`);
+  if (undoneToday.length) lines.push('今天未完成項目：' + undoneToday.map(it => it.title).join('、'));
+
+  const tomorrow = addDays(today, 1);
+  const tomorrowItems = getCalendarItems(state).filter(it => it.date === tomorrow);
+  if (tomorrowItems.length) lines.push('明天的項目：' + tomorrowItems.map(it => it.title).join('、'));
+
+  const overdue = getCalendarItems(state).filter(it => !it.done && it.date < today);
+  if (overdue.length) lines.push('逾期未完成：' + overdue.map(it => `${it.title}(${it.date})`).join('、'));
+
+  return lines.join('\n');
+}
+
+function withAITimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('小助手回覆逾時，請稍後再試一次')), ms)),
+  ]);
+}
+
+// 呼叫使用者自己架設的中間人服務（例如 Cloudflare Worker），由它去問 Claude
+async function callAssistantAI(state, userMessage) {
+  if (!state.assistant.aiEndpoint) throw new Error('尚未設定小助手的 AI 服務網址');
+  const system = buildAssistantSystemPrompt(state);
+  const context = buildStateSummaryForAI(state);
+  const message = `以下是使用者目前的資料：\n${context}\n\n使用者說：${userMessage}`;
+
+  const resp = await withAITimeout(fetch(state.assistant.aiEndpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ system, message }),
+  }), 20000);
+
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    throw new Error('小助手服務回應錯誤：' + (text || resp.status));
+  }
+  const data = await resp.json();
+  if (!data.reply) throw new Error('小助手沒有回應內容');
+  return data.reply;
+}
+
+// 晚上十點後，如果今天還沒做過總結，打開 app 時自動請 AI 產生一則
+// （純前端網頁沒有背景執行能力，沒辦法「準時」推播，只能在下次打開時補做）
+async function checkDailySummary(state) {
+  if (!state.assistant.aiEnabled || !state.assistant.aiEndpoint) return false;
+  if (new Date().getHours() < 22) return false;
+  const today = todayStr();
+  if (state.assistant.lastDailySummaryDate === today) return false;
+
+  state.assistant.lastDailySummaryDate = today; // 先標記，避免失敗時每次打開都重試洗版
+  try {
+    const reply = await callAssistantAI(
+      state,
+      '請幫我做今天的總結：今天完成了什麼、還有什麼沒做完、明天有什麼要注意的事，用簡短溫暖的方式跟我說。'
+    );
+    addAssistantMessage(state, reply, 'chat');
+  } catch (e) {
+    console.error('每日總結失敗', e);
+    addAssistantMessage(state, '（小助手今天的總結產生失敗了，可能是網路或服務設定問題，明天會再試一次）', 'tip');
+  }
+  return true;
 }

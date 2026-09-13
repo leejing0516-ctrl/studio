@@ -788,6 +788,33 @@ ul { list-style: none; padding: 0; margin: 0; }
 }
 #gcal-client-id { flex: 1; min-width: 200px; }
 
+/* ── 小助手設定 ───────────────────────────── */
+.assistant-settings-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+.assistant-settings-fields textarea {
+  width: 100%;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  resize: vertical;
+  margin-top: 6px;
+}
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+.checkbox-row:last-child { margin-bottom: 0; }
+.checkbox-row input { accent-color: var(--gold); }
+
 /* ── 獎勵商店（仿遊戲道具格）───────────────────── */
 #reward-list {
   display: grid;

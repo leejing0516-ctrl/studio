@@ -48,6 +48,21 @@ const HOLIDAYS_TW = {
   '2026-12-25': '行憲紀念日',
 };
 
+const ASSISTANT_STYLE_OPTIONS = [
+  { value: 'warm', label: '溫暖鼓勵' },
+  { value: 'direct', label: '直接效率' },
+  { value: 'humorous', label: '幽默風趣' },
+  { value: 'coach', label: '嚴謹教練' },
+  { value: 'custom', label: '自訂風格…' },
+];
+
+const ASSISTANT_STYLE_PROMPTS = {
+  warm: '你的語氣溫暖、有同理心，常給予情緒支持與鼓勵，用詞親切自然，不說教。',
+  direct: '你的語氣直接、簡潔、重視效率，給建議時條列清楚、不拐彎抹角，重點先講。',
+  humorous: '你的語氣幽默風趣，偶爾開個小玩笑讓對話輕鬆一點，但還是切中要點、有實際幫助。',
+  coach: '你的語氣像一位嚴謹但關心人的教練，會適度挑戰使用者、督促他對自己負責，但仍然尊重與支持，不是一味責備。',
+};
+
 const HABIT_FREQ_OPTIONS = [
   { value: 'daily',    label: '每日' },
   { value: 'weekly',   label: '每週' },

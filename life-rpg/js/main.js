@@ -16,6 +16,7 @@ function renderAll() {
   renderLog(state);
   renderAssistantWidget(state);
   renderAssistantLog(state);
+  renderAssistantSettings(state);
   renderCalendarTab(state);
   renderProjects(state);
   renderFinance(state);
@@ -320,6 +321,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   renderAll();
 
+  // 晚上十點後打開 app 時，如果今天還沒做過總結，補上一則（見 assistant.js）
+  checkDailySummary(state).then(changed => { if (changed) renderAll(); });
+
   document.addEventListener('click', e => {
     const editBtn = e.target.closest('.edit-item');
     if (editBtn) openEditModal(editBtn.dataset.kind, editBtn.dataset.id);
@@ -383,6 +387,42 @@ document.addEventListener('DOMContentLoaded', () => {
       renderAll();
       switchTab('tab-assistant');
     });
+  });
+
+  document.getElementById('assistant-chat-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const input = document.getElementById('assistant-chat-input');
+    const message = input.value.trim();
+    if (!message) return;
+    if (!state.assistant.aiEnabled || !state.assistant.aiEndpoint) {
+      alert('請先在下方「⚙️ 小助手設定」啟用 AI 並填好服務網址，才能跟小助手對話喔');
+      return;
+    }
+    addAssistantMessage(state, message, 'user');
+    input.value = '';
+    const btn = document.getElementById('assistant-chat-send');
+    btn.disabled = true;
+    btn.textContent = '思考中…';
+    renderAll();
+    try {
+      const reply = await callAssistantAI(state, message);
+      addAssistantMessage(state, reply, 'chat');
+    } catch (err) {
+      addAssistantMessage(state, '（小助手暫時沒辦法回應：' + err.message + '）', 'tip');
+    }
+    btn.disabled = false;
+    btn.textContent = '傳送';
+    renderAll();
+  });
+
+  document.getElementById('assistant-style').addEventListener('change', e => {
+    document.getElementById('assistant-custom-style').style.display = (e.target.value === 'custom') ? '' : 'none';
+  });
+
+  document.getElementById('assistant-settings-save').addEventListener('click', () => {
+    saveAssistantSettings(state);
+    sound.playClick();
+    renderAll();
   });
 
   // 今日任務

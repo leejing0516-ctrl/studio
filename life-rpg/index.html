@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=35">
+<link rel="stylesheet" href="css/style.css?v=36">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -97,7 +97,47 @@
       <button class="mood-btn" data-mood="giveup">😤 想放棄</button>
       <button class="mood-btn" data-mood="unsure">🤔 不知道做什麼</button>
     </div>
+
+    <form id="assistant-chat-form" class="inline-form">
+      <input type="text" id="assistant-chat-input" placeholder="跟小助手說點什麼…（需先在下方設定啟用 AI）" required>
+      <button type="submit" class="btn" id="assistant-chat-send">傳送</button>
+    </form>
+
     <ul id="assistant-log"></ul>
+
+    <details class="gcal-panel">
+      <summary>⚙️ 小助手設定</summary>
+      <div class="assistant-settings-fields">
+        <label class="checkbox-row">
+          <input type="checkbox" id="assistant-ai-enabled"> 啟用真人工智慧回覆（需要先架設好中間人服務，見下方網址欄位）
+        </label>
+        <div>
+          <p class="tab-hint" style="margin:0 0 4px;">中間人服務網址（Cloudflare Worker 網址）：</p>
+          <input type="text" id="assistant-ai-endpoint" placeholder="https://xxx.xxx.workers.dev" style="width:100%;">
+        </div>
+        <div>
+          <p class="tab-hint" style="margin:0 0 4px;">回應風格：</p>
+          <select id="assistant-style"></select>
+          <textarea id="assistant-custom-style" placeholder="描述你想要的語氣風格…" rows="2"></textarea>
+        </div>
+        <div>
+          <p class="tab-hint" style="margin:0 0 4px;">蓋洛普天賦測驗前五大特質（用逗號分隔）：</p>
+          <input type="text" id="assistant-strengths" placeholder="例如：戰略、學習、成就、統籌、責任" style="width:100%;">
+        </div>
+        <div>
+          <p class="tab-hint" style="margin:0 0 4px;">其他想讓小助手知道的事：</p>
+          <textarea id="assistant-notes" placeholder="例如：我最近在準備某個考試、我希望多花時間陪家人…" rows="2"></textarea>
+        </div>
+        <div>
+          <p class="tab-hint" style="margin:0 0 6px;">希望小助手提供：</p>
+          <label class="checkbox-row"><input type="checkbox" id="assistant-want-analysis"> 進度分析</label>
+          <label class="checkbox-row"><input type="checkbox" id="assistant-want-suggestions"> 任務推進建議</label>
+          <label class="checkbox-row"><input type="checkbox" id="assistant-want-encouragement"> 情緒鼓勵</label>
+        </div>
+      </div>
+      <button type="button" id="assistant-settings-save" class="btn small" style="margin-top:10px;">儲存設定</button>
+      <p id="assistant-ai-status" class="tab-hint"></p>
+    </details>
   </div>
 
   <div id="tab-tasks" class="tab-panel frame active">
@@ -278,20 +318,20 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="js/config.js?v=35"></script>
-<script src="js/storage.js?v=35"></script>
-<script src="js/cloud.js?v=35"></script>
-<script src="js/sound.js?v=35"></script>
-<script src="js/assistant.js?v=35"></script>
-<script src="js/character.js?v=35"></script>
-<script src="js/tasks.js?v=35"></script>
-<script src="js/habits.js?v=35"></script>
-<script src="js/projects.js?v=35"></script>
-<script src="js/reading.js?v=35"></script>
-<script src="js/finance.js?v=35"></script>
-<script src="js/calendar.js?v=35"></script>
-<script src="js/rewards.js?v=35"></script>
-<script src="js/achievements.js?v=35"></script>
-<script src="js/main.js?v=35"></script>
+<script src="js/config.js?v=36"></script>
+<script src="js/storage.js?v=36"></script>
+<script src="js/cloud.js?v=36"></script>
+<script src="js/sound.js?v=36"></script>
+<script src="js/assistant.js?v=36"></script>
+<script src="js/character.js?v=36"></script>
+<script src="js/tasks.js?v=36"></script>
+<script src="js/habits.js?v=36"></script>
+<script src="js/projects.js?v=36"></script>
+<script src="js/reading.js?v=36"></script>
+<script src="js/finance.js?v=36"></script>
+<script src="js/calendar.js?v=36"></script>
+<script src="js/rewards.js?v=36"></script>
+<script src="js/achievements.js?v=36"></script>
+<script src="js/main.js?v=36"></script>
 </body>
 </html>

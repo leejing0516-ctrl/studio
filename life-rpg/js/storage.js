@@ -17,7 +17,19 @@ function defaultState() {
     stats: { tasksCompleted: 0, rewardsRedeemed: 0, budgetBonusesEarned: 0 },
     streak: { count: 0, lastActiveDate: null },
     log: [],              // { date, text } 簡易活動紀錄，最多保留 50 筆
-    assistant: { log: [], lastSuggestionDate: null, lastVisitDate: null },
+    assistant: {
+      log: [], lastSuggestionDate: null, lastVisitDate: null,
+      aiEnabled: false,       // 是否啟用真人工智慧回覆
+      aiEndpoint: '',         // 中間人服務（例如 Cloudflare Worker）的網址
+      style: 'warm',          // 回應風格：warm/direct/humorous/coach/custom
+      customStyle: '',        // style 為 custom 時使用者自訂的風格描述
+      strengths: '',          // 蓋洛普天賦測驗前五大特質
+      notes: '',              // 其他想讓小助手知道的背景
+      wantsProgressAnalysis: true,
+      wantsTaskSuggestions: true,
+      wantsEncouragement: true,
+      lastDailySummaryDate: null, // 避免同一天重複產生每日總結
+    },
     events: [],           // { id, title, domain, date, time, type: 'event'|'deadline', done, googleEventId }
     googleCalendar: { clientId: '' },
     projects: [],         // { id, title, domain, deadline, granularity, createdDate, subtasks: [{id,title,dueDate,done}] }
