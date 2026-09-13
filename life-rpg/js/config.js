@@ -1,6 +1,6 @@
 // 人生領域（技能）設定
 const DOMAINS = [
-  { key: 'reading',  name: '學業閱讀', icon: '📖', color: '#7dd3fc' },
+  { key: 'reading',  name: '學業/閱讀', icon: '📖', color: '#7dd3fc' },
   { key: 'career',   name: '事業/工作', icon: '💼', color: '#fbbf24' },
   { key: 'health',   name: '健康/體能', icon: '💪', color: '#86efac' },
   { key: 'finance',  name: '消費/財務', icon: '💰', color: '#fca5a5' },

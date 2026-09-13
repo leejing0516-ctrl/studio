@@ -189,7 +189,7 @@ function logPage(state, id, newPage) {
   b.currentPage = newPage;
   const exp = pagesRead * EXP_PER_PAGE;
   gainExp(state, 'reading', exp);
-  addLog(state, `閱讀《${b.title}》${pagesRead} 頁，學業閱讀 +${exp} EXP ／ +${goldFor(exp)} 金幣`);
+  addLog(state, `閱讀《${b.title}》${pagesRead} 頁，學業/閱讀 +${exp} EXP ／ +${goldFor(exp)} 金幣`);
 
   if (b.currentPage >= b.totalPages) {
     b.done = true;
@@ -215,7 +215,7 @@ function toggleReadingCheckin(state, bookId) {
   if (!doneMap[bookId]) {
     doneMap[bookId] = true;
     gainExp(state, 'reading', READING_CHECKIN_EXP);
-    addLog(state, `今天有閱讀《${book.title}》，學業閱讀 +${READING_CHECKIN_EXP} EXP ／ +${goldFor(READING_CHECKIN_EXP)} 金幣`);
+    addLog(state, `今天有閱讀《${book.title}》，學業/閱讀 +${READING_CHECKIN_EXP} EXP ／ +${goldFor(READING_CHECKIN_EXP)} 金幣`);
   } else {
     delete doneMap[bookId];
     gainExp(state, 'reading', -READING_CHECKIN_EXP);
