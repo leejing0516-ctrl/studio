@@ -36,6 +36,7 @@ function renderHabits(state) {
         <span class="task-exp">+${TASK_EXP[h.difficulty]} EXP</span>
         ${dueToday ? '' : '<span class="not-due-tag">今天沒排定</span>'}
       </label>
+      <button class="icon-btn edit-item" data-kind="habit" data-id="${h.id}" title="編輯">✎</button>
       <button class="icon-btn del-habit" data-id="${h.id}" title="刪除">✕</button>
     `;
     list.appendChild(li);
@@ -71,6 +72,12 @@ function toggleHabit(state, id) {
     h.streak = Math.max(0, (h.streak || 0) - 1);
     if (h.streak === 0) h.lastDoneDate = null;
   }
+}
+
+function updateHabit(state, id, fields) {
+  const h = state.habits.find(h => h.id === id);
+  if (!h) return;
+  Object.assign(h, fields);
 }
 
 function deleteHabit(state, id) {

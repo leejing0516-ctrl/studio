@@ -95,6 +95,20 @@ service cloud.firestore {
       allow delete: if isExistingOwner(userId);
     }
 
+    /**
+     * @description Secure access to 人生 RPG (life-rpg) per-user app state, used for cross-device sync.
+     * @path /life_rpg_users/{userId}
+     * @allow (get, create, update, delete) User 'user_abc' can read and write their own document at /life_rpg_users/user_abc.
+     * @deny (get, create, update, delete) User 'user_xyz' cannot access user 'user_abc's document.
+     * @principle Enforces document ownership for all operations. Unrelated to the FinLit Classroom data above.
+     */
+    match /life_rpg_users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create, update: if isOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
     // --- Helper functions ---
     function isSignedIn() {
       return request.auth != null;

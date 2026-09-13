@@ -89,6 +89,22 @@ h1 {
 }
 .mute-btn:hover { border-color: var(--border-gold); }
 
+.cloud-btn { right: 56px; }
+
+.cloud-panel {
+  display: none;
+  position: absolute;
+  top: 46px;
+  right: 0;
+  width: 260px;
+  z-index: 120;
+}
+.cloud-panel.show { display: block; }
+.cloud-panel input {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
 /* ── 小助手 ───────────────────────────── */
 .assistant-widget {
   display: flex;
@@ -524,12 +540,19 @@ ul { list-style: none; padding: 0; margin: 0; }
   padding-left: 4px;
 }
 
+.subtask-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .subtask-item label {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 13px;
   cursor: pointer;
+  flex: 1;
 }
 .subtask-item input { accent-color: var(--gold); }
 .subtask-item.done .subtask-title { text-decoration: line-through; color: var(--text-dim); }
@@ -670,6 +693,44 @@ ul { list-style: none; padding: 0; margin: 0; }
   border-bottom: 1px dashed var(--border-dim);
 }
 #activity-log li:last-child { border-bottom: none; }
+
+/* ── 編輯彈窗 ───────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(74, 63, 53, 0.4);
+  z-index: 150;
+  padding: 20px;
+}
+.modal-overlay.show { display: flex; }
+
+.modal-box {
+  width: 100%;
+  max-width: 360px;
+}
+
+.modal-title {
+  margin: 0 0 14px;
+  font-size: 16px;
+  color: #b9782a;
+}
+
+.modal-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.modal-fields input, .modal-fields select { width: 100%; }
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
 
 /* ── 升級慶祝彈窗 ───────────────────────────── */
 .levelup-modal {

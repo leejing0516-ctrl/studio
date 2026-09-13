@@ -55,6 +55,7 @@ function renderTasks(state) {
     } else if (it.kind === 'project') {
       exp = PROJECT_SUBTASK_EXP; prefix = '🎯 ';
     }
+    const canEdit = it.kind !== 'reading';
     return `
       <li class="task-item ${it.done ? 'done' : ''}">
         <label class="task-check">
@@ -64,6 +65,7 @@ function renderTasks(state) {
           ${extra}
           <span class="task-exp">+${exp} EXP</span>
         </label>
+        ${canEdit ? `<button class="icon-btn edit-item" data-kind="${it.kind}" data-id="${it.id}" title="編輯">✎</button>` : ''}
         <button class="icon-btn del-task" data-id="${it.id}" data-kind="${it.kind}" title="刪除">✕</button>
       </li>
     `;
@@ -101,6 +103,12 @@ function toggleTask(state, id) {
     gainExp(state, t.domain, -exp);
     state.stats.tasksCompleted = Math.max(0, state.stats.tasksCompleted - 1);
   }
+}
+
+function updateTask(state, id, fields) {
+  const t = state.tasks.find(t => t.id === id);
+  if (!t) return;
+  Object.assign(t, fields);
 }
 
 function deleteTask(state, id) {

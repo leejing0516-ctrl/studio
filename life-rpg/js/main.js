@@ -1,6 +1,10 @@
 let state = loadState();
 runDailyCheckIn(state);
 
+// 第一次畫面渲染只是把已載入的資料畫出來，不算「使用者做了新的變更」，
+// 所以先不要 saveState（避免蓋掉 updatedAt，讓雲端同步的新舊比較失真）
+let _skipNextSave = true;
+
 function renderAll() {
   renderCharacter(state);
   renderTasks(state);
@@ -13,7 +17,7 @@ function renderAll() {
   renderAssistantLog(state);
   renderCalendarTab(state);
   renderProjects(state);
-  saveState(state);
+  if (_skipNextSave) { _skipNextSave = false; } else { saveState(state); }
 
   const unlocked = checkAchievements(state);
   if (unlocked.length) {
@@ -59,10 +63,97 @@ function initSoundOnce() {
   document.removeEventListener('click', initSoundOnce);
 }
 
+let _editTarget = null;
+
+function openEditModal(kind, id) {
+  const titleEl = document.getElementById('edit-title');
+  const domainEl = document.getElementById('edit-domain');
+  const diffEl = document.getElementById('edit-difficulty');
+  const typeEl = document.getElementById('edit-type');
+  const dateEl = document.getElementById('edit-date');
+  const timeEl = document.getElementById('edit-time');
+  [domainEl, diffEl, typeEl, dateEl, timeEl].forEach(el => el.style.display = 'none');
+
+  if (kind === 'task') {
+    const t = state.tasks.find(t => t.id === id);
+    if (!t) return;
+    titleEl.value = t.text;
+    domainEl.style.display = ''; domainEl.value = t.domain;
+    diffEl.style.display = ''; diffEl.value = t.difficulty;
+  } else if (kind === 'event') {
+    const ev = state.events.find(e => e.id === id);
+    if (!ev) return;
+    titleEl.value = ev.title;
+    domainEl.style.display = ''; domainEl.value = ev.domain;
+    typeEl.style.display = ''; typeEl.value = ev.type;
+    dateEl.style.display = ''; dateEl.value = ev.date;
+    timeEl.style.display = ''; timeEl.value = ev.time || '';
+  } else if (kind === 'habit') {
+    const h = state.habits.find(h => h.id === id);
+    if (!h) return;
+    titleEl.value = h.name;
+    domainEl.style.display = ''; domainEl.value = h.domain;
+    diffEl.style.display = ''; diffEl.value = h.difficulty;
+  } else if (kind === 'project') {
+    const found = findSubtask(state, id);
+    if (!found) return;
+    titleEl.value = found.subtask.title;
+    dateEl.style.display = ''; dateEl.value = found.subtask.dueDate;
+  } else {
+    return;
+  }
+
+  _editTarget = { kind, id };
+  document.getElementById('edit-modal').classList.add('show');
+  titleEl.focus();
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.remove('show');
+  _editTarget = null;
+}
+
+function saveEditModal() {
+  if (!_editTarget) return;
+  const { kind, id } = _editTarget;
+  const title = document.getElementById('edit-title').value.trim();
+  if (!title) return;
+
+  if (kind === 'task') {
+    updateTask(state, id, {
+      text: title,
+      domain: document.getElementById('edit-domain').value,
+      difficulty: document.getElementById('edit-difficulty').value,
+    });
+  } else if (kind === 'event') {
+    updateEvent(state, id, {
+      title,
+      domain: document.getElementById('edit-domain').value,
+      type: document.getElementById('edit-type').value,
+      date: document.getElementById('edit-date').value,
+      time: document.getElementById('edit-time').value,
+    });
+  } else if (kind === 'habit') {
+    updateHabit(state, id, {
+      name: title,
+      domain: document.getElementById('edit-domain').value,
+      difficulty: document.getElementById('edit-difficulty').value,
+    });
+  } else if (kind === 'project') {
+    updateSubtask(state, id, {
+      title,
+      dueDate: document.getElementById('edit-date').value,
+    });
+  }
+  closeEditModal();
+  sound.playClick();
+  renderAll();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', initSoundOnce, { once: true });
 
-  ['task-domain', 'habit-domain', 'event-domain', 'project-domain'].forEach(id => {
+  ['task-domain', 'habit-domain', 'event-domain', 'project-domain', 'edit-domain'].forEach(id => {
     const select = document.getElementById(id);
     DOMAINS.forEach(d => {
       const opt = document.createElement('option');
@@ -106,7 +197,38 @@ document.addEventListener('DOMContentLoaded', () => {
     muteBtn.textContent = sound.toggleMute() ? '🔇' : '🔊';
   });
 
+  initCloud();
+  const cloudBtn = document.getElementById('cloud-btn');
+  const cloudPanel = document.getElementById('cloud-panel');
+  cloudBtn.addEventListener('click', () => cloudPanel.classList.toggle('show'));
+
+  document.getElementById('cloud-signup').addEventListener('click', () => {
+    const email = document.getElementById('cloud-email').value.trim();
+    const password = document.getElementById('cloud-password').value;
+    if (!email || password.length < 6) { showCloudError('請輸入信箱，密碼至少 6 碼'); return; }
+    cloudSignUp(email, password);
+  });
+
+  document.getElementById('cloud-signin').addEventListener('click', () => {
+    const email = document.getElementById('cloud-email').value.trim();
+    const password = document.getElementById('cloud-password').value;
+    if (!email || !password) { showCloudError('請輸入信箱與密碼'); return; }
+    cloudSignIn(email, password);
+  });
+
+  document.getElementById('cloud-signout').addEventListener('click', cloudSignOut);
+
   renderAll();
+
+  document.addEventListener('click', e => {
+    const editBtn = e.target.closest('.edit-item');
+    if (editBtn) openEditModal(editBtn.dataset.kind, editBtn.dataset.id);
+  });
+  document.getElementById('edit-save').addEventListener('click', saveEditModal);
+  document.getElementById('edit-cancel').addEventListener('click', closeEditModal);
+  document.getElementById('edit-modal').addEventListener('click', e => {
+    if (e.target.id === 'edit-modal') closeEditModal();
+  });
 
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));

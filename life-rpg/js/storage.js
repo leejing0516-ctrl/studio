@@ -21,28 +21,32 @@ function defaultState() {
     events: [],           // { id, title, domain, date, time, type: 'event'|'deadline', done, googleEventId }
     googleCalendar: { clientId: '' },
     projects: [],         // { id, title, domain, deadline, granularity, createdDate, subtasks: [{id,title,dueDate,done}] }
+    updatedAt: 0,         // 用於雲端同步時比較新舊
   };
+}
+
+function normalizeState(parsed) {
+  const base = defaultState();
+  DOMAINS.forEach(d => {
+    parsed.skills = parsed.skills || {};
+    if (!parsed.skills[d.key]) parsed.skills[d.key] = { exp: 0, lastGain: null };
+    if (parsed.skills[d.key].lastGain === undefined) parsed.skills[d.key].lastGain = null;
+  });
+  (parsed.tasks || []).forEach(t => { if (t.googleEventId === undefined) t.googleEventId = null; });
+  (parsed.habits || []).forEach(h => { if (!h.recurrence) h.recurrence = { freq: 'daily', startDate: h.lastDoneDate || todayStr() }; });
+  const merged = Object.assign({}, base, parsed);
+  merged.stats = Object.assign({}, base.stats, parsed.stats);
+  merged.streak = Object.assign({}, base.streak, parsed.streak);
+  merged.assistant = Object.assign({}, base.assistant, parsed.assistant);
+  merged.googleCalendar = Object.assign({}, base.googleCalendar, parsed.googleCalendar);
+  return merged;
 }
 
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    const base = defaultState();
-    if (!raw) return migrateOldState(base);
-    const parsed = JSON.parse(raw);
-    DOMAINS.forEach(d => {
-      parsed.skills = parsed.skills || {};
-      if (!parsed.skills[d.key]) parsed.skills[d.key] = { exp: 0, lastGain: null };
-      if (parsed.skills[d.key].lastGain === undefined) parsed.skills[d.key].lastGain = null;
-    });
-    (parsed.tasks || []).forEach(t => { if (t.googleEventId === undefined) t.googleEventId = null; });
-    (parsed.habits || []).forEach(h => { if (!h.recurrence) h.recurrence = { freq: 'daily', startDate: h.lastDoneDate || todayStr() }; });
-    const merged = Object.assign({}, base, parsed);
-    merged.stats = Object.assign({}, base.stats, parsed.stats);
-    merged.streak = Object.assign({}, base.streak, parsed.streak);
-    merged.assistant = Object.assign({}, base.assistant, parsed.assistant);
-    merged.googleCalendar = Object.assign({}, base.googleCalendar, parsed.googleCalendar);
-    return merged;
+    if (!raw) return migrateOldState(defaultState());
+    return normalizeState(JSON.parse(raw));
   } catch (e) {
     console.error('讀取存檔失敗，使用預設狀態', e);
     return defaultState();
@@ -68,7 +72,9 @@ function migrateOldState(base) {
 }
 
 function saveState(state) {
+  state.updatedAt = Date.now();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  if (typeof scheduleCloudSave === 'function') scheduleCloudSave();
 }
 
 function addLog(state, text) {

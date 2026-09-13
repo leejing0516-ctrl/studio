@@ -2,7 +2,118 @@ function genSubtaskId(i) {
   return 'st' + Date.now() + '_' + i + Math.random().toString(36).slice(2, 5);
 }
 
-// 「AI 拆解」：把專案依照 granularity 拆成一系列有到期日的子任務
+// 依專案標題關鍵字比對，給出具體、循環式的行動任務範本，而非泛泛的重複句子
+const PROJECT_TEMPLATES = [
+  {
+    match: /半馬|全馬|馬拉松|路跑|鐵人三項|長跑|跑步比賽/,
+    daily: (i) => {
+      const week = Math.floor(i / 7) + 1;
+      const longRun = Math.min(3 + week, 18);
+      const cycle = [
+        '休息與動態伸展',
+        '輕鬆跑 3 公里',
+        '間歇訓練（400M x 6 組）',
+        '交叉訓練（游泳／騎車）30 分鐘',
+        '輕鬆跑 4 公里',
+        `長距離跑 ${longRun} 公里`,
+        '恢復慢走 20 分鐘',
+      ];
+      return cycle[i % 7];
+    },
+    weekly: (i) => `2 次輕鬆跑 + 1 次間歇訓練 + 1 次長距離跑（約 ${Math.min(3 + i, 18)} 公里）`,
+    monthly: (i) => `檢視配速與月里程數，逐步拉長訓練距離`,
+  },
+  {
+    match: /減肥|減重|瘦身|體重|公斤|體脂/,
+    daily: (i) => {
+      const cycle = [
+        '記錄今天的飲食內容',
+        '有氧運動 30 分鐘',
+        '重量訓練 20 分鐘',
+        '喝水 2000ml、睡滿 7 小時',
+        '秤重並記錄變化',
+        '準備健康餐盒、減少外食',
+        '休息日：伸展 + 檢視這週飲食紀錄',
+      ];
+      return cycle[i % 7];
+    },
+    weekly: (i) => '量體重、檢視這週飲食紀錄、調整下週運動強度',
+    monthly: (i) => '檢視整體減重進度，調整飲食與運動計畫',
+  },
+  {
+    match: /考試|檢定|證照|考照|國考|面試|讀書計畫|學測|統測/,
+    daily: (i) => {
+      const cycle = [
+        '複習前一天內容 15 分鐘',
+        '精讀新進度',
+        '做練習題／考古題 1 回',
+        '整理錯題筆記',
+        '加強弱項章節',
+        '模擬考／自我測驗',
+        '休息與睡眠',
+      ];
+      return cycle[i % 7];
+    },
+    weekly: (i) => '完整複習本週進度 + 一回模擬考',
+    monthly: (i) => '全範圍複習與弱點補強',
+  },
+  {
+    match: /存錢|存款|理財|儲蓄|財務目標/,
+    daily: (i) => {
+      const cycle = [
+        '記帳：記錄今天的花費',
+        '檢視是否有不必要的支出',
+        '轉一筆錢到儲蓄帳戶',
+        '檢視這週預算執行狀況',
+      ];
+      return cycle[i % 4];
+    },
+    weekly: (i) => '檢討本週花費、確認儲蓄進度是否達標',
+    monthly: (i) => '檢視整體財務目標達成率，必要時調整存款金額',
+  },
+  {
+    match: /學會|學習|練習|技能|語言|英文|日文|程式|考駕照|彈|樂器/,
+    daily: (i) => {
+      const cycle = [
+        '學習新內容 30 分鐘',
+        '複習昨天學的內容',
+        '動手實作練習',
+        '找機會實際應用一次',
+      ];
+      return cycle[i % 4];
+    },
+    weekly: (i) => '統整本週所學、找一個實際應用場景練習',
+    monthly: (i) => '檢視學習進度，必要時調整學習方法',
+  },
+];
+
+function pickTemplate(title) {
+  return PROJECT_TEMPLATES.find(t => t.match.test(title)) || null;
+}
+
+const GENERIC_DAILY = (i, title) => {
+  const cycle = [
+    `針對「${title}」採取一項具體小行動`,
+    `檢視「${title}」目前的進度`,
+    `排除一個卡住「${title}」的障礙`,
+  ];
+  return cycle[i % cycle.length];
+};
+
+function buildSubtaskTitle(tpl, granularity, i, title) {
+  if (granularity === 'daily') {
+    const phrase = tpl ? tpl.daily(i) : GENERIC_DAILY(i, title);
+    return `第 ${i + 1} 天：${phrase}`;
+  }
+  if (granularity === 'weekly') {
+    const phrase = tpl ? tpl.weekly(i) : `檢視「${title}」的進度並調整下週計畫`;
+    return `第 ${i} 週：${phrase}`;
+  }
+  const phrase = tpl ? tpl.monthly(i) : `檢視「${title}」整體進度`;
+  return `第 ${i} 個月：${phrase}`;
+}
+
+// 「AI 拆解」：依專案性質比對範本，把專案拆成一系列有到期日、具體的子任務
 function generateBreakdown(title, startDateStr, deadlineStr, granularity) {
   const subtasks = [];
   const start = parseDateStr(startDateStr);
@@ -11,13 +122,14 @@ function generateBreakdown(title, startDateStr, deadlineStr, granularity) {
 
   const totalDays = daysBetween(startDateStr, deadlineStr);
   const MAX_SUBTASKS = 60;
+  const tpl = pickTemplate(title);
 
   if (granularity === 'daily') {
     const n = Math.min(totalDays, MAX_SUBTASKS);
     for (let i = 1; i <= n; i++) {
       const d = new Date(start);
       d.setDate(d.getDate() + Math.round((i * totalDays) / n));
-      subtasks.push({ id: genSubtaskId(i), title: `第 ${i} 天：朝「${title}」前進一步`, dueDate: formatDate(d), done: false });
+      subtasks.push({ id: genSubtaskId(i), title: buildSubtaskTitle(tpl, 'daily', i - 1, title), dueDate: formatDate(d), done: false });
     }
   } else if (granularity === 'weekly') {
     const totalWeeks = Math.max(1, Math.ceil(totalDays / 7));
@@ -25,7 +137,7 @@ function generateBreakdown(title, startDateStr, deadlineStr, granularity) {
     for (let i = 1; i <= n; i++) {
       const d = new Date(start);
       d.setDate(d.getDate() + Math.min(totalDays, i * 7));
-      subtasks.push({ id: genSubtaskId(i), title: `第 ${i} 週檢核點`, dueDate: formatDate(d), done: false });
+      subtasks.push({ id: genSubtaskId(i), title: buildSubtaskTitle(tpl, 'weekly', i, title), dueDate: formatDate(d), done: false });
     }
   } else {
     const totalMonths = Math.max(1, Math.round(totalDays / 30));
@@ -34,7 +146,7 @@ function generateBreakdown(title, startDateStr, deadlineStr, granularity) {
       const d = new Date(start);
       d.setMonth(d.getMonth() + i);
       if (d > end) d.setTime(end.getTime());
-      subtasks.push({ id: genSubtaskId(i), title: `第 ${i} 個月檢核點`, dueDate: formatDate(d), done: false });
+      subtasks.push({ id: genSubtaskId(i), title: buildSubtaskTitle(tpl, 'monthly', i, title), dueDate: formatDate(d), done: false });
     }
   }
 
@@ -76,6 +188,12 @@ function toggleProjectSubtask(state, subtaskId) {
   } else {
     gainExp(state, p.domain, -PROJECT_SUBTASK_EXP);
   }
+}
+
+function updateSubtask(state, subtaskId, fields) {
+  const found = findSubtask(state, subtaskId);
+  if (!found) return;
+  Object.assign(found.subtask, fields);
 }
 
 function deleteSubtaskItem(state, subtaskId) {
@@ -121,6 +239,7 @@ function renderProjects(state) {
                 <span class="subtask-title">${escapeHtml(st.title)}</span>
                 <span class="subtask-date">${st.dueDate}</span>
               </label>
+              <button class="icon-btn edit-item" data-kind="project" data-id="${st.id}" title="編輯">✎</button>
             </li>
           `).join('')}
         </ul>

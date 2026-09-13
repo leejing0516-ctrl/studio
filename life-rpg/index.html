@@ -7,13 +7,35 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=8">
+<link rel="stylesheet" href="css/style.css?v=10">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 <div class="app">
+  <button id="cloud-btn" class="mute-btn cloud-btn" title="登入以跨裝置同步">☁️</button>
   <button id="mute-btn" class="mute-btn" title="靜音切換">🔊</button>
   <h1><span class="crest">⚔</span> 人生 RPG <span class="crest">⚔</span></h1>
+
+  <div id="cloud-panel" class="cloud-panel frame">
+    <div id="cloud-logged-out">
+      <p class="tab-hint">登入帳號後，資料會同步到雲端，換手機或電腦開啟也看得到。</p>
+      <input type="email" id="cloud-email" placeholder="電子郵件">
+      <input type="password" id="cloud-password" placeholder="密碼（至少6碼）">
+      <div class="modal-actions" style="justify-content:flex-start; flex-wrap:wrap;">
+        <button type="button" id="cloud-signup" class="btn small">註冊新帳號</button>
+        <button type="button" id="cloud-signin" class="btn small">登入</button>
+      </div>
+      <p id="cloud-error" class="tab-hint" style="color:#e2685f; display:none;"></p>
+    </div>
+    <div id="cloud-logged-in" style="display:none">
+      <p class="tab-hint">✅ 已登入：<span id="cloud-user-email"></span></p>
+      <p id="cloud-sync-status" class="tab-hint">已同步</p>
+      <button type="button" id="cloud-signout" class="btn small">登出</button>
+    </div>
+  </div>
 
   <div class="assistant-widget frame">
     <div class="assistant-avatar">🧚</div>
@@ -187,6 +209,31 @@
   </div>
 </div>
 
+<div id="edit-modal" class="modal-overlay">
+  <div class="modal-box frame">
+    <h3 class="modal-title">✎ 編輯</h3>
+    <div class="modal-fields">
+      <input type="text" id="edit-title" placeholder="內容">
+      <select id="edit-domain" style="display:none"></select>
+      <select id="edit-difficulty" style="display:none">
+        <option value="easy">簡單 (+10)</option>
+        <option value="normal">普通 (+15)</option>
+        <option value="hard">困難 (+25)</option>
+      </select>
+      <select id="edit-type" style="display:none">
+        <option value="event">📅 活動</option>
+        <option value="deadline">⏰ 截止日期</option>
+      </select>
+      <input type="date" id="edit-date" style="display:none">
+      <input type="time" id="edit-time" style="display:none">
+    </div>
+    <div class="modal-actions">
+      <button type="button" id="edit-cancel" class="btn small">取消</button>
+      <button type="button" id="edit-save" class="btn">儲存</button>
+    </div>
+  </div>
+</div>
+
 <div id="levelup-modal" class="levelup-modal">
   <div class="levelup-burst">
     <div class="levelup-label">LEVEL UP!</div>
@@ -196,18 +243,19 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="js/config.js?v=8"></script>
-<script src="js/storage.js?v=8"></script>
-<script src="js/sound.js?v=8"></script>
-<script src="js/assistant.js?v=8"></script>
-<script src="js/character.js?v=8"></script>
-<script src="js/tasks.js?v=8"></script>
-<script src="js/habits.js?v=8"></script>
-<script src="js/projects.js?v=8"></script>
-<script src="js/reading.js?v=8"></script>
-<script src="js/calendar.js?v=8"></script>
-<script src="js/rewards.js?v=8"></script>
-<script src="js/achievements.js?v=8"></script>
-<script src="js/main.js?v=8"></script>
+<script src="js/config.js?v=10"></script>
+<script src="js/storage.js?v=10"></script>
+<script src="js/cloud.js?v=10"></script>
+<script src="js/sound.js?v=10"></script>
+<script src="js/assistant.js?v=10"></script>
+<script src="js/character.js?v=10"></script>
+<script src="js/tasks.js?v=10"></script>
+<script src="js/habits.js?v=10"></script>
+<script src="js/projects.js?v=10"></script>
+<script src="js/reading.js?v=10"></script>
+<script src="js/calendar.js?v=10"></script>
+<script src="js/rewards.js?v=10"></script>
+<script src="js/achievements.js?v=10"></script>
+<script src="js/main.js?v=10"></script>
 </body>
 </html>

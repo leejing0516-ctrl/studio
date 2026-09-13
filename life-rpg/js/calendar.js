@@ -32,6 +32,12 @@ function toggleEventDone(state, id) {
   }
 }
 
+function updateEvent(state, id, fields) {
+  const ev = state.events.find(e => e.id === id);
+  if (!ev) return;
+  Object.assign(ev, fields);
+}
+
 function deleteEvent(state, id) {
   state.events = state.events.filter(e => e.id !== id);
 }
@@ -136,6 +142,7 @@ function renderEventList(state) {
           <span class="task-text">${escapeHtml(it.title)}</span>
           ${it.googleEventId ? '<span class="gcal-badge" title="已同步到 Google 日曆">🔗</span>' : ''}
         </label>
+        <button class="icon-btn edit-item" data-kind="${it.kind}" data-id="${it.id}" title="編輯">✎</button>
         <button class="icon-btn del-event" data-id="${it.id}" data-kind="${it.kind}" title="刪除">✕</button>
       </li>
     `;
