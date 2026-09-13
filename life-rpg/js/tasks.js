@@ -1,29 +1,34 @@
 function renderTasks(state) {
-  const today = todayStr();
   const list = document.getElementById('task-list');
   list.innerHTML = '';
-  const todays = state.tasks.filter(t => t.date === today);
+  const items = getTodayItems(state);
 
-  if (todays.length === 0) {
+  if (items.length === 0) {
     list.innerHTML = '<li class="empty-hint">今天還沒有任務，新增一個開始賺 EXP 吧！</li>';
     return;
   }
 
-  todays.forEach(t => {
-    const domain = DOMAINS.find(d => d.key === t.domain);
-    const li = document.createElement('li');
-    li.className = 'task-item' + (t.done ? ' done' : '');
-    li.innerHTML = `
-      <label class="task-check">
-        <input type="checkbox" ${t.done ? 'checked' : ''} data-id="${t.id}">
-        <span class="task-tag" style="background:${domain.color}">${domain.icon} ${domain.name}</span>
-        <span class="task-text">${escapeHtml(t.text)}</span>
-        <span class="task-exp">+${TASK_EXP[t.difficulty]} EXP</span>
-      </label>
-      <button class="icon-btn del-task" data-id="${t.id}" title="刪除">✕</button>
+  const pending = items.filter(it => !it.done);
+  const done = items.filter(it => it.done);
+
+  const renderItem = (it) => {
+    const domain = DOMAINS.find(d => d.key === it.domain);
+    const exp = it.kind === 'task' ? TASK_EXP[it.difficulty] : EVENT_EXP;
+    const prefix = it.kind === 'event' ? (it.type === 'deadline' ? '⏰ ' : '📅 ') : '';
+    return `
+      <li class="task-item ${it.done ? 'done' : ''}">
+        <label class="task-check">
+          <input type="checkbox" ${it.done ? 'checked' : ''} data-id="${it.id}" data-kind="${it.kind}">
+          <span class="task-tag" style="background:${domain.color}">${domain.icon} ${domain.name}</span>
+          <span class="task-text">${prefix}${escapeHtml(it.title)}</span>
+          <span class="task-exp">+${exp} EXP</span>
+        </label>
+        <button class="icon-btn del-task" data-id="${it.id}" data-kind="${it.kind}" title="刪除">✕</button>
+      </li>
     `;
-    list.appendChild(li);
-  });
+  };
+
+  list.innerHTML = pending.map(renderItem).join('') + done.map(renderItem).join('');
 }
 
 function escapeHtml(str) {

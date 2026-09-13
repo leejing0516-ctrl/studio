@@ -120,13 +120,22 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('task-list').addEventListener('click', e => {
     if (e.target.matches('input[type="checkbox"]')) {
       const willBeDone = e.target.checked;
-      const domain = (state.tasks.find(t => t.id === e.target.dataset.id) || {}).domain;
-      toggleTask(state, e.target.dataset.id);
+      const id = e.target.dataset.id;
+      const kind = e.target.dataset.kind;
+      let domain;
+      if (kind === 'event') {
+        domain = (state.events.find(ev => ev.id === id) || {}).domain;
+        toggleEventDone(state, id);
+      } else {
+        domain = (state.tasks.find(t => t.id === id) || {}).domain;
+        toggleTask(state, id);
+      }
       sound[willBeDone ? 'playComplete' : 'playClick']();
       if (willBeDone && domain) onTaskOrHabitComplete(state, domain);
       renderAll();
     } else if (e.target.matches('.del-task')) {
-      deleteTask(state, e.target.dataset.id);
+      const id = e.target.dataset.id;
+      if (e.target.dataset.kind === 'event') deleteEvent(state, id); else deleteTask(state, id);
       renderAll();
     }
   });

@@ -42,12 +42,18 @@ function getCalendarItems(state) {
   const tasks = state.tasks.map(t => ({
     id: t.id, kind: 'task', title: t.text, domain: t.domain,
     date: t.date, time: '', done: t.done, googleEventId: t.googleEventId,
+    difficulty: t.difficulty,
   }));
   const events = state.events.map(e => ({
     id: e.id, kind: 'event', title: e.title, domain: e.domain,
     date: e.date, time: e.time, done: e.done, googleEventId: e.googleEventId, type: e.type,
   }));
   return tasks.concat(events);
+}
+
+function getTodayItems(state) {
+  const today = todayStr();
+  return getCalendarItems(state).filter(it => it.date === today);
 }
 
 function renderCalendarMonth(state) {
