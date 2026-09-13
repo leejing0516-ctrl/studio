@@ -351,3 +351,74 @@ async function checkDailySummary(state) {
   }
   return true;
 }
+
+/* ── 語音新增任務 ───────────────────────────── */
+
+let _voiceRecognition = null;
+
+// 用瀏覽器內建的語音辨識（不用另外接服務），辨識完的文字再交給 AI 解析
+function startVoiceInput(onResult, onError) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    onError('這個瀏覽器不支援語音輸入，建議用 iPhone/Android 上的 Safari 或 Chrome 試試看');
+    return;
+  }
+  if (_voiceRecognition) return; // 已經在聽了，避免重複啟動
+
+  const rec = new SpeechRecognition();
+  rec.lang = 'zh-TW';
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
+  rec.onresult = e => onResult(e.results[0][0].transcript);
+  rec.onerror = e => onError('語音辨識失敗：' + e.error);
+  rec.onend = () => { _voiceRecognition = null; };
+  _voiceRecognition = rec;
+  try {
+    rec.start();
+  } catch (e) {
+    _voiceRecognition = null;
+    onError('語音辨識無法啟動：' + e.message);
+  }
+}
+
+function buildVoiceTaskSystemPrompt() {
+  const today = todayStr();
+  const weekday = WEEKDAY_NAMES_ZH[(new Date().getDay() + 6) % 7];
+  return `你是一個任務建立小幫手。使用者會用語音描述一件事情，你要把它解析成結構化資料。
+今天日期是 ${today}（星期${weekday}）。
+domain 只能是以下其中之一：reading（學業/閱讀）、career（事業/工作）、health（健康/體能）、finance（消費/財務）、social（人際/家庭），請依內容選最貼切的一個。
+請「只」回傳一個 JSON 物件，不要有其他文字、不要用 markdown code block、不要加任何說明，格式如下：
+{"kind": "task 或 event", "title": "事情的簡短標題", "domain": "上面五選一", "date": "YYYY-MM-DD", "time": "HH:MM 或空字串"}
+如果是有明確時間點的約會、看診、會議，kind 用 "event"；如果是沒有強烈時間點、今天要做的一般任務，kind 用 "task"。
+使用者若說「明天」「下週三」等相對日期，請依今天日期換算成正確的 YYYY-MM-DD。若完全沒提到日期，用今天的日期。若沒提到時間，time 留空字串。時間請換算成 24 小時制的 HH:MM，並把分鐘無條件捨去或進位到最接近的 10 分鐘（例如 15:07 要變成 15:10）。`;
+}
+
+// 把語音辨識出的文字送給 AI，解析成 { kind, title, domain, date, time }
+async function parseVoiceInput(state, transcript) {
+  if (!state.assistant.aiEndpoint) throw new Error('尚未設定小助手的 AI 服務網址，請先到「⚙️ 小助手設定」填好');
+
+  const resp = await withAITimeout(fetch(state.assistant.aiEndpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ system: buildVoiceTaskSystemPrompt(), message: transcript }),
+  }), 20000);
+
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    throw new Error('小助手服務回應錯誤：' + (text || resp.status));
+  }
+  const data = await resp.json();
+  let text = (data.reply || '').trim();
+  text = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (e) {
+    throw new Error('AI 回傳的格式看不懂：' + text.slice(0, 80));
+  }
+  if (!parsed.title) throw new Error('AI 沒有解析出標題，請再說一次試試看');
+  if (!DOMAINS.some(d => d.key === parsed.domain)) parsed.domain = 'career';
+  if (!parsed.date) parsed.date = todayStr();
+  return parsed;
+}
