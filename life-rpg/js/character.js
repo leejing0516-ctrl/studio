@@ -87,6 +87,13 @@ function renderSkillBars(state) {
   });
 }
 
+// 把 "#rrggbb" 轉成指定透明度的 rgba() 字串
+function hexToRgba(hex, alpha) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 function drawRadar(state) {
   const canvas = document.getElementById('radarCanvas');
   const ctx = canvas.getContext('2d');
@@ -98,11 +105,8 @@ function drawRadar(state) {
 
   ctx.clearRect(0, 0, w, h);
 
-  // 深色底圖，讓淺色格線與文字對比更明顯，也更有遊戲面板的質感
-  const bgGrad = ctx.createLinearGradient(0, 0, w, h);
-  bgGrad.addColorStop(0, '#2c2444');
-  bgGrad.addColorStop(1, '#181430');
-  ctx.fillStyle = bgGrad;
+  // 淡色底板，維持明亮活潑的整體風格
+  ctx.fillStyle = '#fffaf1';
   ctx.beginPath();
   if (ctx.roundRect) {
     ctx.roundRect(0, 0, w, h, 18);
@@ -114,27 +118,46 @@ function drawRadar(state) {
   ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+  // 外圈虛線刻度環，營造科技儀表的感覺
+  ctx.save();
+  ctx.strokeStyle = 'rgba(169, 154, 134, 0.35)';
+  ctx.setLineDash([2, 4]);
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius + 16, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+
+  // 每個領域的扇形色塊背景，用該領域自己的顏色淡淡標示範圍
+  const half = Math.PI / n;
+  DOMAINS.forEach((d, i) => {
+    const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, radius, angle - half, angle + half);
+    ctx.closePath();
+    ctx.fillStyle = hexToRgba(d.color, 0.16);
+    ctx.fill();
+  });
+
+  // 圓形格線環
+  ctx.strokeStyle = 'rgba(169, 154, 134, 0.28)';
+  ctx.lineWidth = 1;
   for (let ring = 1; ring <= 4; ring++) {
     ctx.beginPath();
-    for (let i = 0; i <= n; i++) {
-      const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
-      const r = (radius * ring) / 4;
-      const x = cx + r * Math.cos(angle);
-      const y = cy + r * Math.sin(angle);
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    }
+    ctx.arc(cx, cy, (radius * ring) / 4, 0, Math.PI * 2);
     ctx.stroke();
   }
 
-  ctx.fillStyle = '#f5efe4';
+  // 輻射線與標籤（深色文字，在淡色底板上清楚可讀）
+  ctx.fillStyle = '#4a3f35';
   ctx.font = '600 13px "Noto Sans TC", sans-serif';
   ctx.textAlign = 'center';
   DOMAINS.forEach((d, i) => {
     const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
     const x = cx + radius * Math.cos(angle);
     const y = cy + radius * Math.sin(angle);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+    ctx.strokeStyle = hexToRgba(d.color, 0.55);
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(cx, cy);
     ctx.lineTo(x, y);
@@ -144,26 +167,40 @@ function drawRadar(state) {
     ctx.fillText(`${d.icon}${d.name}`, lx, ly);
   });
 
-  ctx.beginPath();
-  DOMAINS.forEach((d, i) => {
+  // 依等級畫出的數值多邊形
+  const points = DOMAINS.map((d, i) => {
     const level = levelFromExp(state.skills[d.key].exp).level;
     const r = (radius * Math.min(level, maxLevel)) / maxLevel;
     const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
-    const x = cx + r * Math.cos(angle);
-    const y = cy + r * Math.sin(angle);
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle), color: d.color };
   });
-  ctx.closePath();
 
-  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-  grad.addColorStop(0, 'rgba(242, 192, 106, 0.6)');
-  grad.addColorStop(1, 'rgba(245, 168, 184, 0.32)');
-  ctx.fillStyle = grad;
-  ctx.shadowColor = 'rgba(242, 192, 106, 0.3)';
-  ctx.shadowBlur = 8;
-  ctx.strokeStyle = '#f2c06a';
+  ctx.beginPath();
+  points.forEach((p, i) => { i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y); });
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(227, 171, 92, 0.25)';
+  ctx.strokeStyle = '#e3ab5c';
   ctx.lineWidth = 2;
   ctx.fill();
   ctx.stroke();
-  ctx.shadowBlur = 0;
+
+  // 各頂點加上帶白邊的圓形節點，顏色對應該領域
+  points.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#fff';
+    ctx.stroke();
+  });
+
+  // 中心節點
+  ctx.beginPath();
+  ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+  ctx.fillStyle = '#e3ab5c';
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#fff';
+  ctx.stroke();
 }
