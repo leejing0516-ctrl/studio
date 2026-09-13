@@ -289,6 +289,66 @@ async function syncReadingPlanItemToGoogle(book, subtask) {
   return false;
 }
 
+// 蒐集目前 state 裡所有已經連結過的 googleEventId，避免匯入時重複
+function collectKnownGoogleEventIds(state) {
+  const ids = new Set();
+  state.events.forEach(e => { if (e.googleEventId) ids.add(e.googleEventId); });
+  state.tasks.forEach(t => { if (t.googleEventId) ids.add(t.googleEventId); });
+  (state.projects || []).forEach(p => p.subtasks.forEach(st => { if (st.googleEventId) ids.add(st.googleEventId); }));
+  (state.books || []).forEach(b => {
+    if (b.readingPlan) b.readingPlan.subtasks.forEach(st => { if (st.googleEventId) ids.add(st.googleEventId); });
+  });
+  return ids;
+}
+
+// 把 Google 日曆的事件抓進來，變成這個 app 裡的「活動」
+// 只抓從現在起 90 天內的事件，已經匯入過（或本來就是從這裡推上去）的不會重複匯入
+async function importFromGoogle(state) {
+  if (!_gcalAccessToken) return { imported: 0, error: 'not_connected' };
+
+  const timeMin = new Date().toISOString();
+  const timeMax = new Date(Date.now() + 90 * 86400000).toISOString();
+  const params = new URLSearchParams({
+    timeMin, timeMax, singleEvents: 'true', orderBy: 'startTime', maxResults: '250',
+  });
+
+  let items;
+  try {
+    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?${params}`, {
+      headers: { 'Authorization': `Bearer ${_gcalAccessToken}` },
+    });
+    if (!res.ok) return { imported: 0, error: 'request_failed' };
+    const data = await res.json();
+    items = data.items || [];
+  } catch (e) {
+    console.error('從 Google 日曆匯入失敗', e);
+    return { imported: 0, error: 'request_failed' };
+  }
+
+  const known = collectKnownGoogleEventIds(state);
+  let imported = 0;
+  items.forEach(ev => {
+    if (!ev.id || known.has(ev.id) || ev.status === 'cancelled') return;
+    const start = ev.start || {};
+    const date = start.date || (start.dateTime ? start.dateTime.slice(0, 10) : null);
+    if (!date) return;
+    const time = start.dateTime ? start.dateTime.slice(11, 16) : '';
+    state.events.push({
+      id: 'e' + Date.now() + Math.random().toString(36).slice(2, 7),
+      title: ev.summary || '(無標題)',
+      domain: 'social',
+      date, time,
+      type: 'event',
+      done: false,
+      googleEventId: ev.id,
+    });
+    known.add(ev.id);
+    imported++;
+  });
+
+  return { imported, error: null };
+}
+
 async function syncAllToGoogle(state) {
   const pendingEvents = state.events.filter(e => !e.googleEventId);
   const pendingTasks = state.tasks.filter(t => !t.googleEventId);

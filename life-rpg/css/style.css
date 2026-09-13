@@ -755,8 +755,8 @@ ul { list-style: none; padding: 0; margin: 0; }
 .cal-cell:not(.empty):hover { border-color: var(--border-gold); }
 .cal-cell.is-weekend { background: var(--purple-soft); }
 .cal-cell.is-holiday { background: #fbdfe3; }
-.cal-cell.is-today { background: #fff3d9; font-weight: 700; }
-.cal-cell.is-selected { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(227,171,92,0.3); }
+.cal-cell.is-today { border: 2px solid var(--gold); font-weight: 700; }
+.cal-cell.is-selected { box-shadow: 0 0 0 2px rgba(227,171,92,0.3); }
 .cal-cell.has-events .cal-daynum { color: #b9782a; font-weight: 700; }
 
 .cal-weekday.is-weekend { color: var(--danger); }

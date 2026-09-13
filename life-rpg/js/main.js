@@ -722,4 +722,22 @@ document.addEventListener('DOMContentLoaded', () => {
       renderAll();
     }
   });
+
+  document.getElementById('gcal-import').addEventListener('click', async () => {
+    const btn = document.getElementById('gcal-import');
+    if (!_gcalAccessToken) { alert('請先按「登入 Google」完成授權'); return; }
+    btn.disabled = true;
+    btn.textContent = '匯入中…';
+    const { imported, error } = await importFromGoogle(state);
+    btn.disabled = false;
+    btn.textContent = '從 Google 匯入行程';
+    if (error) {
+      alert('從 Google 日曆匯入失敗，請稍後再試一次');
+    } else if (imported === 0) {
+      alert('未來 90 天內沒有新的 Google 日曆行程可以匯入');
+    } else {
+      addLog(state, `從 Google 日曆匯入 ${imported} 筆行程`);
+      renderAll();
+    }
+  });
 });
