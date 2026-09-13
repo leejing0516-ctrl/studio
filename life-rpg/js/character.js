@@ -98,7 +98,23 @@ function drawRadar(state) {
 
   ctx.clearRect(0, 0, w, h);
 
-  ctx.strokeStyle = 'rgba(232, 209, 156, 0.18)';
+  // 深色底圖，讓淺色格線與文字對比更明顯，也更有遊戲面板的質感
+  const bgGrad = ctx.createLinearGradient(0, 0, w, h);
+  bgGrad.addColorStop(0, '#332752');
+  bgGrad.addColorStop(1, '#1e1836');
+  ctx.fillStyle = bgGrad;
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(0, 0, w, h, 18);
+  } else {
+    ctx.rect(0, 0, w, h);
+  }
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(227, 171, 92, 0.5)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(232, 209, 156, 0.3)';
   for (let ring = 1; ring <= 4; ring++) {
     ctx.beginPath();
     for (let i = 0; i <= n; i++) {
@@ -118,7 +134,7 @@ function drawRadar(state) {
     const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
     const x = cx + radius * Math.cos(angle);
     const y = cy + radius * Math.sin(angle);
-    ctx.strokeStyle = 'rgba(232, 209, 156, 0.25)';
+    ctx.strokeStyle = 'rgba(232, 209, 156, 0.4)';
     ctx.beginPath();
     ctx.moveTo(cx, cy);
     ctx.lineTo(x, y);
