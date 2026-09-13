@@ -10,12 +10,15 @@ function renderRewards(state) {
   state.rewards.forEach(r => {
     const affordable = state.gold >= r.cost;
     const li = document.createElement('li');
-    li.className = 'reward-item';
+    li.className = 'reward-slot';
     li.innerHTML = `
-      <span class="reward-name">🎁 ${escapeHtml(r.name)}</span>
+      <button class="icon-btn del-reward" data-id="${r.id}" title="刪除" style="position:absolute; top:2px; right:2px;">✕</button>
+      <span class="reward-icon">🎁</span>
+      <span class="reward-name">${escapeHtml(r.name)}</span>
       <span class="reward-cost">${r.cost} 💰</span>
-      <button class="btn small redeem-reward" data-id="${r.id}" ${affordable ? '' : 'disabled'}>兌換</button>
-      <button class="icon-btn del-reward" data-id="${r.id}" title="刪除">✕</button>
+      <span class="reward-actions">
+        <button class="btn small redeem-reward" data-id="${r.id}" ${affordable ? '' : 'disabled'}>兌換</button>
+      </span>
     `;
     list.appendChild(li);
   });

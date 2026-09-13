@@ -78,6 +78,20 @@ function initSoundOnce() {
   document.removeEventListener('click', initSoundOnce);
 }
 
+// 幫每個「畫框」面板加上四角裝飾星芒，模仿遊戲角色卡的金邊框樣式
+function decorateFrames() {
+  document.querySelectorAll('.frame').forEach(el => {
+    if (el.querySelector('.frame-corner')) return;
+    ['tl', 'tr', 'bl', 'br'].forEach(pos => {
+      const span = document.createElement('span');
+      span.className = 'frame-corner corner-' + pos;
+      span.textContent = '✦';
+      span.setAttribute('aria-hidden', 'true');
+      el.appendChild(span);
+    });
+  });
+}
+
 // 時間選擇改用「時」「分」兩個下拉選單，分鐘固定 10 分鐘一格，
 // 避免瀏覽器原生 <input type="time"> 的分鐘捲輪不吃 step 屬性
 function populateTimeSelect(prefix) {
@@ -209,6 +223,7 @@ function saveEditModal() {
 
 document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', initSoundOnce, { once: true });
+  decorateFrames();
 
   ['task-domain', 'habit-domain', 'event-domain', 'project-domain', 'edit-domain'].forEach(id => {
     const select = document.getElementById(id);
