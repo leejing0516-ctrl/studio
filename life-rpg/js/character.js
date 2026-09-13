@@ -1,11 +1,26 @@
 let _lastOverallLevel = null;
 
 // 讀取使用者上傳的圖片，置中裁切成正方形並縮小，轉成 JPEG data URL 存進 state
-function processAvatarFile(file, callback) {
+// 有些圖片格式（例如 iPhone 的 HEIC）瀏覽器無法解碼，這裡用 onerror + 逾時保護，
+// 確保失敗時一定會呼叫 onError，不會悄悄什麼都沒發生
+function processAvatarFile(file, callback, onError) {
+  const fail = (msg) => { if (onError) onError(msg); };
   const reader = new FileReader();
+  reader.onerror = () => fail('讀取檔案失敗');
   reader.onload = e => {
     const img = new Image();
+    let settled = false;
+    const timeout = setTimeout(() => { if (!settled) { settled = true; fail('圖片載入逾時，格式可能不支援'); } }, 8000);
+    img.onerror = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      fail('圖片格式不支援（例如 iPhone 的 HEIC 格式）');
+    };
     img.onload = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
       const canvas = document.createElement('canvas');
       canvas.width = AVATAR_SIZE;
       canvas.height = AVATAR_SIZE;
@@ -14,7 +29,11 @@ function processAvatarFile(file, callback) {
       const sx = (img.width - minSide) / 2;
       const sy = (img.height - minSide) / 2;
       ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, AVATAR_SIZE, AVATAR_SIZE);
-      callback(canvas.toDataURL('image/jpeg', 0.85));
+      try {
+        callback(canvas.toDataURL('image/jpeg', 0.85));
+      } catch (err) {
+        fail('圖片處理失敗：' + err.message);
+      }
     };
     img.src = e.target.result;
   };

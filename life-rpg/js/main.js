@@ -331,6 +331,14 @@ document.addEventListener('DOMContentLoaded', () => {
       state.character.avatar = dataUrl;
       sound.playClick();
       renderAll();
+    }, msg => {
+      sound.playError();
+      alert(
+        `大頭貼上傳失敗：${msg}\n\n` +
+        `如果是用 iPhone 選相簿裡的照片，可能是 HEIC 格式瀏覽器無法讀取。\n` +
+        `可以試試看：先截圖這張照片（截圖一定是 PNG），再上傳截圖；\n` +
+        `或到「設定」→「相機」→「格式」改成「最相容」，之後拍的照片就會是可用的 JPG 格式。`
+      );
     });
     e.target.value = '';
   });
