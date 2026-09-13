@@ -190,12 +190,14 @@ h1 {
 }
 
 .char-avatar-ring {
+  position: relative;
   width: 120px;
   height: 120px;
   border-radius: 50%;
   padding: 4px;
   background: conic-gradient(from 0deg, var(--gold), var(--purple), var(--pink), var(--gold));
   box-shadow: 0 4px 18px rgba(227, 171, 92, 0.35);
+  cursor: pointer;
 }
 
 .char-avatar-img {
@@ -207,20 +209,53 @@ h1 {
   border: 3px solid #fff;
 }
 
+.avatar-edit-badge {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--gold-bright);
+  border: 2px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.avatar-reset-link {
+  font-size: 11px;
+  text-decoration: underline;
+  color: var(--text-dim);
+  margin-top: -4px;
+}
+
+.char-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+}
+
 #char-name {
   background: transparent;
   border: none;
-  border-bottom: 1px solid var(--border-dim);
+  border-bottom: 1px dashed var(--border-dim);
   color: #b9782a;
   font-size: 18px;
   font-weight: 700;
   padding: 4px 2px;
   text-align: center;
   width: 100%;
-  max-width: 200px;
+  max-width: 180px;
   font-family: inherit;
+  cursor: text;
 }
-#char-name:focus { outline: none; border-color: var(--border-gold); }
+#char-name:focus { outline: none; border-color: var(--border-gold); border-style: solid; }
+.char-name-edit-icon { font-size: 12px; color: var(--text-dim); }
 
 .level-badge {
   background: linear-gradient(180deg, var(--gold-bright), var(--gold));

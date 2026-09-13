@@ -1,8 +1,33 @@
 let _lastOverallLevel = null;
 
+// 讀取使用者上傳的圖片，置中裁切成正方形並縮小，轉成 JPEG data URL 存進 state
+function processAvatarFile(file, callback) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = AVATAR_SIZE;
+      canvas.height = AVATAR_SIZE;
+      const ctx = canvas.getContext('2d');
+      const minSide = Math.min(img.width, img.height);
+      const sx = (img.width - minSide) / 2;
+      const sy = (img.height - minSide) / 2;
+      ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, AVATAR_SIZE, AVATAR_SIZE);
+      callback(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 function renderCharacter(state) {
   const info = overallLevelInfo(state);
   document.getElementById('char-name').value = state.character.name;
+  const avatarImg = document.getElementById('char-avatar-img');
+  if (avatarImg) avatarImg.src = state.character.avatar || DEFAULT_AVATAR_SRC;
+  const resetBtn = document.getElementById('avatar-reset');
+  if (resetBtn) resetBtn.style.display = state.character.avatar ? '' : 'none';
   document.getElementById('char-level').textContent = `Lv. ${info.level}`;
   const pct = Math.min(100, Math.round((info.expIntoLevel / info.expToNext) * 100));
   document.getElementById('char-exp-bar').style.width = pct + '%';

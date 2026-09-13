@@ -7,6 +7,9 @@ const DOMAINS = [
   { key: 'social',   name: '人際/家庭', icon: '❤️', color: '#c4b5fd' },
 ];
 
+const DEFAULT_AVATAR_SRC = 'assets/avatar_default_20260913_081358.png';
+const AVATAR_SIZE = 240;
+
 const TASK_EXP = { easy: 10, normal: 15, hard: 25 };
 const EXP_PER_PAGE = 2;
 const BOOK_FINISH_BONUS = 100;

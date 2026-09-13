@@ -299,6 +299,26 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAll();
   });
 
+  document.getElementById('avatar-ring').addEventListener('click', () => {
+    document.getElementById('avatar-upload').click();
+  });
+
+  document.getElementById('avatar-upload').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    processAvatarFile(file, dataUrl => {
+      state.character.avatar = dataUrl;
+      sound.playClick();
+      renderAll();
+    });
+    e.target.value = '';
+  });
+
+  document.getElementById('avatar-reset').addEventListener('click', () => {
+    state.character.avatar = null;
+    renderAll();
+  });
+
   document.getElementById('assistant-shuffle').addEventListener('click', () => {
     addAssistantMessage(state, buildDailySuggestion(state), 'suggestion');
     sound.playClick();

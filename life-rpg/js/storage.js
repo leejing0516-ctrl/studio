@@ -4,7 +4,7 @@ function defaultState() {
   const skills = {};
   DOMAINS.forEach(d => { skills[d.key] = { exp: 0, lastGain: null }; });
   return {
-    character: { name: '我的角色' },
+    character: { name: '我的角色', avatar: null },
     skills,
     gold: 0,
     tasks: [],           // { id, domain, text, difficulty, date, done }
@@ -38,6 +38,7 @@ function normalizeState(parsed) {
   (parsed.habits || []).forEach(h => { if (!h.recurrence) h.recurrence = { freq: 'daily', startDate: h.lastDoneDate || todayStr() }; });
   (parsed.books || []).forEach(b => { if (b.readingPlan === undefined) b.readingPlan = null; });
   const merged = Object.assign({}, base, parsed);
+  merged.character = Object.assign({}, base.character, parsed.character);
   merged.stats = Object.assign({}, base.stats, parsed.stats);
   merged.streak = Object.assign({}, base.streak, parsed.streak);
   merged.assistant = Object.assign({}, base.assistant, parsed.assistant);

@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=17">
+<link rel="stylesheet" href="css/style.css?v=18">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -49,10 +49,16 @@
 
   <div class="char-card frame">
     <div class="char-left">
-      <div class="char-avatar-ring">
-        <img src="assets/avatar_default_20260913_081358.png" alt="角色頭像" class="char-avatar-img">
+      <div class="char-avatar-ring" id="avatar-ring" title="點擊更換頭像">
+        <img src="assets/avatar_default_20260913_081358.png" alt="角色頭像" id="char-avatar-img" class="char-avatar-img">
+        <span class="avatar-edit-badge">📷</span>
       </div>
-      <input type="text" id="char-name" value="我的角色">
+      <input type="file" id="avatar-upload" accept="image/*" style="display:none">
+      <button type="button" id="avatar-reset" class="icon-btn avatar-reset-link" style="display:none">重設為預設頭像</button>
+      <div class="char-name-row">
+        <input type="text" id="char-name" value="我的角色" title="點擊編輯角色名稱">
+        <span class="char-name-edit-icon">✎</span>
+      </div>
       <div id="char-level" class="level-badge">Lv. 1</div>
       <div class="exp-bar-bg"><div id="char-exp-bar" class="exp-bar-fill"></div></div>
       <div id="char-exp-text">0 / 100 EXP</div>
@@ -271,20 +277,20 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="js/config.js?v=17"></script>
-<script src="js/storage.js?v=17"></script>
-<script src="js/cloud.js?v=17"></script>
-<script src="js/sound.js?v=17"></script>
-<script src="js/assistant.js?v=17"></script>
-<script src="js/character.js?v=17"></script>
-<script src="js/tasks.js?v=17"></script>
-<script src="js/habits.js?v=17"></script>
-<script src="js/projects.js?v=17"></script>
-<script src="js/reading.js?v=17"></script>
-<script src="js/finance.js?v=17"></script>
-<script src="js/calendar.js?v=17"></script>
-<script src="js/rewards.js?v=17"></script>
-<script src="js/achievements.js?v=17"></script>
-<script src="js/main.js?v=17"></script>
+<script src="js/config.js?v=18"></script>
+<script src="js/storage.js?v=18"></script>
+<script src="js/cloud.js?v=18"></script>
+<script src="js/sound.js?v=18"></script>
+<script src="js/assistant.js?v=18"></script>
+<script src="js/character.js?v=18"></script>
+<script src="js/tasks.js?v=18"></script>
+<script src="js/habits.js?v=18"></script>
+<script src="js/projects.js?v=18"></script>
+<script src="js/reading.js?v=18"></script>
+<script src="js/finance.js?v=18"></script>
+<script src="js/calendar.js?v=18"></script>
+<script src="js/rewards.js?v=18"></script>
+<script src="js/achievements.js?v=18"></script>
+<script src="js/main.js?v=18"></script>
 </body>
 </html>
