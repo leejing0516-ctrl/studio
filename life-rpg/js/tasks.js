@@ -16,7 +16,10 @@ function getTodayChecklist(state) {
     done: !!readingDone[b.id],
   }));
 
-  return calItems.concat(habitItems, readingItems);
+  const items = calItems.concat(habitItems, readingItems);
+  // 依時間由早到晚排序，沒設定時間的排在最後（保留原本相對順序）
+  items.sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
+  return items;
 }
 
 function renderTasks(state) {
@@ -46,6 +49,7 @@ function renderTasks(state) {
       <li class="task-item ${it.done ? 'done' : ''}">
         <label class="task-check">
           <input type="checkbox" ${it.done ? 'checked' : ''} data-id="${it.id}" data-kind="${it.kind}">
+          ${it.time ? `<span class="task-time">🕐 ${it.time}</span>` : ''}
           <span class="task-tag" style="background:${domain.color}">${domain.icon} ${domain.name}</span>
           <span class="task-text">${prefix}${escapeHtml(it.title)}</span>
           ${extra}
@@ -66,11 +70,11 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-function addTask(state, text, domain, difficulty) {
+function addTask(state, text, domain, difficulty, time) {
   if (!text.trim()) return;
   state.tasks.push({
     id: 't' + Date.now() + Math.random().toString(36).slice(2, 7),
-    domain, text: text.trim(), difficulty,
+    domain, text: text.trim(), difficulty, time: time || '',
     date: todayStr(), done: false, googleEventId: null,
   });
 }

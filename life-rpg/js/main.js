@@ -82,6 +82,7 @@ function openEditModal(kind, id) {
     titleEl.value = t.text;
     domainEl.style.display = ''; domainEl.value = t.domain;
     diffEl.style.display = ''; diffEl.value = t.difficulty;
+    timeEl.style.display = ''; timeEl.value = t.time || '';
   } else if (kind === 'event') {
     const ev = state.events.find(e => e.id === id);
     if (!ev) return;
@@ -131,6 +132,7 @@ function saveEditModal() {
       text: title,
       domain: document.getElementById('edit-domain').value,
       difficulty: document.getElementById('edit-difficulty').value,
+      time: document.getElementById('edit-time').value,
     });
   } else if (kind === 'event') {
     updateEvent(state, id, {
@@ -209,6 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('event-date').value = todayStr();
+  document.getElementById('project-start').value = todayStr();
   document.getElementById('gcal-origin-hint').textContent = location.origin;
 
   const muteBtn = document.getElementById('mute-btn');
@@ -280,8 +283,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const text = document.getElementById('task-text').value;
     const domain = document.getElementById('task-domain').value;
     const difficulty = document.getElementById('task-difficulty').value;
-    addTask(state, text, domain, difficulty);
+    const time = document.getElementById('task-time').value;
+    addTask(state, text, domain, difficulty, time);
     document.getElementById('task-text').value = '';
+    document.getElementById('task-time').value = '';
     renderAll();
   });
 
@@ -385,13 +390,13 @@ document.addEventListener('DOMContentLoaded', () => {
       renderAll();
     } else if (e.target.matches('.gen-reading-plan')) {
       const id = e.target.dataset.id;
+      const startDate = document.querySelector(`.plan-start[data-id="${id}"]`).value || todayStr();
       const deadline = document.querySelector(`.plan-deadline[data-id="${id}"]`).value;
       const granularity = document.querySelector(`.plan-granularity[data-id="${id}"]`).value;
       if (!deadline) { alert('請先選擇目標完成日期'); return; }
-      const before = state.books.find(b => b.id === id).readingPlan;
-      addReadingPlan(state, id, deadline, granularity);
+      addReadingPlan(state, id, startDate, deadline, granularity);
       const after = state.books.find(b => b.id === id).readingPlan;
-      if (!after) { alert('目標完成日期必須在今天之後，且還有剩餘頁數'); return; }
+      if (!after) { alert('截止日期必須在開始日期之後，且還有剩餘頁數'); return; }
       sound.playComplete();
       renderAll();
     } else if (e.target.matches('.reading-plan-toggle')) {
@@ -486,6 +491,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const date = cell.dataset.date;
     _selectedDay = (_selectedDay === date) ? null : date;
     renderCalendarTab(state);
+    if (_selectedDay) {
+      // 點選日期時順便把新增表單的日期填好，方便快速新增當天的活動/截止日
+      document.getElementById('event-date').value = _selectedDay;
+      document.getElementById('event-title').focus();
+    }
   });
 
   document.getElementById('event-list').addEventListener('click', e => {
@@ -536,13 +546,14 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     const title = document.getElementById('project-title').value;
     const domain = document.getElementById('project-domain').value;
+    const startDate = document.getElementById('project-start').value || todayStr();
     const deadline = document.getElementById('project-deadline').value;
     const granularity = document.getElementById('project-granularity').value;
-    if (!title.trim() || !deadline || parseDateStr(deadline) <= parseDateStr(todayStr())) {
-      alert('請輸入目標，且截止日期必須在今天之後');
+    if (!title.trim() || !deadline || parseDateStr(deadline) <= parseDateStr(startDate)) {
+      alert('請輸入目標，且截止日期必須在開始日期之後');
       return;
     }
-    previewProject(title, domain, deadline, granularity);
+    previewProject(title, domain, startDate, deadline, granularity);
     sound.playClick();
     renderProjects(state);
   });
@@ -552,6 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
       confirmPendingProject(state);
       document.getElementById('project-title').value = '';
       document.getElementById('project-deadline').value = '';
+      document.getElementById('project-start').value = todayStr();
       sound.playComplete();
       renderAll();
     } else if (e.target.matches('#preview-regenerate')) {

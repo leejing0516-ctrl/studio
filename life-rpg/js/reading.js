@@ -21,7 +21,7 @@ function renderBooks(state) {
       const expanded = _expandedReadingPlans.has(b.id);
       planHtml = `
         <div class="reading-plan">
-          <button class="project-toggle reading-plan-toggle" data-id="${b.id}">${expanded ? '▾ 收合' : '▸ 展開'} 閱讀計畫：${doneCount} / ${total} 天完成</button>
+          <button class="project-toggle reading-plan-toggle" data-id="${b.id}">${expanded ? '▾ 收合' : '▸ 展開'} 閱讀計畫（${b.readingPlan.startDate || ''} ~ ${b.readingPlan.deadline}）：${doneCount} / ${total} 天完成</button>
           ${expanded ? `<ul class="project-subtasks">${b.readingPlan.subtasks.map(st => `
             <li class="subtask-item ${st.done ? 'done' : ''}">
               <label>
@@ -39,7 +39,8 @@ function renderBooks(state) {
     } else if (!b.done) {
       planHtml = `
         <div class="reading-plan-setup inline-form">
-          <input type="date" class="plan-deadline" data-id="${b.id}">
+          <input type="date" class="plan-start" data-id="${b.id}" title="開始日期" value="${todayStr()}">
+          <input type="date" class="plan-deadline" data-id="${b.id}" title="目標完成日期">
           <select class="plan-granularity" data-id="${b.id}">
             <option value="daily">拆成每日進度</option>
             <option value="weekly">拆成每週進度</option>
@@ -83,15 +84,14 @@ function genReadingPlanId(i) {
   return 'rp' + Date.now() + '_' + i + Math.random().toString(36).slice(2, 5);
 }
 
-// 「AI 拆解」：把剩餘頁數依期限平均分配成每日/每週的頁數區間
-function generateReadingPlan(book, deadlineStr, granularity) {
-  const today = todayStr();
-  const start = parseDateStr(today);
+// 「AI 拆解」：把剩餘頁數依起訖日期平均分配成每日/每週的頁數區間
+function generateReadingPlan(book, startDateStr, deadlineStr, granularity) {
+  const start = parseDateStr(startDateStr);
   const end = parseDateStr(deadlineStr);
   const remainingPages = book.totalPages - book.currentPage;
   if (end <= start || remainingPages <= 0) return [];
 
-  const totalDays = daysBetween(today, deadlineStr);
+  const totalDays = daysBetween(startDateStr, deadlineStr);
   const MAX = 60;
   const n = granularity === 'daily'
     ? Math.min(totalDays, MAX)
@@ -127,12 +127,12 @@ function generateReadingPlan(book, deadlineStr, granularity) {
   return subtasks;
 }
 
-function addReadingPlan(state, bookId, deadline, granularity) {
+function addReadingPlan(state, bookId, startDate, deadline, granularity) {
   const book = state.books.find(b => b.id === bookId);
   if (!book || !deadline) return;
-  const subtasks = generateReadingPlan(book, deadline, granularity);
+  const subtasks = generateReadingPlan(book, startDate, deadline, granularity);
   if (!subtasks.length) return;
-  book.readingPlan = { deadline, granularity, subtasks };
+  book.readingPlan = { startDate, deadline, granularity, subtasks };
 }
 
 function findReadingPlanItem(state, subtaskId) {

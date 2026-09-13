@@ -41,7 +41,7 @@ function deleteEvent(state, id) {
 function getCalendarItems(state) {
   const tasks = state.tasks.map(t => ({
     id: t.id, kind: 'task', title: t.text, domain: t.domain,
-    date: t.date, time: '', done: t.done, googleEventId: t.googleEventId,
+    date: t.date, time: t.time || '', done: t.done, googleEventId: t.googleEventId,
     difficulty: t.difficulty, exp: TASK_EXP[t.difficulty],
   }));
   const events = state.events.map(e => ({

@@ -158,19 +158,18 @@ let _pendingProject = null;
 let _expandedProjects = new Set();
 
 // 先產生預覽，讓使用者看過、刪掉不要的子任務後再確認儲存
-function previewProject(title, domain, deadline, granularity) {
+function previewProject(title, domain, startDate, deadline, granularity) {
   if (!title.trim() || !deadline) return;
-  const today = todayStr();
   _pendingProject = {
-    title: title.trim(), domain, deadline, granularity,
-    subtasks: generateBreakdown(title.trim(), today, deadline, granularity),
+    title: title.trim(), domain, startDate, deadline, granularity,
+    subtasks: generateBreakdown(title.trim(), startDate, deadline, granularity),
   };
 }
 
 function regeneratePendingProject() {
   if (!_pendingProject) return;
-  const { title, deadline, granularity } = _pendingProject;
-  _pendingProject.subtasks = generateBreakdown(title, todayStr(), deadline, granularity);
+  const { title, startDate, deadline, granularity } = _pendingProject;
+  _pendingProject.subtasks = generateBreakdown(title, startDate, deadline, granularity);
 }
 
 function removePendingSubtask(subtaskId) {
@@ -242,7 +241,7 @@ function renderProjectPreview() {
       <div class="project-header">
         <span class="task-tag" style="background:${domain.color}">${domain.icon} ${domain.name}</span>
         <span class="project-title">🤖 預覽：${escapeHtml(_pendingProject.title)}</span>
-        <span class="project-deadline">期限 ${_pendingProject.deadline}</span>
+        <span class="project-deadline">${_pendingProject.startDate} ~ ${_pendingProject.deadline}</span>
       </div>
       <p class="tab-hint">看看小助手拆解得如何，不滿意可以「重新生成」，或刪掉個別項目後再確認。</p>
       <ul class="project-subtasks">
@@ -284,7 +283,7 @@ function renderProjects(state) {
         <div class="project-header">
           <span class="task-tag" style="background:${domain.color}">${domain.icon} ${domain.name}</span>
           <span class="project-title">🎯 ${escapeHtml(p.title)}</span>
-          <span class="project-deadline">期限 ${p.deadline}</span>
+          <span class="project-deadline">${p.startDate || p.createdDate} ~ ${p.deadline}</span>
           <button class="icon-btn del-project" data-id="${p.id}" title="刪除整個專案">✕</button>
         </div>
         <div class="skill-bar-bg"><div class="skill-bar-fill" style="width:${pct}%; background:${domain.color}"></div></div>
