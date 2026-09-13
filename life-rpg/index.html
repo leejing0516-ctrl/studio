@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>人生 RPG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=4">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+<div class="app">
+  <button id="mute-btn" class="mute-btn" title="靜音切換">🔊</button>
+  <h1><span class="crest">⚔</span> 人生 RPG <span class="crest">⚔</span></h1>
+
+  <div class="assistant-widget frame">
+    <div class="assistant-avatar">🧚</div>
+    <div class="assistant-bubble">
+      <div class="assistant-bubble-label">小助手</div>
+      <div id="assistant-bubble-text">嗨，我是你的小助手！</div>
+    </div>
+    <button id="assistant-shuffle" class="icon-btn" title="換一句">🔄</button>
+  </div>
+
+  <div class="char-card frame">
+    <div class="char-left">
+      <div class="char-avatar-ring">
+        <img src="assets/avatar_default_20260913_081358.png" alt="角色頭像" class="char-avatar-img">
+      </div>
+      <input type="text" id="char-name" value="我的角色">
+      <div id="char-level" class="level-badge">Lv. 1</div>
+      <div class="exp-bar-bg"><div id="char-exp-bar" class="exp-bar-fill"></div></div>
+      <div id="char-exp-text">0 / 100 EXP</div>
+      <div class="stat-row">
+        <span class="streak">🔥 連續 <span id="streak-count">0</span> 天</span>
+        <span class="gold">💰 <span id="gold-count">0</span></span>
+      </div>
+    </div>
+    <div class="char-right">
+      <canvas id="radarCanvas" width="380" height="330"></canvas>
+    </div>
+  </div>
+
+  <div class="skill-panel frame">
+    <h2>技能總覽</h2>
+    <div id="skill-bars"></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn" data-tab="tab-assistant">🧚 小助手</button>
+    <button class="tab-btn active" data-tab="tab-tasks">📋 今日任務</button>
+    <button class="tab-btn" data-tab="tab-habits">🔁 習慣</button>
+    <button class="tab-btn" data-tab="tab-calendar">📅 行事曆</button>
+    <button class="tab-btn" data-tab="tab-reading">📖 閱讀進度</button>
+    <button class="tab-btn" data-tab="tab-rewards">🎁 獎勵商店</button>
+    <button class="tab-btn" data-tab="tab-achievements">🏆 成就</button>
+    <button class="tab-btn" data-tab="tab-log">📜 活動紀錄</button>
+  </div>
+
+  <div id="tab-assistant" class="tab-panel frame">
+    <p class="tab-hint">跟小助手說說現在的心情，或看看過去的鼓勵訊息。</p>
+    <div class="mood-buttons">
+      <button class="mood-btn" data-mood="good">😊 心情不錯</button>
+      <button class="mood-btn" data-mood="tired">😩 有點累</button>
+      <button class="mood-btn" data-mood="giveup">😤 想放棄</button>
+      <button class="mood-btn" data-mood="unsure">🤔 不知道做什麼</button>
+    </div>
+    <ul id="assistant-log"></ul>
+  </div>
+
+  <div id="tab-tasks" class="tab-panel frame active">
+    <form id="task-form" class="inline-form">
+      <input type="text" id="task-text" placeholder="今天要做的任務…" required>
+      <select id="task-domain"></select>
+      <select id="task-difficulty">
+        <option value="easy">簡單 (+10)</option>
+        <option value="normal" selected>普通 (+15)</option>
+        <option value="hard">困難 (+25)</option>
+      </select>
+      <button type="submit" class="btn">新增任務</button>
+    </form>
+    <ul id="task-list"></ul>
+  </div>
+
+  <div id="tab-habits" class="tab-panel frame">
+    <p class="tab-hint">習慣每天都會重新出現，持續完成可累積「連續天數」。</p>
+    <form id="habit-form" class="inline-form">
+      <input type="text" id="habit-name" placeholder="想養成的習慣…（例如：喝水2000ml）" required>
+      <select id="habit-domain"></select>
+      <select id="habit-difficulty">
+        <option value="easy">簡單 (+10)</option>
+        <option value="normal" selected>普通 (+15)</option>
+        <option value="hard">困難 (+25)</option>
+      </select>
+      <button type="submit" class="btn">新增習慣</button>
+    </form>
+    <ul id="habit-list"></ul>
+  </div>
+
+  <div id="tab-calendar" class="tab-panel frame">
+    <p class="tab-hint">事先安排活動或截止日期，完成後也能像任務一樣獲得 EXP。</p>
+    <form id="event-form" class="inline-form">
+      <input type="text" id="event-title" placeholder="活動或截止日名稱…" required>
+      <select id="event-domain"></select>
+      <select id="event-type">
+        <option value="event">📅 活動</option>
+        <option value="deadline">⏰ 截止日期</option>
+      </select>
+      <input type="date" id="event-date" required>
+      <input type="time" id="event-time">
+      <button type="submit" class="btn">新增</button>
+    </form>
+
+    <div class="calendar-nav">
+      <button type="button" id="cal-prev" class="icon-btn cal-nav-btn">◀</button>
+      <span id="calendar-month-label" class="calendar-month-label"></span>
+      <button type="button" id="cal-next" class="icon-btn cal-nav-btn">▶</button>
+    </div>
+    <div id="calendar-grid" class="calendar-grid"></div>
+
+    <p id="event-filter-label" class="tab-hint" style="display:none"></p>
+    <ul id="event-list"></ul>
+
+    <details class="gcal-panel">
+      <summary>🔗 與 Google 日曆同步</summary>
+      <p class="tab-hint">
+        第一次使用需要建立你自己的 Google OAuth 用戶端 ID（一次性設定）：<br>
+        1. 前往 <strong>console.cloud.google.com</strong> 建立專案<br>
+        2.「API 和服務」→「程式庫」啟用 <strong>Google Calendar API</strong><br>
+        3.「API 和服務」→「憑證」→「建立憑證」→「OAuth 用戶端 ID」，類型選「網頁應用程式」<br>
+        4.「已授權的 JavaScript 來源」加入你目前使用的網址（例如 <code id="gcal-origin-hint"></code>）<br>
+        5. 建立後複製「用戶端 ID」，貼到下面欄位
+      </p>
+      <div class="inline-form">
+        <input type="text" id="gcal-client-id" placeholder="貼上你的 Google OAuth 用戶端 ID">
+        <button type="button" id="gcal-save" class="btn small">儲存</button>
+        <button type="button" id="gcal-connect" class="btn small">登入 Google</button>
+        <button type="button" id="gcal-sync" class="btn small">同步未上傳的項目</button>
+      </div>
+      <p id="gcal-status" class="tab-hint">尚未連接</p>
+    </details>
+  </div>
+
+  <div id="tab-reading" class="tab-panel frame">
+    <form id="book-form" class="inline-form">
+      <input type="text" id="book-title" placeholder="書名" required>
+      <input type="number" id="book-pages" placeholder="總頁數" min="1" required>
+      <button type="submit" class="btn">加入書籍</button>
+    </form>
+    <ul id="book-list"></ul>
+  </div>
+
+  <div id="tab-rewards" class="tab-panel frame">
+    <p class="tab-hint">用賺到的金幣犒賞自己！設定你想要的獎勵與所需金幣。</p>
+    <form id="reward-form" class="inline-form">
+      <input type="text" id="reward-name" placeholder="獎勵內容…（例如：買一杯手搖飲）" required>
+      <input type="number" id="reward-cost" placeholder="所需金幣" min="1" required>
+      <button type="submit" class="btn">新增獎勵</button>
+    </form>
+    <ul id="reward-list"></ul>
+  </div>
+
+  <div id="tab-achievements" class="tab-panel frame">
+    <div id="achievement-grid" class="achievement-grid"></div>
+  </div>
+
+  <div id="tab-log" class="tab-panel frame">
+    <ul id="activity-log"></ul>
+  </div>
+</div>
+
+<div id="levelup-modal" class="levelup-modal">
+  <div class="levelup-burst">
+    <div class="levelup-label">LEVEL UP!</div>
+    <div id="levelup-text" class="levelup-level">Lv. 2</div>
+  </div>
+</div>
+
+<div id="toast-container" class="toast-container"></div>
+
+<script src="js/config.js?v=4"></script>
+<script src="js/storage.js?v=4"></script>
+<script src="js/sound.js?v=4"></script>
+<script src="js/assistant.js?v=4"></script>
+<script src="js/character.js?v=4"></script>
+<script src="js/tasks.js?v=4"></script>
+<script src="js/habits.js?v=4"></script>
+<script src="js/reading.js?v=4"></script>
+<script src="js/calendar.js?v=4"></script>
+<script src="js/rewards.js?v=4"></script>
+<script src="js/achievements.js?v=4"></script>
+<script src="js/main.js?v=4"></script>
+</body>
+</html>

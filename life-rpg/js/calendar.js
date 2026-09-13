@@ -1,0 +1,210 @@
+let _calYear = new Date().getFullYear();
+let _calMonth = new Date().getMonth(); // 0-indexed
+let _selectedDay = null;
+let _gcalAccessToken = null;
+let _gcalTokenClient = null;
+
+function addDays(dateStr, n) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m - 1, d + n);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+}
+
+function addEvent(state, title, domain, date, time, type) {
+  if (!title.trim() || !date) return;
+  state.events.push({
+    id: 'e' + Date.now() + Math.random().toString(36).slice(2, 7),
+    title: title.trim(), domain, date, time: time || '', type,
+    done: false, googleEventId: null,
+  });
+}
+
+function toggleEventDone(state, id) {
+  const ev = state.events.find(e => e.id === id);
+  if (!ev) return;
+  ev.done = !ev.done;
+  const d = DOMAINS.find(d => d.key === ev.domain);
+  if (ev.done) {
+    gainExp(state, ev.domain, EVENT_EXP);
+    addLog(state, `完成${ev.type === 'deadline' ? '截止事項' : '活動'}「${ev.title}」，${d.name} +${EVENT_EXP} EXP ／ +${goldFor(EVENT_EXP)} 金幣`);
+  } else {
+    gainExp(state, ev.domain, -EVENT_EXP);
+  }
+}
+
+function deleteEvent(state, id) {
+  state.events = state.events.filter(e => e.id !== id);
+}
+
+function renderCalendarMonth(state) {
+  const grid = document.getElementById('calendar-grid');
+  const label = document.getElementById('calendar-month-label');
+  if (!grid) return;
+  label.textContent = `${_calYear} 年 ${MONTH_NAMES_ZH[_calMonth]}`;
+
+  const firstDay = new Date(_calYear, _calMonth, 1);
+  const startWeekday = firstDay.getDay();
+  const daysInMonth = new Date(_calYear, _calMonth + 1, 0).getDate();
+  const today = todayStr();
+
+  const eventsByDay = {};
+  state.events.forEach(e => {
+    (eventsByDay[e.date] = eventsByDay[e.date] || []).push(e);
+  });
+
+  let html = WEEKDAY_NAMES_ZH.map(w => `<div class="cal-weekday">${w}</div>`).join('');
+  for (let i = 0; i < startWeekday; i++) html += '<div class="cal-cell empty"></div>';
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${_calYear}-${String(_calMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const dayEvents = eventsByDay[dateStr] || [];
+    const hasOverdue = dayEvents.some(e => !e.done && dateStr < today);
+    const classes = ['cal-cell'];
+    if (dateStr === today) classes.push('is-today');
+    if (dateStr === _selectedDay) classes.push('is-selected');
+    if (dayEvents.length) classes.push('has-events');
+    html += `
+      <div class="${classes.join(' ')}" data-date="${dateStr}">
+        <span class="cal-daynum">${d}</span>
+        ${dayEvents.length ? `<span class="cal-dot ${hasOverdue ? 'overdue' : ''}">${dayEvents.length}</span>` : ''}
+      </div>
+    `;
+  }
+  grid.innerHTML = html;
+}
+
+function changeMonth(delta) {
+  _calMonth += delta;
+  if (_calMonth < 0) { _calMonth = 11; _calYear--; }
+  if (_calMonth > 11) { _calMonth = 0; _calYear++; }
+}
+
+function renderEventList(state) {
+  const list = document.getElementById('event-list');
+  const filterLabel = document.getElementById('event-filter-label');
+  if (!list) return;
+
+  let events = state.events.slice();
+  if (_selectedDay) {
+    filterLabel.textContent = `📌 顯示 ${_selectedDay} 的項目（點同一天可取消篩選）`;
+    filterLabel.style.display = 'block';
+    events = events.filter(e => e.date === _selectedDay);
+  } else {
+    filterLabel.style.display = 'none';
+  }
+
+  events.sort((a, b) => (a.date + (a.time || '99:99')).localeCompare(b.date + (b.time || '99:99')));
+  const today = todayStr();
+  const pending = events.filter(e => !e.done);
+  const done = events.filter(e => e.done);
+
+  if (!events.length) {
+    list.innerHTML = '<li class="empty-hint">還沒有安排任何活動或截止日，新增一個吧！</li>';
+    return;
+  }
+
+  const renderItem = (e) => {
+    const d = DOMAINS.find(d => d.key === e.domain);
+    const overdue = !e.done && e.date < today;
+    const icon = e.type === 'deadline' ? '⏰' : '📅';
+    return `
+      <li class="task-item ${e.done ? 'done' : ''} ${overdue ? 'overdue' : ''}">
+        <label class="task-check">
+          <input type="checkbox" ${e.done ? 'checked' : ''} data-id="${e.id}" class="event-check">
+          <span class="task-tag" style="background:${d.color}">${d.icon} ${d.name}</span>
+          <span class="event-date">${icon} ${e.date}${e.time ? ' ' + e.time : ''}</span>
+          <span class="task-text">${escapeHtml(e.title)}</span>
+          ${e.googleEventId ? '<span class="gcal-badge" title="已同步到 Google 日曆">🔗</span>' : ''}
+        </label>
+        <button class="icon-btn del-event" data-id="${e.id}" title="刪除">✕</button>
+      </li>
+    `;
+  };
+
+  list.innerHTML = pending.map(renderItem).join('') + done.map(renderItem).join('');
+}
+
+function renderCalendarTab(state) {
+  renderCalendarMonth(state);
+  renderEventList(state);
+  renderGoogleStatus(state);
+}
+
+/* ── Google 日曆同步 ───────────────────────────── */
+
+function renderGoogleStatus(state) {
+  const input = document.getElementById('gcal-client-id');
+  if (input && document.activeElement !== input) input.value = state.googleCalendar.clientId || '';
+  const status = document.getElementById('gcal-status');
+  if (!status) return;
+  status.textContent = _gcalAccessToken ? '✅ 已連接，可以同步' : '尚未連接';
+}
+
+function initGoogleAuth(state) {
+  if (!window.google || !window.google.accounts || !state.googleCalendar.clientId) return false;
+  _gcalTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: state.googleCalendar.clientId,
+    scope: GCAL_SCOPE,
+    callback: (resp) => {
+      if (resp && resp.access_token) {
+        _gcalAccessToken = resp.access_token;
+        renderGoogleStatus(state);
+      }
+    },
+  });
+  return true;
+}
+
+function connectGoogle(state) {
+  if (!state.googleCalendar.clientId) {
+    alert('請先貼上你的 Google OAuth 用戶端 ID（說明在下方展開）');
+    return;
+  }
+  if (!_gcalTokenClient && !initGoogleAuth(state)) {
+    alert('Google 登入元件尚未載入，請稍後再試一次');
+    return;
+  }
+  _gcalTokenClient.requestAccessToken();
+}
+
+async function syncEventToGoogle(ev) {
+  if (!_gcalAccessToken) return false;
+  const body = {
+    summary: ev.title,
+    description: ev.type === 'deadline' ? '截止日期（來自人生 RPG）' : '活動（來自人生 RPG）',
+  };
+  if (ev.time) {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const [h, m] = ev.time.split(':').map(Number);
+    const endH = String((h + 1) % 24).padStart(2, '0');
+    body.start = { dateTime: `${ev.date}T${ev.time}:00`, timeZone: tz };
+    body.end = { dateTime: `${ev.date}T${endH}:${String(m).padStart(2, '0')}:00`, timeZone: tz };
+  } else {
+    body.start = { date: ev.date };
+    body.end = { date: addDays(ev.date, 1) };
+  }
+
+  try {
+    const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${_gcalAccessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    ev.googleEventId = data.id;
+    return true;
+  } catch (e) {
+    console.error('同步到 Google 日曆失敗', e);
+    return false;
+  }
+}
+
+async function syncAllToGoogle(state) {
+  const pending = state.events.filter(e => !e.googleEventId);
+  let success = 0;
+  for (const ev of pending) {
+    if (await syncEventToGoogle(ev)) success++;
+  }
+  return { success, total: pending.length };
+}

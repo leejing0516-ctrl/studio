@@ -1,0 +1,68 @@
+function todaysCompletions(state) {
+  const today = todayStr();
+  if (!state.habitCompletions[today]) state.habitCompletions[today] = {};
+  return state.habitCompletions[today];
+}
+
+function renderHabits(state) {
+  const list = document.getElementById('habit-list');
+  list.innerHTML = '';
+
+  if (state.habits.length === 0) {
+    list.innerHTML = '<li class="empty-hint">還沒有設定任何習慣，新增一個每天養成吧！</li>';
+    return;
+  }
+
+  const doneMap = todaysCompletions(state);
+  state.habits.forEach(h => {
+    const domain = DOMAINS.find(d => d.key === h.domain);
+    const done = !!doneMap[h.id];
+    const li = document.createElement('li');
+    li.className = 'task-item' + (done ? ' done' : '');
+    li.innerHTML = `
+      <label class="task-check">
+        <input type="checkbox" ${done ? 'checked' : ''} data-id="${h.id}" class="habit-check">
+        <span class="task-tag" style="background:${domain.color}">${domain.icon} ${domain.name}</span>
+        <span class="task-text">${escapeHtml(h.name)}</span>
+        <span class="habit-streak">🔁 連續 ${h.streak || 0} 天</span>
+        <span class="task-exp">+${TASK_EXP[h.difficulty]} EXP</span>
+      </label>
+      <button class="icon-btn del-habit" data-id="${h.id}" title="刪除">✕</button>
+    `;
+    list.appendChild(li);
+  });
+}
+
+function addHabit(state, name, domain, difficulty) {
+  if (!name.trim()) return;
+  state.habits.push({
+    id: 'h' + Date.now() + Math.random().toString(36).slice(2, 7),
+    name: name.trim(), domain, difficulty, streak: 0, lastDoneDate: null,
+  });
+}
+
+function toggleHabit(state, id) {
+  const h = state.habits.find(h => h.id === id);
+  if (!h) return;
+  const doneMap = todaysCompletions(state);
+  const today = todayStr();
+  const exp = TASK_EXP[h.difficulty];
+
+  if (!doneMap[h.id]) {
+    doneMap[h.id] = true;
+    gainExp(state, h.domain, exp);
+    h.streak = (h.lastDoneDate === yesterdayStr()) ? (h.streak || 0) + 1 : 1;
+    h.lastDoneDate = today;
+    const d = DOMAINS.find(d => d.key === h.domain);
+    addLog(state, `完成習慣「${h.name}」，${d.name} +${exp} EXP ／ +${goldFor(exp)} 金幣（連續 ${h.streak} 天）`);
+  } else {
+    delete doneMap[h.id];
+    gainExp(state, h.domain, -exp);
+    h.streak = Math.max(0, (h.streak || 0) - 1);
+    if (h.streak === 0) h.lastDoneDate = null;
+  }
+}
+
+function deleteHabit(state, id) {
+  state.habits = state.habits.filter(h => h.id !== id);
+}
