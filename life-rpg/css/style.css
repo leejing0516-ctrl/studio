@@ -225,6 +225,20 @@ h1 {
   box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
 
+/* iOS Safari 對 display:none 的 file input 呼叫 .click() 常常沒反應，
+   改用「保留在版面中但視覺上看不到」的方式才能可靠觸發原生選圖視窗 */
+.visually-hidden-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .avatar-reset-link {
   font-size: 11px;
   text-decoration: underline;
