@@ -53,6 +53,7 @@ function setSyncStatus(text) {
 function showCloudError(msg) {
   const el = document.getElementById('cloud-error');
   if (!el) return;
+  el.style.color = '#e2685f';
   el.textContent = msg;
   el.style.display = 'block';
 }
@@ -97,6 +98,23 @@ async function cloudSignIn(email, password) {
 
 function cloudSignOut() {
   if (_cloudAuth) _cloudAuth.signOut();
+}
+
+async function cloudResetPassword(email) {
+  if (!_cloudAuth) return;
+  if (!email) { showCloudError('請先在上面輸入你的信箱'); return; }
+  try {
+    await _cloudAuth.sendPasswordResetEmail(email);
+    hideCloudError();
+    const el = document.getElementById('cloud-error');
+    if (el) {
+      el.style.color = '#4fae7d';
+      el.textContent = `已寄出重設密碼信到 ${email}，請到信箱點連結重設`;
+      el.style.display = 'block';
+    }
+  } catch (e) {
+    showCloudError(translateAuthError(e));
+  }
 }
 
 // 登入時：比較雲端與本機哪個較新，決定要拉下來還是推上去

@@ -273,6 +273,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('cloud-signout').addEventListener('click', cloudSignOut);
 
+  document.getElementById('cloud-forgot').addEventListener('click', () => {
+    const email = document.getElementById('cloud-email').value.trim();
+    cloudResetPassword(email);
+  });
+
   renderAll();
 
   document.addEventListener('click', e => {
