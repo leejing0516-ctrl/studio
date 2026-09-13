@@ -366,6 +366,23 @@ input:focus, select:focus { outline: none; border-color: var(--border-gold); }
 
 #task-text, #habit-name, #reward-name { flex: 1; min-width: 180px; }
 
+.time-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #fffdfa;
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  padding: 0 8px;
+}
+.time-picker select {
+  border: none;
+  background: transparent;
+  padding: 9px 2px;
+  font-size: 14px;
+}
+.time-picker select:focus { outline: none; }
+
 .btn {
   background: linear-gradient(180deg, var(--gold-bright), var(--gold));
   color: #4a2e05;

@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=15">
+<link rel="stylesheet" href="css/style.css?v=16">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -104,7 +104,9 @@
         <option value="normal" selected>普通 (+15)</option>
         <option value="hard">困難 (+25)</option>
       </select>
-      <input type="time" id="task-time" title="時間（選填）" step="600">
+      <span class="time-picker" title="時間（選填）">
+        <select id="task-time-hour"></select>:<select id="task-time-minute"></select>
+      </span>
       <button type="submit" class="btn">新增任務</button>
     </form>
     <ul id="task-list"></ul>
@@ -151,7 +153,9 @@
         <option value="deadline">⏰ 截止日期</option>
       </select>
       <input type="date" id="event-date" required>
-      <input type="time" id="event-time" step="600">
+      <span class="time-picker">
+        <select id="event-time-hour"></select>:<select id="event-time-minute"></select>
+      </span>
       <button type="submit" class="btn">新增</button>
     </form>
 
@@ -246,7 +250,9 @@
         <option value="deadline">⏰ 截止日期</option>
       </select>
       <input type="date" id="edit-date" style="display:none">
-      <input type="time" id="edit-time" style="display:none" step="600">
+      <span id="edit-time" class="time-picker" style="display:none">
+        <select id="edit-time-hour"></select>:<select id="edit-time-minute"></select>
+      </span>
     </div>
     <div class="modal-actions">
       <button type="button" id="edit-cancel" class="btn small">取消</button>
@@ -264,20 +270,20 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="js/config.js?v=15"></script>
-<script src="js/storage.js?v=15"></script>
-<script src="js/cloud.js?v=15"></script>
-<script src="js/sound.js?v=15"></script>
-<script src="js/assistant.js?v=15"></script>
-<script src="js/character.js?v=15"></script>
-<script src="js/tasks.js?v=15"></script>
-<script src="js/habits.js?v=15"></script>
-<script src="js/projects.js?v=15"></script>
-<script src="js/reading.js?v=15"></script>
-<script src="js/finance.js?v=15"></script>
-<script src="js/calendar.js?v=15"></script>
-<script src="js/rewards.js?v=15"></script>
-<script src="js/achievements.js?v=15"></script>
-<script src="js/main.js?v=15"></script>
+<script src="js/config.js?v=16"></script>
+<script src="js/storage.js?v=16"></script>
+<script src="js/cloud.js?v=16"></script>
+<script src="js/sound.js?v=16"></script>
+<script src="js/assistant.js?v=16"></script>
+<script src="js/character.js?v=16"></script>
+<script src="js/tasks.js?v=16"></script>
+<script src="js/habits.js?v=16"></script>
+<script src="js/projects.js?v=16"></script>
+<script src="js/reading.js?v=16"></script>
+<script src="js/finance.js?v=16"></script>
+<script src="js/calendar.js?v=16"></script>
+<script src="js/rewards.js?v=16"></script>
+<script src="js/achievements.js?v=16"></script>
+<script src="js/main.js?v=16"></script>
 </body>
 </html>

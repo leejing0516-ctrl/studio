@@ -65,6 +65,36 @@ function initSoundOnce() {
   document.removeEventListener('click', initSoundOnce);
 }
 
+// 時間選擇改用「時」「分」兩個下拉選單，分鐘固定 10 分鐘一格，
+// 避免瀏覽器原生 <input type="time"> 的分鐘捲輪不吃 step 屬性
+function populateTimeSelect(prefix) {
+  const hourEl = document.getElementById(prefix + '-hour');
+  const minuteEl = document.getElementById(prefix + '-minute');
+  if (!hourEl || !minuteEl) return;
+  hourEl.innerHTML = '<option value="">--</option>' +
+    Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
+      .map(h => `<option value="${h}">${h}</option>`).join('');
+  minuteEl.innerHTML = '<option value="">--</option>' +
+    ['00', '10', '20', '30', '40', '50']
+      .map(m => `<option value="${m}">${m}</option>`).join('');
+}
+
+function getTimeValue(prefix) {
+  const h = document.getElementById(prefix + '-hour').value;
+  const m = document.getElementById(prefix + '-minute').value;
+  return (h && m) ? `${h}:${m}` : '';
+}
+
+function setTimeValue(prefix, timeStr) {
+  const hourEl = document.getElementById(prefix + '-hour');
+  const minuteEl = document.getElementById(prefix + '-minute');
+  if (!timeStr) { hourEl.value = ''; minuteEl.value = ''; return; }
+  const [h, m] = timeStr.split(':');
+  hourEl.value = h;
+  const snapped = Math.round(Number(m) / 10) * 10;
+  minuteEl.value = String(snapped >= 60 ? 0 : snapped).padStart(2, '0');
+}
+
 let _editTarget = null;
 
 function openEditModal(kind, id) {
@@ -82,7 +112,7 @@ function openEditModal(kind, id) {
     titleEl.value = t.text;
     domainEl.style.display = ''; domainEl.value = t.domain;
     diffEl.style.display = ''; diffEl.value = t.difficulty;
-    timeEl.style.display = ''; timeEl.value = t.time || '';
+    timeEl.style.display = ''; setTimeValue('edit-time', t.time || '');
   } else if (kind === 'event') {
     const ev = state.events.find(e => e.id === id);
     if (!ev) return;
@@ -90,7 +120,7 @@ function openEditModal(kind, id) {
     domainEl.style.display = ''; domainEl.value = ev.domain;
     typeEl.style.display = ''; typeEl.value = ev.type;
     dateEl.style.display = ''; dateEl.value = ev.date;
-    timeEl.style.display = ''; timeEl.value = ev.time || '';
+    timeEl.style.display = ''; setTimeValue('edit-time', ev.time || '');
   } else if (kind === 'habit') {
     const h = state.habits.find(h => h.id === id);
     if (!h) return;
@@ -132,7 +162,7 @@ function saveEditModal() {
       text: title,
       domain: document.getElementById('edit-domain').value,
       difficulty: document.getElementById('edit-difficulty').value,
-      time: document.getElementById('edit-time').value,
+      time: getTimeValue('edit-time'),
     });
   } else if (kind === 'event') {
     updateEvent(state, id, {
@@ -140,7 +170,7 @@ function saveEditModal() {
       domain: document.getElementById('edit-domain').value,
       type: document.getElementById('edit-type').value,
       date: document.getElementById('edit-date').value,
-      time: document.getElementById('edit-time').value,
+      time: getTimeValue('edit-time'),
     });
   } else if (kind === 'habit') {
     updateHabit(state, id, {
@@ -209,6 +239,8 @@ document.addEventListener('DOMContentLoaded', () => {
     opt.textContent = c;
     expenseCategorySelect.appendChild(opt);
   });
+
+  ['task-time', 'event-time', 'edit-time'].forEach(populateTimeSelect);
 
   document.getElementById('event-date').value = todayStr();
   document.getElementById('project-start').value = todayStr();
@@ -283,10 +315,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const text = document.getElementById('task-text').value;
     const domain = document.getElementById('task-domain').value;
     const difficulty = document.getElementById('task-difficulty').value;
-    const time = document.getElementById('task-time').value;
+    const time = getTimeValue('task-time');
     addTask(state, text, domain, difficulty, time);
     document.getElementById('task-text').value = '';
-    document.getElementById('task-time').value = '';
+    setTimeValue('task-time', '');
     renderAll();
   });
 
@@ -475,10 +507,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const domain = document.getElementById('event-domain').value;
     const type = document.getElementById('event-type').value;
     const date = document.getElementById('event-date').value;
-    const time = document.getElementById('event-time').value;
+    const time = getTimeValue('event-time');
     addEvent(state, title, domain, date, time, type);
     document.getElementById('event-title').value = '';
-    document.getElementById('event-time').value = '';
+    setTimeValue('event-time', '');
     renderAll();
   });
 
