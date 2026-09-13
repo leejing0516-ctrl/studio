@@ -49,9 +49,9 @@ function renderTasks(state) {
       <li class="task-item ${it.done ? 'done' : ''}">
         <label class="task-check">
           <input type="checkbox" ${it.done ? 'checked' : ''} data-id="${it.id}" data-kind="${it.kind}">
-          ${it.time ? `<span class="task-time">🕐 ${it.time}</span>` : ''}
           <span class="task-tag" style="background:${domain.color}">${domain.icon} ${domain.name}</span>
           <span class="task-text">${prefix}${escapeHtml(it.title)}</span>
+          ${it.time ? `<span class="task-time">🕐 ${it.time}</span>` : ''}
           ${extra}
           <span class="task-exp">+${exp} EXP</span>
         </label>
