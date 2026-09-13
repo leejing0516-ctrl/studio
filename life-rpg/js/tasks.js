@@ -1,7 +1,7 @@
-// 把「今日任務、到期活動/截止日、今天該做的習慣、閱讀、專案子任務」統一成一份今日清單
+// 把「今日任務、到期活動/截止日、專案子任務、閱讀計畫、今天該做的習慣、簡易閱讀打卡」統一成一份今日清單
 function getTodayChecklist(state) {
   const today = todayStr();
-  const calItems = getTodayItems(state); // 今日任務 + 到期活動/截止日
+  const calItems = getTodayItems(state); // 今日任務 + 到期活動/截止日 + 到期專案子任務 + 到期閱讀計畫
 
   const habitDone = state.habitCompletions[today] || {};
   const habitItems = getDueHabitsToday(state).map(h => ({
@@ -9,22 +9,14 @@ function getTodayChecklist(state) {
     done: !!habitDone[h.id], difficulty: h.difficulty, streak: h.streak || 0,
   }));
 
+  // 只有「沒有閱讀計畫」的書才用簡易打卡；有計畫的書由 calItems 提供當天的閱讀進度項目
   const readingDone = state.readingCompletions[today] || {};
-  const readingItems = state.books.filter(b => !b.done).map(b => ({
+  const readingItems = state.books.filter(b => !b.done && !b.readingPlan).map(b => ({
     id: b.id, kind: 'reading', title: `閱讀《${b.title}》`, domain: 'reading',
     done: !!readingDone[b.id],
   }));
 
-  const projectItems = [];
-  (state.projects || []).forEach(p => {
-    p.subtasks.filter(st => st.dueDate === today).forEach(st => {
-      projectItems.push({
-        id: st.id, kind: 'project', title: `${p.title}｜${st.title}`, domain: p.domain, done: st.done,
-      });
-    });
-  });
-
-  return calItems.concat(habitItems, readingItems, projectItems);
+  return calItems.concat(habitItems, readingItems);
 }
 
 function renderTasks(state) {
@@ -42,19 +34,13 @@ function renderTasks(state) {
 
   const renderItem = (it) => {
     const domain = DOMAINS.find(d => d.key === it.domain);
-    let exp, prefix, extra = '';
-    if (it.kind === 'task') {
-      exp = TASK_EXP[it.difficulty]; prefix = '';
-    } else if (it.kind === 'event') {
-      exp = EVENT_EXP; prefix = it.type === 'deadline' ? '⏰ ' : '📅 ';
-    } else if (it.kind === 'habit') {
-      exp = TASK_EXP[it.difficulty]; prefix = '🔁 ';
-      extra = `<span class="habit-streak">連續 ${it.streak} 天</span>`;
-    } else if (it.kind === 'reading') {
-      exp = READING_CHECKIN_EXP; prefix = '📖 ';
-    } else if (it.kind === 'project') {
-      exp = PROJECT_SUBTASK_EXP; prefix = '🎯 ';
-    }
+    let prefix = '', extra = '';
+    if (it.kind === 'event') prefix = it.type === 'deadline' ? '⏰ ' : '📅 ';
+    else if (it.kind === 'habit') { prefix = '🔁 '; extra = `<span class="habit-streak">連續 ${it.streak} 天</span>`; }
+    else if (it.kind === 'reading') prefix = '📖 ';
+    else if (it.kind === 'project') prefix = '🎯 ';
+    else if (it.kind === 'readingplan') prefix = '📖 ';
+    const exp = it.exp !== undefined ? it.exp : (it.kind === 'habit' ? TASK_EXP[it.difficulty] : READING_CHECKIN_EXP);
     const canEdit = it.kind !== 'reading';
     return `
       <li class="task-item ${it.done ? 'done' : ''}">

@@ -48,13 +48,35 @@ function getCalendarItems(state) {
   const tasks = state.tasks.map(t => ({
     id: t.id, kind: 'task', title: t.text, domain: t.domain,
     date: t.date, time: '', done: t.done, googleEventId: t.googleEventId,
-    difficulty: t.difficulty,
+    difficulty: t.difficulty, exp: TASK_EXP[t.difficulty],
   }));
   const events = state.events.map(e => ({
     id: e.id, kind: 'event', title: e.title, domain: e.domain,
     date: e.date, time: e.time, done: e.done, googleEventId: e.googleEventId, type: e.type,
+    exp: EVENT_EXP,
   }));
-  return tasks.concat(events);
+  const projectSubtasks = [];
+  (state.projects || []).forEach(p => {
+    p.subtasks.forEach(st => {
+      projectSubtasks.push({
+        id: st.id, kind: 'project', title: `${p.title}｜${st.title}`, domain: p.domain,
+        date: st.dueDate, time: '', done: st.done, googleEventId: st.googleEventId,
+        exp: PROJECT_SUBTASK_EXP,
+      });
+    });
+  });
+  const readingPlanItems = [];
+  (state.books || []).forEach(b => {
+    if (!b.readingPlan) return;
+    b.readingPlan.subtasks.forEach(st => {
+      readingPlanItems.push({
+        id: st.id, kind: 'readingplan', title: `${b.title}｜${st.title}`, domain: 'reading',
+        date: st.dueDate, time: '', done: st.done, googleEventId: st.googleEventId,
+        exp: (st.endPage - st.startPage + 1) * EXP_PER_PAGE,
+      });
+    });
+  });
+  return tasks.concat(events, projectSubtasks, readingPlanItems);
 }
 
 function getTodayItems(state) {
@@ -132,7 +154,7 @@ function renderEventList(state) {
   const renderItem = (it) => {
     const d = DOMAINS.find(d => d.key === it.domain);
     const overdue = !it.done && it.date < today;
-    const icon = it.kind === 'task' ? '📋' : (it.type === 'deadline' ? '⏰' : '📅');
+    const icon = it.kind === 'task' ? '📋' : it.kind === 'project' ? '🎯' : it.kind === 'readingplan' ? '📖' : (it.type === 'deadline' ? '⏰' : '📅');
     return `
       <li class="task-item ${it.done ? 'done' : ''} ${overdue ? 'overdue' : ''}">
         <label class="task-check">
@@ -244,9 +266,43 @@ async function syncTaskToGoogle(task) {
   return false;
 }
 
+async function syncSubtaskToGoogle(project, subtask) {
+  const body = {
+    summary: `${project.title}｜${subtask.title}`,
+    description: `專案子任務（來自人生 RPG）`,
+    start: { date: subtask.dueDate },
+    end: { date: addDays(subtask.dueDate, 1) },
+  };
+  const id = await postGoogleEvent(body);
+  if (id) { subtask.googleEventId = id; return true; }
+  return false;
+}
+
+async function syncReadingPlanItemToGoogle(book, subtask) {
+  const body = {
+    summary: `${book.title}｜${subtask.title}`,
+    description: `閱讀計畫（來自人生 RPG）`,
+    start: { date: subtask.dueDate },
+    end: { date: addDays(subtask.dueDate, 1) },
+  };
+  const id = await postGoogleEvent(body);
+  if (id) { subtask.googleEventId = id; return true; }
+  return false;
+}
+
 async function syncAllToGoogle(state) {
   const pendingEvents = state.events.filter(e => !e.googleEventId);
   const pendingTasks = state.tasks.filter(t => !t.googleEventId);
+  const pendingSubtasks = [];
+  (state.projects || []).forEach(p => {
+    p.subtasks.filter(st => !st.googleEventId).forEach(st => pendingSubtasks.push({ project: p, subtask: st }));
+  });
+  const pendingReadingItems = [];
+  (state.books || []).forEach(b => {
+    if (!b.readingPlan) return;
+    b.readingPlan.subtasks.filter(st => !st.googleEventId).forEach(st => pendingReadingItems.push({ book: b, subtask: st }));
+  });
+
   let success = 0;
   for (const ev of pendingEvents) {
     if (await syncEventToGoogle(ev)) success++;
@@ -254,5 +310,11 @@ async function syncAllToGoogle(state) {
   for (const t of pendingTasks) {
     if (await syncTaskToGoogle(t)) success++;
   }
-  return { success, total: pendingEvents.length + pendingTasks.length };
+  for (const { project, subtask } of pendingSubtasks) {
+    if (await syncSubtaskToGoogle(project, subtask)) success++;
+  }
+  for (const { book, subtask } of pendingReadingItems) {
+    if (await syncReadingPlanItemToGoogle(book, subtask)) success++;
+  }
+  return { success, total: pendingEvents.length + pendingTasks.length + pendingSubtasks.length + pendingReadingItems.length };
 }

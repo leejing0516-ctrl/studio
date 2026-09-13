@@ -99,6 +99,11 @@ function openEditModal(kind, id) {
     if (!found) return;
     titleEl.value = found.subtask.title;
     dateEl.style.display = ''; dateEl.value = found.subtask.dueDate;
+  } else if (kind === 'readingplan') {
+    const found = findReadingPlanItem(state, id);
+    if (!found) return;
+    titleEl.value = found.subtask.title;
+    dateEl.style.display = ''; dateEl.value = found.subtask.dueDate;
   } else {
     return;
   }
@@ -141,6 +146,11 @@ function saveEditModal() {
     });
   } else if (kind === 'project') {
     updateSubtask(state, id, {
+      title,
+      dueDate: document.getElementById('edit-date').value,
+    });
+  } else if (kind === 'readingplan') {
+    updateReadingPlanItem(state, id, {
       title,
       dueDate: document.getElementById('edit-date').value,
     });
@@ -284,6 +294,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const found = findSubtask(state, id);
         domain = found ? found.project.domain : undefined;
         toggleProjectSubtask(state, id);
+      } else if (kind === 'readingplan') {
+        domain = 'reading';
+        toggleReadingPlanItem(state, id);
       } else {
         domain = (state.tasks.find(t => t.id === id) || {}).domain;
         toggleTask(state, id);
@@ -298,6 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (kind === 'habit') deleteHabit(state, id);
       else if (kind === 'reading') deleteBook(state, id);
       else if (kind === 'project') deleteSubtaskItem(state, id);
+      else if (kind === 'readingplan') deleteReadingPlanItem(state, id);
       else deleteTask(state, id);
       renderAll();
     }
@@ -358,6 +372,30 @@ document.addEventListener('DOMContentLoaded', () => {
       renderAll();
     } else if (e.target.matches('.del-book')) {
       deleteBook(state, e.target.dataset.id);
+      renderAll();
+    } else if (e.target.matches('.gen-reading-plan')) {
+      const id = e.target.dataset.id;
+      const deadline = document.querySelector(`.plan-deadline[data-id="${id}"]`).value;
+      const granularity = document.querySelector(`.plan-granularity[data-id="${id}"]`).value;
+      if (!deadline) { alert('請先選擇目標完成日期'); return; }
+      const before = state.books.find(b => b.id === id).readingPlan;
+      addReadingPlan(state, id, deadline, granularity);
+      const after = state.books.find(b => b.id === id).readingPlan;
+      if (!after) { alert('目標完成日期必須在今天之後，且還有剩餘頁數'); return; }
+      sound.playComplete();
+      renderAll();
+    } else if (e.target.matches('.reading-plan-toggle')) {
+      const id = e.target.dataset.id;
+      if (_expandedReadingPlans.has(id)) _expandedReadingPlans.delete(id); else _expandedReadingPlans.add(id);
+      renderBooks(state);
+    } else if (e.target.matches('.readingplan-check')) {
+      const willBeDone = e.target.checked;
+      toggleReadingPlanItem(state, e.target.dataset.subtask);
+      sound[willBeDone ? 'playComplete' : 'playClick']();
+      if (willBeDone) onTaskOrHabitComplete(state, 'reading');
+      renderAll();
+    } else if (e.target.matches('.del-readingplan')) {
+      deleteReadingPlanItem(state, e.target.dataset.id);
       renderAll();
     }
   });
@@ -420,6 +458,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if (kind === 'task') {
         domain = (state.tasks.find(t => t.id === id) || {}).domain;
         toggleTask(state, id);
+      } else if (kind === 'project') {
+        const found = findSubtask(state, id);
+        domain = found ? found.project.domain : undefined;
+        toggleProjectSubtask(state, id);
+      } else if (kind === 'readingplan') {
+        domain = 'reading';
+        toggleReadingPlanItem(state, id);
       } else {
         domain = (state.events.find(ev => ev.id === id) || {}).domain;
         toggleEventDone(state, id);
@@ -429,7 +474,11 @@ document.addEventListener('DOMContentLoaded', () => {
       renderAll();
     } else if (e.target.matches('.del-event')) {
       const id = e.target.dataset.id;
-      if (e.target.dataset.kind === 'task') deleteTask(state, id); else deleteEvent(state, id);
+      const kind = e.target.dataset.kind;
+      if (kind === 'task') deleteTask(state, id);
+      else if (kind === 'project') deleteSubtaskItem(state, id);
+      else if (kind === 'readingplan') deleteReadingPlanItem(state, id);
+      else deleteEvent(state, id);
       renderAll();
     }
   });
@@ -450,16 +499,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const domain = document.getElementById('project-domain').value;
     const deadline = document.getElementById('project-deadline').value;
     const granularity = document.getElementById('project-granularity').value;
-    const before = state.projects.length;
-    addProject(state, title, domain, deadline, granularity);
-    if (state.projects.length === before) {
-      alert('截止日期必須在今天之後');
+    if (!title.trim() || !deadline || parseDateStr(deadline) <= parseDateStr(todayStr())) {
+      alert('請輸入目標，且截止日期必須在今天之後');
       return;
     }
-    document.getElementById('project-title').value = '';
-    document.getElementById('project-deadline').value = '';
-    sound.playComplete();
-    renderAll();
+    previewProject(title, domain, deadline, granularity);
+    sound.playClick();
+    renderProjects(state);
+  });
+
+  document.getElementById('project-preview').addEventListener('click', e => {
+    if (e.target.matches('#preview-confirm')) {
+      confirmPendingProject(state);
+      document.getElementById('project-title').value = '';
+      document.getElementById('project-deadline').value = '';
+      sound.playComplete();
+      renderAll();
+    } else if (e.target.matches('#preview-regenerate')) {
+      regeneratePendingProject();
+      sound.playClick();
+      renderProjects(state);
+    } else if (e.target.matches('#preview-cancel')) {
+      cancelPendingProject();
+      renderProjects(state);
+    } else if (e.target.matches('.preview-del-subtask')) {
+      removePendingSubtask(e.target.dataset.id);
+      renderProjects(state);
+    }
   });
 
   document.getElementById('project-list').addEventListener('click', e => {
@@ -475,6 +541,10 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (e.target.matches('.del-project')) {
       deleteProject(state, e.target.dataset.id);
       renderAll();
+    } else if (e.target.matches('.project-toggle')) {
+      const id = e.target.dataset.id;
+      if (_expandedProjects.has(id)) _expandedProjects.delete(id); else _expandedProjects.add(id);
+      renderProjects(state);
     }
   });
 

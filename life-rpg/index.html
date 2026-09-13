@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=10">
+<link rel="stylesheet" href="css/style.css?v=11">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -126,7 +126,7 @@
   </div>
 
   <div id="tab-projects" class="tab-panel frame">
-    <p class="tab-hint">設定期限與目標，小助手會幫你拆解成每日/每週/每月的小任務，到期當天會自動出現在今日任務。</p>
+    <p class="tab-hint">設定期限與目標，小助手會先給你一份拆解預覽，確認儲存後子任務會自動出現在今日任務與行事曆，也能同步到 Google 日曆。</p>
     <form id="project-form" class="inline-form">
       <input type="text" id="project-title" placeholder="專案目標…（例如：12/15 前減肥3公斤）" required>
       <select id="project-domain"></select>
@@ -134,6 +134,7 @@
       <select id="project-granularity"></select>
       <button type="submit" class="btn">🤖 AI 拆解生成任務</button>
     </form>
+    <div id="project-preview" style="display:none"></div>
     <ul id="project-list"></ul>
   </div>
 
@@ -243,19 +244,19 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="js/config.js?v=10"></script>
-<script src="js/storage.js?v=10"></script>
-<script src="js/cloud.js?v=10"></script>
-<script src="js/sound.js?v=10"></script>
-<script src="js/assistant.js?v=10"></script>
-<script src="js/character.js?v=10"></script>
-<script src="js/tasks.js?v=10"></script>
-<script src="js/habits.js?v=10"></script>
-<script src="js/projects.js?v=10"></script>
-<script src="js/reading.js?v=10"></script>
-<script src="js/calendar.js?v=10"></script>
-<script src="js/rewards.js?v=10"></script>
-<script src="js/achievements.js?v=10"></script>
-<script src="js/main.js?v=10"></script>
+<script src="js/config.js?v=11"></script>
+<script src="js/storage.js?v=11"></script>
+<script src="js/cloud.js?v=11"></script>
+<script src="js/sound.js?v=11"></script>
+<script src="js/assistant.js?v=11"></script>
+<script src="js/character.js?v=11"></script>
+<script src="js/tasks.js?v=11"></script>
+<script src="js/habits.js?v=11"></script>
+<script src="js/projects.js?v=11"></script>
+<script src="js/reading.js?v=11"></script>
+<script src="js/calendar.js?v=11"></script>
+<script src="js/rewards.js?v=11"></script>
+<script src="js/achievements.js?v=11"></script>
+<script src="js/main.js?v=11"></script>
 </body>
 </html>

@@ -129,7 +129,7 @@ function generateBreakdown(title, startDateStr, deadlineStr, granularity) {
     for (let i = 1; i <= n; i++) {
       const d = new Date(start);
       d.setDate(d.getDate() + Math.round((i * totalDays) / n));
-      subtasks.push({ id: genSubtaskId(i), title: buildSubtaskTitle(tpl, 'daily', i - 1, title), dueDate: formatDate(d), done: false });
+      subtasks.push({ id: genSubtaskId(i), title: buildSubtaskTitle(tpl, 'daily', i - 1, title), dueDate: formatDate(d), done: false, googleEventId: null });
     }
   } else if (granularity === 'weekly') {
     const totalWeeks = Math.max(1, Math.ceil(totalDays / 7));
@@ -137,7 +137,7 @@ function generateBreakdown(title, startDateStr, deadlineStr, granularity) {
     for (let i = 1; i <= n; i++) {
       const d = new Date(start);
       d.setDate(d.getDate() + Math.min(totalDays, i * 7));
-      subtasks.push({ id: genSubtaskId(i), title: buildSubtaskTitle(tpl, 'weekly', i, title), dueDate: formatDate(d), done: false });
+      subtasks.push({ id: genSubtaskId(i), title: buildSubtaskTitle(tpl, 'weekly', i, title), dueDate: formatDate(d), done: false, googleEventId: null });
     }
   } else {
     const totalMonths = Math.max(1, Math.round(totalDays / 30));
@@ -146,7 +146,7 @@ function generateBreakdown(title, startDateStr, deadlineStr, granularity) {
       const d = new Date(start);
       d.setMonth(d.getMonth() + i);
       if (d > end) d.setTime(end.getTime());
-      subtasks.push({ id: genSubtaskId(i), title: buildSubtaskTitle(tpl, 'monthly', i, title), dueDate: formatDate(d), done: false });
+      subtasks.push({ id: genSubtaskId(i), title: buildSubtaskTitle(tpl, 'monthly', i, title), dueDate: formatDate(d), done: false, googleEventId: null });
     }
   }
 
@@ -154,15 +154,40 @@ function generateBreakdown(title, startDateStr, deadlineStr, granularity) {
   return subtasks;
 }
 
-function addProject(state, title, domain, deadline, granularity) {
+let _pendingProject = null;
+let _expandedProjects = new Set();
+
+// 先產生預覽，讓使用者看過、刪掉不要的子任務後再確認儲存
+function previewProject(title, domain, deadline, granularity) {
   if (!title.trim() || !deadline) return;
   const today = todayStr();
-  const subtasks = generateBreakdown(title.trim(), today, deadline, granularity);
-  state.projects.push({
-    id: 'p' + Date.now() + Math.random().toString(36).slice(2, 7),
+  _pendingProject = {
     title: title.trim(), domain, deadline, granularity,
-    createdDate: today, subtasks,
-  });
+    subtasks: generateBreakdown(title.trim(), today, deadline, granularity),
+  };
+}
+
+function regeneratePendingProject() {
+  if (!_pendingProject) return;
+  const { title, deadline, granularity } = _pendingProject;
+  _pendingProject.subtasks = generateBreakdown(title, todayStr(), deadline, granularity);
+}
+
+function removePendingSubtask(subtaskId) {
+  if (!_pendingProject) return;
+  _pendingProject.subtasks = _pendingProject.subtasks.filter(st => st.id !== subtaskId);
+}
+
+function cancelPendingProject() {
+  _pendingProject = null;
+}
+
+function confirmPendingProject(state) {
+  if (!_pendingProject) return;
+  const id = 'p' + Date.now() + Math.random().toString(36).slice(2, 7);
+  state.projects.push(Object.assign({ id, createdDate: todayStr() }, _pendingProject));
+  _expandedProjects.delete(id);
+  _pendingProject = null;
 }
 
 function findSubtask(state, subtaskId) {
@@ -206,7 +231,39 @@ function deleteProject(state, projectId) {
   state.projects = state.projects.filter(p => p.id !== projectId);
 }
 
+function renderProjectPreview() {
+  const el = document.getElementById('project-preview');
+  if (!el) return;
+  if (!_pendingProject) { el.innerHTML = ''; el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  const domain = DOMAINS.find(d => d.key === _pendingProject.domain);
+  el.innerHTML = `
+    <div class="project-item project-preview-card">
+      <div class="project-header">
+        <span class="task-tag" style="background:${domain.color}">${domain.icon} ${domain.name}</span>
+        <span class="project-title">🤖 預覽：${escapeHtml(_pendingProject.title)}</span>
+        <span class="project-deadline">期限 ${_pendingProject.deadline}</span>
+      </div>
+      <p class="tab-hint">看看小助手拆解得如何，不滿意可以「重新生成」，或刪掉個別項目後再確認。</p>
+      <ul class="project-subtasks">
+        ${_pendingProject.subtasks.map(st => `
+          <li class="subtask-item">
+            <label><span class="subtask-title">${escapeHtml(st.title)}</span><span class="subtask-date">${st.dueDate}</span></label>
+            <button class="icon-btn preview-del-subtask" data-id="${st.id}" title="移除這一項">✕</button>
+          </li>
+        `).join('')}
+      </ul>
+      <div class="modal-actions" style="justify-content:flex-start; flex-wrap:wrap;">
+        <button type="button" id="preview-regenerate" class="btn small">🔄 重新生成</button>
+        <button type="button" id="preview-cancel" class="btn small">取消</button>
+        <button type="button" id="preview-confirm" class="btn">✅ 確認儲存</button>
+      </div>
+    </div>
+  `;
+}
+
 function renderProjects(state) {
+  renderProjectPreview();
   const list = document.getElementById('project-list');
   if (!list) return;
 
@@ -221,6 +278,7 @@ function renderProjects(state) {
     const total = p.subtasks.length;
     const pct = total ? Math.round((doneCount / total) * 100) : 0;
     const finished = total > 0 && doneCount === total;
+    const expanded = _expandedProjects.has(p.id);
     return `
       <li class="project-item">
         <div class="project-header">
@@ -230,19 +288,20 @@ function renderProjects(state) {
           <button class="icon-btn del-project" data-id="${p.id}" title="刪除整個專案">✕</button>
         </div>
         <div class="skill-bar-bg"><div class="skill-bar-fill" style="width:${pct}%; background:${domain.color}"></div></div>
-        <div class="project-meta">${doneCount} / ${total} 個子任務完成（${pct}%）${finished ? ' ✅ 已完成' : ''}</div>
-        <ul class="project-subtasks">
+        <button class="project-toggle" data-id="${p.id}">${expanded ? '▾ 收合' : '▸ 展開'} 子任務：${doneCount} / ${total} 完成（${pct}%）${finished ? ' ✅ 已完成' : ''}</button>
+        ${expanded ? `<ul class="project-subtasks">
           ${p.subtasks.map(st => `
             <li class="subtask-item ${st.done ? 'done' : ''}">
               <label>
                 <input type="checkbox" ${st.done ? 'checked' : ''} data-subtask="${st.id}" class="subtask-check">
                 <span class="subtask-title">${escapeHtml(st.title)}</span>
                 <span class="subtask-date">${st.dueDate}</span>
+                ${st.googleEventId ? '<span class="gcal-badge" title="已同步到 Google 日曆">🔗</span>' : ''}
               </label>
               <button class="icon-btn edit-item" data-kind="project" data-id="${st.id}" title="編輯">✎</button>
             </li>
           `).join('')}
-        </ul>
+        </ul>` : ''}
       </li>
     `;
   }).join('');

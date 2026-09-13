@@ -34,6 +34,7 @@ function normalizeState(parsed) {
   });
   (parsed.tasks || []).forEach(t => { if (t.googleEventId === undefined) t.googleEventId = null; });
   (parsed.habits || []).forEach(h => { if (!h.recurrence) h.recurrence = { freq: 'daily', startDate: h.lastDoneDate || todayStr() }; });
+  (parsed.books || []).forEach(b => { if (b.readingPlan === undefined) b.readingPlan = null; });
   const merged = Object.assign({}, base, parsed);
   merged.stats = Object.assign({}, base.stats, parsed.stats);
   merged.streak = Object.assign({}, base.streak, parsed.streak);
