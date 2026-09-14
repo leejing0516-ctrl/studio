@@ -76,7 +76,21 @@ export default {
       }
 
       const data = await resp.json();
-      const reply = (data.content && data.content[0] && data.content[0].text) || '';
+      // 把回傳內容裡所有文字區塊都接起來，避免只取第一個區塊、萬一它不是文字（例如思考過程區塊）就漏接
+      const reply = (data.content || [])
+        .filter(block => block && block.type === 'text' && block.text)
+        .map(block => block.text)
+        .join('\n')
+        .trim();
+
+      if (!reply) {
+        // 明確回傳錯誤，而不是安靜地給空字串——這樣下次再發生時，網頁上會顯示真正的原因（例如 stop_reason）
+        return new Response(JSON.stringify({ error: 'Claude 沒有回傳文字內容，stop_reason=' + (data.stop_reason || '未知') }), {
+          status: 502,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       return new Response(JSON.stringify({ reply }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

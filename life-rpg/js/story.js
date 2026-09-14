@@ -47,18 +47,8 @@ async function callStoryAI(state, description) {
   if (!state.assistant.aiEndpoint) throw new Error('尚未設定 AI 服務網址，請先到「教練對話」分頁的教練設定啟用並填寫');
   const system = buildStorySystemPrompt();
   const message = `使用者描述的困境或想突破的課題：\n${description}`;
-  const resp = await withAITimeout(fetch(state.assistant.aiEndpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ system, message }),
-  }), 30000);
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => '');
-    throw new Error('故事生成服務回應錯誤：' + (text || resp.status));
-  }
-  const data = await resp.json();
-  if (!data.reply) throw new Error('沒有收到故事內容');
-  return parseStoryReply(data.reply);
+  const reply = await fetchAIReply(state.assistant.aiEndpoint, system, message, 30000);
+  return parseStoryReply(reply);
 }
 
 function genChapterId(i) {

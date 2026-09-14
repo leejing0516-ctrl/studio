@@ -342,26 +342,36 @@ function withAITimeout(promise, ms) {
   ]);
 }
 
+// 共用的 AI 呼叫函式：發一次請求，回傳文字內容為空時自動重試一次
+// （中間人服務偶爾會因為上游 Claude API 暫時性問題回傳空內容，重試一次通常就會成功）
+async function fetchAIReply(endpoint, system, message, timeoutMs) {
+  const attempt = async () => {
+    const resp = await withAITimeout(fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ system, message }),
+    }), timeoutMs);
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      throw new Error('AI 服務回應錯誤：' + (text || resp.status));
+    }
+    const data = await resp.json();
+    return data.reply || '';
+  };
+
+  let reply = await attempt();
+  if (!reply) reply = await attempt(); // 空內容時重試一次
+  if (!reply) throw new Error('AI 沒有回應內容，請稍後再試一次');
+  return reply;
+}
+
 // 呼叫使用者自己架設的中間人服務（例如 Cloudflare Worker），由它去問 Claude
 async function callAssistantAI(state, userMessage) {
   if (!state.assistant.aiEndpoint) throw new Error('尚未設定教練的 AI 服務網址');
   const system = buildAssistantSystemPrompt(state);
   const context = buildStateSummaryForAI(state);
   const message = `以下是使用者目前的資料：\n${context}\n\n使用者說：${userMessage}`;
-
-  const resp = await withAITimeout(fetch(state.assistant.aiEndpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ system, message }),
-  }), 20000);
-
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => '');
-    throw new Error('教練服務回應錯誤：' + (text || resp.status));
-  }
-  const data = await resp.json();
-  if (!data.reply) throw new Error('教練沒有回應內容');
-  return data.reply;
+  return fetchAIReply(state.assistant.aiEndpoint, system, message, 20000);
 }
 
 async function generateDailySummary(state) {
