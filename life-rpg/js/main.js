@@ -452,6 +452,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const input = document.getElementById('assistant-chat-input');
     const message = input.value.trim();
     if (!message) return;
+    saveAssistantSettings(state); // 避免使用者填好教練設定卻忘記按「儲存設定」，送出訊息時先幫忙存一次
     if (!state.assistant.aiEnabled || !state.assistant.aiEndpoint) {
       alert('請先在上方「⚙️ 教練設定」啟用 AI 並填好服務網址，才能跟教練對話喔');
       return;
@@ -485,6 +486,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('assistant-summary-now').addEventListener('click', async () => {
     const btn = document.getElementById('assistant-summary-now');
+    saveAssistantSettings(state); // 同樣避免使用者忘記先按「儲存設定」
     btn.disabled = true;
     btn.textContent = '產生中…';
     try {
@@ -881,6 +883,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const description = descEl.value.trim();
     const domain = document.getElementById('story-domain').value;
     if (!description) { alert('請先描述一下你正在經歷的困境或想突破的課題'); return; }
+    saveAssistantSettings(state); // 避免使用者在教練設定填好網址卻忘記按「儲存設定」
     if (!state.assistant.aiEndpoint) {
       alert('故事模式需要 AI 才能理解你的故事，請先到「教練對話」分頁的教練設定啟用 AI 並填寫服務網址');
       return;
