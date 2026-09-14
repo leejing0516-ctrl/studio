@@ -187,6 +187,9 @@ function renderAssistantWidget(state) {
   if (avatarImg && avatarImg.getAttribute('src') !== meta.avatar) avatarImg.src = meta.avatar;
   const label = document.getElementById('coach-label');
   if (label) label.textContent = meta.name;
+
+  const hint = document.getElementById('assistant-chat-hint');
+  if (hint) hint.textContent = `跟${meta.name}說說現在的心情，或看看過去的鼓勵訊息。`;
 }
 
 // 聊天紀錄改成類似 LINE 的對話泡泡：教練訊息靠左（帶頭像），

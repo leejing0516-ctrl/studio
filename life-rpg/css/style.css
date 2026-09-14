@@ -922,6 +922,7 @@ ul { list-style: none; padding: 0; margin: 0; }
   margin-bottom: 14px;
 }
 .assistant-top-row .tab-hint { flex: 1; min-width: 160px; margin: 0; }
+.assistant-chat-hint { font-size: 16px; font-weight: 600; color: var(--text); }
 
 .assistant-chat-row {
   display: flex;
