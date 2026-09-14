@@ -395,7 +395,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const message = input.value.trim();
     if (!message) return;
     if (!state.assistant.aiEnabled || !state.assistant.aiEndpoint) {
-      alert('請先在下方「⚙️ 教練設定」啟用 AI 並填好服務網址，才能跟教練對話喔');
+      alert('請先在上方「⚙️ 教練設定」啟用 AI 並填好服務網址，才能跟教練對話喔');
       return;
     }
     addAssistantMessage(state, message, 'user');

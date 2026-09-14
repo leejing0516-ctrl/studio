@@ -787,6 +787,25 @@ ul { list-style: none; padding: 0; margin: 0; }
   border-radius: 4px;
   font-size: 12px;
 }
+
+/* 教練設定：改成放在分頁上方靠右，收合時跟提示文字同一排，展開時獨佔一整排 */
+.assistant-top-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px 16px;
+  margin-bottom: 14px;
+}
+.assistant-top-row .tab-hint { flex: 1; min-width: 160px; margin: 0; }
+.coach-settings {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+  flex-shrink: 0;
+}
+.coach-settings summary { white-space: nowrap; }
+.coach-settings[open] { flex-basis: 100%; }
 #gcal-client-id { flex: 1; min-width: 200px; }
 
 /* ── 小助手設定 ───────────────────────────── */
