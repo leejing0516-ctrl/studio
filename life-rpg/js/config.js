@@ -203,6 +203,12 @@ function daysBetween(dateStrA, dateStrB) {
   return Math.round((parseDateStr(dateStrB) - parseDateStr(dateStrA)) / 86400000);
 }
 
+// 把一組「還沒完成」的項目（子任務/章節）全部往後移動同樣的天數，已完成的保留原日期不動
+function shiftUnfinishedDates(items, shiftDays) {
+  if (shiftDays <= 0) return;
+  items.forEach(it => { if (!it.done) it.dueDate = addDays(it.dueDate, shiftDays); });
+}
+
 // 判斷某個習慣在某一天是否「該出現」
 function habitDueToday(habit, dateStr) {
   const rec = habit.recurrence || { freq: 'daily' };

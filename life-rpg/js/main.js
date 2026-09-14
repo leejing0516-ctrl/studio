@@ -2,6 +2,35 @@ let state = loadState();
 runDailyCheckIn(state);
 checkBudgetBonuses(state);
 
+// 專案／故事裡如果有過期還沒完成的進度，今天第一次遇到時問一次要不要整批順延到今天。
+// 不管使用者選是或否，都記下「今天已經問過」，同一天不會再重複打擾。
+function checkPostponePrompts(state) {
+  const today = todayStr();
+  let changed = false;
+
+  (state.projects || []).forEach(p => {
+    if (p.lastPostponePromptDate === today) return;
+    const overdueCount = p.subtasks.filter(st => !st.done && st.dueDate < today).length;
+    if (!overdueCount) return;
+    p.lastPostponePromptDate = today;
+    changed = true;
+    const shouldPostpone = confirm(`專案「${p.title}」有 ${overdueCount} 個過期還沒完成的進度，要幫你把還沒完成的部分整批順延嗎？`);
+    if (shouldPostpone) postponeProject(state, p.id);
+  });
+
+  (state.storyQuests || []).forEach(q => {
+    if (q.lastPostponePromptDate === today) return;
+    const overdueCount = q.chapters.filter(ch => !ch.done && ch.dueDate < today).length;
+    if (!overdueCount) return;
+    q.lastPostponePromptDate = today;
+    changed = true;
+    const shouldPostpone = confirm(`故事「${q.title}」有 ${overdueCount} 個過期還沒完成的進度，要幫你把還沒完成的部分整批順延嗎？`);
+    if (shouldPostpone) postponeStoryQuest(state, q.id);
+  });
+
+  return changed;
+}
+
 // 第一次畫面渲染只是把已載入的資料畫出來，不算「使用者做了新的變更」，
 // 所以先不要 saveState（避免蓋掉 updatedAt，讓雲端同步的新舊比較失真）
 let _skipNextSave = true;
@@ -344,6 +373,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 晚上十點後打開 app 時，如果今天還沒做過總結，補上一則（見 assistant.js）
   checkDailySummary(state).then(changed => { if (changed) renderAll(); });
+
+  // 專案／故事如果有過期還沒完成的進度，今天第一次看到時問一次要不要整批順延
+  if (checkPostponePrompts(state)) renderAll();
 
   document.addEventListener('click', e => {
     const editBtn = e.target.closest('.edit-item');

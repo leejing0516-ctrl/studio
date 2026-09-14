@@ -133,6 +133,17 @@ function deleteStoryQuest(state, questId) {
   state.storyQuests = (state.storyQuests || []).filter(q => q.id !== questId);
 }
 
+// 把故事裡「還沒完成」的章節整批往後移，讓過期最久的那章回到今天，其餘保持原本的間距
+function postponeStoryQuest(state, questId) {
+  const q = (state.storyQuests || []).find(q => q.id === questId);
+  if (!q) return;
+  const today = todayStr();
+  const overdue = q.chapters.filter(ch => !ch.done && ch.dueDate < today);
+  if (!overdue.length) return;
+  const earliest = overdue.reduce((min, ch) => (ch.dueDate < min ? ch.dueDate : min), overdue[0].dueDate);
+  shiftUnfinishedDates(q.chapters, daysBetween(earliest, today));
+}
+
 function renderStoryPreview() {
   const el = document.getElementById('story-preview');
   if (!el) return;

@@ -230,6 +230,17 @@ function deleteProject(state, projectId) {
   state.projects = state.projects.filter(p => p.id !== projectId);
 }
 
+// 把專案裡「還沒完成」的子任務整批往後移，讓過期最久的那個回到今天，其餘保持原本的間距
+function postponeProject(state, projectId) {
+  const p = state.projects.find(p => p.id === projectId);
+  if (!p) return;
+  const today = todayStr();
+  const overdue = p.subtasks.filter(st => !st.done && st.dueDate < today);
+  if (!overdue.length) return;
+  const earliest = overdue.reduce((min, st) => (st.dueDate < min ? st.dueDate : min), overdue[0].dueDate);
+  shiftUnfinishedDates(p.subtasks, daysBetween(earliest, today));
+}
+
 function renderProjectPreview() {
   const el = document.getElementById('project-preview');
   if (!el) return;
