@@ -42,6 +42,16 @@ function renderLog(state) {
   el.innerHTML = state.log.slice(0, 10).map(l => `<li>${l.date}｜${escapeHtml(l.text)}</li>`).join('');
 }
 
+// 今日任務打勾完成時的小慶祝：背景閃一下金光，並跳出一個 +EXP 泡泡飄走
+function celebrateTaskComplete(li, expText) {
+  if (!li) return;
+  li.classList.add('task-complete-flash');
+  const popup = document.createElement('span');
+  popup.className = 'task-complete-popup';
+  popup.textContent = expText || '✨ 完成！';
+  li.appendChild(popup);
+}
+
 function showAchievementToast(a) {
   const toast = document.createElement('div');
   toast.className = 'toast';
@@ -480,7 +490,14 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       sound[willBeDone ? 'playComplete' : 'playClick']();
       if (willBeDone && domain) onTaskOrHabitComplete(state, domain);
-      renderAll();
+      if (willBeDone) {
+        const li = e.target.closest('.task-item');
+        const expEl = li && li.querySelector('.task-exp');
+        celebrateTaskComplete(li, expEl ? expEl.textContent : '✨ 完成！');
+        setTimeout(renderAll, 550); // 讓慶祝動畫播完，任務再排到已完成區
+      } else {
+        renderAll();
+      }
     } else if (e.target.matches('.del-task')) {
       const id = e.target.dataset.id;
       const kind = e.target.dataset.kind;

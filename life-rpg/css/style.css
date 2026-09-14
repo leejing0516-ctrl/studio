@@ -479,6 +479,7 @@ ul { list-style: none; padding: 0; margin: 0; }
 
 /* ── 任務／習慣列表（仿遊戲任務清單的卡片列）────────── */
 .task-item {
+  position: relative;
   border: 1px solid var(--border-dim);
   border-left: 4px solid var(--gold);
   border-radius: 10px;
@@ -490,6 +491,44 @@ ul { list-style: none; padding: 0; margin: 0; }
   justify-content: space-between;
   gap: 8px;
   box-shadow: 0 1px 4px rgba(201, 156, 100, 0.08);
+}
+
+/* 打勾完成任務時的慶祝效果：背景閃一下金光，並跳出一個 +EXP 泡泡飄走 */
+.task-item.task-complete-flash {
+  animation: task-flash 0.55s ease;
+}
+@keyframes task-flash {
+  0% {
+    background: linear-gradient(180deg, #fff3d9, #ffe9b3);
+    box-shadow: 0 0 0 3px rgba(227, 171, 92, 0.55);
+  }
+  100% {
+    background: linear-gradient(180deg, #fff, var(--panel-2));
+    box-shadow: 0 1px 4px rgba(201, 156, 100, 0.08);
+  }
+}
+
+.task-complete-popup {
+  position: absolute;
+  right: 14px;
+  top: 0;
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+  color: #4a2e05;
+  font-weight: 800;
+  font-size: 13px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(227, 171, 92, 0.45);
+  pointer-events: none;
+  white-space: nowrap;
+  animation: task-popup-float 0.9s ease forwards;
+  z-index: 5;
+}
+@keyframes task-popup-float {
+  0% { opacity: 0; transform: translateY(4px) scale(0.8); }
+  25% { opacity: 1; transform: translateY(-4px) scale(1.08); }
+  70% { opacity: 1; transform: translateY(-22px) scale(1); }
+  100% { opacity: 0; transform: translateY(-36px) scale(0.95); }
 }
 .task-item:last-child { margin-bottom: 0; }
 
