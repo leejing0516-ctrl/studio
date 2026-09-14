@@ -70,7 +70,17 @@ function getCalendarItems(state) {
       });
     });
   });
-  return tasks.concat(events, projectSubtasks, readingPlanItems);
+  const storyChapters = [];
+  (state.storyQuests || []).forEach(q => {
+    q.chapters.forEach(ch => {
+      storyChapters.push({
+        id: ch.id, kind: 'story', title: `${q.title}｜${ch.taskTitle}`, domain: q.domain,
+        date: ch.dueDate, time: '', done: ch.done, googleEventId: null,
+        exp: STORY_CHAPTER_EXP,
+      });
+    });
+  });
+  return tasks.concat(events, projectSubtasks, readingPlanItems, storyChapters);
 }
 
 // 拖曳任務/活動/專案子任務/閱讀計畫到日曆的某一天，直接改期
@@ -83,6 +93,8 @@ function moveCalendarItemDate(state, kind, id, newDate) {
     updateSubtask(state, id, { dueDate: newDate });
   } else if (kind === 'readingplan') {
     updateReadingPlanItem(state, id, { dueDate: newDate });
+  } else if (kind === 'story') {
+    updateStoryChapter(state, id, { dueDate: newDate });
   }
 }
 
@@ -90,8 +102,8 @@ function getTodayItems(state) {
   const today = todayStr();
   return getCalendarItems(state).filter(it => {
     if (it.date === today) return true;
-    // 專案子任務／閱讀計畫如果過期還沒完成，繼續留在「今日任務」直到完成為止，避免漏掉沒趕上的進度
-    if ((it.kind === 'project' || it.kind === 'readingplan') && it.date < today && !it.done) return true;
+    // 專案子任務／閱讀計畫／故事章節如果過期還沒完成，繼續留在「今日任務」直到完成為止，避免漏掉沒趕上的進度
+    if ((it.kind === 'project' || it.kind === 'readingplan' || it.kind === 'story') && it.date < today && !it.done) return true;
     return false;
   });
 }
@@ -171,7 +183,7 @@ function renderEventList(state) {
   const renderItem = (it) => {
     const d = DOMAINS.find(d => d.key === it.domain);
     const overdue = !it.done && it.date < today;
-    const icon = it.kind === 'task' ? '📋' : it.kind === 'project' ? '🎯' : it.kind === 'readingplan' ? '📖' : (it.type === 'deadline' ? '⏰' : '📅');
+    const icon = it.kind === 'task' ? '📋' : it.kind === 'project' ? '🎯' : it.kind === 'readingplan' ? '📖' : it.kind === 'story' ? '🗺️' : (it.type === 'deadline' ? '⏰' : '📅');
     return `
       <li class="task-item ${it.done ? 'done' : ''} ${overdue ? 'overdue' : ''}" draggable="true" data-drag-id="${it.id}" data-drag-kind="${it.kind}" title="可拖曳到上方日曆的日期格子，改期">
         <label class="task-check">

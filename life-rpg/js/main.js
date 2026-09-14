@@ -19,6 +19,7 @@ function renderAll() {
   renderAssistantSettings(state);
   renderCalendarTab(state);
   renderProjects(state);
+  renderStoryTab(state);
   renderFinance(state);
   if (_skipNextSave) { _skipNextSave = false; } else { saveState(state); }
 
@@ -175,6 +176,11 @@ function openEditModal(kind, id) {
     if (!found) return;
     titleEl.value = found.subtask.title;
     dateEl.style.display = ''; dateEl.value = found.subtask.dueDate;
+  } else if (kind === 'story') {
+    const found = findStoryChapter(state, id);
+    if (!found) return;
+    titleEl.value = found.chapter.taskTitle;
+    dateEl.style.display = ''; dateEl.value = found.chapter.dueDate;
   } else {
     return;
   }
@@ -226,6 +232,11 @@ function saveEditModal() {
       title,
       dueDate: document.getElementById('edit-date').value,
     });
+  } else if (kind === 'story') {
+    updateStoryChapter(state, id, {
+      taskTitle: title,
+      dueDate: document.getElementById('edit-date').value,
+    });
   }
   closeEditModal();
   sound.playClick();
@@ -236,7 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', initSoundOnce, { once: true });
   decorateFrames();
 
-  ['task-domain', 'habit-domain', 'event-domain', 'project-domain', 'edit-domain'].forEach(id => {
+  ['task-domain', 'habit-domain', 'event-domain', 'project-domain', 'story-domain', 'edit-domain'].forEach(id => {
     const select = document.getElementById(id);
     DOMAINS.forEach(d => {
       const opt = document.createElement('option');
@@ -489,6 +500,10 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (kind === 'readingplan') {
         domain = 'reading';
         toggleReadingPlanItem(state, id);
+      } else if (kind === 'story') {
+        const found = findStoryChapter(state, id);
+        domain = found ? found.quest.domain : undefined;
+        toggleStoryChapter(state, id);
       } else {
         domain = (state.tasks.find(t => t.id === id) || {}).domain;
         toggleTask(state, id);
@@ -511,6 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (kind === 'reading') deleteBook(state, id);
       else if (kind === 'project') deleteSubtaskItem(state, id);
       else if (kind === 'readingplan') deleteReadingPlanItem(state, id);
+      else if (kind === 'story') deleteStoryChapter(state, id);
       else deleteTask(state, id);
       renderAll();
     }
@@ -736,6 +752,10 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (kind === 'readingplan') {
         domain = 'reading';
         toggleReadingPlanItem(state, id);
+      } else if (kind === 'story') {
+        const found = findStoryChapter(state, id);
+        domain = found ? found.quest.domain : undefined;
+        toggleStoryChapter(state, id);
       } else {
         domain = (state.events.find(ev => ev.id === id) || {}).domain;
         toggleEventDone(state, id);
@@ -749,6 +769,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (kind === 'task') deleteTask(state, id);
       else if (kind === 'project') deleteSubtaskItem(state, id);
       else if (kind === 'readingplan') deleteReadingPlanItem(state, id);
+      else if (kind === 'story') deleteStoryChapter(state, id);
       else deleteEvent(state, id);
       renderAll();
     }
@@ -818,6 +839,73 @@ document.addEventListener('DOMContentLoaded', () => {
       const id = e.target.dataset.id;
       if (_expandedProjects.has(id)) _expandedProjects.delete(id); else _expandedProjects.add(id);
       renderProjects(state);
+    }
+  });
+
+  // 故事模式
+  document.getElementById('story-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const descEl = document.getElementById('story-description');
+    const description = descEl.value.trim();
+    const domain = document.getElementById('story-domain').value;
+    if (!description) { alert('請先描述一下你正在經歷的困境或想突破的課題'); return; }
+    if (!state.assistant.aiEndpoint) {
+      alert('故事模式需要 AI 才能理解你的故事，請先到「教練對話」分頁的教練設定啟用 AI 並填寫服務網址');
+      return;
+    }
+    const btn = document.getElementById('story-generate-btn');
+    btn.disabled = true;
+    btn.textContent = '教練構思故事中…';
+    try {
+      await generateStoryPreview(state, description, domain);
+      renderStoryTab(state);
+    } catch (err) {
+      alert(err.message);
+    }
+    btn.disabled = false;
+    btn.textContent = '📜 生成故事';
+  });
+
+  document.getElementById('story-preview').addEventListener('click', async e => {
+    if (e.target.matches('#story-preview-confirm')) {
+      confirmPendingStory(state);
+      document.getElementById('story-description').value = '';
+      sound.playComplete();
+      renderAll();
+    } else if (e.target.matches('#story-preview-regenerate')) {
+      const btn = e.target;
+      btn.disabled = true;
+      btn.textContent = '重新構思中…';
+      try {
+        await regeneratePendingStory(state);
+      } catch (err) {
+        alert(err.message);
+      }
+      btn.disabled = false;
+      btn.textContent = '🔄 重新生成';
+      renderStoryTab(state);
+    } else if (e.target.matches('#story-preview-cancel')) {
+      cancelPendingStory();
+      renderStoryTab(state);
+    } else if (e.target.matches('.preview-del-chapter')) {
+      removePendingChapter(e.target.dataset.id);
+      renderStoryTab(state);
+    }
+  });
+
+  document.getElementById('story-list').addEventListener('click', e => {
+    if (e.target.matches('.story-chapter-check')) {
+      const willBeDone = e.target.checked;
+      const id = e.target.dataset.id;
+      const found = findStoryChapter(state, id);
+      const domain = found ? found.quest.domain : undefined;
+      toggleStoryChapter(state, id);
+      sound[willBeDone ? 'playComplete' : 'playClick']();
+      if (willBeDone && domain) onTaskOrHabitComplete(state, domain);
+      renderAll();
+    } else if (e.target.matches('.del-story')) {
+      deleteStoryQuest(state, e.target.dataset.id);
+      renderAll();
     }
   });
 

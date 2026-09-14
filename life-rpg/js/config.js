@@ -17,6 +17,9 @@ const EVENT_EXP = 15;
 const READING_CHECKIN_EXP = 15;
 const PROJECT_SUBTASK_EXP = 15;
 const PROJECT_FINISH_BONUS = 150;
+const STORY_CHAPTER_EXP = 15;
+const STORY_FINISH_BONUS = 150;
+const MAX_STORY_CHAPTERS = 12;
 const EXPENSE_LOG_EXP = 5;
 const WEEKLY_BUDGET_BONUS_EXP = 50;
 const MONTHLY_BUDGET_BONUS_EXP = 150;
@@ -126,6 +129,8 @@ const ACHIEVEMENTS = [
     condition: s => (s.events || []).length >= 1 },
   { id: 'first_project', icon: '🎯', name: '築夢踏實', desc: '完成第一個專案',
     condition: s => (s.projects || []).some(p => p.subtasks.length > 0 && p.subtasks.every(st => st.done)) },
+  { id: 'first_story', icon: '📜', name: '故事完結', desc: '完成一段故事模式的旅程',
+    condition: s => (s.storyQuests || []).some(q => q.chapters.length > 0 && q.chapters.every(ch => ch.done)) },
   { id: 'first_expense', icon: '🧾', name: '開始記帳', desc: '記錄第一筆消費',
     condition: s => (s.expenses || []).length >= 1 },
   { id: 'budget_keeper', icon: '💪', name: '預算守門員', desc: '守住預算獲得額外獎勵',

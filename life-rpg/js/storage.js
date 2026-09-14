@@ -33,6 +33,7 @@ function defaultState() {
     events: [],           // { id, title, domain, date, time, type: 'event'|'deadline', done, googleEventId }
     googleCalendar: { clientId: '' },
     projects: [],         // { id, title, domain, deadline, granularity, createdDate, subtasks: [{id,title,dueDate,done}] }
+    storyQuests: [],      // { id, title, domain, description, createdDate, chapters: [{id,narrative,taskTitle,dueDate,done}] }
     expenses: [],         // { id, amount, category, note, date }
     budget: { weekly: null, monthly: null, lastWeeklyBonusWeek: null, lastMonthlyBonusMonth: null },
     updatedAt: 0,         // 用於雲端同步時比較新舊

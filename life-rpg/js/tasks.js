@@ -43,9 +43,10 @@ function renderTasks(state) {
     else if (it.kind === 'reading') prefix = '📖 ';
     else if (it.kind === 'project') prefix = '🎯 ';
     else if (it.kind === 'readingplan') prefix = '📖 ';
+    else if (it.kind === 'story') prefix = '🗺️ ';
     const exp = it.exp !== undefined ? it.exp : (it.kind === 'habit' ? TASK_EXP[it.difficulty] : READING_CHECKIN_EXP);
     const canEdit = it.kind !== 'reading';
-    const isOverdue = (it.kind === 'project' || it.kind === 'readingplan') && it.date < todayStr() && !it.done;
+    const isOverdue = (it.kind === 'project' || it.kind === 'readingplan' || it.kind === 'story') && it.date < todayStr() && !it.done;
     return `
       <li class="task-item ${it.done ? 'done' : ''}">
         <label class="task-check">

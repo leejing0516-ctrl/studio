@@ -827,6 +827,57 @@ ul { list-style: none; padding: 0; margin: 0; }
   margin-bottom: 16px;
 }
 
+/* ── 故事模式 ───────────────────────────── */
+#story-description {
+  width: 100%;
+  min-height: 90px;
+  resize: vertical;
+  background: #fffdfa;
+  border: 1px solid var(--border-dim);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 14px;
+  font-family: inherit;
+}
+#story-description:focus { outline: none; border-color: var(--border-gold); }
+
+.story-quest { border-left-color: var(--purple); }
+
+.story-chapter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.story-chapter {
+  border: 1px solid var(--border-dim);
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px 12px;
+}
+.story-chapter.done { border-color: var(--border-gold); background: linear-gradient(180deg, #fffaf0, #fff); }
+
+.story-chapter-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.story-chapter-head .task-check { flex: 1; }
+.story-chapter-num { font-size: 12px; color: var(--purple); font-weight: 700; white-space: nowrap; }
+.story-chapter.done .task-text { text-decoration: line-through; color: var(--text-dim); }
+
+.story-chapter-narrative {
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-dim);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+}
+.story-chapter.locked .story-chapter-narrative { color: var(--text-dim); font-style: italic; }
+
 .reading-plan { margin-top: 10px; }
 .reading-plan-setup {
   margin-top: 10px;
