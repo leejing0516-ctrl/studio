@@ -170,10 +170,17 @@ function onMoodCheckin(state, mood) {
 
 const MOOD_ICON = { greeting: '👋', suggestion: '💡', praise: '🎉', milestone: '🔥', levelup: '⭐', achievement: '🏆', chat: '💬', tip: '🤖', user: '🙋' };
 
+// AI 常常會回傳 **粗體** 這種 markdown 語法，但這裡只是純文字顯示區，
+// 不會被瀏覽器解析成粗體，使用者只會看到一堆星號。這裡手動轉成有顏色的粗體文字，
+// 並且一定要先跳脫 HTML 再處理星號，避免把使用者輸入當成 HTML 執行
+function formatAssistantText(text) {
+  return escapeHtml(text).replace(/\*\*(.+?)\*\*/g, '<strong class="assistant-emphasis">$1</strong>');
+}
+
 function renderAssistantWidget(state) {
   const latest = state.assistant.log[0];
   const bubble = document.getElementById('assistant-bubble-text');
-  if (bubble) bubble.textContent = latest ? latest.text : '嗨，我是你的教練！開始完成任務後，我會在這裡給你建議與鼓勵。';
+  if (bubble) bubble.innerHTML = latest ? formatAssistantText(latest.text) : '嗨，我是你的教練！開始完成任務後，我會在這裡給你建議與鼓勵。';
 }
 
 function renderAssistantLog(state) {
@@ -186,7 +193,7 @@ function renderAssistantLog(state) {
   list.innerHTML = state.assistant.log.map(m => `
     <li class="assistant-msg">
       <span class="assistant-msg-icon">${MOOD_ICON[m.mood] || '🤖'}</span>
-      <span class="assistant-msg-text">${escapeHtml(m.text)}</span>
+      <span class="assistant-msg-text">${formatAssistantText(m.text)}</span>
       <span class="assistant-msg-date">${m.date}</span>
     </li>
   `).join('');

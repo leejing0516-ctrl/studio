@@ -185,6 +185,7 @@ h1 {
 .assistant-msg-icon { flex-shrink: 0; font-size: 15px; }
 .assistant-msg-text { flex: 1; }
 .assistant-msg-date { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+.assistant-emphasis { color: #b9782a; font-weight: 700; }
 
 /* ── 角色卡 ───────────────────────────── */
 .char-card {
