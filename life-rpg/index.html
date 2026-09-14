@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=47">
+<link rel="stylesheet" href="css/style.css?v=48">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -94,10 +94,6 @@
   <div id="tab-assistant" class="tab-panel frame">
     <div class="assistant-top-row">
       <p class="tab-hint">跟教練說說現在的心情，或看看過去的鼓勵訊息。</p>
-      <form id="assistant-chat-form" class="inline-form assistant-chat-form-compact">
-        <input type="text" id="assistant-chat-input" placeholder="跟教練說點什麼…" required>
-        <button type="submit" class="btn small" id="assistant-chat-send">傳送</button>
-      </form>
       <details class="gcal-panel coach-settings">
         <summary>⚙️ 教練設定</summary>
         <div class="assistant-settings-fields">
@@ -134,6 +130,13 @@
         </div>
         <p id="assistant-ai-status" class="tab-hint"></p>
       </details>
+    </div>
+
+    <div class="assistant-chat-row">
+      <form id="assistant-chat-form" class="inline-form assistant-chat-form-compact">
+        <input type="text" id="assistant-chat-input" placeholder="跟教練說點什麼…" required>
+        <button type="submit" class="btn small" id="assistant-chat-send">傳送</button>
+      </form>
     </div>
 
     <div class="mood-buttons">
@@ -324,20 +327,20 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="js/config.js?v=47"></script>
-<script src="js/storage.js?v=47"></script>
-<script src="js/cloud.js?v=47"></script>
-<script src="js/sound.js?v=47"></script>
-<script src="js/assistant.js?v=47"></script>
-<script src="js/character.js?v=47"></script>
-<script src="js/tasks.js?v=47"></script>
-<script src="js/habits.js?v=47"></script>
-<script src="js/projects.js?v=47"></script>
-<script src="js/reading.js?v=47"></script>
-<script src="js/finance.js?v=47"></script>
-<script src="js/calendar.js?v=47"></script>
-<script src="js/rewards.js?v=47"></script>
-<script src="js/achievements.js?v=47"></script>
-<script src="js/main.js?v=47"></script>
+<script src="js/config.js?v=48"></script>
+<script src="js/storage.js?v=48"></script>
+<script src="js/cloud.js?v=48"></script>
+<script src="js/sound.js?v=48"></script>
+<script src="js/assistant.js?v=48"></script>
+<script src="js/character.js?v=48"></script>
+<script src="js/tasks.js?v=48"></script>
+<script src="js/habits.js?v=48"></script>
+<script src="js/projects.js?v=48"></script>
+<script src="js/reading.js?v=48"></script>
+<script src="js/finance.js?v=48"></script>
+<script src="js/calendar.js?v=48"></script>
+<script src="js/rewards.js?v=48"></script>
+<script src="js/achievements.js?v=48"></script>
+<script src="js/main.js?v=48"></script>
 </body>
 </html>
