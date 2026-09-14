@@ -66,6 +66,16 @@ const COACH_PERSONA_PROMPTS = {
   inamori: '你模擬稻盛和夫的思維風格：強調「敬天愛人」與「六項精進」（付出不亞於任何人的努力、謙虛戒驕、每日反省、活著就要感謝、積善行、思利他），重視心性與努力本身的意義，語氣溫和但有分量，常引導使用者做每日的自我反省，而不只是檢查任務有沒有做完。',
 };
 
+// 每個人選的頭像圖片與顯示名稱（例如「蒙格教練」）
+const COACH_PERSONA_META = {
+  warm: { name: '教練', avatar: 'assets/coach_warm.jpg' },
+  jobs: { name: '賈伯斯教練', avatar: 'assets/coach_jobs.jpg' },
+  munger: { name: '蒙格教練', avatar: 'assets/coach_munger.jpg' },
+  socrates: { name: '蘇格拉底教練', avatar: 'assets/coach_socrates.jpg' },
+  inamori: { name: '稻盛教練', avatar: 'assets/coach_inamori.jpg' },
+  custom: { name: '教練', avatar: 'assets/coach_warm.jpg' },
+};
+
 const HABIT_FREQ_OPTIONS = [
   { value: 'daily',    label: '每日' },
   { value: 'weekly',   label: '每週' },

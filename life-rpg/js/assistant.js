@@ -181,6 +181,12 @@ function renderAssistantWidget(state) {
   const latest = state.assistant.log[0];
   const bubble = document.getElementById('assistant-bubble-text');
   if (bubble) bubble.innerHTML = latest ? formatAssistantText(latest.text) : '嗨，我是你的教練！開始完成任務後，我會在這裡給你建議與鼓勵。';
+
+  const meta = COACH_PERSONA_META[state.assistant.style] || COACH_PERSONA_META.warm;
+  const avatarImg = document.getElementById('coach-avatar-img');
+  if (avatarImg && avatarImg.getAttribute('src') !== meta.avatar) avatarImg.src = meta.avatar;
+  const label = document.getElementById('coach-label');
+  if (label) label.textContent = meta.name;
 }
 
 function renderAssistantLog(state) {

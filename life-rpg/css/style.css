@@ -139,17 +139,23 @@ h1 {
   justify-content: center;
   border: 2px solid var(--border-gold);
   box-shadow: 0 2px 8px rgba(201, 156, 100, 0.2);
+  overflow: hidden;
+}
+.assistant-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
 }
 
 .assistant-bubble { flex: 1; }
 
 .assistant-bubble-label {
-  font-size: 11px;
+  font-size: 16px;
   color: var(--purple);
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 2px;
+  letter-spacing: 0.5px;
+  margin-bottom: 3px;
 }
 #assistant-bubble-text { font-size: 14.5px; line-height: 1.5; }
 
