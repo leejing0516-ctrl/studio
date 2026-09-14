@@ -189,6 +189,8 @@ function renderAssistantWidget(state) {
   if (label) label.textContent = meta.name;
 }
 
+// 聊天紀錄改成類似 LINE 的對話泡泡：教練訊息靠左（帶頭像），
+// 使用者自己輸入的訊息靠右。但保留原本「越新的在越上面」的排序，不像 LINE 由上到下越聊越新
 function renderAssistantLog(state) {
   const list = document.getElementById('assistant-log');
   if (!list) return;
@@ -196,13 +198,29 @@ function renderAssistantLog(state) {
     list.innerHTML = '<li class="empty-hint">還沒有任何訊息</li>';
     return;
   }
-  list.innerHTML = state.assistant.log.map(m => `
-    <li class="assistant-msg">
-      <span class="assistant-msg-icon">${MOOD_ICON[m.mood] || '🤖'}</span>
-      <span class="assistant-msg-text">${formatAssistantText(m.text)}</span>
-      <span class="assistant-msg-date">${m.date}</span>
-    </li>
-  `).join('');
+  const coachAvatar = (COACH_PERSONA_META[state.assistant.style] || COACH_PERSONA_META.warm).avatar;
+  list.innerHTML = state.assistant.log.map(m => {
+    const text = formatAssistantText(m.text);
+    if (m.mood === 'user') {
+      return `
+        <li class="chat-row chat-row-user">
+          <div class="chat-col chat-col-end">
+            <div class="chat-bubble chat-bubble-user">${text}</div>
+            <span class="chat-meta">${m.date}</span>
+          </div>
+        </li>
+      `;
+    }
+    return `
+      <li class="chat-row chat-row-coach">
+        <img class="chat-avatar" src="${coachAvatar}" alt="">
+        <div class="chat-col chat-col-start">
+          <div class="chat-bubble chat-bubble-coach">${text}</div>
+          <span class="chat-meta">${MOOD_ICON[m.mood] || '🤖'} ${m.date}</span>
+        </div>
+      </li>
+    `;
+  }).join('');
 }
 
 /* ── 教練設定（人選、天賦、想要的協助）───────────── */
