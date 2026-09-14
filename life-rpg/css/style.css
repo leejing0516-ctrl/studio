@@ -159,12 +159,30 @@ h1 {
 }
 #assistant-bubble-text { font-size: 14.5px; line-height: 1.5; }
 
-.mood-buttons {
+.mood-picker { margin-bottom: 18px; }
+
+.mood-picker-btn {
+  background: var(--panel);
+  border: 1px solid var(--border-dim);
+  color: var(--text-dim);
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
   display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: inherit;
+}
+.mood-picker-btn:hover { color: var(--text); border-color: var(--border-gold); }
+
+.mood-buttons {
+  display: none;
   gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 18px;
+  margin-top: 10px;
 }
+.mood-buttons.show { display: flex; }
 
 .mood-btn {
   background: var(--panel-2);

@@ -390,12 +390,17 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAll();
   });
 
+  document.getElementById('mood-picker-toggle').addEventListener('click', () => {
+    document.getElementById('mood-buttons').classList.toggle('show');
+  });
+
   document.querySelectorAll('.mood-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       onMoodCheckin(state, btn.dataset.mood);
       sound.playClick();
       renderAll();
       switchTab('tab-assistant');
+      document.getElementById('mood-buttons').classList.remove('show');
     });
   });
 
