@@ -682,6 +682,44 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // 拖曳任務/活動到日曆格子改期
+  document.getElementById('event-list').addEventListener('dragstart', e => {
+    const item = e.target.closest('[data-drag-id]');
+    if (!item) return;
+    e.dataTransfer.setData('text/plain', JSON.stringify({ id: item.dataset.dragId, kind: item.dataset.dragKind }));
+    e.dataTransfer.effectAllowed = 'move';
+    item.classList.add('dragging');
+  });
+  document.getElementById('event-list').addEventListener('dragend', e => {
+    const item = e.target.closest('[data-drag-id]');
+    if (item) item.classList.remove('dragging');
+  });
+
+  const calGrid = document.getElementById('calendar-grid');
+  calGrid.addEventListener('dragover', e => {
+    const cell = e.target.closest('.cal-cell[data-date]');
+    if (!cell) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    cell.classList.add('drag-over');
+  });
+  calGrid.addEventListener('dragleave', e => {
+    const cell = e.target.closest('.cal-cell[data-date]');
+    if (cell) cell.classList.remove('drag-over');
+  });
+  calGrid.addEventListener('drop', e => {
+    const cell = e.target.closest('.cal-cell[data-date]');
+    if (!cell) return;
+    e.preventDefault();
+    cell.classList.remove('drag-over');
+    let payload;
+    try { payload = JSON.parse(e.dataTransfer.getData('text/plain')); } catch { return; }
+    if (!payload || !payload.id) return;
+    moveCalendarItemDate(state, payload.kind, payload.id, cell.dataset.date);
+    sound.playClick();
+    renderAll();
+  });
+
   document.getElementById('event-list').addEventListener('click', e => {
     if (e.target.matches('.event-check')) {
       const willBeDone = e.target.checked;

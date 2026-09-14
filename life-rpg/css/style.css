@@ -881,6 +881,9 @@ ul { list-style: none; padding: 0; margin: 0; }
 .cal-cell.is-holiday { background: #fbdfe3; }
 .cal-cell.is-today { border: 2px solid var(--gold); font-weight: 700; }
 .cal-cell.is-selected { box-shadow: 0 0 0 2px rgba(227,171,92,0.3); }
+.cal-cell.drag-over { outline: 2px dashed var(--gold); background: #fff3d6; }
+.task-item[draggable="true"] { cursor: grab; }
+.task-item.dragging { opacity: 0.4; }
 .cal-cell.has-events .cal-daynum { color: #b9782a; font-weight: 700; }
 
 .cal-weekday.is-weekend { color: var(--danger); }

@@ -73,6 +73,19 @@ function getCalendarItems(state) {
   return tasks.concat(events, projectSubtasks, readingPlanItems);
 }
 
+// 拖曳任務/活動/專案子任務/閱讀計畫到日曆的某一天，直接改期
+function moveCalendarItemDate(state, kind, id, newDate) {
+  if (kind === 'task') {
+    updateTask(state, id, { date: newDate });
+  } else if (kind === 'event') {
+    updateEvent(state, id, { date: newDate });
+  } else if (kind === 'project') {
+    updateSubtask(state, id, { dueDate: newDate });
+  } else if (kind === 'readingplan') {
+    updateReadingPlanItem(state, id, { dueDate: newDate });
+  }
+}
+
 function getTodayItems(state) {
   const today = todayStr();
   return getCalendarItems(state).filter(it => {
@@ -160,7 +173,7 @@ function renderEventList(state) {
     const overdue = !it.done && it.date < today;
     const icon = it.kind === 'task' ? '📋' : it.kind === 'project' ? '🎯' : it.kind === 'readingplan' ? '📖' : (it.type === 'deadline' ? '⏰' : '📅');
     return `
-      <li class="task-item ${it.done ? 'done' : ''} ${overdue ? 'overdue' : ''}">
+      <li class="task-item ${it.done ? 'done' : ''} ${overdue ? 'overdue' : ''}" draggable="true" data-drag-id="${it.id}" data-drag-kind="${it.kind}" title="可拖曳到上方日曆的日期格子，改期">
         <label class="task-check">
           <input type="checkbox" ${it.done ? 'checked' : ''} data-id="${it.id}" data-kind="${it.kind}" class="event-check">
           <span class="task-tag" style="background:${d.color}">${d.icon} ${d.name}</span>
