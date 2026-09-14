@@ -343,13 +343,14 @@ function withAITimeout(promise, ms) {
 }
 
 // 共用的 AI 呼叫函式：發一次請求，回傳文字內容為空時自動重試一次
-// （中間人服務偶爾會因為上游 Claude API 暫時性問題回傳空內容，重試一次通常就會成功）
-async function fetchAIReply(endpoint, system, message, timeoutMs) {
+// （中間人服務偶爾會因為上游 Claude API 暫時性問題回傳空內容，重試一次通常就會成功；
+// 但如果是 max_tokens 不夠導致的空內容，重試同樣的請求不會有幫助，所以呼叫端要給足夠的 maxTokens）
+async function fetchAIReply(endpoint, system, message, timeoutMs, maxTokens) {
   const attempt = async () => {
     const resp = await withAITimeout(fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ system, message }),
+      body: JSON.stringify({ system, message, max_tokens: maxTokens }),
     }), timeoutMs);
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
@@ -371,7 +372,7 @@ async function callAssistantAI(state, userMessage) {
   const system = buildAssistantSystemPrompt(state);
   const context = buildStateSummaryForAI(state);
   const message = `以下是使用者目前的資料：\n${context}\n\n使用者說：${userMessage}`;
-  return fetchAIReply(state.assistant.aiEndpoint, system, message, 20000);
+  return fetchAIReply(state.assistant.aiEndpoint, system, message, 20000, 800);
 }
 
 async function generateDailySummary(state) {

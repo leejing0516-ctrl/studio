@@ -47,7 +47,8 @@ async function callStoryAI(state, description) {
   if (!state.assistant.aiEndpoint) throw new Error('尚未設定 AI 服務網址，請先到「教練對話」分頁的教練設定啟用並填寫');
   const system = buildStorySystemPrompt();
   const message = `使用者描述的困境或想突破的課題：\n${description}`;
-  const reply = await fetchAIReply(state.assistant.aiEndpoint, system, message, 30000);
+  // 故事最多可能有 12 章，每章都有旁白＋任務標題的 JSON，需要比一般聊天回覆多很多 token
+  const reply = await fetchAIReply(state.assistant.aiEndpoint, system, message, 45000, 4096);
   return parseStoryReply(reply);
 }
 

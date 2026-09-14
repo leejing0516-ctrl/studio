@@ -50,6 +50,9 @@ export default {
     if (!message) {
       return new Response('Missing message', { status: 400, headers: corsHeaders });
     }
+    // 網頁端會依用途（聊天 vs 故事拆解，需要的長度差很多）指定 max_tokens，這裡夾在合理範圍內避免濫用
+    const requestedMaxTokens = Number(body.max_tokens) || 600;
+    const maxTokens = Math.min(Math.max(requestedMaxTokens, 200), 4096);
 
     try {
       const resp = await fetch('https://api.anthropic.com/v1/messages', {
@@ -61,7 +64,7 @@ export default {
         },
         body: JSON.stringify({
           model: 'claude-sonnet-5',
-          max_tokens: 600,
+          max_tokens: maxTokens,
           system: system || '',
           messages: [{ role: 'user', content: message }],
         }),
