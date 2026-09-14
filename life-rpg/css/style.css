@@ -159,28 +159,41 @@ h1 {
 }
 #assistant-bubble-text { font-size: 14.5px; line-height: 1.5; }
 
-.mood-picker { margin-bottom: 18px; }
+.chat-input-wrap { position: relative; flex: 1; }
 
-.mood-picker-btn {
-  background: var(--panel);
-  border: 1px solid var(--border-dim);
+.mood-picker-btn-inline {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
   color: var(--text-dim);
-  border-radius: 50%;
-  width: 38px;
-  height: 38px;
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  font-size: inherit;
+  cursor: pointer;
 }
-.mood-picker-btn:hover { color: var(--text); border-color: var(--border-gold); }
+.mood-picker-btn-inline:hover { color: var(--text); }
 
 .mood-buttons {
   display: none;
   gap: 8px;
   flex-wrap: wrap;
-  margin-top: 10px;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  background: var(--panel);
+  border: 1px solid var(--border-dim);
+  border-radius: 12px;
+  padding: 10px;
+  width: max-content;
+  max-width: 260px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.12);
 }
 .mood-buttons.show { display: flex; }
 
@@ -922,7 +935,9 @@ ul { list-style: none; padding: 0; margin: 0; }
 }
 .assistant-chat-form-compact #assistant-chat-input {
   width: 200px;
+  padding-right: 34px;
 }
+.assistant-chat-form-compact .chat-input-wrap { width: 200px; flex: none; }
 .coach-settings {
   margin-top: 0;
   padding-top: 0;

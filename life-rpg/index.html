@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=49">
+<link rel="stylesheet" href="css/style.css?v=50">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -134,26 +134,25 @@
 
     <div class="assistant-chat-row">
       <form id="assistant-chat-form" class="inline-form assistant-chat-form-compact">
-        <input type="text" id="assistant-chat-input" placeholder="跟教練說點什麼…" required>
+        <div class="chat-input-wrap">
+          <input type="text" id="assistant-chat-input" placeholder="跟教練說點什麼…" required>
+          <button type="button" id="mood-picker-toggle" class="mood-picker-btn-inline" title="心情貼圖">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6">
+              <circle cx="12" cy="12" r="9"></circle>
+              <circle cx="9" cy="10" r="1.1" fill="currentColor" stroke="none"></circle>
+              <circle cx="15" cy="10" r="1.1" fill="currentColor" stroke="none"></circle>
+              <path d="M8.3 14.2c1 1.3 2.3 2 3.7 2s2.7-.7 3.7-2" stroke-linecap="round"></path>
+            </svg>
+          </button>
+          <div class="mood-buttons" id="mood-buttons">
+            <button type="button" class="mood-btn" data-mood="good">😊 心情不錯</button>
+            <button type="button" class="mood-btn" data-mood="tired">😩 有點累</button>
+            <button type="button" class="mood-btn" data-mood="giveup">😤 想放棄</button>
+            <button type="button" class="mood-btn" data-mood="unsure">🤔 不知道做什麼</button>
+          </div>
+        </div>
         <button type="submit" class="btn small" id="assistant-chat-send">傳送</button>
       </form>
-    </div>
-
-    <div class="mood-picker">
-      <button type="button" id="mood-picker-toggle" class="icon-btn mood-picker-btn" title="心情貼圖">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6">
-          <circle cx="12" cy="12" r="9"></circle>
-          <circle cx="9" cy="10" r="1.1" fill="currentColor" stroke="none"></circle>
-          <circle cx="15" cy="10" r="1.1" fill="currentColor" stroke="none"></circle>
-          <path d="M8.3 14.2c1 1.3 2.3 2 3.7 2s2.7-.7 3.7-2" stroke-linecap="round"></path>
-        </svg>
-      </button>
-      <div class="mood-buttons" id="mood-buttons">
-        <button class="mood-btn" data-mood="good">😊 心情不錯</button>
-        <button class="mood-btn" data-mood="tired">😩 有點累</button>
-        <button class="mood-btn" data-mood="giveup">😤 想放棄</button>
-        <button class="mood-btn" data-mood="unsure">🤔 不知道做什麼</button>
-      </div>
     </div>
 
     <ul id="assistant-log"></ul>
@@ -337,20 +336,20 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="js/config.js?v=49"></script>
-<script src="js/storage.js?v=49"></script>
-<script src="js/cloud.js?v=49"></script>
-<script src="js/sound.js?v=49"></script>
-<script src="js/assistant.js?v=49"></script>
-<script src="js/character.js?v=49"></script>
-<script src="js/tasks.js?v=49"></script>
-<script src="js/habits.js?v=49"></script>
-<script src="js/projects.js?v=49"></script>
-<script src="js/reading.js?v=49"></script>
-<script src="js/finance.js?v=49"></script>
-<script src="js/calendar.js?v=49"></script>
-<script src="js/rewards.js?v=49"></script>
-<script src="js/achievements.js?v=49"></script>
-<script src="js/main.js?v=49"></script>
+<script src="js/config.js?v=50"></script>
+<script src="js/storage.js?v=50"></script>
+<script src="js/cloud.js?v=50"></script>
+<script src="js/sound.js?v=50"></script>
+<script src="js/assistant.js?v=50"></script>
+<script src="js/character.js?v=50"></script>
+<script src="js/tasks.js?v=50"></script>
+<script src="js/habits.js?v=50"></script>
+<script src="js/projects.js?v=50"></script>
+<script src="js/reading.js?v=50"></script>
+<script src="js/finance.js?v=50"></script>
+<script src="js/calendar.js?v=50"></script>
+<script src="js/rewards.js?v=50"></script>
+<script src="js/achievements.js?v=50"></script>
+<script src="js/main.js?v=50"></script>
 </body>
 </html>
