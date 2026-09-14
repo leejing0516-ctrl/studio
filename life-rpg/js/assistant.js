@@ -173,7 +173,7 @@ const MOOD_ICON = { greeting: '👋', suggestion: '💡', praise: '🎉', milest
 function renderAssistantWidget(state) {
   const latest = state.assistant.log[0];
   const bubble = document.getElementById('assistant-bubble-text');
-  if (bubble) bubble.textContent = latest ? latest.text : '嗨，我是你的小助手！開始完成任務後，我會在這裡給你建議與鼓勵。';
+  if (bubble) bubble.textContent = latest ? latest.text : '嗨，我是你的教練！開始完成任務後，我會在這裡給你建議與鼓勵。';
 }
 
 function renderAssistantLog(state) {
@@ -192,7 +192,7 @@ function renderAssistantLog(state) {
   `).join('');
 }
 
-/* ── 小助手設定（AI 風格、天賦、想要的協助）───────────── */
+/* ── 教練設定（人選、天賦、想要的協助）───────────── */
 
 function renderAssistantSettings(state) {
   const a = state.assistant;
@@ -204,7 +204,7 @@ function renderAssistantSettings(state) {
 
   const styleEl = document.getElementById('assistant-style');
   if (styleEl && !styleEl.options.length) {
-    ASSISTANT_STYLE_OPTIONS.forEach(o => {
+    COACH_PERSONA_OPTIONS.forEach(o => {
       const opt = document.createElement('option');
       opt.value = o.value;
       opt.textContent = o.label;
@@ -235,7 +235,7 @@ function renderAssistantSettings(state) {
   const statusEl = document.getElementById('assistant-ai-status');
   if (statusEl) {
     statusEl.textContent = a.aiEnabled
-      ? (a.aiEndpoint ? '✅ AI 回覆已啟用' : '⚠️ 已勾選啟用，但還沒填服務網址')
+      ? (a.aiEndpoint ? '✅ AI 教練已啟用' : '⚠️ 已勾選啟用，但還沒填服務網址')
       : '目前使用免費規則型回覆';
   }
 }
@@ -253,19 +253,19 @@ function saveAssistantSettings(state) {
   a.wantsEncouragement = document.getElementById('assistant-want-encouragement').checked;
 }
 
-// 組合給 AI 的系統提示詞：風格 + 天賦 + 背景 + 希望的協助方向
+// 組合給 AI 的系統提示詞：教練人選 + 天賦 + 背景 + 希望的協助方向
 function buildAssistantSystemPrompt(state) {
   const a = state.assistant;
   const styleText = (a.style === 'custom' && a.customStyle)
     ? a.customStyle
-    : (ASSISTANT_STYLE_PROMPTS[a.style] || ASSISTANT_STYLE_PROMPTS.warm);
+    : (COACH_PERSONA_PROMPTS[a.style] || COACH_PERSONA_PROMPTS.warm);
 
   const wants = [];
   if (a.wantsProgressAnalysis) wants.push('進度分析（點出哪裡做得好、哪裡卡住）');
   if (a.wantsTaskSuggestions) wants.push('具體的任務推進建議（下一步該做什麼）');
   if (a.wantsEncouragement) wants.push('情緒鼓勵與陪伴');
 
-  let prompt = `你是使用者的人生管理 app「我的人生RPG」裡的小助手。${styleText}\n\n`;
+  let prompt = `你是使用者的人生管理 app「我的人生RPG」裡的教練。${styleText}\n\n`;
   if (a.strengths) prompt += `使用者的蓋洛普天賦測驗前五大特質：${a.strengths}\n`;
   if (a.notes) prompt += `使用者想讓你知道的其他背景：${a.notes}\n`;
   if (wants.length) prompt += `使用者希望你能提供：${wants.join('、')}\n`;
@@ -304,13 +304,13 @@ function buildStateSummaryForAI(state) {
 function withAITimeout(promise, ms) {
   return Promise.race([
     promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error('小助手回覆逾時，請稍後再試一次')), ms)),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('教練回覆逾時，請稍後再試一次')), ms)),
   ]);
 }
 
 // 呼叫使用者自己架設的中間人服務（例如 Cloudflare Worker），由它去問 Claude
 async function callAssistantAI(state, userMessage) {
-  if (!state.assistant.aiEndpoint) throw new Error('尚未設定小助手的 AI 服務網址');
+  if (!state.assistant.aiEndpoint) throw new Error('尚未設定教練的 AI 服務網址');
   const system = buildAssistantSystemPrompt(state);
   const context = buildStateSummaryForAI(state);
   const message = `以下是使用者目前的資料：\n${context}\n\n使用者說：${userMessage}`;
@@ -323,10 +323,10 @@ async function callAssistantAI(state, userMessage) {
 
   if (!resp.ok) {
     const text = await resp.text().catch(() => '');
-    throw new Error('小助手服務回應錯誤：' + (text || resp.status));
+    throw new Error('教練服務回應錯誤：' + (text || resp.status));
   }
   const data = await resp.json();
-  if (!data.reply) throw new Error('小助手沒有回應內容');
+  if (!data.reply) throw new Error('教練沒有回應內容');
   return data.reply;
 }
 
@@ -339,7 +339,7 @@ async function generateDailySummary(state) {
     addAssistantMessage(state, reply, 'chat');
   } catch (e) {
     console.error('每日總結失敗', e);
-    addAssistantMessage(state, `（小助手今天的總結產生失敗了：${e.message}，明天會再試一次）`, 'tip');
+    addAssistantMessage(state, `（教練今天的總結產生失敗了：${e.message}，明天會再試一次）`, 'tip');
   }
 }
 

@@ -21,10 +21,10 @@ function defaultState() {
       log: [], lastSuggestionDate: null, lastVisitDate: null,
       aiEnabled: false,       // 是否啟用真人工智慧回覆
       aiEndpoint: '',         // 中間人服務（例如 Cloudflare Worker）的網址
-      style: 'warm',          // 回應風格：warm/direct/humorous/coach/custom
+      style: 'warm',          // 教練人選：warm/jobs/munger/socrates/inamori/custom
       customStyle: '',        // style 為 custom 時使用者自訂的風格描述
       strengths: '',          // 蓋洛普天賦測驗前五大特質
-      notes: '',              // 其他想讓小助手知道的背景
+      notes: '',              // 其他想讓教練知道的背景
       wantsProgressAnalysis: true,
       wantsTaskSuggestions: true,
       wantsEncouragement: true,

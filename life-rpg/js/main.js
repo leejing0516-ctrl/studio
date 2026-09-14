@@ -395,7 +395,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const message = input.value.trim();
     if (!message) return;
     if (!state.assistant.aiEnabled || !state.assistant.aiEndpoint) {
-      alert('請先在下方「⚙️ 小助手設定」啟用 AI 並填好服務網址，才能跟小助手對話喔');
+      alert('請先在下方「⚙️ 教練設定」啟用 AI 並填好服務網址，才能跟教練對話喔');
       return;
     }
     addAssistantMessage(state, message, 'user');
@@ -408,7 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const reply = await callAssistantAI(state, message);
       addAssistantMessage(state, reply, 'chat');
     } catch (err) {
-      addAssistantMessage(state, '（小助手暫時沒辦法回應：' + err.message + '）', 'tip');
+      addAssistantMessage(state, '（教練暫時沒辦法回應：' + err.message + '）', 'tip');
     }
     btn.disabled = false;
     btn.textContent = '傳送';

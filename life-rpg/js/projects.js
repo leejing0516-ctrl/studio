@@ -243,7 +243,7 @@ function renderProjectPreview() {
         <span class="project-title">🤖 預覽：${escapeHtml(_pendingProject.title)}</span>
         <span class="project-deadline">${_pendingProject.startDate} ~ ${_pendingProject.deadline}</span>
       </div>
-      <p class="tab-hint">看看小助手拆解得如何，不滿意可以「重新生成」，或刪掉個別項目後再確認。</p>
+      <p class="tab-hint">看看教練拆解得如何，不滿意可以「重新生成」，或刪掉個別項目後再確認。</p>
       <ul class="project-subtasks">
         ${_pendingProject.subtasks.map(st => `
           <li class="subtask-item">
@@ -267,7 +267,7 @@ function renderProjects(state) {
   if (!list) return;
 
   if (!state.projects.length) {
-    list.innerHTML = '<li class="empty-hint">還沒有任何專案，設定一個長期目標，讓小助手幫你拆解成小任務！</li>';
+    list.innerHTML = '<li class="empty-hint">還沒有任何專案，設定一個長期目標，讓教練幫你拆解成小任務！</li>';
     return;
   }
 
