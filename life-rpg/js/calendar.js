@@ -75,7 +75,12 @@ function getCalendarItems(state) {
 
 function getTodayItems(state) {
   const today = todayStr();
-  return getCalendarItems(state).filter(it => it.date === today);
+  return getCalendarItems(state).filter(it => {
+    if (it.date === today) return true;
+    // 專案子任務／閱讀計畫如果過期還沒完成，繼續留在「今日任務」直到完成為止，避免漏掉沒趕上的進度
+    if ((it.kind === 'project' || it.kind === 'readingplan') && it.date < today && !it.done) return true;
+    return false;
+  });
 }
 
 function renderCalendarMonth(state) {

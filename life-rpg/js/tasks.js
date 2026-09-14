@@ -45,12 +45,14 @@ function renderTasks(state) {
     else if (it.kind === 'readingplan') prefix = '📖 ';
     const exp = it.exp !== undefined ? it.exp : (it.kind === 'habit' ? TASK_EXP[it.difficulty] : READING_CHECKIN_EXP);
     const canEdit = it.kind !== 'reading';
+    const isOverdue = (it.kind === 'project' || it.kind === 'readingplan') && it.date < todayStr() && !it.done;
     return `
       <li class="task-item ${it.done ? 'done' : ''}">
         <label class="task-check">
           <input type="checkbox" ${it.done ? 'checked' : ''} data-id="${it.id}" data-kind="${it.kind}">
           <span class="task-tag" style="background:${domain.color}">${domain.icon} ${domain.name}</span>
           <span class="task-text">${prefix}${escapeHtml(it.title)}</span>
+          ${isOverdue ? `<span class="task-overdue">已過期 ${it.date}</span>` : ''}
           ${it.time ? `<span class="task-time">🕐 ${it.time}</span>` : ''}
           ${extra}
           <span class="task-exp">+${exp} EXP</span>
