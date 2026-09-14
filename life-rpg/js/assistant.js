@@ -300,10 +300,11 @@ function buildAssistantSystemPrompt(state) {
   if (a.wantsEncouragement) wants.push('情緒鼓勵與陪伴');
 
   let prompt = `你是使用者的人生管理 app「我的人生RPG」裡的教練。${styleText}\n\n`;
-  if (a.strengths) prompt += `使用者的蓋洛普天賦測驗前五大特質：${a.strengths}\n`;
+  prompt += `請優先用你所模擬的這個角色本身的信念、哲學觀、思維方式來回應，讓使用者感受到是在跟這個角色本人對話，而不是講一般通用的心靈雞湯。\n`;
+  if (a.strengths) prompt += `參考資訊（只有在真的相關、能讓建議更精準時才提一次，不要每則回覆都提）：使用者的蓋洛普天賦測驗前五大特質是 ${a.strengths}。\n`;
   if (a.notes) prompt += `使用者想讓你知道的其他背景：${a.notes}\n`;
   if (wants.length) prompt += `使用者希望你能提供：${wants.join('、')}\n`;
-  prompt += `\n請根據訊息裡附上的使用者目前進度資料來回應，用繁體中文回覆，簡潔但有溫度，避免陳腔濫調的空話，盡量具體。回覆不要太長，大約 2-5 句話。`;
+  prompt += `\n請根據訊息裡附上的使用者目前進度資料來回應，用繁體中文回覆，簡潔但有溫度，避免陳腔濫調的空話，盡量具體。不要每則回覆都重複搬出蓋洛普天賦測驗這類固定資料，多用你角色本身的思維與信念來回應。回覆不要太長，大約 2-5 句話。`;
   return prompt;
 }
 
