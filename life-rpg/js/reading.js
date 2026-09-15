@@ -149,6 +149,7 @@ function toggleReadingPlanItem(state, subtaskId) {
   if (!found) return;
   const { book, subtask } = found;
   subtask.done = !subtask.done;
+  subtask.doneAt = subtask.done ? Date.now() : null;
   const exp = (subtask.endPage - subtask.startPage + 1) * EXP_PER_PAGE;
 
   if (subtask.done) {
@@ -213,7 +214,7 @@ function toggleReadingCheckin(state, bookId) {
   if (!book) return;
   const doneMap = todaysReadingCheckins(state);
   if (!doneMap[bookId]) {
-    doneMap[bookId] = true;
+    doneMap[bookId] = Date.now();
     gainExp(state, 'reading', READING_CHECKIN_EXP);
     addLog(state, `今天有閱讀《${book.title}》，學業/閱讀 +${READING_CHECKIN_EXP} EXP ／ +${goldFor(READING_CHECKIN_EXP)} 金幣`);
   } else {

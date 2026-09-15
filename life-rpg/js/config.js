@@ -199,6 +199,13 @@ function formatDate(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
+// 把時間戳記格式化成 HH:MM，用來顯示打卡/完成的當下時間
+function formatTimeOfDay(ms) {
+  if (!ms) return '';
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 function daysBetween(dateStrA, dateStrB) {
   return Math.round((parseDateStr(dateStrB) - parseDateStr(dateStrA)) / 86400000);
 }

@@ -6,14 +6,14 @@ function getTodayChecklist(state) {
   const habitDone = state.habitCompletions[today] || {};
   const habitItems = getDueHabitsToday(state).map(h => ({
     id: h.id, kind: 'habit', title: h.name, domain: h.domain,
-    done: !!habitDone[h.id], difficulty: h.difficulty, streak: h.streak || 0,
+    done: !!habitDone[h.id], doneAt: habitDone[h.id] || null, difficulty: h.difficulty, streak: h.streak || 0,
   }));
 
   // 只有「沒有閱讀計畫」的書才用簡易打卡；有計畫的書由 calItems 提供當天的閱讀進度項目
   const readingDone = state.readingCompletions[today] || {};
   const readingItems = state.books.filter(b => !b.done && !b.readingPlan).map(b => ({
     id: b.id, kind: 'reading', title: `閱讀《${b.title}》`, domain: 'reading',
-    done: !!readingDone[b.id],
+    done: !!readingDone[b.id], doneAt: readingDone[b.id] || null,
   }));
 
   const items = calItems.concat(habitItems, readingItems);
@@ -55,6 +55,7 @@ function renderTasks(state) {
           <span class="task-text">${prefix}${escapeHtml(it.title)}</span>
           ${isOverdue ? `<span class="task-overdue">已過期 ${it.date}</span>` : ''}
           ${it.time ? `<span class="task-time">🕐 ${it.time}</span>` : ''}
+          ${it.done && it.doneAt ? `<span class="task-donetime">✅ ${formatTimeOfDay(it.doneAt)} 打卡</span>` : ''}
           ${extra}
           <span class="task-exp">+${exp} EXP</span>
         </label>
@@ -86,6 +87,7 @@ function toggleTask(state, id) {
   const t = state.tasks.find(t => t.id === id);
   if (!t) return;
   t.done = !t.done;
+  t.doneAt = t.done ? Date.now() : null;
   const exp = TASK_EXP[t.difficulty];
   if (t.done) {
     gainExp(state, t.domain, exp);

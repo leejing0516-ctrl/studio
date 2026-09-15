@@ -69,7 +69,7 @@ function renderLog(state) {
     el.innerHTML = '<li class="empty-hint">還沒有任何紀錄</li>';
     return;
   }
-  el.innerHTML = state.log.slice(0, 10).map(l => `<li>${l.date}｜${escapeHtml(l.text)}</li>`).join('');
+  el.innerHTML = state.log.slice(0, 10).map(l => `<li>${l.date}${l.time ? ' ' + formatTimeOfDay(l.time) : ''}｜${escapeHtml(l.text)}</li>`).join('');
 }
 
 // 今日任務打勾完成時的小慶祝：背景閃一下金光，並跳出一個 +EXP 泡泡飄走
@@ -544,6 +544,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       sound[willBeDone ? 'playComplete' : 'playClick']();
       if (willBeDone && domain) onTaskOrHabitComplete(state, domain);
+      if (kind === 'story' && willBeDone) maybeCompileStory(state, id);
       if (willBeDone) {
         const li = e.target.closest('.task-item');
         const expEl = li && li.querySelector('.task-exp');
@@ -796,6 +797,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       sound[willBeDone ? 'playComplete' : 'playClick']();
       if (willBeDone && domain) onTaskOrHabitComplete(state, domain);
+      if (kind === 'story' && willBeDone) maybeCompileStory(state, id);
       renderAll();
     } else if (e.target.matches('.del-event')) {
       const id = e.target.dataset.id;
@@ -938,10 +940,20 @@ document.addEventListener('DOMContentLoaded', () => {
       sound[willBeDone ? 'playComplete' : 'playClick']();
       if (willBeDone && domain) onTaskOrHabitComplete(state, domain);
       renderAll();
+      maybeCompileStory(state, id);
     } else if (e.target.matches('.del-story')) {
       deleteStoryQuest(state, e.target.dataset.id);
       renderAll();
+    } else if (e.target.matches('.story-recompile')) {
+      regenerateCompiledStory(state, e.target.dataset.id);
     }
+  });
+
+  // 故事章節的個人書寫：離開輸入框時自動存檔（不用另外按儲存）
+  document.getElementById('story-list').addEventListener('focusout', e => {
+    if (!e.target.matches('.story-journal-input')) return;
+    updateStoryChapter(state, e.target.dataset.id, { journal: e.target.value });
+    saveState(state);
   });
 
   document.getElementById('gcal-sync').addEventListener('click', async () => {

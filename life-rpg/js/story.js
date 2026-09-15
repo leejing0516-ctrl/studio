@@ -52,6 +52,56 @@ async function callStoryAI(state, description) {
   return parseStoryReply(reply);
 }
 
+// 故事全部章節完成後，把每章的旁白＋使用者自己寫下的心情/過程紀錄，交給 AI 彙整成一篇短篇小說
+function buildStoryCompileSystemPrompt() {
+  return [
+    '你是「我的人生RPG」App裡的敘事作家。使用者剛完成了一段故事模式的旅程，請你把整段故事寫成一篇有角色、有情節脈絡的短篇小說。',
+    '你會收到每一章原本的引導旁白，以及使用者自己在那一天寫下的心情、處理過程、策略或感受（有些章節使用者可能沒有留下文字，就依旁白與前後脈絡合理想像銜接，不要留空隙）。',
+    '請把這些素材真正寫成一篇完整、有起承轉合的短篇小說（繁體中文，約 800-1500 字），語氣溫暖真摯，不要寫成條列式摘要或心得報告。',
+    '第一行請給一個貼切的篇名，接著空一行再開始正文，除此之外不要加上任何其他說明文字或 markdown 符號。',
+  ].join('\n');
+}
+
+async function callStoryCompileAI(state, quest) {
+  const material = quest.chapters.map((ch, i) =>
+    `第 ${i + 1} 章｜當天任務：${ch.taskTitle}\n引導旁白：${ch.narrative}\n使用者的書寫：${ch.journal ? ch.journal : '（這一章使用者沒有留下書寫）'}`
+  ).join('\n\n');
+  const message = `故事標題：${quest.title}\n\n${material}`;
+  const system = buildStoryCompileSystemPrompt();
+  return fetchAIReply(state.assistant.aiEndpoint, system, message, 60000, 4096);
+}
+
+// 章節打勾後檢查：如果整段故事剛好完成，且還沒生成過短篇小說，就自動生成一次
+async function maybeCompileStory(state, chapterId) {
+  const found = findStoryChapter(state, chapterId);
+  if (!found) return;
+  const q = found.quest;
+  if (!q.chapters.length || !q.chapters.every(c => c.done)) return;
+  if (q.compiledStory || q.compileStatus === 'pending') return;
+  await runStoryCompile(state, q);
+}
+
+async function runStoryCompile(state, quest) {
+  quest.compileStatus = 'pending';
+  quest.compileError = null;
+  renderAll();
+  try {
+    const text = await callStoryCompileAI(state, quest);
+    quest.compiledStory = { text, generatedAt: Date.now() };
+  } catch (e) {
+    quest.compileError = e.message;
+  }
+  quest.compileStatus = null;
+  renderAll();
+}
+
+function regenerateCompiledStory(state, questId) {
+  const q = (state.storyQuests || []).find(q => q.id === questId);
+  if (!q) return;
+  q.compiledStory = null;
+  runStoryCompile(state, q);
+}
+
 function genChapterId(i) {
   return 'sc' + Date.now() + '_' + i + Math.random().toString(36).slice(2, 5);
 }
@@ -66,6 +116,8 @@ async function generateStoryPreview(state, description, domain) {
     taskTitle: ch.taskTitle,
     dueDate: addDays(todayStr(), i),
     done: false,
+    doneAt: null,
+    journal: '',
   }));
   _pendingStory = { title: result.storyTitle, domain, description, chapters };
 }
@@ -105,6 +157,7 @@ function toggleStoryChapter(state, chapterId) {
   if (!found) return;
   const { quest: q, chapter: ch } = found;
   ch.done = !ch.done;
+  ch.doneAt = ch.done ? Date.now() : null;
   if (ch.done) {
     gainExp(state, q.domain, STORY_CHAPTER_EXP);
     addLog(state, `完成故事「${q.title}」章節「${ch.taskTitle}」，+${STORY_CHAPTER_EXP} EXP ／ +${goldFor(STORY_CHAPTER_EXP)} 金幣`);
@@ -174,6 +227,31 @@ function renderStoryPreview() {
   `;
 }
 
+// 故事全部完成後，顯示彙整中／失敗重試／已完成的短篇小說三種狀態之一
+function renderCompiledStorySection(quest) {
+  if (quest.compileStatus === 'pending') {
+    return `<div class="story-compiled pending">🖋️ 教練正在把這段故事寫成短篇小說中…</div>`;
+  }
+  if (quest.compileError) {
+    return `
+      <div class="story-compiled error">
+        <p>小說生成失敗：${escapeHtml(quest.compileError)}</p>
+        <button type="button" class="btn small story-recompile" data-id="${quest.id}">🔄 重新生成小說</button>
+      </div>
+    `;
+  }
+  if (quest.compiledStory) {
+    return `
+      <details class="story-compiled done">
+        <summary>📖 完整短篇小說（點開回顧）</summary>
+        <div class="story-compiled-text">${escapeHtml(quest.compiledStory.text)}</div>
+        <button type="button" class="btn small story-recompile" data-id="${quest.id}">🔄 重新生成小說</button>
+      </details>
+    `;
+  }
+  return '';
+}
+
 function renderStoryTab(state) {
   renderStoryPreview();
   const list = document.getElementById('story-list');
@@ -207,13 +285,16 @@ function renderStoryTab(state) {
                   <span class="story-chapter-num">第 ${i + 1} 章</span>
                   <span class="task-text">${escapeHtml(ch.taskTitle)}</span>
                   <span class="task-time">🕐 ${ch.dueDate}</span>
+                  ${ch.done && ch.doneAt ? `<span class="task-donetime">✅ ${formatTimeOfDay(ch.doneAt)} 打卡</span>` : ''}
                 </label>
                 <button class="icon-btn edit-item" data-kind="story" data-id="${ch.id}" title="編輯">✎</button>
               </div>
               <p class="story-chapter-narrative">${ch.done ? escapeHtml(ch.narrative) : `🔒 完成「${escapeHtml(ch.taskTitle)}」後解鎖這段故事`}</p>
+              <textarea class="story-journal-input" data-id="${ch.id}" placeholder="寫下這天的狀況、你怎麼處理、用了什麼策略、當下的感受…（會用來寫進故事完結後的短篇小說）">${escapeHtml(ch.journal || '')}</textarea>
             </li>
           `).join('')}
         </ul>
+        ${finished ? renderCompiledStorySection(q) : ''}
       </li>
     `;
   }).join('');

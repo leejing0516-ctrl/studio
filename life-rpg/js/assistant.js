@@ -194,13 +194,6 @@ function renderAssistantWidget(state) {
 
 // 聊天紀錄改成類似 LINE 的對話泡泡：教練訊息靠左（帶頭像），
 // 使用者自己輸入的訊息靠右。但保留原本「越新的在越上面」的排序，不像 LINE 由上到下越聊越新
-// 把訊息的時間戳記格式化成 HH:MM，方便分辨同一天內訊息的先後順序
-function formatChatTime(ms) {
-  if (!ms) return '';
-  const d = new Date(ms);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
-
 function renderAssistantLog(state) {
   const list = document.getElementById('assistant-log');
   if (!list) return;
@@ -216,7 +209,7 @@ function renderAssistantLog(state) {
         <li class="chat-row chat-row-user">
           <div class="chat-col chat-col-end">
             <div class="chat-bubble chat-bubble-user">${text}</div>
-            <span class="chat-meta">${m.date}${m.time ? ' ' + formatChatTime(m.time) : ''}</span>
+            <span class="chat-meta">${m.date}${m.time ? ' ' + formatTimeOfDay(m.time) : ''}</span>
           </div>
         </li>
       `;
@@ -226,7 +219,7 @@ function renderAssistantLog(state) {
         <img class="chat-avatar" src="${coachAvatar}" alt="">
         <div class="chat-col chat-col-start">
           <div class="chat-bubble chat-bubble-coach">${text}</div>
-          <span class="chat-meta">${MOOD_ICON[m.mood] || '🤖'} ${m.date}${m.time ? ' ' + formatChatTime(m.time) : ''}</span>
+          <span class="chat-meta">${MOOD_ICON[m.mood] || '🤖'} ${m.date}${m.time ? ' ' + formatTimeOfDay(m.time) : ''}</span>
         </div>
       </li>
     `;

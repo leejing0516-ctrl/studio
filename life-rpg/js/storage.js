@@ -107,7 +107,7 @@ function saveState(state) {
 }
 
 function addLog(state, text) {
-  state.log.unshift({ date: todayStr(), text });
+  state.log.unshift({ date: todayStr(), time: Date.now(), text });
   if (state.log.length > 50) state.log.length = 50;
 }
 

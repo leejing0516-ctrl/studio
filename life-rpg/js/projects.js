@@ -202,6 +202,7 @@ function toggleProjectSubtask(state, subtaskId) {
   if (!found) return;
   const { project: p, subtask: st } = found;
   st.done = !st.done;
+  st.doneAt = st.done ? Date.now() : null;
   if (st.done) {
     gainExp(state, p.domain, PROJECT_SUBTASK_EXP);
     addLog(state, `完成專案「${p.title}」子任務「${st.title}」，+${PROJECT_SUBTASK_EXP} EXP ／ +${goldFor(PROJECT_SUBTASK_EXP)} 金幣`);

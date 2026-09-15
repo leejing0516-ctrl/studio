@@ -17,6 +17,7 @@ function toggleEventDone(state, id) {
   const ev = state.events.find(e => e.id === id);
   if (!ev) return;
   ev.done = !ev.done;
+  ev.doneAt = ev.done ? Date.now() : null;
   const d = DOMAINS.find(d => d.key === ev.domain);
   if (ev.done) {
     gainExp(state, ev.domain, EVENT_EXP);
@@ -41,12 +42,12 @@ function deleteEvent(state, id) {
 function getCalendarItems(state) {
   const tasks = state.tasks.map(t => ({
     id: t.id, kind: 'task', title: t.text, domain: t.domain,
-    date: t.date, time: t.time || '', done: t.done, googleEventId: t.googleEventId,
+    date: t.date, time: t.time || '', done: t.done, doneAt: t.doneAt || null, googleEventId: t.googleEventId,
     difficulty: t.difficulty, exp: TASK_EXP[t.difficulty],
   }));
   const events = state.events.map(e => ({
     id: e.id, kind: 'event', title: e.title, domain: e.domain,
-    date: e.date, time: e.time, done: e.done, googleEventId: e.googleEventId, type: e.type,
+    date: e.date, time: e.time, done: e.done, doneAt: e.doneAt || null, googleEventId: e.googleEventId, type: e.type,
     exp: EVENT_EXP,
   }));
   const projectSubtasks = [];
@@ -54,7 +55,7 @@ function getCalendarItems(state) {
     p.subtasks.forEach(st => {
       projectSubtasks.push({
         id: st.id, kind: 'project', title: `${p.title}｜${st.title}`, domain: p.domain,
-        date: st.dueDate, time: '', done: st.done, googleEventId: st.googleEventId,
+        date: st.dueDate, time: '', done: st.done, doneAt: st.doneAt || null, googleEventId: st.googleEventId,
         exp: PROJECT_SUBTASK_EXP,
       });
     });
@@ -65,7 +66,7 @@ function getCalendarItems(state) {
     b.readingPlan.subtasks.forEach(st => {
       readingPlanItems.push({
         id: st.id, kind: 'readingplan', title: `${b.title}｜${st.title}`, domain: 'reading',
-        date: st.dueDate, time: '', done: st.done, googleEventId: st.googleEventId,
+        date: st.dueDate, time: '', done: st.done, doneAt: st.doneAt || null, googleEventId: st.googleEventId,
         exp: (st.endPage - st.startPage + 1) * EXP_PER_PAGE,
       });
     });
@@ -75,7 +76,7 @@ function getCalendarItems(state) {
     q.chapters.forEach(ch => {
       storyChapters.push({
         id: ch.id, kind: 'story', title: `${q.title}｜${ch.taskTitle}`, domain: q.domain,
-        date: ch.dueDate, time: '', done: ch.done, googleEventId: null,
+        date: ch.dueDate, time: '', done: ch.done, doneAt: ch.doneAt || null, googleEventId: null,
         exp: STORY_CHAPTER_EXP,
       });
     });
@@ -191,6 +192,7 @@ function renderEventList(state) {
           <span class="task-tag" style="background:${d.color}">${d.icon} ${d.name}</span>
           <span class="event-date">${icon} ${it.date}${it.time ? ' ' + it.time : ''}</span>
           <span class="task-text">${escapeHtml(it.title)}</span>
+          ${it.done && it.doneAt ? `<span class="task-donetime">✅ ${formatTimeOfDay(it.doneAt)} 打卡</span>` : ''}
           ${it.googleEventId ? '<span class="gcal-badge" title="已同步到 Google 日曆">🔗</span>' : ''}
         </label>
         <button class="icon-btn edit-item" data-kind="${it.kind}" data-id="${it.id}" title="編輯">✎</button>

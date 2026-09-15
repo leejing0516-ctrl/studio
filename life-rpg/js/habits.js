@@ -60,7 +60,7 @@ function toggleHabit(state, id) {
   const exp = TASK_EXP[h.difficulty];
 
   if (!doneMap[h.id]) {
-    doneMap[h.id] = true;
+    doneMap[h.id] = Date.now();
     gainExp(state, h.domain, exp);
     h.streak = (h.lastDoneDate === yesterdayStr()) ? (h.streak || 0) + 1 : 1;
     h.lastDoneDate = today;

@@ -666,6 +666,16 @@ ul { list-style: none; padding: 0; margin: 0; }
   font-weight: 700;
 }
 
+.task-donetime {
+  font-size: 11px;
+  color: #3f8a5c;
+  background: #e3f3e6;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
 .icon-btn {
   background: transparent;
   border: none;
@@ -877,6 +887,42 @@ ul { list-style: none; padding: 0; margin: 0; }
   color: var(--text);
 }
 .story-chapter.locked .story-chapter-narrative { color: var(--text-dim); font-style: italic; }
+
+.story-journal-input {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  min-height: 60px;
+  resize: vertical;
+  background: #fffdfa;
+  border: 1px solid var(--border-dim);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  font-family: inherit;
+}
+.story-journal-input:focus { outline: none; border-color: var(--border-gold); }
+
+.story-compiled {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px dashed var(--border-gold);
+  background: linear-gradient(135deg, var(--purple-soft), #fff);
+  font-size: 13px;
+}
+.story-compiled.pending { color: var(--text-dim); font-style: italic; }
+.story-compiled.error { color: #b3413a; }
+.story-compiled summary { cursor: pointer; font-weight: 700; color: var(--purple); }
+.story-compiled-text {
+  margin-top: 10px;
+  white-space: pre-wrap;
+  line-height: 1.8;
+  font-size: 13.5px;
+  color: var(--text);
+}
+.story-compiled .btn.small { margin-top: 10px; }
 
 .reading-plan { margin-top: 10px; }
 .reading-plan-setup {
