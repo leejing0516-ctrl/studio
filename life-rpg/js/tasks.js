@@ -84,12 +84,14 @@ function escapeHtml(str) {
 }
 
 function addTask(state, text, domain, difficulty, time) {
-  if (!text.trim()) return;
-  state.tasks.push({
+  if (!text.trim()) return null;
+  const task = {
     id: 't' + Date.now() + Math.random().toString(36).slice(2, 7),
     domain, text: text.trim(), difficulty, time: time || '',
     date: todayStr(), done: false, googleEventId: null,
-  });
+  };
+  state.tasks.push(task);
+  return task;
 }
 
 function toggleTask(state, id) {

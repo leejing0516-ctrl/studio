@@ -82,6 +82,16 @@ function celebrateTaskComplete(li, expText) {
   li.appendChild(popup);
 }
 
+// 新增任務時的小儀式：背景閃一下淡紫光，並跳出一個提示泡泡飄走
+function celebrateTaskAdded(li) {
+  if (!li) return;
+  li.classList.add('task-added-flash');
+  const popup = document.createElement('span');
+  popup.className = 'task-added-popup';
+  popup.textContent = '✨ 新任務！';
+  li.appendChild(popup);
+}
+
 function showAchievementToast(a) {
   const toast = document.createElement('div');
   toast.className = 'toast';
@@ -506,10 +516,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const domain = document.getElementById('task-domain').value;
     const difficulty = document.getElementById('task-difficulty').value;
     const time = getTimeValue('task-time');
-    addTask(state, text, domain, difficulty, time);
+    const newTask = addTask(state, text, domain, difficulty, time);
     document.getElementById('task-text').value = '';
     setTimeValue('task-time', '');
+    sound.playAdd();
     renderAll();
+    if (newTask) {
+      const checkbox = document.querySelector(`#task-list input[data-kind="task"][data-id="${newTask.id}"]`);
+      celebrateTaskAdded(checkbox && checkbox.closest('.task-item'));
+    }
   });
 
   document.getElementById('task-list').addEventListener('click', e => {

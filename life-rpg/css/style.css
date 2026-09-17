@@ -630,6 +630,37 @@ ul { list-style: none; padding: 0; margin: 0; }
 }
 .task-item:last-child { margin-bottom: 0; }
 
+/* 新增任務時的儀式感效果：淡紫光閃一下，並跳出一個小提示泡泡飄走 */
+.task-item.task-added-flash {
+  animation: task-added-flash 0.55s ease;
+}
+@keyframes task-added-flash {
+  0% {
+    background: linear-gradient(180deg, #ece7ff, #dcd3ff);
+    box-shadow: 0 0 0 3px rgba(150, 130, 220, 0.5);
+  }
+  100% {
+    background: linear-gradient(180deg, #fff, var(--panel-2));
+    box-shadow: 0 1px 4px rgba(201, 156, 100, 0.08);
+  }
+}
+.task-added-popup {
+  position: absolute;
+  right: 14px;
+  top: 0;
+  background: linear-gradient(180deg, #c3b3ff, var(--purple));
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(150, 130, 220, 0.45);
+  pointer-events: none;
+  white-space: nowrap;
+  animation: task-popup-float 0.9s ease forwards;
+  z-index: 5;
+}
+
 .task-check {
   display: flex;
   align-items: center;

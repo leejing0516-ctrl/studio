@@ -60,6 +60,14 @@ class SoundSystem {
     this._tone(660, now, 0.05, 'square', 0.12);
   }
 
+  // 新增任務時的儀式感提示音：溫暖的兩音上升
+  playAdd() {
+    if (!this._ctx) return;
+    const now = this._ctx.currentTime;
+    this._tone(587.33, now, 0.09, 'triangle', 0.26);
+    this._tone(880, now + 0.07, 0.15, 'triangle', 0.3);
+  }
+
   toggleMute() {
     this._muted = !this._muted;
     localStorage.setItem('life_rpg_muted', this._muted ? '1' : '0');
