@@ -504,6 +504,20 @@ h1 {
   margin: 0 0 14px;
 }
 
+.today-date-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, #fff3d6, #fffdfa);
+  border: 2px solid var(--gold);
+  border-radius: 14px;
+  padding: 12px 18px;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 8px rgba(201, 156, 100, 0.15);
+}
+.today-date-icon { font-size: 28px; line-height: 1; }
+.today-date-text { font-size: 20px; font-weight: 800; color: #9a5a1f; letter-spacing: 0.5px; }
+
 /* ── 表單 ───────────────────────────── */
 form.inline-form {
   display: flex;

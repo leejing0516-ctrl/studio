@@ -22,7 +22,16 @@ function getTodayChecklist(state) {
   return items;
 }
 
+function renderTodayDateBanner() {
+  const el = document.getElementById('today-date-text');
+  if (!el) return;
+  const d = new Date();
+  const weekday = WEEKDAY_NAMES_ZH[(d.getDay() + 6) % 7];
+  el.textContent = `${d.getMonth() + 1} 月 ${d.getDate()} 日 星期${weekday}`;
+}
+
 function renderTasks(state) {
+  renderTodayDateBanner();
   const list = document.getElementById('task-list');
   list.innerHTML = '';
   const items = getTodayChecklist(state);
