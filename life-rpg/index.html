@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=65">
+<link rel="stylesheet" href="css/style.css?v=68">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -15,8 +15,8 @@
 </head>
 <body>
 <div class="app">
-  <button id="cloud-btn" class="mute-btn cloud-btn" title="登入以跨裝置同步">☁️</button>
-  <button id="mute-btn" class="mute-btn" title="靜音切換">🔊</button>
+  <button id="cloud-btn" class="mute-btn cloud-btn" title="登入以跨裝置同步" aria-label="登入以跨裝置同步">☁️</button>
+  <button id="mute-btn" class="mute-btn" title="靜音切換" aria-label="靜音切換">🔊</button>
   <h1><img src="assets/title_logo.png" alt="我的人生RPG" class="title-logo"></h1>
 
   <div id="cloud-panel" class="cloud-panel frame">
@@ -49,47 +49,91 @@
     <button id="assistant-shuffle" class="icon-btn" title="換一句">🔄</button>
   </div>
 
-  <div class="char-card frame">
-    <div class="char-left">
-      <div class="char-avatar-ring" id="avatar-ring" title="點擊更換頭像">
-        <img src="assets/avatar_default_20260913_081358.png" alt="角色頭像" id="char-avatar-img" class="char-avatar-img">
-        <span class="avatar-edit-badge">📷</span>
-      </div>
-      <input type="file" id="avatar-upload" accept="image/*" class="visually-hidden-input">
-      <div class="char-name-row">
+  <div class="status-bar frame">
+    <div class="char-avatar-ring status-avatar-ring" id="avatar-ring" title="點擊更換頭像">
+      <img src="assets/avatar_default_20260913_081358.png" alt="角色頭像" id="char-avatar-img" class="char-avatar-img">
+      <span class="avatar-edit-badge">📷</span>
+    </div>
+    <input type="file" id="avatar-upload" accept="image/*" class="visually-hidden-input">
+    <div class="status-main">
+      <div class="char-name-row status-name-row">
         <input type="text" id="char-name" value="我的角色" title="點擊編輯角色名稱">
         <span class="char-name-edit-icon">✎</span>
+        <div id="char-level" class="level-badge">Lv. 1</div>
       </div>
-      <div id="char-level" class="level-badge">Lv. 1</div>
       <div class="exp-bar-bg"><div id="char-exp-bar" class="exp-bar-fill"></div></div>
-      <div id="char-exp-text">0 / 100 EXP</div>
-      <div class="stat-row">
-        <span class="streak">🔥 連續 <span id="streak-count">0</span> 天</span>
-        <span class="gold">💰 <span id="gold-count">0</span></span>
+      <div class="status-exp-row">
+        <span id="char-exp-text">0 / 100 EXP</span>
+        <span id="char-exp-remain" class="status-exp-remain"></span>
       </div>
+    </div>
+    <div class="stat-row status-stats">
+      <span class="streak">🔥 <span id="streak-count">0</span></span>
+      <span class="gold">💰 <span id="gold-count">0</span></span>
+    </div>
+  </div>
+
+  <div class="nav-wrap">
+    <nav class="primary-nav" aria-label="主要導覽">
+      <button type="button" class="tab-btn active" data-tab="tab-home">🏠 首頁</button>
+      <button type="button" class="tab-btn" data-tab="tab-tasks">📋 今日任務</button>
+      <button type="button" class="tab-btn" data-tab="tab-projects">🎯 專案</button>
+      <button type="button" id="adventure-menu-toggle" class="tab-btn menu-toggle-btn" aria-haspopup="true" aria-expanded="false" aria-controls="adventure-menu">🗺️ 冒險選單</button>
+    </nav>
+
+    <div id="adventure-menu" class="adventure-menu" role="menu" aria-label="冒險選單">
+      <div class="menu-group">
+        <div class="menu-group-title">每日行動</div>
+        <button type="button" class="tab-btn menu-item-btn" data-tab="tab-tasks">📋 今日任務</button>
+        <button type="button" class="tab-btn menu-item-btn" data-tab="tab-calendar">📅 行事曆</button>
+        <button type="button" class="tab-btn menu-item-btn" data-tab="tab-habits">🔁 習慣</button>
+      </div>
+      <div class="menu-group">
+        <div class="menu-group-title">成長旅程</div>
+        <button type="button" class="tab-btn menu-item-btn" data-tab="tab-projects">🎯 專案</button>
+        <button type="button" class="tab-btn menu-item-btn" data-tab="tab-reading">📖 閱讀進度</button>
+        <button type="button" class="tab-btn menu-item-btn" data-tab="tab-story">🗺️ 故事模式</button>
+        <button type="button" class="tab-btn menu-item-btn" data-tab="tab-character">📊 技能總覽</button>
+      </div>
+      <div class="menu-group">
+        <div class="menu-group-title">資源與成果</div>
+        <button type="button" class="tab-btn menu-item-btn" data-tab="tab-finance">💰 消費/財務</button>
+        <button type="button" class="tab-btn menu-item-btn" data-tab="tab-rewards">🎁 獎勵商店</button>
+        <button type="button" class="tab-btn menu-item-btn" data-tab="tab-achievements">🏆 成就</button>
+        <button type="button" class="tab-btn menu-item-btn" data-tab="tab-log">📜 活動紀錄</button>
+      </div>
+      <div class="menu-group">
+        <div class="menu-group-title">教練與設定</div>
+        <button type="button" class="tab-btn menu-item-btn" data-tab="tab-assistant">🧑‍🏫 教練對話</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-home" class="tab-panel frame active">
+    <div class="home-grid">
+      <div class="home-primary-col">
+        <div id="home-primary-task" class="home-card primary-task-card"></div>
+      </div>
+      <div class="home-coach-col">
+        <div id="home-coach-tip" class="home-card coach-tip-card"></div>
+      </div>
+      <div class="home-project-col">
+        <div id="home-primary-project" class="home-card project-card"></div>
+      </div>
+      <div class="home-habit-col">
+        <div id="home-habit-progress" class="home-card habit-card"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-character" class="tab-panel frame">
+    <div class="skill-panel">
+      <h2>技能總覽</h2>
+      <div id="skill-bars"></div>
     </div>
     <div class="char-right">
       <canvas id="radarCanvas" width="380" height="360"></canvas>
     </div>
-  </div>
-
-  <div class="skill-panel frame">
-    <h2>技能總覽</h2>
-    <div id="skill-bars"></div>
-  </div>
-
-  <div class="tabs">
-    <button class="tab-btn active" data-tab="tab-tasks">📋 今日任務</button>
-    <button class="tab-btn" data-tab="tab-calendar">📅 行事曆</button>
-    <button class="tab-btn" data-tab="tab-projects">🎯 專案</button>
-    <button class="tab-btn" data-tab="tab-reading">📖 閱讀進度</button>
-    <button class="tab-btn" data-tab="tab-habits">🔁 習慣</button>
-    <button class="tab-btn" data-tab="tab-finance">💰 消費/財務</button>
-    <button class="tab-btn" data-tab="tab-story">🗺️ 故事模式</button>
-    <button class="tab-btn" data-tab="tab-rewards">🎁 獎勵商店</button>
-    <button class="tab-btn" data-tab="tab-achievements">🏆 成就</button>
-    <button class="tab-btn" data-tab="tab-log">📜 活動紀錄</button>
-    <button class="tab-btn" data-tab="tab-assistant">🧑‍🏫 教練對話</button>
   </div>
 
   <div id="tab-assistant" class="tab-panel frame">
@@ -159,7 +203,7 @@
     <ul id="assistant-log"></ul>
   </div>
 
-  <div id="tab-tasks" class="tab-panel frame active">
+  <div id="tab-tasks" class="tab-panel frame">
     <div class="today-date-banner">
       <svg class="today-date-icon" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8">
         <rect x="3" y="5" width="18" height="16" rx="2.5"></rect>
@@ -357,21 +401,22 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="js/config.js?v=65"></script>
-<script src="js/storage.js?v=65"></script>
-<script src="js/cloud.js?v=65"></script>
-<script src="js/sound.js?v=65"></script>
-<script src="js/assistant.js?v=65"></script>
-<script src="js/character.js?v=65"></script>
-<script src="js/tasks.js?v=65"></script>
-<script src="js/habits.js?v=65"></script>
-<script src="js/projects.js?v=65"></script>
-<script src="js/story.js?v=65"></script>
-<script src="js/reading.js?v=65"></script>
-<script src="js/finance.js?v=65"></script>
-<script src="js/calendar.js?v=65"></script>
-<script src="js/rewards.js?v=65"></script>
-<script src="js/achievements.js?v=65"></script>
-<script src="js/main.js?v=65"></script>
+<script src="js/config.js?v=68"></script>
+<script src="js/storage.js?v=68"></script>
+<script src="js/cloud.js?v=68"></script>
+<script src="js/sound.js?v=68"></script>
+<script src="js/assistant.js?v=68"></script>
+<script src="js/character.js?v=68"></script>
+<script src="js/tasks.js?v=68"></script>
+<script src="js/habits.js?v=68"></script>
+<script src="js/projects.js?v=68"></script>
+<script src="js/story.js?v=68"></script>
+<script src="js/home.js?v=68"></script>
+<script src="js/reading.js?v=68"></script>
+<script src="js/finance.js?v=68"></script>
+<script src="js/calendar.js?v=68"></script>
+<script src="js/rewards.js?v=68"></script>
+<script src="js/achievements.js?v=68"></script>
+<script src="js/main.js?v=68"></script>
 </body>
 </html>

@@ -37,6 +37,7 @@ let _skipNextSave = true;
 
 function renderAll() {
   renderCharacter(state);
+  renderHome(state);
   renderTasks(state);
   renderBooks(state);
   renderHabits(state);
@@ -121,7 +122,10 @@ function switchTab(tabId) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(tabId).classList.add('active');
-  document.querySelector(`.tab-btn[data-tab="${tabId}"]`).classList.add('active');
+  // 同一個分頁可能同時有「主要導覽」跟「冒險選單」裡的按鈕，兩個都要標記成選取狀態
+  document.querySelectorAll(`.tab-btn[data-tab="${tabId}"]`).forEach(b => b.classList.add('active'));
+  document.getElementById('adventure-menu').classList.remove('show');
+  document.getElementById('adventure-menu-toggle').setAttribute('aria-expanded', 'false');
 }
 
 function initSoundOnce() {
@@ -397,8 +401,88 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target.id === 'edit-modal') closeEditModal();
   });
 
-  document.querySelectorAll('.tab-btn').forEach(btn => {
+  document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+
+  // 冒險選單開合（桌面版下拉面板／手機版下方選單）
+  document.getElementById('adventure-menu-toggle').addEventListener('click', () => {
+    const menu = document.getElementById('adventure-menu');
+    const willShow = !menu.classList.contains('show');
+    menu.classList.toggle('show', willShow);
+    document.getElementById('adventure-menu-toggle').setAttribute('aria-expanded', String(willShow));
+  });
+
+  // 首頁
+  document.getElementById('tab-home').addEventListener('click', e => {
+    if (e.target.matches('.primary-task-complete-btn')) {
+      const kind = e.target.dataset.kind;
+      const id = e.target.dataset.id;
+      const { willBeDone, domain } = completeChecklistItem(state, kind, id);
+      sound[willBeDone ? 'playComplete' : 'playClick']();
+      if (willBeDone && domain) onTaskOrHabitComplete(state, domain);
+      if (kind === 'story' && willBeDone) maybeCompileStory(state, id);
+      if (willBeDone) {
+        const card = e.target.closest('.primary-task-card');
+        const expEl = card && card.querySelector('.task-exp');
+        celebrateTaskComplete(card, expEl ? expEl.textContent : '✨ 完成！');
+        _homePrimaryTaskIndex = 0;
+        setTimeout(renderAll, 550);
+      } else {
+        renderAll();
+      }
+    } else if (e.target.id === 'home-cycle-task-btn') {
+      cyclePrimaryTask(state);
+      renderHomePrimaryTask(state);
+    } else if (e.target.id === 'home-view-all-tasks-btn') {
+      switchTab('tab-tasks');
+    } else if (e.target.id === 'home-add-task-btn') {
+      switchTab('tab-tasks');
+      document.getElementById('task-text').focus();
+    } else if (e.target.id === 'home-suggest-task-btn') {
+      addAssistantMessage(state, buildDailySuggestion(state), 'suggestion');
+      sound.playClick();
+      renderAll();
+      switchTab('tab-assistant');
+    } else if (e.target.matches('.home-project-continue-btn')) {
+      const id = e.target.dataset.id;
+      const found = findSubtask(state, id);
+      const domain = found ? found.project.domain : undefined;
+      toggleProjectSubtask(state, id);
+      sound.playComplete();
+      if (domain) onTaskOrHabitComplete(state, domain);
+      renderAll();
+    } else if (e.target.id === 'home-view-all-projects-btn') {
+      switchTab('tab-projects');
+    } else if (e.target.id === 'home-create-project-btn') {
+      switchTab('tab-projects');
+      document.getElementById('project-title').focus();
+    } else if (e.target.matches('.home-habit-check')) {
+      const id = e.target.dataset.id;
+      const domain = (state.habits.find(h => h.id === id) || {}).domain;
+      toggleHabit(state, id);
+      sound.playComplete();
+      if (domain) onTaskOrHabitComplete(state, domain);
+      renderAll();
+    } else if (e.target.id === 'home-view-all-habits-btn') {
+      switchTab('tab-habits');
+    } else if (e.target.matches('.home-coach-action-btn')) {
+      const type = e.target.dataset.actionType;
+      const tab = e.target.dataset.actionTab;
+      const id = e.target.dataset.actionId;
+      if (type === 'switch-tab') {
+        switchTab(tab);
+      } else if (type === 'complete-habit') {
+        const domain = (state.habits.find(h => h.id === id) || {}).domain;
+        toggleHabit(state, id);
+        sound.playComplete();
+        if (domain) onTaskOrHabitComplete(state, domain);
+        renderAll();
+      } else if (type === 'add-task') {
+        switchTab('tab-tasks');
+        document.getElementById('task-text').focus();
+      }
+    }
   });
 
   // 用 input（每次按鍵）而不是 change（要失焦才觸發），避免在手機上快速切換分頁
@@ -529,34 +613,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('task-list').addEventListener('click', e => {
     if (e.target.matches('input[type="checkbox"]')) {
-      const willBeDone = e.target.checked;
       const id = e.target.dataset.id;
       const kind = e.target.dataset.kind;
-      let domain;
-      if (kind === 'event') {
-        domain = (state.events.find(ev => ev.id === id) || {}).domain;
-        toggleEventDone(state, id);
-      } else if (kind === 'habit') {
-        domain = (state.habits.find(h => h.id === id) || {}).domain;
-        toggleHabit(state, id);
-      } else if (kind === 'reading') {
-        domain = 'reading';
-        toggleReadingCheckin(state, id);
-      } else if (kind === 'project') {
-        const found = findSubtask(state, id);
-        domain = found ? found.project.domain : undefined;
-        toggleProjectSubtask(state, id);
-      } else if (kind === 'readingplan') {
-        domain = 'reading';
-        toggleReadingPlanItem(state, id);
-      } else if (kind === 'story') {
-        const found = findStoryChapter(state, id);
-        domain = found ? found.quest.domain : undefined;
-        toggleStoryChapter(state, id);
-      } else {
-        domain = (state.tasks.find(t => t.id === id) || {}).domain;
-        toggleTask(state, id);
-      }
+      const { willBeDone, domain } = completeChecklistItem(state, kind, id);
       sound[willBeDone ? 'playComplete' : 'playClick']();
       if (willBeDone && domain) onTaskOrHabitComplete(state, domain);
       if (kind === 'story' && willBeDone) maybeCompileStory(state, id);
@@ -788,28 +847,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('event-list').addEventListener('click', e => {
     if (e.target.matches('.event-check')) {
-      const willBeDone = e.target.checked;
       const id = e.target.dataset.id;
       const kind = e.target.dataset.kind;
-      let domain;
-      if (kind === 'task') {
-        domain = (state.tasks.find(t => t.id === id) || {}).domain;
-        toggleTask(state, id);
-      } else if (kind === 'project') {
-        const found = findSubtask(state, id);
-        domain = found ? found.project.domain : undefined;
-        toggleProjectSubtask(state, id);
-      } else if (kind === 'readingplan') {
-        domain = 'reading';
-        toggleReadingPlanItem(state, id);
-      } else if (kind === 'story') {
-        const found = findStoryChapter(state, id);
-        domain = found ? found.quest.domain : undefined;
-        toggleStoryChapter(state, id);
-      } else {
-        domain = (state.events.find(ev => ev.id === id) || {}).domain;
-        toggleEventDone(state, id);
-      }
+      const { willBeDone, domain } = completeChecklistItem(state, kind, id);
       sound[willBeDone ? 'playComplete' : 'playClick']();
       if (willBeDone && domain) onTaskOrHabitComplete(state, domain);
       if (kind === 'story' && willBeDone) maybeCompileStory(state, id);

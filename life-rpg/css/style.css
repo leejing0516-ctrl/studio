@@ -271,23 +271,59 @@ h1 {
 .assistant-emphasis { color: #b9782a; font-weight: 700; }
 .chat-bubble-user .assistant-emphasis { color: #7a4a1e; }
 
-/* ── 角色卡 ───────────────────────────── */
-.char-card {
+/* ── 角色狀態列（首頁上方，全站常駐）───────────────────── */
+.status-bar {
   display: flex;
-  gap: 28px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-}
-
-.char-left {
-  flex: 1;
-  min-width: 220px;
-  display: flex;
-  flex-direction: column;
   align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding: 14px 20px;
+}
+.status-bar .char-avatar-ring {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+}
+.status-bar .avatar-edit-badge {
+  width: 18px;
+  height: 18px;
+  font-size: 9px;
+  bottom: 0;
+  right: 0;
+}
+.status-main { flex: 1; min-width: 0; }
+.status-name-row {
+  justify-content: flex-start;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.status-bar #char-name {
+  text-align: left;
+  font-size: 15px;
+  max-width: 140px;
+  width: auto;
+  border-bottom: none;
+}
+.status-bar .exp-bar-bg { max-width: none; height: 8px; }
+.status-exp-row {
+  display: flex;
+  align-items: baseline;
   gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+}
+#char-exp-text { font-size: 12px; color: var(--text-dim); }
+.status-exp-remain { font-size: 11.5px; color: #b9782a; font-weight: 700; }
+.status-stats {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  margin-top: 0;
+  flex-shrink: 0;
+  font-size: 13px;
 }
 
+/* ── 角色卡 ───────────────────────────── */
 .char-avatar-ring {
   position: relative;
   width: 120px;
@@ -461,14 +497,51 @@ h1 {
 .skill-bar-bg { max-width: none; height: 10px; }
 .skill-bar-fill { height: 100%; border-radius: 999px; }
 
-/* ── 分頁 ───────────────────────────── */
-.tabs {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-  gap: 8px;
-  margin-bottom: 14px;
-}
+/* ── 主要導覽／冒險選單 ───────────────────────────── */
+.nav-wrap { position: relative; margin-bottom: 14px; }
 
+.primary-nav {
+  display: flex;
+  gap: 8px;
+}
+.primary-nav .tab-btn { flex: 1; }
+
+.adventure-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 300px;
+  max-width: 90vw;
+  max-height: 70vh;
+  overflow-y: auto;
+  z-index: 150;
+  background: var(--panel);
+  border: 2px solid var(--border-gold);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+.adventure-menu.show { display: block; }
+
+.menu-group { margin-bottom: 14px; }
+.menu-group:last-child { margin-bottom: 0; }
+.menu-group-title {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+.menu-item-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 6px;
+}
+.menu-item-btn:last-child { margin-bottom: 0; }
+
+/* ── 分頁 ───────────────────────────── */
 .tab-btn {
   background: var(--panel);
   border: 1px solid var(--border-dim);
@@ -497,6 +570,75 @@ h1 {
 
 .tab-panel { display: none; margin-bottom: 20px; }
 .tab-panel.active { display: block; }
+
+/* ── 首頁 ───────────────────────────── */
+.home-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  grid-template-areas:
+    "primary coach"
+    "project habit";
+  gap: 16px;
+}
+.home-primary-col { grid-area: primary; }
+.home-coach-col { grid-area: coach; }
+.home-project-col { grid-area: project; }
+.home-habit-col { grid-area: habit; }
+
+.home-card {
+  background: linear-gradient(180deg, #fff, var(--panel-2));
+  border: 1px solid var(--border-dim);
+  border-radius: 14px;
+  padding: 16px;
+  height: 100%;
+}
+.home-card-title {
+  font-size: 13px;
+  color: var(--text-dim);
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.home-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.primary-task-card {
+  border-left: 5px solid var(--gold);
+  box-shadow: 0 4px 16px rgba(227, 171, 92, 0.18);
+}
+.primary-task-name { font-size: 19px; margin: 8px 0; color: var(--text); }
+.primary-task-meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+.primary-task-levelup-hint {
+  display: inline-block;
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+  color: #4a2e05;
+  font-weight: 700;
+  font-size: 12.5px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+.primary-task-complete-btn { font-size: 15px; padding: 11px 22px; }
+
+.home-project-header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.home-project-next { font-size: 13px; color: var(--text); margin: 6px 0 0; }
+
+.home-coach-tip-row { display: flex; gap: 10px; align-items: flex-start; }
+.home-coach-avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border-gold);
+  flex-shrink: 0;
+}
+.home-coach-text { font-size: 13.5px; line-height: 1.5; margin: 0; }
+
+.home-habit-list { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+.home-habit-item { padding: 8px 10px; margin-bottom: 0; }
+.home-habit-alldone { color: var(--success); font-weight: 700; margin: 10px 0; }
 
 .tab-hint {
   font-size: 13px;
@@ -1345,7 +1487,45 @@ ul { list-style: none; padding: 0; margin: 0; }
 @media (max-width: 640px) {
   .app { padding-top: 44px; }
   .title-logo { max-width: 280px; }
-  .char-card { flex-direction: column; align-items: center; }
   .levelup-level { font-size: 40px; }
   .assistant-widget { flex-wrap: wrap; }
+
+  body { padding-bottom: 84px; } /* 留空間給底部固定導覽列 */
+
+  .status-bar { padding: 10px 14px; }
+  .status-bar #char-name { max-width: 90px; font-size: 13.5px; }
+  .status-exp-remain { display: block; }
+
+  .nav-wrap { position: static; }
+  .primary-nav {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 200;
+    margin-bottom: 0;
+    background: var(--panel);
+    border-top: 2px solid var(--border-gold);
+    border-radius: 0;
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+    box-shadow: 0 -4px 16px rgba(201, 156, 100, 0.18);
+  }
+  .primary-nav .tab-btn { font-size: 12px; padding: 8px 4px; }
+
+  .adventure-menu {
+    position: fixed;
+    left: 0; right: 0; top: auto;
+    bottom: 68px;
+    width: auto;
+    max-width: none;
+    border-radius: 18px 18px 0 0;
+    max-height: 65vh;
+  }
+
+  .home-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "primary"
+      "coach"
+      "habit"
+      "project";
+  }
 }
