@@ -12,6 +12,7 @@ let _cloudDb = null;
 let _cloudUser = null;
 let _cloudSaveTimer = null;
 let _cloudApplyingRemote = false;
+let _cloudUnsub = null;
 
 function initCloud() {
   if (!window.firebase) return;
@@ -27,7 +28,35 @@ function initCloud() {
   _cloudAuth.onAuthStateChanged(user => {
     _cloudUser = user;
     updateCloudUI();
-    if (user) syncOnLogin(user);
+    if (user) {
+      syncOnLogin(user);
+      attachCloudListener(user);
+    } else if (_cloudUnsub) {
+      _cloudUnsub();
+      _cloudUnsub = null;
+    }
+  });
+}
+
+// 即時監聽雲端文件：只要其他裝置（手機/電腦）推送了更新的資料，這個分頁就會自動套用，
+// 不用手動重新整理，也避免自己這邊的舊資料之後不小心把別台裝置的新完成紀錄蓋掉
+function attachCloudListener(user) {
+  if (_cloudUnsub) { _cloudUnsub(); _cloudUnsub = null; }
+  const docRef = _cloudDb.collection('life_rpg_users').doc(user.uid);
+  _cloudUnsub = docRef.onSnapshot(snap => {
+    if (!snap.exists) return;
+    const data = snap.data();
+    if (!data || !data.state) return;
+    const cloudState = data.state;
+    if ((cloudState.updatedAt || 0) > (state.updatedAt || 0)) {
+      _cloudApplyingRemote = true;
+      state = normalizeState(cloudState);
+      renderAll();
+      _cloudApplyingRemote = false;
+      setSyncStatus('✅ 已同步其他裝置的更新');
+    }
+  }, e => {
+    console.error('雲端即時同步監聽失敗', e);
   });
 }
 

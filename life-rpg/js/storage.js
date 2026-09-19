@@ -92,7 +92,11 @@ function migrateOldState(base) {
 let _localSaveFailed = false;
 
 function saveState(state) {
-  state.updatedAt = Date.now();
+  // 套用雲端其他裝置傳來的資料時不要蓋掉它原本的 updatedAt，
+  // 否則本機時間一蓋過去，之後反而可能誤判自己比其他裝置更新，忽略掉真正更新的資料
+  if (typeof _cloudApplyingRemote === 'undefined' || !_cloudApplyingRemote) {
+    state.updatedAt = Date.now();
+  }
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (e) {
