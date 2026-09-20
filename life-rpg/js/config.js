@@ -8,7 +8,9 @@ const DOMAINS = [
 ];
 
 const DEFAULT_AVATAR_SRC = 'assets/avatar_default_20260913_081358.png';
-const AVATAR_SIZE = 240;
+// 角色圖片裁切成 3:4 直式卡片比例，適合半身照（也保留去背 PNG 的透明背景）
+const AVATAR_CARD_WIDTH = 300;
+const AVATAR_CARD_HEIGHT = 400;
 
 const TASK_EXP = { easy: 10, normal: 15, hard: 25 };
 const EXP_PER_PAGE = 2;

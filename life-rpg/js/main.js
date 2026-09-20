@@ -506,7 +506,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  document.getElementById('avatar-ring').addEventListener('click', () => {
+  document.getElementById('avatar-edit-card').addEventListener('click', () => {
     document.getElementById('avatar-upload').click();
   });
 

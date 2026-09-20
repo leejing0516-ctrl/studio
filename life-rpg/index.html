@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=75">
+<link rel="stylesheet" href="css/style.css?v=76">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -47,11 +47,9 @@
   </div>
 
   <div class="status-bar frame">
-    <div class="char-avatar-ring status-avatar-ring" id="avatar-ring" title="點擊更換頭像">
-      <img src="assets/avatar_default_20260913_081358.png" alt="角色頭像" id="char-avatar-img" class="char-avatar-img">
-      <span class="avatar-edit-badge">📷</span>
+    <div class="status-avatar-card">
+      <img src="assets/avatar_default_20260913_081358.png" alt="角色圖片" id="char-avatar-img" class="avatar-card-img">
     </div>
-    <input type="file" id="avatar-upload" accept="image/*" class="visually-hidden-input">
     <div class="status-main">
       <div class="char-name-row status-name-row">
         <span id="char-name-display" class="status-name-display">我的角色</span>
@@ -142,24 +140,32 @@
 
     <div class="settings-section">
       <h3 class="settings-section-title">👤 角色資訊</h3>
-      <div class="assistant-settings-fields">
-        <div>
-          <p class="tab-hint" style="margin:0 0 4px;">角色名稱：</p>
-          <input type="text" id="char-name" value="我的角色" placeholder="幫自己的角色取個名字" style="width:100%;">
+      <div class="settings-character-row">
+        <div class="settings-avatar-card" id="avatar-edit-card" title="點擊上傳/更換角色圖片">
+          <img src="assets/avatar_default_20260913_081358.png" alt="角色圖片" id="char-avatar-img-settings" class="avatar-card-img">
+          <span class="avatar-edit-badge">📷</span>
         </div>
-        <div>
-          <p class="tab-hint" style="margin:0 0 4px;">🎭 職稱：</p>
-          <input type="text" id="char-title" placeholder="給自己一個稱號…" style="width:100%;">
-        </div>
-        <div>
-          <p class="tab-hint" style="margin:0 0 4px;">🎂 年齡：</p>
-          <input type="text" id="char-age" placeholder="—" style="width:100%;">
-        </div>
-        <div>
-          <p class="tab-hint" style="margin:0 0 4px;">✨ 特質：</p>
-          <input type="text" id="char-traits" placeholder="給自己貼幾個標籤…" style="width:100%;">
+        <input type="file" id="avatar-upload" accept="image/*" class="visually-hidden-input">
+        <div class="assistant-settings-fields" style="flex:1; margin-top:0;">
+          <div>
+            <p class="tab-hint" style="margin:0 0 4px;">角色名稱：</p>
+            <input type="text" id="char-name" value="我的角色" placeholder="幫自己的角色取個名字" style="width:100%;">
+          </div>
+          <div>
+            <p class="tab-hint" style="margin:0 0 4px;">🎭 職稱：</p>
+            <input type="text" id="char-title" placeholder="給自己一個稱號…" style="width:100%;">
+          </div>
+          <div>
+            <p class="tab-hint" style="margin:0 0 4px;">🎂 年齡：</p>
+            <input type="text" id="char-age" placeholder="—" style="width:100%;">
+          </div>
+          <div>
+            <p class="tab-hint" style="margin:0 0 4px;">✨ 特質：</p>
+            <input type="text" id="char-traits" placeholder="給自己貼幾個標籤…" style="width:100%;">
+          </div>
         </div>
       </div>
+      <p class="tab-hint" style="margin-top:10px;">💡 建議上傳半身照，若圖片已去背（透明背景）會更好看。</p>
     </div>
 
     <div class="settings-section">
@@ -427,22 +433,22 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="js/config.js?v=75"></script>
-<script src="js/storage.js?v=75"></script>
-<script src="js/cloud.js?v=75"></script>
-<script src="js/sound.js?v=75"></script>
-<script src="js/assistant.js?v=75"></script>
-<script src="js/character.js?v=75"></script>
-<script src="js/tasks.js?v=75"></script>
-<script src="js/habits.js?v=75"></script>
-<script src="js/projects.js?v=75"></script>
-<script src="js/story.js?v=75"></script>
-<script src="js/home.js?v=75"></script>
-<script src="js/reading.js?v=75"></script>
-<script src="js/finance.js?v=75"></script>
-<script src="js/calendar.js?v=75"></script>
-<script src="js/rewards.js?v=75"></script>
-<script src="js/achievements.js?v=75"></script>
-<script src="js/main.js?v=75"></script>
+<script src="js/config.js?v=76"></script>
+<script src="js/storage.js?v=76"></script>
+<script src="js/cloud.js?v=76"></script>
+<script src="js/sound.js?v=76"></script>
+<script src="js/assistant.js?v=76"></script>
+<script src="js/character.js?v=76"></script>
+<script src="js/tasks.js?v=76"></script>
+<script src="js/habits.js?v=76"></script>
+<script src="js/projects.js?v=76"></script>
+<script src="js/story.js?v=76"></script>
+<script src="js/home.js?v=76"></script>
+<script src="js/reading.js?v=76"></script>
+<script src="js/finance.js?v=76"></script>
+<script src="js/calendar.js?v=76"></script>
+<script src="js/rewards.js?v=76"></script>
+<script src="js/achievements.js?v=76"></script>
+<script src="js/main.js?v=76"></script>
 </body>
 </html>

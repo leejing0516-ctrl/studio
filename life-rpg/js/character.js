@@ -22,15 +22,28 @@ function processAvatarFile(file, callback, onError) {
       settled = true;
       clearTimeout(timeout);
       const canvas = document.createElement('canvas');
-      canvas.width = AVATAR_SIZE;
-      canvas.height = AVATAR_SIZE;
+      canvas.width = AVATAR_CARD_WIDTH;
+      canvas.height = AVATAR_CARD_HEIGHT;
       const ctx = canvas.getContext('2d');
-      const minSide = Math.min(img.width, img.height);
-      const sx = (img.width - minSide) / 2;
-      const sy = (img.height - minSide) / 2;
-      ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, AVATAR_SIZE, AVATAR_SIZE);
+      // 裁成 3:4 直式卡片比例，適合半身照；來源偏高時從上方往下取一點，避免臉被裁到下面去
+      const targetRatio = AVATAR_CARD_WIDTH / AVATAR_CARD_HEIGHT;
+      const srcRatio = img.width / img.height;
+      let sx, sy, sw, sh;
+      if (srcRatio > targetRatio) {
+        sh = img.height;
+        sw = sh * targetRatio;
+        sx = (img.width - sw) / 2;
+        sy = 0;
+      } else {
+        sw = img.width;
+        sh = sw / targetRatio;
+        sx = 0;
+        sy = (img.height - sh) * 0.3;
+      }
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, AVATAR_CARD_WIDTH, AVATAR_CARD_HEIGHT);
       try {
-        callback(canvas.toDataURL('image/jpeg', 0.85));
+        // 用 PNG 保留透明背景（例如已去背的半身照）
+        callback(canvas.toDataURL('image/png'));
       } catch (err) {
         fail('圖片處理失敗：' + err.message);
       }
@@ -58,8 +71,11 @@ function renderCharacter(state) {
   if (nameInput) nameInput.value = state.character.name;
   const nameDisplay = document.getElementById('char-name-display');
   if (nameDisplay) nameDisplay.textContent = state.character.name;
+  const avatarSrc = state.character.avatar || DEFAULT_AVATAR_SRC;
   const avatarImg = document.getElementById('char-avatar-img');
-  if (avatarImg) avatarImg.src = state.character.avatar || DEFAULT_AVATAR_SRC;
+  if (avatarImg) avatarImg.src = avatarSrc;
+  const avatarImgSettings = document.getElementById('char-avatar-img-settings');
+  if (avatarImgSettings) avatarImgSettings.src = avatarSrc;
   ['title', 'age', 'traits'].forEach(field => {
     const el = document.getElementById('char-' + field);
     if (el && document.activeElement !== el) el.value = state.character[field] || '';
