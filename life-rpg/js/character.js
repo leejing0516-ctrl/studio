@@ -110,8 +110,6 @@ function renderCharacter(state) {
   const pct = Math.min(100, Math.round((info.expIntoLevel / info.expToNext) * 100));
   document.getElementById('char-exp-bar').style.width = pct + '%';
   document.getElementById('char-exp-text').textContent = `${info.expIntoLevel} / ${info.expToNext} EXP`;
-  const remainEl = document.getElementById('char-exp-remain');
-  if (remainEl) remainEl.textContent = `距離 Lv.${info.level + 1} 還差 ${info.expToNext - info.expIntoLevel} EXP`;
   document.getElementById('streak-count').textContent = state.streak.count;
   document.getElementById('gold-count').textContent = state.gold;
 

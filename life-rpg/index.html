@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=79">
+<link rel="stylesheet" href="css/style.css?v=81">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -54,9 +54,9 @@
         <span class="frame-corner corner-tr" aria-hidden="true"></span>
         <span class="frame-corner corner-bl" aria-hidden="true"></span>
         <span class="frame-corner corner-br" aria-hidden="true"></span>
-        <div class="character-name-badge">
-          <span id="char-name-display">我的角色</span>
-        </div>
+      </div>
+      <div class="character-name-caption">
+        <span id="char-name-display">我的角色</span>
       </div>
     </div>
     <div class="character-bio-col">
@@ -69,6 +69,8 @@
     <div class="character-skill-col">
       <div class="character-level-row">
         <span id="char-level" class="level-badge">Lv. 1</span>
+        <span class="streak">🔥 <span id="streak-count">0</span></span>
+        <span class="gold">💰 <span id="gold-count">0</span></span>
       </div>
       <div class="gauge-row">
         <span class="gauge-icon">✨</span>
@@ -76,13 +78,8 @@
       </div>
       <div class="status-exp-row">
         <span id="char-exp-text">0 / 100 EXP</span>
-        <span id="char-exp-remain" class="status-exp-remain"></span>
       </div>
       <div id="status-skill-bars" class="status-skill-bars"></div>
-      <div class="stat-row status-stats">
-        <span class="streak">🔥 <span id="streak-count">0</span></span>
-        <span class="gold">💰 <span id="gold-count">0</span></span>
-      </div>
     </div>
   </div>
 
@@ -452,22 +449,22 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="js/config.js?v=79"></script>
-<script src="js/storage.js?v=79"></script>
-<script src="js/cloud.js?v=79"></script>
-<script src="js/sound.js?v=79"></script>
-<script src="js/assistant.js?v=79"></script>
-<script src="js/character.js?v=79"></script>
-<script src="js/tasks.js?v=79"></script>
-<script src="js/habits.js?v=79"></script>
-<script src="js/projects.js?v=79"></script>
-<script src="js/story.js?v=79"></script>
-<script src="js/home.js?v=79"></script>
-<script src="js/reading.js?v=79"></script>
-<script src="js/finance.js?v=79"></script>
-<script src="js/calendar.js?v=79"></script>
-<script src="js/rewards.js?v=79"></script>
-<script src="js/achievements.js?v=79"></script>
-<script src="js/main.js?v=79"></script>
+<script src="js/config.js?v=81"></script>
+<script src="js/storage.js?v=81"></script>
+<script src="js/cloud.js?v=81"></script>
+<script src="js/sound.js?v=81"></script>
+<script src="js/assistant.js?v=81"></script>
+<script src="js/character.js?v=81"></script>
+<script src="js/tasks.js?v=81"></script>
+<script src="js/habits.js?v=81"></script>
+<script src="js/projects.js?v=81"></script>
+<script src="js/story.js?v=81"></script>
+<script src="js/home.js?v=81"></script>
+<script src="js/reading.js?v=81"></script>
+<script src="js/finance.js?v=81"></script>
+<script src="js/calendar.js?v=81"></script>
+<script src="js/rewards.js?v=81"></script>
+<script src="js/achievements.js?v=81"></script>
+<script src="js/main.js?v=81"></script>
 </body>
 </html>

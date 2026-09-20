@@ -274,7 +274,7 @@ h1 {
 /* ── 角色狀態列（首頁上方，全站常駐，仿遊戲「人物信息」版面）──── */
 .status-bar {
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 22px;
   margin-bottom: 14px;
   padding: 20px 22px 18px;
@@ -285,6 +285,7 @@ h1 {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
 }
 .character-portrait-frame {
   position: relative;
@@ -309,33 +310,33 @@ h1 {
 .corner-bl { bottom: -2px; left: -2px; transform: scaleY(-1); }
 .corner-br { bottom: -2px; right: -2px; transform: scale(-1, -1); }
 
-.character-name-badge {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  max-width: calc(100% - 16px);
-  background: rgba(255, 253, 250, 0.92);
+.character-name-caption {
+  margin-top: 10px;
+  max-width: 100%;
+  background: linear-gradient(180deg, #fffaf1, #fff2e0);
   border: 1px solid var(--gold);
   border-radius: 999px;
-  padding: 3px 11px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  padding: 4px 16px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
-.character-name-badge span {
-  font-size: 12px;
+.character-name-caption span {
+  font-size: 13px;
   font-weight: 700;
   color: #7a4a1e;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   display: block;
+  max-width: 180px;
 }
 
-.character-bio-col, .character-skill-col { flex: 1; min-width: 0; padding-top: 4px; }
+.character-bio-col { flex: 1; min-width: 0; padding-top: 4px; }
+.character-skill-col { flex: 1; min-width: 0; padding-top: 4px; }
 
 @media (min-width: 641px) {
   .character-portrait-frame { width: 220px; height: 293px; }
   .character-portrait-frame .frame-corner { width: 52px; height: 58px; }
-  .character-name-badge span { font-size: 13px; }
+  .character-name-caption span { font-size: 14px; max-width: 220px; }
 }
 
 /* ── 簡介欄：職稱牌匾 + 年齡/特質標籤 + 自我介紹 ──────────── */
@@ -368,7 +369,7 @@ h1 {
 
 .character-bio-text {
   margin: 10px 0 0;
-  font-size: 12.5px;
+  font-size: 14px;
   line-height: 1.6;
   color: var(--text);
   display: -webkit-box;
@@ -378,7 +379,14 @@ h1 {
 }
 .character-bio-text.character-bio-empty { color: var(--text-dim); font-style: italic; }
 
-.character-level-row { margin-bottom: 8px; }
+.character-level-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
 
 .gauge-row {
   display: flex;
@@ -395,7 +403,6 @@ h1 {
   margin-top: 5px;
 }
 #char-exp-text { font-size: 12px; color: var(--text-dim); }
-.status-exp-remain { font-size: 11.5px; color: #b9782a; font-weight: 700; }
 
 .status-roleplay-row {
   display: flex;
@@ -412,13 +419,6 @@ h1 {
   padding: 3px 10px;
   white-space: nowrap;
 }
-.status-bar .status-stats {
-  flex-direction: row;
-  gap: 14px;
-  margin-top: 12px;
-  font-size: 13px;
-}
-
 /* ── 技能欄：五大領域技能條（從技能總覽頁移過來）──────────── */
 .status-skill-bars {
   display: flex;
@@ -1668,7 +1668,6 @@ ul { list-style: none; padding: 0; margin: 0; }
   .character-bio-col { text-align: center; }
   .character-bio-text { text-align: left; }
   .status-roleplay-row { justify-content: center; }
-  .status-exp-remain { display: block; }
 
   .settings-character-row { flex-wrap: wrap; }
 
