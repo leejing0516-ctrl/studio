@@ -53,16 +53,39 @@ function processAvatarFile(file, callback, onError) {
   reader.readAsDataURL(file);
 }
 
-// 職稱/年齡/特質只有填了才顯示成小標籤，沒填就完全不出現，不在首頁露出空白輸入框
+// 年齡/特質只有填了才顯示成小標籤，沒填就完全不出現，不在首頁露出空白輸入框
+// （職稱改由 renderCharacterTitlePlaque 顯示在簡介欄的牌匾上，這裡不重複顯示）
 function renderStatusRoleplayDisplay(state) {
   const el = document.getElementById('status-roleplay-display');
   if (!el) return;
   const c = state.character;
   const chips = [];
-  if (c.title) chips.push(`🎭 ${escapeHtml(c.title)}`);
   if (c.age) chips.push(`🎂 ${escapeHtml(c.age)}`);
   if (c.traits) chips.push(`✨ ${escapeHtml(c.traits)}`);
   el.innerHTML = chips.map(t => `<span class="status-roleplay-chip">${t}</span>`).join('');
+}
+
+function renderCharacterTitlePlaque(state) {
+  const wrap = document.getElementById('char-title-plaque');
+  const text = document.getElementById('char-title-display');
+  if (!wrap || !text) return;
+  const title = state.character.title;
+  wrap.style.display = title ? '' : 'none';
+  if (title) text.textContent = title;
+}
+
+// 角色簡介：沒填時顯示引導文字，帶使用者去設定頁寫（跟首頁其他卡片的空狀態邏輯一致）
+function renderCharacterBio(state) {
+  const el = document.getElementById('char-bio-display');
+  if (!el) return;
+  const bio = state.character.bio;
+  if (bio) {
+    el.textContent = bio;
+    el.classList.remove('character-bio-empty');
+  } else {
+    el.textContent = '到「設定」頁寫一段屬於你的角色簡介吧！';
+    el.classList.add('character-bio-empty');
+  }
 }
 
 function renderCharacter(state) {
@@ -76,11 +99,13 @@ function renderCharacter(state) {
   if (avatarImg) avatarImg.src = avatarSrc;
   const avatarImgSettings = document.getElementById('char-avatar-img-settings');
   if (avatarImgSettings) avatarImgSettings.src = avatarSrc;
-  ['title', 'age', 'traits'].forEach(field => {
+  ['title', 'age', 'traits', 'bio'].forEach(field => {
     const el = document.getElementById('char-' + field);
     if (el && document.activeElement !== el) el.value = state.character[field] || '';
   });
   renderStatusRoleplayDisplay(state);
+  renderCharacterTitlePlaque(state);
+  renderCharacterBio(state);
   document.getElementById('char-level').textContent = `Lv. ${info.level}`;
   const pct = Math.min(100, Math.round((info.expIntoLevel / info.expToNext) * 100));
   document.getElementById('char-exp-bar').style.width = pct + '%';
@@ -110,7 +135,8 @@ function showLevelUp(state, level) {
 }
 
 function renderSkillBars(state) {
-  const container = document.getElementById('skill-bars');
+  const container = document.getElementById('status-skill-bars');
+  if (!container) return;
   container.innerHTML = '';
   DOMAINS.forEach(d => {
     const info = levelFromExp(state.skills[d.key].exp);

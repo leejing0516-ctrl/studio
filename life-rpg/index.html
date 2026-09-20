@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=78">
+<link rel="stylesheet" href="css/style.css?v=79">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -59,7 +59,14 @@
         </div>
       </div>
     </div>
-    <div class="status-main">
+    <div class="character-bio-col">
+      <div id="char-title-plaque" class="character-title-plaque">
+        <span id="char-title-display"></span>
+      </div>
+      <div class="status-roleplay-row" id="status-roleplay-display"></div>
+      <p id="char-bio-display" class="character-bio-text"></p>
+    </div>
+    <div class="character-skill-col">
       <div class="character-level-row">
         <span id="char-level" class="level-badge">Lv. 1</span>
       </div>
@@ -71,7 +78,7 @@
         <span id="char-exp-text">0 / 100 EXP</span>
         <span id="char-exp-remain" class="status-exp-remain"></span>
       </div>
-      <div class="status-roleplay-row" id="status-roleplay-display"></div>
+      <div id="status-skill-bars" class="status-skill-bars"></div>
       <div class="stat-row status-stats">
         <span class="streak">🔥 <span id="streak-count">0</span></span>
         <span class="gold">💰 <span id="gold-count">0</span></span>
@@ -137,10 +144,7 @@
   </div>
 
   <div id="tab-character" class="tab-panel frame">
-    <div class="skill-panel">
-      <h2>技能總覽</h2>
-      <div id="skill-bars"></div>
-    </div>
+    <p class="tab-hint">五大領域的技能條已經移到首頁的人物資訊卡了，這裡是雷達圖總覽。</p>
     <div class="char-right">
       <canvas id="radarCanvas" width="380" height="360"></canvas>
     </div>
@@ -175,6 +179,10 @@
             <input type="text" id="char-traits" placeholder="給自己貼幾個標籤…" style="width:100%;">
           </div>
         </div>
+      </div>
+      <div style="margin-top:12px;">
+        <p class="tab-hint" style="margin:0 0 4px;">📜 角色簡介：</p>
+        <textarea id="char-bio" rows="3" placeholder="寫一段屬於你的角色簡介，會顯示在首頁的人物資訊卡上…" style="width:100%;"></textarea>
       </div>
       <p class="tab-hint" style="margin-top:10px;">💡 建議上傳半身照，若圖片已去背（透明背景）會更好看。</p>
     </div>
@@ -444,22 +452,22 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="js/config.js?v=78"></script>
-<script src="js/storage.js?v=78"></script>
-<script src="js/cloud.js?v=78"></script>
-<script src="js/sound.js?v=78"></script>
-<script src="js/assistant.js?v=78"></script>
-<script src="js/character.js?v=78"></script>
-<script src="js/tasks.js?v=78"></script>
-<script src="js/habits.js?v=78"></script>
-<script src="js/projects.js?v=78"></script>
-<script src="js/story.js?v=78"></script>
-<script src="js/home.js?v=78"></script>
-<script src="js/reading.js?v=78"></script>
-<script src="js/finance.js?v=78"></script>
-<script src="js/calendar.js?v=78"></script>
-<script src="js/rewards.js?v=78"></script>
-<script src="js/achievements.js?v=78"></script>
-<script src="js/main.js?v=78"></script>
+<script src="js/config.js?v=79"></script>
+<script src="js/storage.js?v=79"></script>
+<script src="js/cloud.js?v=79"></script>
+<script src="js/sound.js?v=79"></script>
+<script src="js/assistant.js?v=79"></script>
+<script src="js/character.js?v=79"></script>
+<script src="js/tasks.js?v=79"></script>
+<script src="js/habits.js?v=79"></script>
+<script src="js/projects.js?v=79"></script>
+<script src="js/story.js?v=79"></script>
+<script src="js/home.js?v=79"></script>
+<script src="js/reading.js?v=79"></script>
+<script src="js/finance.js?v=79"></script>
+<script src="js/calendar.js?v=79"></script>
+<script src="js/rewards.js?v=79"></script>
+<script src="js/achievements.js?v=79"></script>
+<script src="js/main.js?v=79"></script>
 </body>
 </html>

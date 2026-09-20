@@ -498,11 +498,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  ['title', 'age', 'traits'].forEach(field => {
+  ['title', 'age', 'traits', 'bio'].forEach(field => {
     const el = document.getElementById('char-' + field);
     el.addEventListener('input', e => {
       state.character[field] = e.target.value;
       saveState(state);
+      renderCharacter(state); // 只重繪角色資訊卡，不用整頁 renderAll() 避免打字時卡頓
     });
   });
 
