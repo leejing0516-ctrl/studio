@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=76">
+<link rel="stylesheet" href="css/style.css?v=77">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -47,24 +47,35 @@
   </div>
 
   <div class="status-bar frame">
-    <div class="status-avatar-card">
-      <img src="assets/avatar_default_20260913_081358.png" alt="角色圖片" id="char-avatar-img" class="avatar-card-img">
+    <div class="character-portrait-wrap">
+      <div class="character-portrait-frame">
+        <img src="assets/avatar_default_20260913_081358.png" alt="角色圖片" id="char-avatar-img" class="avatar-card-img">
+        <span class="frame-corner corner-tl" aria-hidden="true"></span>
+        <span class="frame-corner corner-tr" aria-hidden="true"></span>
+        <span class="frame-corner corner-bl" aria-hidden="true"></span>
+        <span class="frame-corner corner-br" aria-hidden="true"></span>
+      </div>
+      <div class="character-nameplate">
+        <span id="char-name-display" class="character-nameplate-text">我的角色</span>
+      </div>
     </div>
     <div class="status-main">
-      <div class="char-name-row status-name-row">
-        <span id="char-name-display" class="status-name-display">我的角色</span>
-        <div id="char-level" class="level-badge">Lv. 1</div>
+      <div class="character-level-row">
+        <span id="char-level" class="level-badge">Lv. 1</span>
       </div>
-      <div class="exp-bar-bg"><div id="char-exp-bar" class="exp-bar-fill"></div></div>
+      <div class="gauge-row">
+        <span class="gauge-icon">✨</span>
+        <div class="exp-bar-bg"><div id="char-exp-bar" class="exp-bar-fill"></div></div>
+      </div>
       <div class="status-exp-row">
         <span id="char-exp-text">0 / 100 EXP</span>
         <span id="char-exp-remain" class="status-exp-remain"></span>
       </div>
       <div class="status-roleplay-row" id="status-roleplay-display"></div>
-    </div>
-    <div class="stat-row status-stats">
-      <span class="streak">🔥 <span id="streak-count">0</span></span>
-      <span class="gold">💰 <span id="gold-count">0</span></span>
+      <div class="stat-row status-stats">
+        <span class="streak">🔥 <span id="streak-count">0</span></span>
+        <span class="gold">💰 <span id="gold-count">0</span></span>
+      </div>
     </div>
   </div>
 
@@ -433,22 +444,22 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="js/config.js?v=76"></script>
-<script src="js/storage.js?v=76"></script>
-<script src="js/cloud.js?v=76"></script>
-<script src="js/sound.js?v=76"></script>
-<script src="js/assistant.js?v=76"></script>
-<script src="js/character.js?v=76"></script>
-<script src="js/tasks.js?v=76"></script>
-<script src="js/habits.js?v=76"></script>
-<script src="js/projects.js?v=76"></script>
-<script src="js/story.js?v=76"></script>
-<script src="js/home.js?v=76"></script>
-<script src="js/reading.js?v=76"></script>
-<script src="js/finance.js?v=76"></script>
-<script src="js/calendar.js?v=76"></script>
-<script src="js/rewards.js?v=76"></script>
-<script src="js/achievements.js?v=76"></script>
-<script src="js/main.js?v=76"></script>
+<script src="js/config.js?v=77"></script>
+<script src="js/storage.js?v=77"></script>
+<script src="js/cloud.js?v=77"></script>
+<script src="js/sound.js?v=77"></script>
+<script src="js/assistant.js?v=77"></script>
+<script src="js/character.js?v=77"></script>
+<script src="js/tasks.js?v=77"></script>
+<script src="js/habits.js?v=77"></script>
+<script src="js/projects.js?v=77"></script>
+<script src="js/story.js?v=77"></script>
+<script src="js/home.js?v=77"></script>
+<script src="js/reading.js?v=77"></script>
+<script src="js/finance.js?v=77"></script>
+<script src="js/calendar.js?v=77"></script>
+<script src="js/rewards.js?v=77"></script>
+<script src="js/achievements.js?v=77"></script>
+<script src="js/main.js?v=77"></script>
 </body>
 </html>
