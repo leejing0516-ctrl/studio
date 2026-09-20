@@ -126,6 +126,8 @@ function switchTab(tabId) {
   document.querySelectorAll(`.tab-btn[data-tab="${tabId}"]`).forEach(b => b.classList.add('active'));
   document.getElementById('adventure-menu').classList.remove('show');
   document.getElementById('adventure-menu-toggle').setAttribute('aria-expanded', 'false');
+  // 手機版只有首頁需要看到 logo 跟人物資訊卡，其他分頁單純顯示內容，不用一直往下滑
+  document.querySelector('.app').classList.toggle('is-home-tab', tabId === 'tab-home');
 }
 
 function initSoundOnce() {
