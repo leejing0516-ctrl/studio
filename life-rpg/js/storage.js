@@ -4,7 +4,7 @@ function defaultState() {
   const skills = {};
   DOMAINS.forEach(d => { skills[d.key] = { exp: 0, lastGain: null }; });
   return {
-    character: { name: '我的角色', avatar: null },
+    character: { name: '我的角色', avatar: null, title: '', age: '', traits: '' },
     skills,
     gold: 0,
     tasks: [],           // { id, domain, text, difficulty, date, done }

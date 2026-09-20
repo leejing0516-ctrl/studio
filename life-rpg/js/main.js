@@ -498,6 +498,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  ['title', 'age', 'traits'].forEach(field => {
+    const el = document.getElementById('char-' + field);
+    el.addEventListener('input', e => {
+      state.character[field] = e.target.value;
+      saveState(state);
+    });
+  });
+
   document.getElementById('avatar-ring').addEventListener('click', () => {
     document.getElementById('avatar-upload').click();
   });

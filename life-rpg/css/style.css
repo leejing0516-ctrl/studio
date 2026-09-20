@@ -280,8 +280,8 @@ h1 {
   padding: 14px 20px;
 }
 .status-bar .char-avatar-ring {
-  width: 52px;
-  height: 52px;
+  width: 68px;
+  height: 68px;
   flex-shrink: 0;
 }
 .status-bar .avatar-edit-badge {
@@ -314,6 +314,37 @@ h1 {
 }
 #char-exp-text { font-size: 12px; color: var(--text-dim); }
 .status-exp-remain { font-size: 11.5px; color: #b9782a; font-weight: 700; }
+
+.status-roleplay-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 6px;
+}
+.status-roleplay-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: text;
+}
+.status-roleplay-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.status-roleplay-item input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed var(--border-dim);
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 1px 2px;
+  width: 92px;
+}
+.status-roleplay-item input:focus { outline: none; border-color: var(--border-gold); border-style: solid; }
+.status-roleplay-item input::placeholder { color: var(--text-dim); opacity: 0.7; }
 .status-stats {
   flex-direction: column;
   align-items: flex-end;

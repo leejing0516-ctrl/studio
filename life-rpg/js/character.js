@@ -45,6 +45,10 @@ function renderCharacter(state) {
   document.getElementById('char-name').value = state.character.name;
   const avatarImg = document.getElementById('char-avatar-img');
   if (avatarImg) avatarImg.src = state.character.avatar || DEFAULT_AVATAR_SRC;
+  ['title', 'age', 'traits'].forEach(field => {
+    const el = document.getElementById('char-' + field);
+    if (el && document.activeElement !== el) el.value = state.character[field] || '';
+  });
   document.getElementById('char-level').textContent = `Lv. ${info.level}`;
   const pct = Math.min(100, Math.round((info.expIntoLevel / info.expToNext) * 100));
   document.getElementById('char-exp-bar').style.width = pct + '%';

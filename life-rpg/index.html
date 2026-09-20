@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=70">
+<link rel="stylesheet" href="css/style.css?v=71">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -38,15 +38,12 @@
     </div>
   </div>
 
-  <div class="assistant-widget frame">
-    <div class="assistant-avatar">
-      <img id="coach-avatar-img" src="assets/coach_warm.jpg" alt="教練頭像">
-    </div>
-    <div class="assistant-bubble">
-      <div class="assistant-bubble-label" id="coach-label">教練</div>
-      <div id="assistant-bubble-text">嗨，我是你的教練！</div>
-    </div>
-    <button id="assistant-shuffle" class="icon-btn" title="換一句">🔄</button>
+  <!-- assistant.js 仍會讀寫這些元素（教練頭像/名稱/提示文字/換一句按鈕），但不再另闢常駐區塊顯示 -->
+  <div style="display:none" aria-hidden="true">
+    <img id="coach-avatar-img" src="assets/coach_warm.jpg" alt="">
+    <span id="coach-label"></span>
+    <span id="assistant-bubble-text"></span>
+    <button id="assistant-shuffle" type="button"></button>
   </div>
 
   <div class="status-bar frame">
@@ -65,6 +62,20 @@
       <div class="status-exp-row">
         <span id="char-exp-text">0 / 100 EXP</span>
         <span id="char-exp-remain" class="status-exp-remain"></span>
+      </div>
+      <div class="status-roleplay-row">
+        <label class="status-roleplay-item">
+          <span class="status-roleplay-label">🎭 職稱</span>
+          <input type="text" id="char-title" placeholder="給自己一個稱號…">
+        </label>
+        <label class="status-roleplay-item">
+          <span class="status-roleplay-label">🎂 年齡</span>
+          <input type="text" id="char-age" placeholder="—">
+        </label>
+        <label class="status-roleplay-item">
+          <span class="status-roleplay-label">✨ 特質</span>
+          <input type="text" id="char-traits" placeholder="給自己貼幾個標籤…">
+        </label>
       </div>
     </div>
     <div class="stat-row status-stats">
@@ -404,22 +415,22 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="js/config.js?v=70"></script>
-<script src="js/storage.js?v=70"></script>
-<script src="js/cloud.js?v=70"></script>
-<script src="js/sound.js?v=70"></script>
-<script src="js/assistant.js?v=70"></script>
-<script src="js/character.js?v=70"></script>
-<script src="js/tasks.js?v=70"></script>
-<script src="js/habits.js?v=70"></script>
-<script src="js/projects.js?v=70"></script>
-<script src="js/story.js?v=70"></script>
-<script src="js/home.js?v=70"></script>
-<script src="js/reading.js?v=70"></script>
-<script src="js/finance.js?v=70"></script>
-<script src="js/calendar.js?v=70"></script>
-<script src="js/rewards.js?v=70"></script>
-<script src="js/achievements.js?v=70"></script>
-<script src="js/main.js?v=70"></script>
+<script src="js/config.js?v=71"></script>
+<script src="js/storage.js?v=71"></script>
+<script src="js/cloud.js?v=71"></script>
+<script src="js/sound.js?v=71"></script>
+<script src="js/assistant.js?v=71"></script>
+<script src="js/character.js?v=71"></script>
+<script src="js/tasks.js?v=71"></script>
+<script src="js/habits.js?v=71"></script>
+<script src="js/projects.js?v=71"></script>
+<script src="js/story.js?v=71"></script>
+<script src="js/home.js?v=71"></script>
+<script src="js/reading.js?v=71"></script>
+<script src="js/finance.js?v=71"></script>
+<script src="js/calendar.js?v=71"></script>
+<script src="js/rewards.js?v=71"></script>
+<script src="js/achievements.js?v=71"></script>
+<script src="js/main.js?v=71"></script>
 </body>
 </html>
