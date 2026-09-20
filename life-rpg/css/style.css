@@ -1650,9 +1650,10 @@ ul { list-style: none; padding: 0; margin: 0; }
 
   body { padding-bottom: 84px; } /* 留空間給底部固定導覽列 */
 
-  /* 手機版只有首頁需要看到 logo 跟人物資訊卡，其他分頁一進去就是內容，不用先滑過這些 */
+  /* 手機版只有首頁需要看到 logo、雲端/靜音鈕跟人物資訊卡，其他分頁一進去就是內容，不用先滑過這些 */
   .app:not(.is-home-tab) h1,
-  .app:not(.is-home-tab) .status-bar {
+  .app:not(.is-home-tab) .status-bar,
+  .app:not(.is-home-tab) .mute-btn {
     display: none;
   }
 
