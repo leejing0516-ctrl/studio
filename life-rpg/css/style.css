@@ -290,7 +290,7 @@ h1 {
 .character-portrait-frame {
   position: relative;
   width: 132px;
-  height: 176px;
+  aspect-ratio: 3 / 4;
   border-radius: 12px;
   overflow: hidden;
   border: 3px solid var(--gold);
@@ -334,7 +334,8 @@ h1 {
 .character-skill-col { flex: 1; min-width: 0; padding-top: 4px; }
 
 @media (min-width: 641px) {
-  .character-portrait-frame { width: 220px; height: 293px; }
+  .character-portrait-wrap { flex: 1; min-width: 0; }
+  .character-portrait-frame { width: 100%; max-width: 320px; }
   .character-portrait-frame .frame-corner { width: 52px; height: 58px; }
   .character-name-caption span { font-size: 14px; max-width: 220px; }
 }
