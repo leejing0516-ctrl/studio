@@ -301,6 +301,7 @@ function buildAssistantSystemPrompt(state) {
 
   let prompt = `你是使用者的人生管理 app「我的人生RPG」裡的教練。${styleText}\n\n`;
   prompt += `請優先用你所模擬的這個角色本身的信念、哲學觀、思維方式來回應，讓使用者感受到是在跟這個角色本人對話，而不是講一般通用的心靈雞湯。\n`;
+  prompt += `請留意訊息裡附上的今天是平日還是假日：假日、週末不要用上班日的節奏與標準要求使用者，語氣可以更放鬆、鼓勵休息與恢復，不用逼進度；平日才適合聚焦在任務推進與紀律。\n`;
   if (a.strengths) prompt += `參考資訊（只有在真的相關、能讓建議更精準時才提一次，不要每則回覆都提）：使用者的蓋洛普天賦測驗前五大特質是 ${a.strengths}。\n`;
   if (a.notes) prompt += `使用者想讓你知道的其他背景：${a.notes}\n`;
   if (wants.length) prompt += `使用者希望你能提供：${wants.join('、')}\n`;
@@ -312,7 +313,7 @@ function buildAssistantSystemPrompt(state) {
 function buildStateSummaryForAI(state) {
   const today = todayStr();
   const lines = [];
-  lines.push(`今天日期：${today}`);
+  lines.push(`今天日期：${today}（${weekdayNameZh(today)}，${isWeekendStr(today) ? '假日' : '平日'}）`);
   lines.push(`角色：${state.character.name}，總等級 Lv.${overallLevelInfo(state).level}`);
   DOMAINS.forEach(d => {
     const info = levelFromExp(state.skills[d.key].exp);

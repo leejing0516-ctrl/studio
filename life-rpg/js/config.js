@@ -210,6 +210,18 @@ function daysBetween(dateStrA, dateStrB) {
   return Math.round((parseDateStr(dateStrB) - parseDateStr(dateStrA)) / 86400000);
 }
 
+const WEEKDAY_FULL_NAMES_ZH = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+
+function weekdayNameZh(dateStr) {
+  return WEEKDAY_FULL_NAMES_ZH[parseDateStr(dateStr).getDay()];
+}
+
+// 週六、週日視為假日；只是給 AI 教練參考語氣用，不影響任何任務/習慣邏輯
+function isWeekendStr(dateStr) {
+  const day = parseDateStr(dateStr).getDay();
+  return day === 0 || day === 6;
+}
+
 // 把一組「還沒完成」的項目（子任務/章節）全部往後移動同樣的天數，已完成的保留原日期不動
 function shiftUnfinishedDates(items, shiftDays) {
   if (shiftDays <= 0) return;
