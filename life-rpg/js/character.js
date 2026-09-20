@@ -40,15 +40,31 @@ function processAvatarFile(file, callback, onError) {
   reader.readAsDataURL(file);
 }
 
+// 職稱/年齡/特質只有填了才顯示成小標籤，沒填就完全不出現，不在首頁露出空白輸入框
+function renderStatusRoleplayDisplay(state) {
+  const el = document.getElementById('status-roleplay-display');
+  if (!el) return;
+  const c = state.character;
+  const chips = [];
+  if (c.title) chips.push(`🎭 ${escapeHtml(c.title)}`);
+  if (c.age) chips.push(`🎂 ${escapeHtml(c.age)}`);
+  if (c.traits) chips.push(`✨ ${escapeHtml(c.traits)}`);
+  el.innerHTML = chips.map(t => `<span class="status-roleplay-chip">${t}</span>`).join('');
+}
+
 function renderCharacter(state) {
   const info = overallLevelInfo(state);
-  document.getElementById('char-name').value = state.character.name;
+  const nameInput = document.getElementById('char-name');
+  if (nameInput) nameInput.value = state.character.name;
+  const nameDisplay = document.getElementById('char-name-display');
+  if (nameDisplay) nameDisplay.textContent = state.character.name;
   const avatarImg = document.getElementById('char-avatar-img');
   if (avatarImg) avatarImg.src = state.character.avatar || DEFAULT_AVATAR_SRC;
   ['title', 'age', 'traits'].forEach(field => {
     const el = document.getElementById('char-' + field);
     if (el && document.activeElement !== el) el.value = state.character[field] || '';
   });
+  renderStatusRoleplayDisplay(state);
   document.getElementById('char-level').textContent = `Lv. ${info.level}`;
   const pct = Math.min(100, Math.round((info.expIntoLevel / info.expToNext) * 100));
   document.getElementById('char-exp-bar').style.width = pct + '%';

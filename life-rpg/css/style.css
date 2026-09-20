@@ -297,12 +297,10 @@ h1 {
   gap: 8px;
   margin-bottom: 4px;
 }
-.status-bar #char-name {
-  text-align: left;
+.status-name-display {
   font-size: 15px;
-  max-width: 140px;
-  width: auto;
-  border-bottom: none;
+  font-weight: 700;
+  color: #b9782a;
 }
 .status-bar .exp-bar-bg { max-width: none; height: 8px; }
 .status-exp-row {
@@ -318,33 +316,18 @@ h1 {
 .status-roleplay-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 14px;
+  gap: 6px;
   margin-top: 6px;
 }
-.status-roleplay-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: text;
-}
-.status-roleplay-label {
-  font-size: 11px;
-  color: var(--text-dim);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.status-roleplay-item input {
-  background: transparent;
-  border: none;
-  border-bottom: 1px dashed var(--border-dim);
+.status-roleplay-chip {
+  font-size: 11.5px;
   color: var(--text);
-  font-size: 12px;
-  font-family: inherit;
-  padding: 1px 2px;
-  width: 92px;
+  background: var(--panel-2);
+  border: 1px solid var(--border-dim);
+  border-radius: 999px;
+  padding: 3px 10px;
+  white-space: nowrap;
 }
-.status-roleplay-item input:focus { outline: none; border-color: var(--border-gold); border-style: solid; }
-.status-roleplay-item input::placeholder { color: var(--text-dim); opacity: 0.7; }
 .status-stats {
   flex-direction: column;
   align-items: flex-end;
@@ -1298,17 +1281,20 @@ ul { list-style: none; padding: 0; margin: 0; }
   font-size: 12px;
 }
 
-/* 教練設定：改成放在分頁上方靠右，收合時跟提示文字同一排，展開時獨佔一整排 */
-.assistant-top-row {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 10px 16px;
-  margin-bottom: 14px;
+.assistant-chat-hint { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 14px; }
+
+/* ── 設定分頁（角色資訊＋教練設定）───────────────────── */
+.settings-section {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px dashed var(--border-dim);
 }
-.assistant-top-row .tab-hint { flex: 1; min-width: 160px; margin: 0; }
-.assistant-chat-hint { font-size: 16px; font-weight: 600; color: var(--text); }
+.settings-section:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+.settings-section-title {
+  font-size: 15px;
+  color: #b9782a;
+  margin: 0 0 12px;
+}
 
 .assistant-chat-row {
   display: flex;
@@ -1325,14 +1311,6 @@ ul { list-style: none; padding: 0; margin: 0; }
   padding-right: 34px;
 }
 .assistant-chat-form-compact .chat-input-wrap { width: 200px; flex: none; }
-.coach-settings {
-  margin-top: 0;
-  padding-top: 0;
-  border-top: none;
-  flex-shrink: 0;
-}
-.coach-settings summary { white-space: nowrap; }
-.coach-settings[open] { flex-basis: 100%; }
 #gcal-client-id { flex: 1; min-width: 200px; }
 
 /* ── 小助手設定 ───────────────────────────── */

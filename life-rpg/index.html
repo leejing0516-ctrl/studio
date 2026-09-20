@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=71">
+<link rel="stylesheet" href="css/style.css?v=72">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -54,8 +54,7 @@
     <input type="file" id="avatar-upload" accept="image/*" class="visually-hidden-input">
     <div class="status-main">
       <div class="char-name-row status-name-row">
-        <input type="text" id="char-name" value="我的角色" title="點擊編輯角色名稱">
-        <span class="char-name-edit-icon">✎</span>
+        <span id="char-name-display" class="status-name-display">我的角色</span>
         <div id="char-level" class="level-badge">Lv. 1</div>
       </div>
       <div class="exp-bar-bg"><div id="char-exp-bar" class="exp-bar-fill"></div></div>
@@ -63,20 +62,7 @@
         <span id="char-exp-text">0 / 100 EXP</span>
         <span id="char-exp-remain" class="status-exp-remain"></span>
       </div>
-      <div class="status-roleplay-row">
-        <label class="status-roleplay-item">
-          <span class="status-roleplay-label">🎭 職稱</span>
-          <input type="text" id="char-title" placeholder="給自己一個稱號…">
-        </label>
-        <label class="status-roleplay-item">
-          <span class="status-roleplay-label">🎂 年齡</span>
-          <input type="text" id="char-age" placeholder="—">
-        </label>
-        <label class="status-roleplay-item">
-          <span class="status-roleplay-label">✨ 特質</span>
-          <input type="text" id="char-traits" placeholder="給自己貼幾個標籤…">
-        </label>
-      </div>
+      <div class="status-roleplay-row" id="status-roleplay-display"></div>
     </div>
     <div class="stat-row status-stats">
       <span class="streak">🔥 <span id="streak-count">0</span></span>
@@ -116,6 +102,7 @@
       <div class="menu-group">
         <div class="menu-group-title">教練與設定</div>
         <button type="button" class="tab-btn menu-item-btn" data-tab="tab-assistant">🧑‍🏫 教練對話</button>
+        <button type="button" class="tab-btn menu-item-btn" data-tab="tab-settings">⚙️ 設定</button>
       </div>
     </div>
   </div>
@@ -150,46 +137,71 @@
     </div>
   </div>
 
-  <div id="tab-assistant" class="tab-panel frame">
-    <div class="assistant-top-row">
-      <p class="tab-hint assistant-chat-hint" id="assistant-chat-hint">跟教練說說現在的心情，或看看過去的鼓勵訊息。</p>
-      <details class="gcal-panel coach-settings">
-        <summary>⚙️ 教練設定</summary>
-        <div class="assistant-settings-fields">
-          <label class="checkbox-row">
-            <input type="checkbox" id="assistant-ai-enabled"> 啟用真人工智慧回覆（需要先架設好中間人服務，見下方網址欄位）
-          </label>
-          <div>
-            <p class="tab-hint" style="margin:0 0 4px;">中間人服務網址（Cloudflare Worker 網址）：</p>
-            <input type="text" id="assistant-ai-endpoint" placeholder="https://xxx.xxx.workers.dev" style="width:100%;">
-          </div>
-          <div>
-            <p class="tab-hint" style="margin:0 0 4px;">教練人選：</p>
-            <select id="assistant-style"></select>
-            <textarea id="assistant-custom-style" placeholder="描述你想要的教練風格或人物…" rows="2"></textarea>
-          </div>
-          <div>
-            <p class="tab-hint" style="margin:0 0 4px;">蓋洛普天賦測驗前五大特質（用逗號分隔）：</p>
-            <input type="text" id="assistant-strengths" placeholder="例如：戰略、學習、成就、統籌、責任" style="width:100%;">
-          </div>
-          <div>
-            <p class="tab-hint" style="margin:0 0 4px;">其他想讓教練知道的事：</p>
-            <textarea id="assistant-notes" placeholder="例如：我最近在準備某個考試、我希望多花時間陪家人…" rows="2"></textarea>
-          </div>
-          <div>
-            <p class="tab-hint" style="margin:0 0 6px;">希望教練提供：</p>
-            <label class="checkbox-row"><input type="checkbox" id="assistant-want-analysis"> 進度分析</label>
-            <label class="checkbox-row"><input type="checkbox" id="assistant-want-suggestions"> 任務推進建議</label>
-            <label class="checkbox-row"><input type="checkbox" id="assistant-want-encouragement"> 情緒鼓勵</label>
-          </div>
+  <div id="tab-settings" class="tab-panel frame">
+    <p class="tab-hint">這裡集中管理跟你自己有關的設定：角色資料、教練人選與 AI 服務。設定好之後，首頁會自動顯示你填的角色資訊。</p>
+
+    <div class="settings-section">
+      <h3 class="settings-section-title">👤 角色資訊</h3>
+      <div class="assistant-settings-fields">
+        <div>
+          <p class="tab-hint" style="margin:0 0 4px;">角色名稱：</p>
+          <input type="text" id="char-name" value="我的角色" placeholder="幫自己的角色取個名字" style="width:100%;">
         </div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
-          <button type="button" id="assistant-settings-save" class="btn small">儲存設定</button>
-          <button type="button" id="assistant-summary-now" class="btn small">🌙 立即產生今日總結</button>
+        <div>
+          <p class="tab-hint" style="margin:0 0 4px;">🎭 職稱：</p>
+          <input type="text" id="char-title" placeholder="給自己一個稱號…" style="width:100%;">
         </div>
-        <p id="assistant-ai-status" class="tab-hint"></p>
-      </details>
+        <div>
+          <p class="tab-hint" style="margin:0 0 4px;">🎂 年齡：</p>
+          <input type="text" id="char-age" placeholder="—" style="width:100%;">
+        </div>
+        <div>
+          <p class="tab-hint" style="margin:0 0 4px;">✨ 特質：</p>
+          <input type="text" id="char-traits" placeholder="給自己貼幾個標籤…" style="width:100%;">
+        </div>
+      </div>
     </div>
+
+    <div class="settings-section">
+      <h3 class="settings-section-title">🧑‍🏫 教練設定</h3>
+      <div class="assistant-settings-fields">
+        <label class="checkbox-row">
+          <input type="checkbox" id="assistant-ai-enabled"> 啟用真人工智慧回覆（需要先架設好中間人服務，見下方網址欄位）
+        </label>
+        <div>
+          <p class="tab-hint" style="margin:0 0 4px;">中間人服務網址（Cloudflare Worker 網址）：</p>
+          <input type="text" id="assistant-ai-endpoint" placeholder="https://xxx.xxx.workers.dev" style="width:100%;">
+        </div>
+        <div>
+          <p class="tab-hint" style="margin:0 0 4px;">教練人選：</p>
+          <select id="assistant-style"></select>
+          <textarea id="assistant-custom-style" placeholder="描述你想要的教練風格或人物…" rows="2"></textarea>
+        </div>
+        <div>
+          <p class="tab-hint" style="margin:0 0 4px;">蓋洛普天賦測驗前五大特質（用逗號分隔）：</p>
+          <input type="text" id="assistant-strengths" placeholder="例如：戰略、學習、成就、統籌、責任" style="width:100%;">
+        </div>
+        <div>
+          <p class="tab-hint" style="margin:0 0 4px;">其他想讓教練知道的事：</p>
+          <textarea id="assistant-notes" placeholder="例如：我最近在準備某個考試、我希望多花時間陪家人…" rows="2"></textarea>
+        </div>
+        <div>
+          <p class="tab-hint" style="margin:0 0 6px;">希望教練提供：</p>
+          <label class="checkbox-row"><input type="checkbox" id="assistant-want-analysis"> 進度分析</label>
+          <label class="checkbox-row"><input type="checkbox" id="assistant-want-suggestions"> 任務推進建議</label>
+          <label class="checkbox-row"><input type="checkbox" id="assistant-want-encouragement"> 情緒鼓勵</label>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+        <button type="button" id="assistant-settings-save" class="btn small">儲存設定</button>
+        <button type="button" id="assistant-summary-now" class="btn small">🌙 立即產生今日總結</button>
+      </div>
+      <p id="assistant-ai-status" class="tab-hint"></p>
+    </div>
+  </div>
+
+  <div id="tab-assistant" class="tab-panel frame">
+    <p class="tab-hint assistant-chat-hint" id="assistant-chat-hint">跟教練說說現在的心情，或看看過去的鼓勵訊息。</p>
 
     <div class="assistant-chat-row">
       <form id="assistant-chat-form" class="inline-form assistant-chat-form-compact">
@@ -415,22 +427,22 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="js/config.js?v=71"></script>
-<script src="js/storage.js?v=71"></script>
-<script src="js/cloud.js?v=71"></script>
-<script src="js/sound.js?v=71"></script>
-<script src="js/assistant.js?v=71"></script>
-<script src="js/character.js?v=71"></script>
-<script src="js/tasks.js?v=71"></script>
-<script src="js/habits.js?v=71"></script>
-<script src="js/projects.js?v=71"></script>
-<script src="js/story.js?v=71"></script>
-<script src="js/home.js?v=71"></script>
-<script src="js/reading.js?v=71"></script>
-<script src="js/finance.js?v=71"></script>
-<script src="js/calendar.js?v=71"></script>
-<script src="js/rewards.js?v=71"></script>
-<script src="js/achievements.js?v=71"></script>
-<script src="js/main.js?v=71"></script>
+<script src="js/config.js?v=72"></script>
+<script src="js/storage.js?v=72"></script>
+<script src="js/cloud.js?v=72"></script>
+<script src="js/sound.js?v=72"></script>
+<script src="js/assistant.js?v=72"></script>
+<script src="js/character.js?v=72"></script>
+<script src="js/tasks.js?v=72"></script>
+<script src="js/habits.js?v=72"></script>
+<script src="js/projects.js?v=72"></script>
+<script src="js/story.js?v=72"></script>
+<script src="js/home.js?v=72"></script>
+<script src="js/reading.js?v=72"></script>
+<script src="js/finance.js?v=72"></script>
+<script src="js/calendar.js?v=72"></script>
+<script src="js/rewards.js?v=72"></script>
+<script src="js/achievements.js?v=72"></script>
+<script src="js/main.js?v=72"></script>
 </body>
 </html>
