@@ -295,9 +295,32 @@ function renderHomeCoachTip(state) {
   `;
 }
 
+function renderHomeDomains(state) {
+  const el = document.getElementById('home-domains');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="home-card-title">🧭 五大領域總覽</div>
+    <div class="domain-hex-row">
+      ${DOMAINS.map(d => {
+        const info = levelFromExp(state.skills[d.key].exp);
+        return `
+          <div class="domain-hex-item">
+            <div class="domain-hex" style="background:${d.color}">
+              <span>${d.icon}</span>
+            </div>
+            <div class="domain-hex-level">Lv.${info.level}</div>
+            <div class="domain-hex-name">${d.name}</div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
 function renderHome(state) {
   renderHomePrimaryTask(state);
   renderHomeProject(state);
   renderHomeHabits(state);
   renderHomeCoachTip(state);
+  renderHomeDomains(state);
 }
