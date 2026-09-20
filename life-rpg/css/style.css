@@ -297,19 +297,6 @@ h1 {
   background: var(--panel-2);
   box-shadow: 0 6px 18px rgba(227, 171, 92, 0.35);
 }
-.frame-corner {
-  position: absolute;
-  width: 34px;
-  height: 38px;
-  background: url('../assets/frame_corner_flourish.png') no-repeat center / contain;
-  pointer-events: none;
-  opacity: 0.92;
-}
-.corner-tl { top: -2px; left: -2px; }
-.corner-tr { top: -2px; right: -2px; transform: scaleX(-1); }
-.corner-bl { bottom: -2px; left: -2px; transform: scaleY(-1); }
-.corner-br { bottom: -2px; right: -2px; transform: scale(-1, -1); }
-
 .character-name-caption {
   margin-top: 10px;
   max-width: 100%;
@@ -336,7 +323,6 @@ h1 {
 @media (min-width: 641px) {
   .character-portrait-wrap { flex: 1; min-width: 0; }
   .character-portrait-frame { width: 100%; max-width: 320px; }
-  .character-portrait-frame .frame-corner { width: 52px; height: 58px; }
   .character-name-caption span { font-size: 14px; max-width: 220px; }
 }
 
