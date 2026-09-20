@@ -305,9 +305,7 @@ function renderHomeDomains(state) {
         const info = levelFromExp(state.skills[d.key].exp);
         return `
           <div class="domain-hex-item">
-            <div class="domain-hex" style="background:${d.color}">
-              <span>${d.icon}</span>
-            </div>
+            <img class="domain-hex" src="${d.badge}" alt="${d.name}">
             <div class="domain-hex-level">Lv.${info.level}</div>
             <div class="domain-hex-name">${d.name}</div>
           </div>

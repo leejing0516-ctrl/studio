@@ -1,10 +1,10 @@
 // 人生領域（技能）設定
 const DOMAINS = [
-  { key: 'reading',  name: '學業/閱讀', icon: '📖', color: '#7dd3fc' },
-  { key: 'career',   name: '事業/工作', icon: '💼', color: '#fbbf24' },
-  { key: 'health',   name: '健康/體能', icon: '💪', color: '#86efac' },
-  { key: 'finance',  name: '消費/財務', icon: '💰', color: '#fca5a5' },
-  { key: 'social',   name: '人際/家庭', icon: '❤️', color: '#c4b5fd' },
+  { key: 'reading',  name: '學業/閱讀', icon: '📖', color: '#7dd3fc', badge: 'assets/badge_reading.png' },
+  { key: 'career',   name: '事業/工作', icon: '💼', color: '#fbbf24', badge: 'assets/badge_career.png' },
+  { key: 'health',   name: '健康/體能', icon: '💪', color: '#86efac', badge: 'assets/badge_health.png' },
+  { key: 'finance',  name: '消費/財務', icon: '💰', color: '#fca5a5', badge: 'assets/badge_finance.png' },
+  { key: 'social',   name: '人際/家庭', icon: '❤️', color: '#c4b5fd', badge: 'assets/badge_social.png' },
 ];
 
 const DEFAULT_AVATAR_SRC = 'assets/avatar_default_20260913_081358.png';
