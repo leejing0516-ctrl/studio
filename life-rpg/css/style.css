@@ -309,15 +309,19 @@ h1 {
 .corner-bl { bottom: -2px; left: -2px; transform: scaleY(-1); }
 .corner-br { bottom: -2px; right: -2px; transform: scale(-1, -1); }
 
-.character-nameplate {
-  width: 164px;
-  margin-top: -16px;
-  background: url('../assets/nameplate_ribbon.png') no-repeat center / 100% 100%;
-  padding: 10px 20px 12px;
-  text-align: center;
+.character-name-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  max-width: calc(100% - 16px);
+  background: rgba(255, 253, 250, 0.92);
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  padding: 3px 11px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
-.character-nameplate-text {
-  font-size: 13.5px;
+.character-name-badge span {
+  font-size: 12px;
   font-weight: 700;
   color: #7a4a1e;
   white-space: nowrap;
@@ -327,6 +331,12 @@ h1 {
 }
 
 .status-main { flex: 1; min-width: 0; padding-top: 4px; }
+
+@media (min-width: 641px) {
+  .character-portrait-frame { width: 220px; height: 293px; }
+  .character-portrait-frame .frame-corner { width: 52px; height: 58px; }
+  .character-name-badge span { font-size: 13px; }
+}
 .character-level-row { margin-bottom: 8px; }
 
 .gauge-row {
