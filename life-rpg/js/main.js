@@ -128,6 +128,8 @@ function switchTab(tabId) {
   document.getElementById('adventure-menu-toggle').setAttribute('aria-expanded', 'false');
   // 手機版只有首頁需要看到 logo 跟人物資訊卡，其他分頁單純顯示內容，不用一直往下滑
   document.querySelector('.app').classList.toggle('is-home-tab', tabId === 'tab-home');
+  // 手機版切分頁時捲回最頂端，避免停在上一個分頁滑到的位置
+  if (window.matchMedia('(max-width: 640px)').matches) window.scrollTo(0, 0);
 }
 
 function initSoundOnce() {
