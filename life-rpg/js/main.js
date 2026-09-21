@@ -149,6 +149,35 @@ function decorateFrames() {
   });
 }
 
+// 每個分頁（首頁除外）頂端統一加上「你在哪一頁」的標題橫幅，圖示跟冒險選單裡用的一致
+const PAGE_TITLES = {
+  'tab-adventure': { icon: '🗺️', label: '冒險選單' },
+  'tab-tasks': { icon: '📋', label: '今日任務' },
+  'tab-calendar': { icon: '📅', label: '行事曆' },
+  'tab-habits': { icon: '🔁', label: '習慣' },
+  'tab-projects': { icon: '🎯', label: '專案' },
+  'tab-reading': { icon: '📖', label: '閱讀進度' },
+  'tab-story': { icon: '🗺️', label: '故事模式' },
+  'tab-character': { icon: '📊', label: '技能總覽' },
+  'tab-finance': { icon: '💰', label: '消費/財務' },
+  'tab-rewards': { icon: '🎁', label: '獎勵商店' },
+  'tab-achievements': { icon: '🏆', label: '成就' },
+  'tab-log': { icon: '📜', label: '活動紀錄' },
+  'tab-assistant': { icon: '🧑‍🏫', label: '教練對話' },
+  'tab-settings': { icon: '⚙️', label: '設定' },
+};
+
+function decoratePageTitles() {
+  Object.entries(PAGE_TITLES).forEach(([tabId, { icon, label }]) => {
+    const panel = document.getElementById(tabId);
+    if (!panel || panel.querySelector('.page-title-banner')) return;
+    const banner = document.createElement('div');
+    banner.className = 'page-title-banner';
+    banner.innerHTML = `<span class="page-title-icon">${icon}</span><span class="page-title-text">${label}</span>`;
+    panel.insertBefore(banner, panel.firstChild);
+  });
+}
+
 // 時間選擇改用「時」「分」兩個下拉選單，分鐘固定 10 分鐘一格，
 // 避免瀏覽器原生 <input type="time"> 的分鐘捲輪不吃 step 屬性
 function populateTimeSelect(prefix) {
@@ -291,6 +320,7 @@ function saveEditModal() {
 document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', initSoundOnce, { once: true });
   decorateFrames();
+  decoratePageTitles();
 
   ['task-domain', 'habit-domain', 'event-domain', 'project-domain', 'story-domain', 'edit-domain'].forEach(id => {
     const select = document.getElementById(id);
