@@ -295,8 +295,9 @@ function renderHomeCoachTip(state) {
   `;
 }
 
-function renderHomeDomains(state) {
-  const el = document.getElementById('home-domains');
+// 移到「技能總覽」頁使用，函式留在 home.js 是因為跟其他首頁卡片共用同一套 render 慣例
+function renderDomainsOverview(state) {
+  const el = document.getElementById('character-domains');
   if (!el) return;
   el.innerHTML = `
     <div class="home-card-title">🧭 五大領域總覽</div>
@@ -320,5 +321,4 @@ function renderHome(state) {
   renderHomeProject(state);
   renderHomeHabits(state);
   renderHomeCoachTip(state);
-  renderHomeDomains(state);
 }

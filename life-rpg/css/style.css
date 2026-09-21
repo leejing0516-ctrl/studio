@@ -359,10 +359,7 @@ h1 {
   font-size: 14px;
   line-height: 1.6;
   color: var(--text);
-  display: -webkit-box;
-  -webkit-line-clamp: 5;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  white-space: pre-wrap;
 }
 .character-bio-text.character-bio-empty { color: var(--text-dim); font-style: italic; }
 
@@ -670,15 +667,13 @@ h1 {
   grid-template-columns: 2fr 1fr;
   grid-template-areas:
     "primary coach"
-    "project habit"
-    "domains domains";
+    "project habit";
   gap: 16px;
 }
 .home-primary-col { grid-area: primary; }
 .home-coach-col { grid-area: coach; }
 .home-project-col { grid-area: project; }
 .home-habit-col { grid-area: habit; }
-.home-domains-col { grid-area: domains; }
 
 .home-card {
   background: linear-gradient(180deg, #fff, var(--panel-2));
@@ -1699,7 +1694,6 @@ ul { list-style: none; padding: 0; margin: 0; }
       "primary"
       "coach"
       "habit"
-      "project"
-      "domains";
+      "project";
   }
 }

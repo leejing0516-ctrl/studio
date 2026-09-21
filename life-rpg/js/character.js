@@ -61,7 +61,10 @@ function renderStatusRoleplayDisplay(state) {
   const c = state.character;
   const chips = [];
   if (c.age) chips.push(`🎂 ${escapeHtml(c.age)}`);
-  if (c.traits) chips.push(`✨ ${escapeHtml(c.traits)}`);
+  // 特質用逗號（全形/半形皆可）分隔，一個標籤一個 chip
+  (c.traits || '').split(/[,，]/).map(t => t.trim()).filter(Boolean).forEach(t => {
+    chips.push(`✨ ${escapeHtml(t)}`);
+  });
   el.innerHTML = chips.map(t => `<span class="status-roleplay-chip">${t}</span>`).join('');
 }
 
@@ -119,6 +122,7 @@ function renderCharacter(state) {
   _lastOverallLevel = info.level;
 
   renderSkillBars(state);
+  renderDomainsOverview(state);
   drawRadar(state);
 }
 
