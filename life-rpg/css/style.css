@@ -491,7 +491,7 @@ h1 {
 }
 .character-bio-text.character-bio-empty { color: var(--text-dim); font-style: italic; }
 
-.character-level-row {
+.character-top-row {
   display: flex;
   align-items: center;
   gap: 14px;
@@ -499,6 +499,7 @@ h1 {
   margin-bottom: 8px;
   font-size: 13px;
 }
+.character-stats-row { display: flex; align-items: center; gap: 14px; }
 
 .gauge-row {
   display: flex;
@@ -506,7 +507,7 @@ h1 {
   gap: 6px;
 }
 .gauge-icon { font-size: 13px; flex-shrink: 0; }
-.status-bar .exp-bar-bg { max-width: none; height: 10px; }
+.status-bar .exp-bar-bg { max-width: none; flex: 1; min-width: 0; height: 10px; }
 .status-exp-row {
   display: flex;
   align-items: baseline;
@@ -1843,6 +1844,7 @@ ul { list-style: none; padding: 0; margin: 0; }
       "level bio"
       "gauge bio"
       "exp bio"
+      "stats bio"
       "skills skills";
     gap: 10px 22px;
     padding: 10px 14px;
@@ -1851,7 +1853,9 @@ ul { list-style: none; padding: 0; margin: 0; }
   .character-portrait-frame { width: 100%; max-width: none; }
   .character-bio-col { grid-area: bio; padding-top: 0; }
   .character-skill-col { display: contents; }
-  .character-level-row { grid-area: level; }
+  .character-top-row { display: contents; }
+  .character-level-row { grid-area: level; margin-bottom: 0; }
+  .character-stats-row { grid-area: stats; }
   .gauge-row { grid-area: gauge; }
   .status-exp-row { grid-area: exp; }
   .status-skill-bars { grid-area: skills; padding-top: 10px; }
