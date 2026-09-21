@@ -1662,6 +1662,8 @@ ul { list-style: none; padding: 0; margin: 0; }
   .app:not(.is-home-tab) .mute-btn {
     display: none;
   }
+  /* logo 跟雲端/靜音鈕都藏起來了，原本留給它們的頂部空間也一併收掉，只留一點點呼吸空間 */
+  .app:not(.is-home-tab) { padding-top: 14px; }
 
   .status-bar { padding: 10px 14px; flex-direction: column; align-items: center; }
   .character-bio-col, .character-skill-col { width: 100%; padding-top: 0; }
