@@ -9,7 +9,9 @@ function renderBooks(state) {
     return;
   }
 
-  state.books.forEach(b => {
+  // 還在讀的書排在上面，讀完的排到最下面（各自維持原本的加入順序）
+  const sortedBooks = state.books.slice().sort((a, b) => (a.done === b.done ? 0 : a.done ? 1 : -1));
+  sortedBooks.forEach(b => {
     const pct = Math.min(100, Math.round((b.currentPage / b.totalPages) * 100));
     const li = document.createElement('li');
     li.className = 'book-item' + (b.done ? ' done' : '');
@@ -109,13 +111,15 @@ function generateReadingPlan(book, startDateStr, deadlineStr, granularity) {
   };
 
   if (granularity === 'daily') {
+    // i=1 對應開始當天（今天），最後一項對應截止日，這樣設定好計畫的當天就有進度可以做，
+    // 會直接出現在今日任務，不用等到隔天
     for (let i = 1; i <= n; i++) {
-      const d = new Date(start); d.setDate(d.getDate() + Math.round((i * totalDays) / n));
+      const d = new Date(start); d.setDate(d.getDate() + Math.round(((i - 1) * totalDays) / Math.max(n - 1, 1)));
       pushChunk(i, `第 ${i} 天`, formatDate(d));
     }
   } else {
     for (let i = 1; i <= n; i++) {
-      const d = new Date(start); d.setDate(d.getDate() + Math.min(totalDays, i * 7));
+      const d = new Date(start); d.setDate(d.getDate() + Math.min(totalDays, (i - 1) * 7));
       pushChunk(i, `第 ${i} 週`, formatDate(d));
     }
   }

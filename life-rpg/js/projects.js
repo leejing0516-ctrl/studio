@@ -123,10 +123,12 @@ function computeSubtaskSchedule(startDateStr, deadlineStr, granularity) {
   const MAX_SUBTASKS = 60;
   const dates = [];
   if (granularity === 'daily') {
+    // i=1 對應開始當天（今天），最後一項對應截止日，設定好專案的當天就有進度，
+    // 會直接出現在今日任務，不用等到隔天
     const n = Math.min(totalDays, MAX_SUBTASKS);
     for (let i = 1; i <= n; i++) {
       const d = new Date(start);
-      d.setDate(d.getDate() + Math.round((i * totalDays) / n));
+      d.setDate(d.getDate() + Math.round(((i - 1) * totalDays) / Math.max(n - 1, 1)));
       dates.push(formatDate(d));
     }
   } else if (granularity === 'weekly') {
@@ -134,7 +136,7 @@ function computeSubtaskSchedule(startDateStr, deadlineStr, granularity) {
     const n = Math.min(totalWeeks, MAX_SUBTASKS);
     for (let i = 1; i <= n; i++) {
       const d = new Date(start);
-      d.setDate(d.getDate() + Math.min(totalDays, i * 7));
+      d.setDate(d.getDate() + Math.min(totalDays, (i - 1) * 7));
       dates.push(formatDate(d));
     }
   } else {
@@ -142,7 +144,7 @@ function computeSubtaskSchedule(startDateStr, deadlineStr, granularity) {
     const n = Math.min(totalMonths, MAX_SUBTASKS);
     for (let i = 1; i <= n; i++) {
       const d = new Date(start);
-      d.setMonth(d.getMonth() + i);
+      d.setMonth(d.getMonth() + (i - 1));
       if (d > end) d.setTime(end.getTime());
       dates.push(formatDate(d));
     }
@@ -211,10 +213,12 @@ function generateBreakdown(title, startDateStr, deadlineStr, granularity) {
   const tpl = pickTemplate(title);
 
   if (granularity === 'daily') {
+    // i=1 對應開始當天（今天），最後一項對應截止日，設定好專案的當天就有進度，
+    // 會直接出現在今日任務，不用等到隔天
     const n = Math.min(totalDays, MAX_SUBTASKS);
     for (let i = 1; i <= n; i++) {
       const d = new Date(start);
-      d.setDate(d.getDate() + Math.round((i * totalDays) / n));
+      d.setDate(d.getDate() + Math.round(((i - 1) * totalDays) / Math.max(n - 1, 1)));
       subtasks.push({ id: genSubtaskId(i), title: buildSubtaskTitle(tpl, 'daily', i - 1, title), dueDate: formatDate(d), done: false, googleEventId: null });
     }
   } else if (granularity === 'weekly') {
@@ -222,7 +226,7 @@ function generateBreakdown(title, startDateStr, deadlineStr, granularity) {
     const n = Math.min(totalWeeks, MAX_SUBTASKS);
     for (let i = 1; i <= n; i++) {
       const d = new Date(start);
-      d.setDate(d.getDate() + Math.min(totalDays, i * 7));
+      d.setDate(d.getDate() + Math.min(totalDays, (i - 1) * 7));
       subtasks.push({ id: genSubtaskId(i), title: buildSubtaskTitle(tpl, 'weekly', i, title), dueDate: formatDate(d), done: false, googleEventId: null });
     }
   } else {
@@ -230,7 +234,7 @@ function generateBreakdown(title, startDateStr, deadlineStr, granularity) {
     const n = Math.min(totalMonths, MAX_SUBTASKS);
     for (let i = 1; i <= n; i++) {
       const d = new Date(start);
-      d.setMonth(d.getMonth() + i);
+      d.setMonth(d.getMonth() + (i - 1));
       if (d > end) d.setTime(end.getTime());
       subtasks.push({ id: genSubtaskId(i), title: buildSubtaskTitle(tpl, 'monthly', i, title), dueDate: formatDate(d), done: false, googleEventId: null });
     }
