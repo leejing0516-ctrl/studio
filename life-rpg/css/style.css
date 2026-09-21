@@ -14,6 +14,134 @@
   --danger: #e2685f;
   --success: #4fae7d;
   --pink: #f5a8b8;
+  /* 深色強調文字（標籤、金額、標題橫幅文字等），跟 --gold 系配色搭配用 */
+  --accent-text: #b9782a;
+  --accent-text-strong: #7a4a1e;
+  --accent-gold: #c9862f;
+  /* 金色/亮色底上的深色文字（例如按鈕、等級徽章） */
+  --text-on-accent: #4a2e05;
+  /* 背景暈染光斑，佈景主題可以整組換色營造不同氛圍 */
+  --blob-1: rgba(185, 143, 224, 0.14);
+  --blob-2: rgba(245, 168, 184, 0.16);
+  --blob-3: rgba(134, 239, 172, 0.10);
+  /* 深色橫幅（例如今日任務頁的日期條）用的深色系 */
+  --dark-accent-a: #6b4522;
+  --dark-accent-b: #4a2e15;
+  --dark-accent-border: #3a2410;
+}
+
+/* ── 佈景主題：在「我的人設」→「平台設定」選擇，存在 state.theme，
+   由 applyTheme() 設定在 <html data-theme="..."> 上 ──────────── */
+:root[data-theme="forest"] {
+  --bg-a: #f4f8ec;
+  --bg-b: #e9f2dd;
+  --panel: #fdfefa;
+  --panel-2: #eef6e2;
+  --border-gold: #8fb573;
+  --border-dim: #dcebc9;
+  --gold: #7fae5c;
+  --gold-bright: #9bc97c;
+  --purple: #c9a86a;
+  --purple-soft: #f0e6d1;
+  --text: #3d4a34;
+  --text-dim: #8a9a7c;
+  --danger: #d97a5f;
+  --success: #4a9e6f;
+  --pink: #e8b86d;
+  --accent-text: #5c7a3f;
+  --accent-text-strong: #3f5c2a;
+  --accent-gold: #6f9450;
+  --text-on-accent: #1f3010;
+  --blob-1: rgba(143, 181, 115, 0.16);
+  --blob-2: rgba(201, 168, 106, 0.14);
+  --blob-3: rgba(134, 200, 239, 0.10);
+  --dark-accent-a: #3f5c2a;
+  --dark-accent-b: #2a3f1c;
+  --dark-accent-border: #1f3010;
+}
+
+:root[data-theme="ocean"] {
+  --bg-a: #eef7fb;
+  --bg-b: #e0eef6;
+  --panel: #fdfeff;
+  --panel-2: #e6f2f8;
+  --border-gold: #5fa8c9;
+  --border-dim: #cde6f0;
+  --gold: #3f90b8;
+  --gold-bright: #5cb0d6;
+  --purple: #7fb8c9;
+  --purple-soft: #dcf0f5;
+  --text: #2d4a55;
+  --text-dim: #7a9aa8;
+  --danger: #d9705f;
+  --success: #4fae8c;
+  --pink: #a8d5e0;
+  --accent-text: #2a6d8f;
+  --accent-text-strong: #1c4a63;
+  --accent-gold: #3585a8;
+  --text-on-accent: #0d2733;
+  --blob-1: rgba(95, 168, 201, 0.16);
+  --blob-2: rgba(127, 184, 201, 0.14);
+  --blob-3: rgba(168, 213, 224, 0.14);
+  --dark-accent-a: #1c4a63;
+  --dark-accent-b: #123340;
+  --dark-accent-border: #0d2733;
+}
+
+:root[data-theme="lavender"] {
+  --bg-a: #f8f2fb;
+  --bg-b: #f0e6f7;
+  --panel: #fefcff;
+  --panel-2: #f3e9fa;
+  --border-gold: #a888d6;
+  --border-dim: #e6d8f2;
+  --gold: #9268c9;
+  --gold-bright: #ab84dd;
+  --purple: #c9a8e8;
+  --purple-soft: #f0e6fa;
+  --text: #453a52;
+  --text-dim: #9a8aa8;
+  --danger: #d9705f;
+  --success: #4fae7d;
+  --pink: #e0a8d0;
+  --accent-text: #6d4a9e;
+  --accent-text-strong: #4a2e70;
+  --accent-gold: #8058b3;
+  --text-on-accent: #2a1740;
+  --blob-1: rgba(146, 104, 201, 0.16);
+  --blob-2: rgba(224, 168, 208, 0.14);
+  --blob-3: rgba(168, 136, 214, 0.12);
+  --dark-accent-a: #4a2e70;
+  --dark-accent-b: #331f4d;
+  --dark-accent-border: #2a1740;
+}
+
+:root[data-theme="sunset"] {
+  --bg-a: #fff0e6;
+  --bg-b: #ffe2d5;
+  --panel: #fffaf7;
+  --panel-2: #ffe9db;
+  --border-gold: #e0885a;
+  --border-dim: #f5d5c4;
+  --gold: #e0703f;
+  --gold-bright: #f28f5c;
+  --purple: #e0648a;
+  --purple-soft: #fbe0e8;
+  --text: #5a3a2e;
+  --text-dim: #b0897a;
+  --danger: #d9455f;
+  --success: #4fae7d;
+  --pink: #f5a37e;
+  --accent-text: #b8552a;
+  --accent-text-strong: #7a3517;
+  --accent-gold: #cc6a35;
+  --text-on-accent: #3d1a0d;
+  --blob-1: rgba(224, 112, 63, 0.14);
+  --blob-2: rgba(224, 100, 138, 0.14);
+  --blob-3: rgba(245, 163, 126, 0.14);
+  --dark-accent-a: #7a3517;
+  --dark-accent-b: #52220e;
+  --dark-accent-border: #3d1a0d;
 }
 
 * { box-sizing: border-box; }
@@ -22,9 +150,9 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(circle at 15% -5%, rgba(185, 143, 224, 0.14) 0%, transparent 45%),
-    radial-gradient(circle at 90% 5%, rgba(245, 168, 184, 0.16) 0%, transparent 40%),
-    radial-gradient(circle at 50% 100%, rgba(134, 239, 172, 0.10) 0%, transparent 45%),
+    radial-gradient(circle at 15% -5%, var(--blob-1) 0%, transparent 45%),
+    radial-gradient(circle at 90% 5%, var(--blob-2) 0%, transparent 40%),
+    radial-gradient(circle at 50% 100%, var(--blob-3) 0%, transparent 45%),
     linear-gradient(180deg, var(--bg-a) 0%, var(--bg-b) 100%);
   color: var(--text);
   font-family: "Noto Sans TC", -apple-system, "Microsoft JhengHei", sans-serif;
@@ -257,7 +385,7 @@ h1 {
 }
 .chat-bubble-user {
   background: linear-gradient(180deg, var(--gold-bright), var(--gold));
-  color: #4a2e05;
+  color: var(--text-on-accent);
   border-bottom-right-radius: 4px;
 }
 
@@ -268,8 +396,8 @@ h1 {
   padding: 0 4px;
 }
 
-.assistant-emphasis { color: #b9782a; font-weight: 700; }
-.chat-bubble-user .assistant-emphasis { color: #7a4a1e; }
+.assistant-emphasis { color: var(--accent-text); font-weight: 700; }
+.chat-bubble-user .assistant-emphasis { color: var(--accent-text-strong); }
 
 /* ── 角色狀態列（首頁上方，全站常駐，仿遊戲「人物信息」版面）──── */
 .status-bar {
@@ -300,7 +428,7 @@ h1 {
 .character-name-caption {
   margin-top: 10px;
   max-width: 100%;
-  background: linear-gradient(180deg, #fffaf1, #fff2e0);
+  background: linear-gradient(180deg, var(--panel), var(--panel-2));
   border: 1px solid var(--gold);
   border-radius: 999px;
   padding: 4px 16px;
@@ -309,7 +437,7 @@ h1 {
 .character-name-caption span {
   font-size: 13px;
   font-weight: 700;
-  color: #7a4a1e;
+  color: var(--accent-text-strong);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -333,7 +461,7 @@ h1 {
   padding: 5px 18px;
   border: 2px solid var(--gold);
   border-radius: 8px;
-  background: linear-gradient(180deg, #fffaf1, #fff2e0);
+  background: linear-gradient(180deg, var(--panel), var(--panel-2));
   box-shadow: 0 2px 8px rgba(227, 171, 92, 0.25);
 }
 .character-title-plaque::before,
@@ -350,7 +478,7 @@ h1 {
 #char-title-display {
   font-size: 14px;
   font-weight: 800;
-  color: #7a4a1e;
+  color: var(--accent-text-strong);
   letter-spacing: 1px;
 }
 
@@ -486,7 +614,7 @@ h1 {
   background: transparent;
   border: none;
   border-bottom: 1px dashed var(--border-dim);
-  color: #b9782a;
+  color: var(--accent-text);
   font-size: 18px;
   font-weight: 700;
   padding: 4px 2px;
@@ -501,7 +629,7 @@ h1 {
 
 .level-badge {
   background: linear-gradient(180deg, var(--gold-bright), var(--gold));
-  color: #4a2e05;
+  color: var(--text-on-accent);
   font-weight: 900;
   font-size: 13px;
   padding: 3px 14px;
@@ -541,7 +669,7 @@ h1 {
 }
 
 .streak { color: #e07a3f; font-weight: 700; }
-.gold { color: #c9862f; font-weight: 700; }
+.gold { color: var(--accent-gold); font-weight: 700; }
 
 .char-right {
   flex: 1.4;
@@ -592,7 +720,7 @@ h1 {
   justify-content: space-between;
 }
 
-.skill-lv { color: #c9862f; font-weight: 700; }
+.skill-lv { color: var(--accent-gold); font-weight: 700; }
 
 .skill-bar-bg { max-width: none; height: 10px; }
 .skill-bar-fill { height: 100%; border-radius: 999px; }
@@ -652,7 +780,7 @@ h1 {
 
 .tab-btn.active {
   background: linear-gradient(180deg, var(--gold-bright), var(--gold));
-  color: #4a2e05;
+  color: var(--text-on-accent);
   font-weight: 700;
   border-color: var(--gold);
   box-shadow: 0 2px 10px rgba(227, 171, 92, 0.3);
@@ -704,7 +832,7 @@ h1 {
 .primary-task-levelup-hint {
   display: inline-block;
   background: linear-gradient(180deg, var(--gold-bright), var(--gold));
-  color: #4a2e05;
+  color: var(--text-on-accent);
   font-weight: 700;
   font-size: 12.5px;
   padding: 6px 10px;
@@ -784,7 +912,7 @@ h1 {
   transition: transform .15s ease;
 }
 .domain-hex-item:hover .domain-hex { transform: translateY(-3px) scale(1.05); }
-.domain-hex-level { font-size: 12px; font-weight: 800; color: #9a5a1f; }
+.domain-hex-level { font-size: 12px; font-weight: 800; color: var(--accent-text); }
 .domain-hex-name { font-size: 10.5px; color: var(--text-dim); text-align: center; white-space: nowrap; }
 
 .tab-hint {
@@ -798,7 +926,7 @@ h1 {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: linear-gradient(135deg, #fff3d6, #fffdfa);
+  background: linear-gradient(135deg, var(--panel-2), var(--panel));
   border: 2px solid var(--gold);
   border-radius: 14px;
   padding: 10px 18px;
@@ -806,15 +934,15 @@ h1 {
   box-shadow: 0 2px 8px rgba(201, 156, 100, 0.15);
 }
 .page-title-icon { font-size: 20px; flex-shrink: 0; }
-.page-title-text { font-size: 17px; font-weight: 800; color: #9a5a1f; letter-spacing: 0.5px; }
+.page-title-text { font-size: 17px; font-weight: 800; color: var(--accent-text); letter-spacing: 0.5px; }
 
 /* 深色底＋白字，跟淺色的頁面標題橫幅做出區隔 */
 .today-date-banner {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: linear-gradient(135deg, #6b4522, #4a2e15);
-  border: 2px solid #3a2410;
+  background: linear-gradient(135deg, var(--dark-accent-a), var(--dark-accent-b));
+  border: 2px solid var(--dark-accent-border);
   border-radius: 14px;
   padding: 12px 18px;
   margin-bottom: 14px;
@@ -832,7 +960,7 @@ form.inline-form {
 }
 
 input[type="text"], input[type="number"], select {
-  background: #fffdfa;
+  background: var(--panel);
   border: 1px solid var(--border-dim);
   color: var(--text);
   border-radius: 8px;
@@ -848,7 +976,7 @@ input:focus, select:focus { outline: none; border-color: var(--border-gold); }
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: #fffdfa;
+  background: var(--panel);
   border: 1px solid var(--border-dim);
   border-radius: 8px;
   padding: 0 8px;
@@ -863,7 +991,7 @@ input:focus, select:focus { outline: none; border-color: var(--border-gold); }
 
 .btn {
   background: linear-gradient(180deg, var(--gold-bright), var(--gold));
-  color: #4a2e05;
+  color: var(--text-on-accent);
   border: none;
   border-radius: 8px;
   padding: 9px 18px;
@@ -916,7 +1044,7 @@ ul { list-style: none; padding: 0; margin: 0; }
   right: 14px;
   top: 0;
   background: linear-gradient(180deg, var(--gold-bright), var(--gold));
-  color: #4a2e05;
+  color: var(--text-on-accent);
   font-weight: 800;
   font-size: 13px;
   padding: 3px 12px;
@@ -997,14 +1125,14 @@ ul { list-style: none; padding: 0; margin: 0; }
 .task-text { flex: 1; font-size: 14px; min-width: 100px; }
 .task-time {
   font-size: 11px;
-  color: #b9782a;
+  color: var(--accent-text);
   background: var(--panel-2);
   padding: 2px 8px;
   border-radius: 999px;
   white-space: nowrap;
   font-weight: 700;
 }
-.task-exp { font-size: 12px; color: #c9862f; font-weight: 700; white-space: nowrap; }
+.task-exp { font-size: 12px; color: var(--accent-gold); font-weight: 700; white-space: nowrap; }
 .habit-streak { font-size: 12px; color: #e07a3f; white-space: nowrap; }
 .task-overdue {
   font-size: 11px;
@@ -1192,7 +1320,7 @@ ul { list-style: none; padding: 0; margin: 0; }
   width: 100%;
   min-height: 90px;
   resize: vertical;
-  background: #fffdfa;
+  background: var(--panel);
   border: 1px solid var(--border-dim);
   color: var(--text);
   border-radius: 8px;
@@ -1244,7 +1372,7 @@ ul { list-style: none; padding: 0; margin: 0; }
   margin-top: 8px;
   min-height: 60px;
   resize: vertical;
-  background: #fffdfa;
+  background: var(--panel);
   border: 1px solid var(--border-dim);
   color: var(--text);
   border-radius: 8px;
@@ -1331,7 +1459,7 @@ ul { list-style: none; padding: 0; margin: 0; }
 .cal-cell.drag-over { outline: 2px dashed var(--gold); background: #fff3d6; }
 .task-item[draggable="true"] { cursor: grab; }
 .task-item.dragging { opacity: 0.4; }
-.cal-cell.has-events .cal-daynum { color: #b9782a; font-weight: 700; }
+.cal-cell.has-events .cal-daynum { color: var(--accent-text); font-weight: 700; }
 
 .cal-weekday.is-weekend { color: var(--danger); }
 
@@ -1362,7 +1490,7 @@ ul { list-style: none; padding: 0; margin: 0; }
   cursor: pointer;
   font-weight: 700;
   font-size: 14px;
-  color: #b9782a;
+  color: var(--accent-text);
 }
 .gcal-panel code {
   background: var(--panel-2);
@@ -1382,9 +1510,48 @@ ul { list-style: none; padding: 0; margin: 0; }
 .settings-section:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
 .settings-section-title {
   font-size: 15px;
-  color: #b9782a;
+  color: var(--accent-text);
   margin: 0 0 12px;
 }
+
+/* ── 平台設定：佈景主題選色卡 ───────────────────── */
+.theme-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 14px;
+  margin-top: 6px;
+}
+.theme-swatch-btn {
+  position: relative;
+  border: 2px solid var(--border-dim);
+  border-radius: 14px;
+  padding: 14px;
+  cursor: pointer;
+  background: var(--panel);
+  text-align: left;
+  font-family: inherit;
+}
+.theme-swatch-btn.active {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(227, 171, 92, 0.25);
+}
+.theme-swatch-colors { display: flex; gap: 6px; margin-bottom: 10px; }
+.theme-swatch-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+.theme-swatch-name { font-size: 13.5px; font-weight: 700; color: var(--text); }
+.theme-swatch-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 14px;
+  color: var(--gold);
+  display: none;
+}
+.theme-swatch-btn.active .theme-swatch-check { display: block; }
 
 .assistant-chat-row {
   display: flex;
@@ -1453,7 +1620,7 @@ ul { list-style: none; padding: 0; margin: 0; }
 
 .reward-icon { font-size: 28px; }
 .reward-name { font-size: 12.5px; font-weight: 700; }
-.reward-cost { color: #c9862f; font-weight: 700; font-size: 12px; white-space: nowrap; }
+.reward-cost { color: var(--accent-gold); font-weight: 700; font-size: 12px; white-space: nowrap; }
 .reward-actions { display: flex; gap: 4px; margin-top: 2px; }
 
 /* ── 消費/財務 ───────────────────────────── */
@@ -1477,7 +1644,7 @@ ul { list-style: none; padding: 0; margin: 0; }
 }
 .expense-item:last-child { margin-bottom: 0; }
 
-.expense-amount { font-weight: 700; color: #c9862f; font-size: 14px; }
+.expense-amount { font-weight: 700; color: var(--accent-gold); font-size: 14px; }
 .expense-note { flex: 1; font-size: 13px; color: var(--text-dim); min-width: 60px; }
 .expense-date { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
 
@@ -1508,7 +1675,7 @@ ul { list-style: none; padding: 0; margin: 0; }
 
 .badge-icon { font-size: 26px; margin-bottom: 6px; }
 .badge-name { font-size: 11px; font-weight: 700; color: var(--text-dim); }
-.badge.unlocked .badge-name { color: #b9782a; }
+.badge.unlocked .badge-name { color: var(--accent-text); }
 
 .empty-hint { color: var(--text-dim); font-size: 13px; padding: 14px 0; }
 
@@ -1541,7 +1708,7 @@ ul { list-style: none; padding: 0; margin: 0; }
 .modal-title {
   margin: 0 0 14px;
   font-size: 16px;
-  color: #b9782a;
+  color: var(--accent-text);
 }
 
 .modal-fields {
@@ -1640,7 +1807,7 @@ ul { list-style: none; padding: 0; margin: 0; }
 
 .toast-icon { font-size: 26px; }
 .toast-title { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
-.toast-name { font-size: 14px; font-weight: 700; color: #b9782a; }
+.toast-name { font-size: 14px; font-weight: 700; color: var(--accent-text); }
 
 /* ── 響應式 ───────────────────────────── */
 @media (max-width: 640px) {

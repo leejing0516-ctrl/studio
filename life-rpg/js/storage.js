@@ -5,6 +5,7 @@ function defaultState() {
   DOMAINS.forEach(d => { skills[d.key] = { exp: 0, lastGain: null }; });
   return {
     character: { name: '我的角色', avatar: null, title: '', age: '', traits: '', bio: '' },
+    theme: 'warm',        // 佈景主題，在「平台設定」頁選擇，套用在 <html data-theme="...">
     skills,
     gold: 0,
     tasks: [],           // { id, domain, text, difficulty, date, done }

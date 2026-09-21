@@ -7,6 +7,15 @@ const DOMAINS = [
   { key: 'social',   name: '人際/家庭', icon: '❤️', color: '#c4b5fd', badge: 'assets/badge_social.png' },
 ];
 
+// 佈景主題：key 對應 CSS 的 :root[data-theme="key"]，colors 是選色卡上顯示的預覽色點
+const THEMES = [
+  { key: 'warm',     name: '溫暖暖陽', colors: ['#e0a952', '#b98fe0', '#f5a8b8'] },
+  { key: 'forest',   name: '森林綠意', colors: ['#7fae5c', '#c9a86a', '#9bc97c'] },
+  { key: 'ocean',    name: '海洋藍調', colors: ['#3f90b8', '#7fb8c9', '#a8d5e0'] },
+  { key: 'lavender', name: '薰衣草紫', colors: ['#9268c9', '#c9a8e8', '#e0a8d0'] },
+  { key: 'sunset',   name: '夕陽橘',   colors: ['#e0703f', '#e0648a', '#f28f5c'] },
+];
+
 const DEFAULT_AVATAR_SRC = 'assets/avatar_default_20260913_081358.png';
 // 角色圖片裁切成 3:4 直式卡片比例，適合半身照（也保留去背 PNG 的透明背景）
 const AVATAR_CARD_WIDTH = 300;

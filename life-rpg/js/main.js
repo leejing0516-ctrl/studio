@@ -1,4 +1,5 @@
 let state = loadState();
+applyTheme(state.theme);
 runDailyCheckIn(state);
 checkBudgetBonuses(state);
 
@@ -36,6 +37,8 @@ function checkPostponePrompts(state) {
 let _skipNextSave = true;
 
 function renderAll() {
+  applyTheme(state.theme);
+  renderThemePicker(state);
   renderCharacter(state);
   renderHome(state);
   renderTasks(state);
@@ -165,6 +168,7 @@ const PAGE_TITLES = {
   'tab-log': { icon: '📜', label: '活動紀錄' },
   'tab-assistant': { icon: '🧑‍🏫', label: '教練對話' },
   'tab-settings': { icon: '⚙️', label: '我的人設' },
+  'tab-platform': { icon: '🎨', label: '平台設定' },
 };
 
 function decoratePageTitles() {
@@ -176,6 +180,25 @@ function decoratePageTitles() {
     banner.innerHTML = `<span class="page-title-icon">${icon}</span><span class="page-title-text">${label}</span>`;
     panel.insertBefore(banner, panel.firstChild);
   });
+}
+
+// 套用佈景主題：改 <html> 的 data-theme，CSS 變數會跟著整套換色
+function applyTheme(themeKey) {
+  document.documentElement.setAttribute('data-theme', themeKey || 'warm');
+}
+
+function renderThemePicker(state) {
+  const el = document.getElementById('theme-picker-grid');
+  if (!el) return;
+  el.innerHTML = THEMES.map(t => `
+    <button type="button" class="theme-swatch-btn${state.theme === t.key ? ' active' : ''}" data-theme-key="${t.key}">
+      <span class="theme-swatch-check">✓</span>
+      <div class="theme-swatch-colors">
+        ${t.colors.map(c => `<span class="theme-swatch-dot" style="background:${c}"></span>`).join('')}
+      </div>
+      <div class="theme-swatch-name">${escapeHtml(t.name)}</div>
+    </button>
+  `).join('');
 }
 
 // 時間選擇改用「時」「分」兩個下拉選單，分鐘固定 10 分鐘一格，
@@ -533,6 +556,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('avatar-edit-card').addEventListener('click', () => {
     document.getElementById('avatar-upload').click();
+  });
+
+  document.getElementById('theme-picker-grid').addEventListener('click', e => {
+    const btn = e.target.closest('.theme-swatch-btn');
+    if (!btn) return;
+    state.theme = btn.dataset.themeKey;
+    saveState(state);
+    sound.playClick();
+    renderAll();
   });
 
   document.getElementById('avatar-upload').addEventListener('change', e => {
