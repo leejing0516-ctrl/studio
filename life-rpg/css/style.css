@@ -813,19 +813,20 @@ h1 {
 .page-title-icon { font-size: 20px; flex-shrink: 0; }
 .page-title-text { font-size: 17px; font-weight: 800; color: #9a5a1f; letter-spacing: 0.5px; }
 
+/* 深色底＋白字，跟淺色的頁面標題橫幅做出區隔 */
 .today-date-banner {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: linear-gradient(135deg, #fff3d6, #fffdfa);
-  border: 2px solid var(--gold);
+  background: linear-gradient(135deg, #6b4522, #4a2e15);
+  border: 2px solid #3a2410;
   border-radius: 14px;
   padding: 12px 18px;
   margin-bottom: 14px;
-  box-shadow: 0 2px 8px rgba(201, 156, 100, 0.15);
+  box-shadow: 0 2px 8px rgba(74, 46, 21, 0.3);
 }
-.today-date-icon { color: #9a5a1f; flex-shrink: 0; }
-.today-date-text { font-size: 20px; font-weight: 800; color: #9a5a1f; letter-spacing: 0.5px; }
+.today-date-icon { color: #fff; flex-shrink: 0; }
+.today-date-text { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: 0.5px; }
 
 /* ── 表單 ───────────────────────────── */
 form.inline-form {
