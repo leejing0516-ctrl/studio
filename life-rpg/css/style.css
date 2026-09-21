@@ -600,8 +600,8 @@ h1 {
 .skill-bar-bg { max-width: none; height: 10px; }
 .skill-bar-fill { height: 100%; border-radius: 999px; }
 
-/* ── 主要導覽／冒險選單 ───────────────────────────── */
-.nav-wrap { position: relative; margin-bottom: 14px; }
+/* ── 主要導覽 ───────────────────────────── */
+.nav-wrap { margin-bottom: 14px; }
 
 .primary-nav {
   display: flex;
@@ -609,26 +609,14 @@ h1 {
 }
 .primary-nav .tab-btn { flex: 1; }
 
-.adventure-menu {
-  display: none;
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  width: 300px;
-  max-width: 90vw;
-  max-height: 70vh;
-  overflow-y: auto;
-  z-index: 150;
-  background: var(--panel);
-  border: 2px solid var(--border-gold);
-  border-radius: 16px;
-  padding: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+/* ── 冒險選單（獨立頁面，不再是彈出選單）──────────── */
+#tab-adventure {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
 }
-.adventure-menu.show { display: block; }
 
-.menu-group { margin-bottom: 14px; }
-.menu-group:last-child { margin-bottom: 0; }
+.menu-group { margin-bottom: 0; }
 .menu-group-title {
   font-size: 11px;
   color: var(--text-dim);
@@ -1665,7 +1653,6 @@ ul { list-style: none; padding: 0; margin: 0; }
 
   .settings-character-row { flex-wrap: wrap; }
 
-  .nav-wrap { position: static; }
   .primary-nav {
     position: fixed;
     left: 0; right: 0; bottom: 0;
@@ -1679,15 +1666,7 @@ ul { list-style: none; padding: 0; margin: 0; }
   }
   .primary-nav .tab-btn { font-size: 12px; padding: 8px 4px; }
 
-  .adventure-menu {
-    position: fixed;
-    left: 0; right: 0; top: auto;
-    bottom: 68px;
-    width: auto;
-    max-width: none;
-    border-radius: 18px 18px 0 0;
-    max-height: 65vh;
-  }
+  #tab-adventure { grid-template-columns: 1fr; gap: 14px; }
 
   .home-grid {
     grid-template-columns: 1fr;

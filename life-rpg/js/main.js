@@ -124,8 +124,6 @@ function switchTab(tabId) {
   document.getElementById(tabId).classList.add('active');
   // 同一個分頁可能同時有「主要導覽」跟「冒險選單」裡的按鈕，兩個都要標記成選取狀態
   document.querySelectorAll(`.tab-btn[data-tab="${tabId}"]`).forEach(b => b.classList.add('active'));
-  document.getElementById('adventure-menu').classList.remove('show');
-  document.getElementById('adventure-menu-toggle').setAttribute('aria-expanded', 'false');
   // 手機版只有首頁需要看到 logo 跟人物資訊卡，其他分頁單純顯示內容，不用一直往下滑
   document.querySelector('.app').classList.toggle('is-home-tab', tabId === 'tab-home');
   // 手機版切分頁時捲回最頂端，避免停在上一個分頁滑到的位置
@@ -407,14 +405,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-  });
-
-  // 冒險選單開合（桌面版下拉面板／手機版下方選單）
-  document.getElementById('adventure-menu-toggle').addEventListener('click', () => {
-    const menu = document.getElementById('adventure-menu');
-    const willShow = !menu.classList.contains('show');
-    menu.classList.toggle('show', willShow);
-    document.getElementById('adventure-menu-toggle').setAttribute('aria-expanded', String(willShow));
   });
 
   // 首頁
