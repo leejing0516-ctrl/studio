@@ -164,7 +164,7 @@ const PAGE_TITLES = {
   'tab-achievements': { icon: '🏆', label: '榮耀成就' },
   'tab-log': { icon: '📜', label: '活動紀錄' },
   'tab-assistant': { icon: '🧑‍🏫', label: '教練對話' },
-  'tab-settings': { icon: '⚙️', label: '設定' },
+  'tab-settings': { icon: '⚙️', label: '我的人設' },
 };
 
 function decoratePageTitles() {
