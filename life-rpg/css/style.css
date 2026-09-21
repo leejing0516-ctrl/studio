@@ -1832,11 +1832,13 @@ ul { list-style: none; padding: 0; margin: 0; }
   }
   .app:not(.is-home-tab) .nav-wrap { margin-bottom: 4px; }
 
-  .status-bar { padding: 10px 14px; flex-direction: column; align-items: center; }
-  .character-bio-col, .character-skill-col { width: 100%; padding-top: 0; }
-  .character-bio-col { text-align: center; }
-  .character-bio-text { text-align: left; }
-  .status-roleplay-row { justify-content: center; }
+  /* 圖像+名稱靠左一欄、簡介靠右一欄；技能欄內容較多，另外獨立一整排在下面
+     （原本圖像置中孤零零一張、上下留白的排法看起來很像遺照，改成左右分欄） */
+  .status-bar { padding: 10px 14px; flex-wrap: wrap; align-items: flex-start; }
+  .character-portrait-wrap { align-items: flex-start; }
+  .character-portrait-frame { width: 100px; }
+  .character-bio-col { flex: 1; min-width: 0; padding-top: 0; }
+  .character-skill-col { flex-basis: 100%; padding-top: 10px; }
 
   .settings-character-row { flex-wrap: wrap; }
 
