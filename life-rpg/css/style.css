@@ -1662,8 +1662,13 @@ ul { list-style: none; padding: 0; margin: 0; }
   .app:not(.is-home-tab) .mute-btn {
     display: none;
   }
-  /* logo 跟雲端/靜音鈕都藏起來了，原本留給它們的頂部空間也一併收掉，只留一點點呼吸空間 */
-  .app:not(.is-home-tab) { padding-top: 1px; }
+  /* 上一版只收了 .app 自己的 padding-top，但 body 的 28px 上邊距跟 .nav-wrap 的
+     14px margin-bottom 疊加起來才是真正造成大空白的原因，這裡一次把三層都收乾淨 */
+  .app:not(.is-home-tab) {
+    margin-top: -28px;
+    padding-top: 6px;
+  }
+  .app:not(.is-home-tab) .nav-wrap { margin-bottom: 4px; }
 
   .status-bar { padding: 10px 14px; flex-direction: column; align-items: center; }
   .character-bio-col, .character-skill-col { width: 100%; padding-top: 0; }
