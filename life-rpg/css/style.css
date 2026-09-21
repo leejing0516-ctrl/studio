@@ -1832,13 +1832,29 @@ ul { list-style: none; padding: 0; margin: 0; }
   }
   .app:not(.is-home-tab) .nav-wrap { margin-bottom: 4px; }
 
-  /* 圖像+名稱靠左一欄、簡介靠右一欄；技能欄內容較多，另外獨立一整排在下面
-     （原本圖像置中孤零零一張、上下留白的排法看起來很像遺照，改成左右分欄） */
-  .status-bar { padding: 10px 14px; flex-wrap: wrap; align-items: flex-start; }
-  .character-portrait-wrap { align-items: flex-start; flex: 1; min-width: 0; }
+  /* 左欄：圖像＋名稱（名稱置中於圖像下方）＋等級／經驗條；右欄：簡介；
+     技能條清單內容較多，獨立一整排在最下面。用 grid 讓「等級／經驗條」這幾塊
+     實際上還是 .character-skill-col 的子元素，但畫面排版上搬到左欄圖像下方。 */
+  .status-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "portrait bio"
+      "level bio"
+      "gauge bio"
+      "exp bio"
+      "skills skills";
+    gap: 10px 22px;
+    padding: 10px 14px;
+  }
+  .character-portrait-wrap { grid-area: portrait; align-items: center; }
   .character-portrait-frame { width: 100%; max-width: none; }
-  .character-bio-col { flex: 1; min-width: 0; padding-top: 0; }
-  .character-skill-col { flex-basis: 100%; padding-top: 10px; }
+  .character-bio-col { grid-area: bio; padding-top: 0; }
+  .character-skill-col { display: contents; }
+  .character-level-row { grid-area: level; }
+  .gauge-row { grid-area: gauge; }
+  .status-exp-row { grid-area: exp; }
+  .status-skill-bars { grid-area: skills; padding-top: 10px; }
 
   .settings-character-row { flex-wrap: wrap; }
 
