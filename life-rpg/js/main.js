@@ -941,7 +941,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('gcal-connect').addEventListener('click', () => connectGoogle(state));
 
   // 專案
-  document.getElementById('project-form').addEventListener('submit', e => {
+  document.getElementById('project-form').addEventListener('submit', async e => {
     e.preventDefault();
     const title = document.getElementById('project-title').value;
     const domain = document.getElementById('project-domain').value;
@@ -952,12 +952,18 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('請輸入目標，且截止日期必須在開始日期之後');
       return;
     }
-    previewProject(title, domain, startDate, deadline, granularity);
+    saveAssistantSettings(state); // 避免使用者填好 AI 網址卻忘記按「儲存設定」
+    const btn = document.getElementById('project-generate-btn');
+    btn.disabled = true;
+    btn.textContent = '教練拆解中…';
+    await previewProject(state, title, domain, startDate, deadline, granularity);
+    btn.disabled = false;
+    btn.textContent = '🤖 AI 拆解生成任務';
     sound.playClick();
     renderProjects(state);
   });
 
-  document.getElementById('project-preview').addEventListener('click', e => {
+  document.getElementById('project-preview').addEventListener('click', async e => {
     if (e.target.matches('#preview-confirm')) {
       confirmPendingProject(state);
       document.getElementById('project-title').value = '';
@@ -966,7 +972,10 @@ document.addEventListener('DOMContentLoaded', () => {
       sound.playComplete();
       renderAll();
     } else if (e.target.matches('#preview-regenerate')) {
-      regeneratePendingProject();
+      const btn = e.target;
+      btn.disabled = true;
+      btn.textContent = '重新拆解中…';
+      await regeneratePendingProject(state);
       sound.playClick();
       renderProjects(state);
     } else if (e.target.matches('#preview-cancel')) {

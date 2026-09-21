@@ -113,7 +113,93 @@ function buildSubtaskTitle(tpl, granularity, i, title) {
   return `第 ${i} 個月：${phrase}`;
 }
 
-// 「AI 拆解」：依專案性質比對範本，把專案拆成一系列有到期日、具體的子任務
+// 只算每個子任務對應的到期日（跟 generateBreakdown 用同一套邏輯，AI 拆解路徑也需要用到，
+// 但獨立成一個函式，避免動到 generateBreakdown 這個本地備援範本原本已經穩定的行為）
+function computeSubtaskSchedule(startDateStr, deadlineStr, granularity) {
+  const start = parseDateStr(startDateStr);
+  const end = parseDateStr(deadlineStr);
+  if (end <= start) return [];
+  const totalDays = daysBetween(startDateStr, deadlineStr);
+  const MAX_SUBTASKS = 60;
+  const dates = [];
+  if (granularity === 'daily') {
+    const n = Math.min(totalDays, MAX_SUBTASKS);
+    for (let i = 1; i <= n; i++) {
+      const d = new Date(start);
+      d.setDate(d.getDate() + Math.round((i * totalDays) / n));
+      dates.push(formatDate(d));
+    }
+  } else if (granularity === 'weekly') {
+    const totalWeeks = Math.max(1, Math.ceil(totalDays / 7));
+    const n = Math.min(totalWeeks, MAX_SUBTASKS);
+    for (let i = 1; i <= n; i++) {
+      const d = new Date(start);
+      d.setDate(d.getDate() + Math.min(totalDays, i * 7));
+      dates.push(formatDate(d));
+    }
+  } else {
+    const totalMonths = Math.max(1, Math.round(totalDays / 30));
+    const n = Math.min(totalMonths, MAX_SUBTASKS);
+    for (let i = 1; i <= n; i++) {
+      const d = new Date(start);
+      d.setMonth(d.getMonth() + i);
+      if (d > end) d.setTime(end.getTime());
+      dates.push(formatDate(d));
+    }
+  }
+  if (dates.length) dates[dates.length - 1] = deadlineStr;
+  return dates;
+}
+
+// AI 拆解專案：要求教練依 SMART 原則（具體、可衡量、可達成、相關、有時限）
+// 把目標拆成一系列子任務標題，實際到期日仍由 computeSubtaskSchedule 均勻分配決定
+function buildProjectSystemPrompt(granularity) {
+  const unit = granularity === 'daily' ? '每天' : granularity === 'weekly' ? '每週' : '每月';
+  return [
+    '你是「我的人生RPG」App裡幫使用者把長期目標拆解成具體行動的教練。',
+    `使用者會給你一個專案目標、所屬領域，以及希望拆成${unit}一項的子任務數量。`,
+    '請把這個目標拆解成一系列漸進、彼此有邏輯順序、循序累積朝向目標的子任務標題，並嚴格遵守 SMART 原則：',
+    '- Specific（具體）：清楚寫出要做什麼、怎麼做，不要用「加強」「提升」「努力」這種空泛字眼。',
+    '- Measurable（可衡量）：盡量包含具體數字、份量或可檢核的完成標準（例如頁數、公里數、題數、次數、金額）。',
+    '- Achievable（可達成）：份量要符合一般人在這個時間單位內做得到的量，循序漸進，不要一開始就不切實際。',
+    '- Relevant（相關）：每個子任務都要直接服務於最終目標，不要離題或硬湊數。',
+    '- Time-bound（有時限）：每個子任務本身就是這一個時間單位內要完成的份量，會依序累積朝向最終截止日的目標。',
+    '子任務標題請控制在 20 字以內，不要加「第X天/週/月」這種編號前綴（系統會自動加），直接描述具體行動內容。',
+    '請務必「只」回傳純 JSON，不要加任何說明文字、不要用 markdown code fence 包起來，格式必須是：',
+    '{"subtasks": ["...", "...", ...]}',
+  ].join('\n');
+}
+
+function parseProjectReply(reply, count) {
+  let text = String(reply).trim();
+  text = text.replace(/^```(json)?/i, '').replace(/```$/, '').trim();
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start === -1 || end === -1) throw new Error('拆解內容格式錯誤，請重新生成一次');
+  let parsed;
+  try {
+    parsed = JSON.parse(text.slice(start, end + 1));
+  } catch (e) {
+    throw new Error('拆解內容格式錯誤，請重新生成一次');
+  }
+  if (!Array.isArray(parsed.subtasks) || !parsed.subtasks.length) {
+    throw new Error('拆解內容不完整，請重新生成一次');
+  }
+  return parsed.subtasks.map(t => String(t).trim().slice(0, 60)).filter(Boolean).slice(0, count);
+}
+
+async function callProjectAI(state, title, domain, granularity, count) {
+  if (!state.assistant.aiEndpoint) throw new Error('尚未設定 AI 服務網址，請先到「教練對話」分頁的教練設定啟用並填寫');
+  const system = buildProjectSystemPrompt(granularity);
+  const unit = granularity === 'daily' ? '天' : granularity === 'weekly' ? '週' : '個月';
+  const domainName = (DOMAINS.find(d => d.key === domain) || {}).name || domain;
+  const message = `專案目標：${title}\n所屬領域：${domainName}\n請拆成 ${count} ${unit}的子任務。`;
+  // 拆解可能有 60 項子任務標題的 JSON，需要比一般聊天回覆多一些 token
+  const reply = await fetchAIReply(state.assistant.aiEndpoint, system, message, 45000, 4096);
+  return parseProjectReply(reply, count);
+}
+
+// 「AI 拆解」：依專案性質比對範本，把專案拆成一系列有到期日、具體的子任務（AI 沒設定時的本地備援）
 function generateBreakdown(title, startDateStr, deadlineStr, granularity) {
   const subtasks = [];
   const start = parseDateStr(startDateStr);
@@ -157,19 +243,34 @@ function generateBreakdown(title, startDateStr, deadlineStr, granularity) {
 let _pendingProject = null;
 let _expandedProjects = new Set();
 
-// 先產生預覽，讓使用者看過、刪掉不要的子任務後再確認儲存
-function previewProject(title, domain, startDate, deadline, granularity) {
-  if (!title.trim() || !deadline) return;
-  _pendingProject = {
-    title: title.trim(), domain, startDate, deadline, granularity,
-    subtasks: generateBreakdown(title.trim(), startDate, deadline, granularity),
-  };
+// 先產生預覽，讓使用者看過、刪掉不要的子任務後再確認儲存。
+// 有設定 AI 就請教練依 SMART 原則拆解；沒設定或 AI 失敗就退回本地範本，確保功能還能用。
+async function previewProject(state, title, domain, startDate, deadline, granularity) {
+  const t = title.trim();
+  if (!t || !deadline) return;
+  let subtasks;
+  if (state.assistant.aiEndpoint) {
+    const dates = computeSubtaskSchedule(startDate, deadline, granularity);
+    try {
+      const titles = await callProjectAI(state, t, domain, granularity, dates.length);
+      subtasks = dates.map((dueDate, idx) => ({
+        id: genSubtaskId(idx + 1),
+        title: titles[idx] || `延續「${t}」的下一步`,
+        dueDate, done: false, googleEventId: null,
+      }));
+    } catch (e) {
+      subtasks = generateBreakdown(t, startDate, deadline, granularity);
+    }
+  } else {
+    subtasks = generateBreakdown(t, startDate, deadline, granularity);
+  }
+  _pendingProject = { title: t, domain, startDate, deadline, granularity, subtasks };
 }
 
-function regeneratePendingProject() {
+async function regeneratePendingProject(state) {
   if (!_pendingProject) return;
-  const { title, startDate, deadline, granularity } = _pendingProject;
-  _pendingProject.subtasks = generateBreakdown(title, startDate, deadline, granularity);
+  const { title, domain, startDate, deadline, granularity } = _pendingProject;
+  await previewProject(state, title, domain, startDate, deadline, granularity);
 }
 
 function removePendingSubtask(subtaskId) {

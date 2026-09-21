@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=106">
+<link rel="stylesheet" href="css/style.css?v=108">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -300,14 +300,14 @@
   </div>
 
   <div id="tab-projects" class="tab-panel frame">
-    <p class="tab-hint">設定期限與目標，教練會先給你一份拆解預覽，確認儲存後子任務會自動出現在今日任務與行事曆，也能同步到 Google 日曆。</p>
+    <p class="tab-hint">設定期限與目標，教練會依 SMART 原則（具體、可衡量、可達成、相關、有時限）先給你一份拆解預覽，確認儲存後子任務會自動出現在今日任務與行事曆，也能同步到 Google 日曆。需要先在「教練對話」分頁啟用 AI，沒啟用的話會改用內建的通用範本拆解。</p>
     <form id="project-form" class="inline-form">
       <input type="text" id="project-title" placeholder="專案目標…（例如：12/15 前減肥3公斤）" required>
       <select id="project-domain"></select>
       <input type="date" id="project-start" title="開始日期" required>
       <input type="date" id="project-deadline" title="截止日期" required>
       <select id="project-granularity"></select>
-      <button type="submit" class="btn">🤖 AI 拆解生成任務</button>
+      <button type="submit" id="project-generate-btn" class="btn">🤖 AI 拆解生成任務</button>
     </form>
     <div id="project-preview" style="display:none"></div>
     <ul id="project-list"></ul>
@@ -453,22 +453,22 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="js/config.js?v=106"></script>
-<script src="js/storage.js?v=106"></script>
-<script src="js/cloud.js?v=106"></script>
-<script src="js/sound.js?v=106"></script>
-<script src="js/assistant.js?v=106"></script>
-<script src="js/character.js?v=106"></script>
-<script src="js/tasks.js?v=106"></script>
-<script src="js/habits.js?v=106"></script>
-<script src="js/projects.js?v=106"></script>
-<script src="js/story.js?v=106"></script>
-<script src="js/home.js?v=106"></script>
-<script src="js/reading.js?v=106"></script>
-<script src="js/finance.js?v=106"></script>
-<script src="js/calendar.js?v=106"></script>
-<script src="js/rewards.js?v=106"></script>
-<script src="js/achievements.js?v=106"></script>
-<script src="js/main.js?v=106"></script>
+<script src="js/config.js?v=108"></script>
+<script src="js/storage.js?v=108"></script>
+<script src="js/cloud.js?v=108"></script>
+<script src="js/sound.js?v=108"></script>
+<script src="js/assistant.js?v=108"></script>
+<script src="js/character.js?v=108"></script>
+<script src="js/tasks.js?v=108"></script>
+<script src="js/habits.js?v=108"></script>
+<script src="js/projects.js?v=108"></script>
+<script src="js/story.js?v=108"></script>
+<script src="js/home.js?v=108"></script>
+<script src="js/reading.js?v=108"></script>
+<script src="js/finance.js?v=108"></script>
+<script src="js/calendar.js?v=108"></script>
+<script src="js/rewards.js?v=108"></script>
+<script src="js/achievements.js?v=108"></script>
+<script src="js/main.js?v=108"></script>
 </body>
 </html>
