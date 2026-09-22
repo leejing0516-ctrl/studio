@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=113">
+<link rel="stylesheet" href="css/style.css?v=114">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -365,8 +365,8 @@
       <div class="modal-actions" style="justify-content:flex-start; flex-wrap:wrap;">
         <button type="button" id="gcal-sync" class="btn small">⬆️ 同步未上傳的項目</button>
         <button type="button" id="gcal-import" class="btn small">⬇️ 從 Google 匯入行程</button>
+        <button type="button" id="gcal-info-btn" class="icon-btn" title="說明">ℹ️</button>
       </div>
-      <p class="tab-hint">「同步未上傳的項目」是把這個 app 裡的任務/活動推到 Google 日曆；「從 Google 匯入行程」則是反過來，把 Google 日曆上未來 90 天內的行程抓進這個 app（已經匯入過的不會重複匯入）。需要先到「平台設定」頁連接 Google 帳號。</p>
       <p id="gcal-last-sync" class="tab-hint">尚未同步過</p>
     </div>
 
@@ -457,6 +457,16 @@
   </div>
 </div>
 
+<div id="info-modal" class="modal-overlay">
+  <div class="modal-box frame">
+    <h3 class="modal-title" id="info-modal-title">ℹ️ 說明</h3>
+    <p id="info-modal-text" class="tab-hint"></p>
+    <div class="modal-actions">
+      <button type="button" id="info-modal-close" class="btn">關閉</button>
+    </div>
+  </div>
+</div>
+
 <div id="levelup-modal" class="levelup-modal">
   <div class="levelup-burst">
     <div class="levelup-label">LEVEL UP!</div>
@@ -466,22 +476,22 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="js/config.js?v=113"></script>
-<script src="js/storage.js?v=113"></script>
-<script src="js/cloud.js?v=113"></script>
-<script src="js/sound.js?v=113"></script>
-<script src="js/assistant.js?v=113"></script>
-<script src="js/character.js?v=113"></script>
-<script src="js/tasks.js?v=113"></script>
-<script src="js/habits.js?v=113"></script>
-<script src="js/projects.js?v=113"></script>
-<script src="js/story.js?v=113"></script>
-<script src="js/home.js?v=113"></script>
-<script src="js/reading.js?v=113"></script>
-<script src="js/finance.js?v=113"></script>
-<script src="js/calendar.js?v=113"></script>
-<script src="js/rewards.js?v=113"></script>
-<script src="js/achievements.js?v=113"></script>
-<script src="js/main.js?v=113"></script>
+<script src="js/config.js?v=114"></script>
+<script src="js/storage.js?v=114"></script>
+<script src="js/cloud.js?v=114"></script>
+<script src="js/sound.js?v=114"></script>
+<script src="js/assistant.js?v=114"></script>
+<script src="js/character.js?v=114"></script>
+<script src="js/tasks.js?v=114"></script>
+<script src="js/habits.js?v=114"></script>
+<script src="js/projects.js?v=114"></script>
+<script src="js/story.js?v=114"></script>
+<script src="js/home.js?v=114"></script>
+<script src="js/reading.js?v=114"></script>
+<script src="js/finance.js?v=114"></script>
+<script src="js/calendar.js?v=114"></script>
+<script src="js/rewards.js?v=114"></script>
+<script src="js/achievements.js?v=114"></script>
+<script src="js/main.js?v=114"></script>
 </body>
 </html>

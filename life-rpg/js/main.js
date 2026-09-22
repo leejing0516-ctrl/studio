@@ -316,6 +316,17 @@ function closeEditModal() {
   _editTarget = null;
 }
 
+// 通用的「說明」彈出視窗，用來放平常隱藏、需要時才顯示的說明文字
+function openInfoModal(title, text) {
+  document.getElementById('info-modal-title').textContent = title;
+  document.getElementById('info-modal-text').textContent = text;
+  document.getElementById('info-modal').classList.add('show');
+}
+
+function closeInfoModal() {
+  document.getElementById('info-modal').classList.remove('show');
+}
+
 function saveEditModal() {
   if (!_editTarget) return;
   const { kind, id } = _editTarget;
@@ -490,6 +501,14 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('edit-cancel').addEventListener('click', closeEditModal);
   document.getElementById('edit-modal').addEventListener('click', e => {
     if (e.target.id === 'edit-modal') closeEditModal();
+  });
+
+  document.getElementById('info-modal-close').addEventListener('click', closeInfoModal);
+  document.getElementById('info-modal').addEventListener('click', e => {
+    if (e.target.id === 'info-modal') closeInfoModal();
+  });
+  document.getElementById('gcal-info-btn').addEventListener('click', () => {
+    openInfoModal('ℹ️ Google 日曆同步說明', '「同步未上傳的項目」是把這個 app 裡的任務/活動推到 Google 日曆；「從 Google 匯入行程」則是反過來，把 Google 日曆上未來 90 天內的行程抓進這個 app（已經匯入過的不會重複匯入）。需要先到「平台設定」頁連接 Google 帳號。');
   });
 
   document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
