@@ -163,16 +163,20 @@ function renderEventList(state) {
   if (!list) return;
 
   let items = getCalendarItems(state);
+  const today = todayStr();
   if (_selectedDay) {
     filterLabel.textContent = `📌 顯示 ${_selectedDay} 的項目（點同一天可取消篩選）`;
     filterLabel.style.display = 'block';
     items = items.filter(it => it.date === _selectedDay);
   } else {
     filterLabel.style.display = 'none';
+    // 沒點選特定日期時，只顯示「今天的項目」跟「目前檢視月份中還沒完成的項目」，
+    // 避免列表被其他月份、或已經完成的舊項目塞滿
+    const monthKey = `${_calYear}-${String(_calMonth + 1).padStart(2, '0')}`;
+    items = items.filter(it => it.date === today || (it.date.startsWith(monthKey) && !it.done));
   }
 
   items.sort((a, b) => (a.date + (a.time || '99:99')).localeCompare(b.date + (b.time || '99:99')));
-  const today = todayStr();
   const pending = items.filter(it => !it.done);
   const done = items.filter(it => it.done);
 
