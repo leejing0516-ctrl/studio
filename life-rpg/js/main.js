@@ -241,6 +241,7 @@ function openEditModal(kind, id) {
   const dateEl = document.getElementById('edit-date');
   const timeEl = document.getElementById('edit-time');
   [domainEl, diffEl, typeEl, dateEl, timeEl].forEach(el => el.style.display = 'none');
+  document.getElementById('edit-modal-title').textContent = '✎ 編輯';
 
   if (kind === 'task') {
     const t = state.tasks.find(t => t.id === id);
@@ -287,6 +288,29 @@ function openEditModal(kind, id) {
   titleEl.focus();
 }
 
+// 雙擊日曆某一天：跳出浮動視窗直接新增當天的活動／截止日期，不用捲動頁面去找上面的表單
+function openAddEventModal(date) {
+  const titleEl = document.getElementById('edit-title');
+  const domainEl = document.getElementById('edit-domain');
+  const diffEl = document.getElementById('edit-difficulty');
+  const typeEl = document.getElementById('edit-type');
+  const dateEl = document.getElementById('edit-date');
+  const timeEl = document.getElementById('edit-time');
+  [diffEl].forEach(el => el.style.display = 'none');
+  [domainEl, typeEl, dateEl, timeEl].forEach(el => el.style.display = '');
+
+  titleEl.value = '';
+  domainEl.value = domainEl.options[0] ? domainEl.options[0].value : '';
+  typeEl.value = 'event';
+  dateEl.value = date;
+  setTimeValue('edit-time', '');
+
+  document.getElementById('edit-modal-title').textContent = `➕ 新增 ${date}`;
+  _editTarget = { kind: 'new-event' };
+  document.getElementById('edit-modal').classList.add('show');
+  titleEl.focus();
+}
+
 function closeEditModal() {
   document.getElementById('edit-modal').classList.remove('show');
   _editTarget = null;
@@ -298,7 +322,16 @@ function saveEditModal() {
   const title = document.getElementById('edit-title').value.trim();
   if (!title) return;
 
-  if (kind === 'task') {
+  if (kind === 'new-event') {
+    addEvent(
+      state,
+      title,
+      document.getElementById('edit-domain').value,
+      document.getElementById('edit-date').value,
+      getTimeValue('edit-time'),
+      document.getElementById('edit-type').value
+    );
+  } else if (kind === 'task') {
     updateTask(state, id, {
       text: title,
       domain: document.getElementById('edit-domain').value,
@@ -868,11 +901,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const date = cell.dataset.date;
     _selectedDay = (_selectedDay === date) ? null : date;
     renderCalendarTab(state);
-    if (_selectedDay) {
-      // 點選日期時順便把新增表單的日期填好，方便快速新增當天的活動/截止日
-      document.getElementById('event-date').value = _selectedDay;
-      document.getElementById('event-title').focus();
-    }
+    // 只更新下方清單篩選跟表單日期，不 focus 任何欄位，避免頁面被捲動到表單那邊
+    document.getElementById('event-date').value = _selectedDay || todayStr();
+  });
+
+  // 雙擊某一天：跳出浮動視窗直接新增當天的活動／截止日期
+  document.getElementById('calendar-grid').addEventListener('dblclick', e => {
+    const cell = e.target.closest('.cal-cell[data-date]');
+    if (!cell) return;
+    openAddEventModal(cell.dataset.date);
   });
 
   // 拖曳任務/活動到日曆格子改期
