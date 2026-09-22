@@ -220,8 +220,71 @@ function renderGoogleStatus(state) {
   const input = document.getElementById('gcal-client-id');
   if (input && document.activeElement !== input) input.value = state.googleCalendar.clientId || '';
   const status = document.getElementById('gcal-status');
-  if (!status) return;
-  status.textContent = _gcalAccessToken ? '✅ 已連接，可以同步' : '尚未連接';
+  if (status) status.textContent = _gcalAccessToken ? '✅ 已連接，可以同步' : '尚未連接';
+
+  const lastSyncEl = document.getElementById('gcal-last-sync');
+  if (lastSyncEl) {
+    const t = state.googleCalendar.lastSyncAt;
+    lastSyncEl.textContent = t
+      ? `🕒 最新更新時間：${formatDateTimeZh(t)}`
+      : '尚未同步過';
+  }
+}
+
+// 把時間戳記格式化成「9/22 14:03」這種簡短好讀的中文格式
+function formatDateTimeZh(ms) {
+  const d = new Date(ms);
+  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+// 每天早上 5 點、下午 3 點各自動同步一次（上傳＋下載）。純前端沒有背景執行能力，
+// 只有瀏覽器分頁開著、剛好經過這兩個時間點時才會觸發，開著也只會觸發一次，不會每次重整頁面都重來。
+const AUTO_SYNC_HOURS = [5, 15];
+
+function currentAutoSyncSlotKey() {
+  const now = new Date();
+  const passedHour = AUTO_SYNC_HOURS.filter(h => now.getHours() >= h).pop();
+  if (passedHour === undefined) return null;
+  return `${todayStr()}-${passedHour}`;
+}
+
+async function maybeAutoSyncGoogle(state) {
+  if (!state.googleCalendar.clientId) return;
+  const slotKey = currentAutoSyncSlotKey();
+  if (!slotKey || state.googleCalendar.lastAutoSyncSlot === slotKey) return;
+
+  if (!_gcalAccessToken) {
+    // 嘗試安靜地重新取得授權（使用者之前同意過的話，瀏覽器通常不會再跳出視窗）；
+    // 如果瀏覽器判斷需要使用者互動，這裡就會靜靜失敗，等使用者自己到「平台設定」按登入
+    if (!initGoogleAuth(state)) return;
+    const gotToken = await new Promise(resolve => {
+      let settled = false;
+      const finish = (ok) => { if (!settled) { settled = true; resolve(ok); } };
+      const timeoutId = setTimeout(() => finish(false), 8000); // 靜默授權最多等 8 秒，避免 Google 沒回應就卡住
+      _gcalTokenClient.callback = (resp) => {
+        clearTimeout(timeoutId);
+        if (resp && resp.access_token) { _gcalAccessToken = resp.access_token; finish(true); }
+        else finish(false);
+      };
+      try {
+        _gcalTokenClient.requestAccessToken({ prompt: '' });
+      } catch (e) {
+        clearTimeout(timeoutId);
+        finish(false);
+      }
+    });
+    if (!gotToken) return;
+  }
+
+  state.googleCalendar.lastAutoSyncSlot = slotKey;
+  const { success, total } = await syncAllToGoogle(state);
+  const { imported } = await importFromGoogle(state);
+  state.googleCalendar.lastSyncAt = Date.now();
+  saveState(state);
+  if (total || imported) {
+    addLog(state, `自動同步：上傳 ${success}/${total} 筆、匯入 ${imported} 筆 Google 日曆行程`);
+  }
+  renderAll();
 }
 
 function initGoogleAuth(state) {

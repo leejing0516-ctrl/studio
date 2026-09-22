@@ -32,7 +32,7 @@ function defaultState() {
       lastDailySummaryDate: null, // 避免同一天重複產生每日總結
     },
     events: [],           // { id, title, domain, date, time, type: 'event'|'deadline', done, googleEventId }
-    googleCalendar: { clientId: '' },
+    googleCalendar: { clientId: '', lastSyncAt: null, lastAutoSyncSlot: null },
     projects: [],         // { id, title, domain, deadline, granularity, createdDate, subtasks: [{id,title,dueDate,done}] }
     storyQuests: [],      // { id, title, domain, description, createdDate, chapters: [{id,narrative,taskTitle,dueDate,done}] }
     expenses: [],         // { id, amount, category, note, date }

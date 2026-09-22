@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=110">
+<link rel="stylesheet" href="css/style.css?v=111">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -222,8 +222,33 @@
   </div>
 
   <div id="tab-platform" class="tab-panel frame">
-    <p class="tab-hint">選一個喜歡的佈景風格，整個 app 的配色都會跟著換，之後也會同步到你登入的其他裝置。</p>
-    <div class="theme-picker-grid" id="theme-picker-grid"></div>
+    <div class="settings-section">
+      <h3 class="settings-section-title">🎨 佈景主題</h3>
+      <p class="tab-hint">選一個喜歡的佈景風格，整個 app 的配色都會跟著換，之後也會同步到你登入的其他裝置。</p>
+      <div class="theme-picker-grid" id="theme-picker-grid"></div>
+    </div>
+
+    <div class="settings-section">
+      <h3 class="settings-section-title">📅 Google 日曆同步設定</h3>
+      <details class="gcal-panel">
+        <summary>🔗 設定 Google 帳號連接</summary>
+        <p class="tab-hint">
+          第一次使用需要建立你自己的 Google OAuth 用戶端 ID（一次性設定）：<br>
+          1. 前往 <strong>console.cloud.google.com</strong> 建立專案<br>
+          2.「API 和服務」→「程式庫」啟用 <strong>Google Calendar API</strong><br>
+          3.「API 和服務」→「憑證」→「建立憑證」→「OAuth 用戶端 ID」，類型選「網頁應用程式」<br>
+          4.「已授權的 JavaScript 來源」加入你目前使用的網址（例如 <code id="gcal-origin-hint"></code>）<br>
+          5. 建立後複製「用戶端 ID」，貼到下面欄位
+        </p>
+        <div class="inline-form">
+          <input type="text" id="gcal-client-id" placeholder="貼上你的 Google OAuth 用戶端 ID">
+          <button type="button" id="gcal-save" class="btn small">儲存</button>
+          <button type="button" id="gcal-connect" class="btn small">登入 Google</button>
+        </div>
+        <p id="gcal-status" class="tab-hint">尚未連接</p>
+      </details>
+      <p class="tab-hint">連接後，app 會在每天早上 5 點跟下午 3 點左右自動同步（上傳＋下載）一次。這是純前端網頁沒有背景執行能力，只有瀏覽器分頁開著、剛好經過這兩個時間點時才會自動觸發；如果都沒開過 app，記得到「行事曆」分頁手動同步。</p>
+    </div>
   </div>
 
   <div id="tab-assistant" class="tab-panel frame">
@@ -336,26 +361,14 @@
     </div>
     <div id="calendar-grid" class="calendar-grid"></div>
 
-    <details class="gcal-panel">
-      <summary>🔗 與 Google 日曆同步</summary>
-      <p class="tab-hint">
-        第一次使用需要建立你自己的 Google OAuth 用戶端 ID（一次性設定）：<br>
-        1. 前往 <strong>console.cloud.google.com</strong> 建立專案<br>
-        2.「API 和服務」→「程式庫」啟用 <strong>Google Calendar API</strong><br>
-        3.「API 和服務」→「憑證」→「建立憑證」→「OAuth 用戶端 ID」，類型選「網頁應用程式」<br>
-        4.「已授權的 JavaScript 來源」加入你目前使用的網址（例如 <code id="gcal-origin-hint"></code>）<br>
-        5. 建立後複製「用戶端 ID」，貼到下面欄位
-      </p>
-      <div class="inline-form">
-        <input type="text" id="gcal-client-id" placeholder="貼上你的 Google OAuth 用戶端 ID">
-        <button type="button" id="gcal-save" class="btn small">儲存</button>
-        <button type="button" id="gcal-connect" class="btn small">登入 Google</button>
-        <button type="button" id="gcal-sync" class="btn small">同步未上傳的項目</button>
-        <button type="button" id="gcal-import" class="btn small">從 Google 匯入行程</button>
+    <div class="gcal-panel">
+      <div class="modal-actions" style="justify-content:flex-start; flex-wrap:wrap;">
+        <button type="button" id="gcal-sync" class="btn small">⬆️ 同步未上傳的項目</button>
+        <button type="button" id="gcal-import" class="btn small">⬇️ 從 Google 匯入行程</button>
       </div>
-      <p class="tab-hint">「同步未上傳的項目」是把這個 app 裡的任務/活動推到 Google 日曆；「從 Google 匯入行程」則是反過來，把 Google 日曆上未來 90 天內的行程抓進這個 app（已經匯入過的不會重複匯入）。</p>
-      <p id="gcal-status" class="tab-hint">尚未連接</p>
-    </details>
+      <p class="tab-hint">「同步未上傳的項目」是把這個 app 裡的任務/活動推到 Google 日曆；「從 Google 匯入行程」則是反過來，把 Google 日曆上未來 90 天內的行程抓進這個 app（已經匯入過的不會重複匯入）。需要先到「平台設定」頁連接 Google 帳號。</p>
+      <p id="gcal-last-sync" class="tab-hint">尚未同步過</p>
+    </div>
 
     <p id="event-filter-label" class="tab-hint" style="display:none"></p>
     <ul id="event-list"></ul>
@@ -453,22 +466,22 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="js/config.js?v=110"></script>
-<script src="js/storage.js?v=110"></script>
-<script src="js/cloud.js?v=110"></script>
-<script src="js/sound.js?v=110"></script>
-<script src="js/assistant.js?v=110"></script>
-<script src="js/character.js?v=110"></script>
-<script src="js/tasks.js?v=110"></script>
-<script src="js/habits.js?v=110"></script>
-<script src="js/projects.js?v=110"></script>
-<script src="js/story.js?v=110"></script>
-<script src="js/home.js?v=110"></script>
-<script src="js/reading.js?v=110"></script>
-<script src="js/finance.js?v=110"></script>
-<script src="js/calendar.js?v=110"></script>
-<script src="js/rewards.js?v=110"></script>
-<script src="js/achievements.js?v=110"></script>
-<script src="js/main.js?v=110"></script>
+<script src="js/config.js?v=111"></script>
+<script src="js/storage.js?v=111"></script>
+<script src="js/cloud.js?v=111"></script>
+<script src="js/sound.js?v=111"></script>
+<script src="js/assistant.js?v=111"></script>
+<script src="js/character.js?v=111"></script>
+<script src="js/tasks.js?v=111"></script>
+<script src="js/habits.js?v=111"></script>
+<script src="js/projects.js?v=111"></script>
+<script src="js/story.js?v=111"></script>
+<script src="js/home.js?v=111"></script>
+<script src="js/reading.js?v=111"></script>
+<script src="js/finance.js?v=111"></script>
+<script src="js/calendar.js?v=111"></script>
+<script src="js/rewards.js?v=111"></script>
+<script src="js/achievements.js?v=111"></script>
+<script src="js/main.js?v=111"></script>
 </body>
 </html>

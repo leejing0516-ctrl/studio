@@ -446,6 +446,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // 專案／故事如果有過期還沒完成的進度，今天第一次看到時問一次要不要整批順延
   if (checkPostponePrompts(state)) renderAll();
 
+  // 每天早上 5 點、下午 3 點左右，如果分頁剛好開著就自動同步一次 Google 日曆
+  maybeAutoSyncGoogle(state);
+
   document.addEventListener('click', e => {
     const editBtn = e.target.closest('.edit-item');
     if (editBtn) openEditModal(editBtn.dataset.kind, editBtn.dataset.id);
@@ -1087,14 +1090,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('gcal-sync').addEventListener('click', async () => {
     const btn = document.getElementById('gcal-sync');
-    if (!_gcalAccessToken) { alert('請先按「登入 Google」完成授權'); return; }
+    if (!_gcalAccessToken) { alert('請先到「平台設定」頁按「登入 Google」完成授權'); return; }
     btn.disabled = true;
     btn.textContent = '同步中…';
     const { success, total } = await syncAllToGoogle(state);
+    state.googleCalendar.lastSyncAt = Date.now();
+    saveState(state);
     btn.disabled = false;
-    btn.textContent = '同步未上傳的項目';
+    btn.textContent = '⬆️ 同步未上傳的項目';
     if (total === 0) {
       alert('目前沒有需要同步的新項目');
+      renderAll();
     } else {
       addLog(state, `同步 ${success}/${total} 個行事曆項目到 Google 日曆`);
       renderAll();
@@ -1103,16 +1109,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('gcal-import').addEventListener('click', async () => {
     const btn = document.getElementById('gcal-import');
-    if (!_gcalAccessToken) { alert('請先按「登入 Google」完成授權'); return; }
+    if (!_gcalAccessToken) { alert('請先到「平台設定」頁按「登入 Google」完成授權'); return; }
     btn.disabled = true;
     btn.textContent = '匯入中…';
     const { imported, error } = await importFromGoogle(state);
     btn.disabled = false;
-    btn.textContent = '從 Google 匯入行程';
+    btn.textContent = '⬇️ 從 Google 匯入行程';
     if (error) {
       alert('從 Google 日曆匯入失敗，請稍後再試一次');
-    } else if (imported === 0) {
+      return;
+    }
+    state.googleCalendar.lastSyncAt = Date.now();
+    saveState(state);
+    if (imported === 0) {
       alert('未來 90 天內沒有新的 Google 日曆行程可以匯入');
+      renderAll();
     } else {
       addLog(state, `從 Google 日曆匯入 ${imported} 筆行程`);
       renderAll();
