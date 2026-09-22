@@ -895,21 +895,27 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('cal-prev').addEventListener('click', () => { changeMonth(-1); renderCalendarTab(state); });
   document.getElementById('cal-next').addEventListener('click', () => { changeMonth(1); renderCalendarTab(state); });
 
+  // 用時間差自己判斷雙擊，而不是依賴瀏覽器原生 dblclick 事件——
+  // 手機上連續點兩下預設會觸發「雙擊放大」手勢，原生 dblclick 常常不會正常觸發
+  let _lastCalendarClick = { date: null, time: 0 };
   document.getElementById('calendar-grid').addEventListener('click', e => {
     const cell = e.target.closest('.cal-cell[data-date]');
     if (!cell) return;
     const date = cell.dataset.date;
+    const now = Date.now();
+    const isDoubleClick = _lastCalendarClick.date === date && (now - _lastCalendarClick.time) < 500;
+    _lastCalendarClick = { date: null, time: 0 };
+
+    if (isDoubleClick) {
+      openAddEventModal(date);
+      return;
+    }
+    _lastCalendarClick = { date, time: now };
+
     _selectedDay = (_selectedDay === date) ? null : date;
     renderCalendarTab(state);
     // 只更新下方清單篩選跟表單日期，不 focus 任何欄位，避免頁面被捲動到表單那邊
     document.getElementById('event-date').value = _selectedDay || todayStr();
-  });
-
-  // 雙擊某一天：跳出浮動視窗直接新增當天的活動／截止日期
-  document.getElementById('calendar-grid').addEventListener('dblclick', e => {
-    const cell = e.target.closest('.cal-cell[data-date]');
-    if (!cell) return;
-    openAddEventModal(cell.dataset.date);
   });
 
   // 拖曳任務/活動到日曆格子改期

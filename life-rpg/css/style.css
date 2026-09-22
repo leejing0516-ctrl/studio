@@ -1449,6 +1449,7 @@ ul { list-style: none; padding: 0; margin: 0; }
   border: 1px solid transparent;
   position: relative;
   gap: 2px;
+  touch-action: manipulation; /* 手機上關掉雙擊放大，讓雙擊可以正常觸發新增視窗 */
 }
 .cal-cell.empty { background: transparent; cursor: default; }
 .cal-cell:not(.empty):hover { border-color: var(--border-gold); }
