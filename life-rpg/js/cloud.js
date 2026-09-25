@@ -13,6 +13,37 @@ let _cloudUser = null;
 let _cloudSaveTimer = null;
 let _cloudApplyingRemote = false;
 let _cloudUnsub = null;
+let _cloudLastSeenAt = 0; // 上一次跟雲端對齊時，雲端資料的 updatedAt
+
+// 把 source 裡「sinceMs 之後才新增」的打卡與活動紀錄補進 target。
+// 打卡值本身就是打卡當下的時間戳，所以能分辨「對方之後才新增的」跟「我這邊刻意取消的」，
+// 避免手機與網頁兩邊各自用舊資料存檔時，把對方的完成紀錄整個蓋掉
+function mergeNewCompletions(target, source, sinceMs) {
+  let changed = false;
+  ['habitCompletions', 'readingCompletions'].forEach(key => {
+    const src = source[key] || {};
+    target[key] = target[key] || {};
+    Object.keys(src).forEach(date => {
+      Object.keys(src[date] || {}).forEach(id => {
+        const t = src[date][id];
+        if (typeof t === 'number' && t > sinceMs && !(target[key][date] || {})[id]) {
+          (target[key][date] = target[key][date] || {})[id] = t;
+          changed = true;
+        }
+      });
+    });
+  });
+  target.log = target.log || [];
+  const seen = new Set(target.log.map(l => l.time + '|' + l.text));
+  (source.log || []).forEach(l => {
+    if (l.time && l.time > sinceMs && !seen.has(l.time + '|' + l.text)) { target.log.push(l); changed = true; }
+  });
+  if (changed) {
+    target.log.sort((a, b) => (b.time || 0) - (a.time || 0));
+    if (target.log.length > LOG_LIMIT) target.log.length = LOG_LIMIT;
+  }
+  return changed;
+}
 
 function initCloud() {
   if (!window.firebase) return;
@@ -50,10 +81,14 @@ function attachCloudListener(user) {
     const cloudState = data.state;
     if ((cloudState.updatedAt || 0) > (state.updatedAt || 0)) {
       _cloudApplyingRemote = true;
-      state = normalizeState(cloudState);
+      const merged = normalizeState(cloudState);
+      const keptLocal = mergeNewCompletions(merged, state, cloudState.updatedAt || 0);
+      state = merged;
+      _cloudLastSeenAt = cloudState.updatedAt || 0;
       renderAll();
       _cloudApplyingRemote = false;
       setSyncStatus('✅ 已同步其他裝置的更新');
+      if (keptLocal) saveState(state);
     }
   }, e => {
     console.error('雲端即時同步監聽失敗', e);
@@ -175,12 +210,17 @@ async function syncOnLogin(user) {
       const cloudState = snap.data().state;
       if ((cloudState.updatedAt || 0) > (state.updatedAt || 0)) {
         _cloudApplyingRemote = true;
-        state = normalizeState(cloudState);
+        const merged = normalizeState(cloudState);
+        const keptLocal = mergeNewCompletions(merged, state, cloudState.updatedAt || 0);
+        state = merged;
+        _cloudLastSeenAt = cloudState.updatedAt || 0;
         renderAll();
         _cloudApplyingRemote = false;
         setSyncStatus('✅ 已從雲端同步最新資料');
+        if (keptLocal) saveState(state);
         return;
       }
+      _cloudLastSeenAt = cloudState.updatedAt || 0;
     }
     await pushStateToCloud();
     setSyncStatus('✅ 已同步');
@@ -193,7 +233,20 @@ async function syncOnLogin(user) {
 async function pushStateToCloud() {
   if (!_cloudUser || !_cloudDb) return;
   try {
-    await _cloudDb.collection('life_rpg_users').doc(_cloudUser.uid).set({ state: JSON.parse(JSON.stringify(state)) });
+    const docRef = _cloudDb.collection('life_rpg_users').doc(_cloudUser.uid);
+    // 推送前先看雲端有沒有別台裝置在我們上次對齊之後新增的打卡，有的話先合併進來再推，避免蓋掉
+    if (_cloudLastSeenAt > 0) {
+      const snap = await docRef.get();
+      const remote = snap.exists && snap.data().state;
+      if (remote && (remote.updatedAt || 0) > _cloudLastSeenAt) {
+        if (mergeNewCompletions(state, remote, _cloudLastSeenAt)) {
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+          renderAll();
+        }
+      }
+    }
+    await docRef.set({ state: JSON.parse(JSON.stringify(state)) });
+    _cloudLastSeenAt = state.updatedAt || 0;
   } catch (e) {
     console.error('推送到雲端失敗', e);
     setSyncStatus('⚠️ 同步失敗');

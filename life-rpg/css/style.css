@@ -1460,6 +1460,7 @@ ul { list-style: none; padding: 0; margin: 0; }
 .cal-cell.drag-over { outline: 2px dashed var(--gold); background: #fff3d6; }
 .task-item[draggable="true"] { cursor: grab; }
 .task-item.dragging { opacity: 0.4; }
+.cal-habit-mark { font-size: 10px; line-height: 1; color: var(--text-dim); }
 .cal-cell.has-events .cal-daynum { color: var(--accent-text); font-weight: 700; }
 
 .cal-weekday.is-weekend { color: var(--danger); }

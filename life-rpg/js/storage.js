@@ -1,4 +1,5 @@
 const STORAGE_KEY = 'life_rpg_state_v2';
+const LOG_LIMIT = 500; // 活動紀錄最多保留幾筆
 
 function defaultState() {
   const skills = {};
@@ -17,7 +18,7 @@ function defaultState() {
     achievements: [],      // unlocked achievement ids
     stats: { tasksCompleted: 0, rewardsRedeemed: 0, budgetBonusesEarned: 0 },
     streak: { count: 0, lastActiveDate: null },
-    log: [],              // { date, text } 簡易活動紀錄，最多保留 50 筆
+    log: [],              // { date, text } 簡易活動紀錄，最多保留 LOG_LIMIT 筆
     assistant: {
       log: [], lastSuggestionDate: null, lastVisitDate: null,
       aiEnabled: false,       // 是否啟用真人工智慧回覆
@@ -113,7 +114,7 @@ function saveState(state) {
 
 function addLog(state, text) {
   state.log.unshift({ date: todayStr(), time: Date.now(), text });
-  if (state.log.length > 50) state.log.length = 50;
+  if (state.log.length > LOG_LIMIT) state.log.length = LOG_LIMIT;
 }
 
 function bumpStreak(state) {

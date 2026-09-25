@@ -73,7 +73,7 @@ function renderLog(state) {
     el.innerHTML = '<li class="empty-hint">還沒有任何紀錄</li>';
     return;
   }
-  el.innerHTML = state.log.slice(0, 10).map(l => `<li>${l.date}${l.time ? ' ' + formatTimeOfDay(l.time) : ''}｜${escapeHtml(l.text)}</li>`).join('');
+  el.innerHTML = state.log.map(l => `<li>${l.date}${l.time ? ' ' + formatTimeOfDay(l.time) : ''}｜${escapeHtml(l.text)}</li>`).join('');
 }
 
 // 今日任務打勾完成時的小慶祝：背景閃一下金光，並跳出一個 +EXP 泡泡飄走

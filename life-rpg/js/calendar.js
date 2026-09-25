@@ -109,6 +109,14 @@ function getTodayItems(state) {
   });
 }
 
+// 某天已打卡的習慣（唯讀的歷史紀錄，習慣本身仍在「習慣養成」與今日任務打卡）
+function getHabitCheckinsOn(state, dateStr) {
+  const map = state.habitCompletions[dateStr] || {};
+  return state.habits
+    .filter(h => map[h.id])
+    .map(h => ({ habit: h, time: typeof map[h.id] === 'number' ? map[h.id] : null }));
+}
+
 function renderCalendarMonth(state) {
   const grid = document.getElementById('calendar-grid');
   const label = document.getElementById('calendar-month-label');
@@ -132,6 +140,7 @@ function renderCalendarMonth(state) {
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr = `${_calYear}-${String(_calMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     const dayItems = itemsByDay[dateStr] || [];
+    const habitCount = getHabitCheckinsOn(state, dateStr).length;
     const hasOverdue = dayItems.some(it => !it.done && dateStr < today);
     const weekday = (new Date(_calYear, _calMonth, d).getDay() + 6) % 7; // 0=一 ... 6=日
     const holiday = HOLIDAYS_TW[dateStr];
@@ -145,6 +154,7 @@ function renderCalendarMonth(state) {
       <div class="${classes.join(' ')}" data-date="${dateStr}" ${holiday ? `title="${holiday}"` : ''}>
         <span class="cal-daynum">${d}</span>
         ${dayItems.length ? `<span class="cal-dot ${hasOverdue ? 'overdue' : ''}">${dayItems.length}</span>` : ''}
+        ${habitCount ? `<span class="cal-habit-mark" title="這天有 ${habitCount} 個習慣打卡">🔁${habitCount}</span>` : ''}
       </div>
     `;
   }
@@ -180,7 +190,22 @@ function renderEventList(state) {
   const pending = items.filter(it => !it.done);
   const done = items.filter(it => it.done);
 
-  if (!items.length) {
+  const habitRows = _selectedDay ? getHabitCheckinsOn(state, _selectedDay).map(({ habit, time }) => {
+    const d = DOMAINS.find(d => d.key === habit.domain) || DOMAINS[0];
+    return `
+      <li class="task-item done habit-history">
+        <label class="task-check">
+          <input type="checkbox" checked disabled>
+          <span class="task-tag" style="background:${d.color}">${d.icon} ${d.name}</span>
+          <span class="event-date">🔁 ${_selectedDay}</span>
+          <span class="task-text">${escapeHtml(habit.name)}</span>
+          ${time ? `<span class="task-donetime">✅ ${formatTimeOfDay(time)} 打卡</span>` : '<span class="task-donetime">✅ 習慣打卡</span>'}
+        </label>
+      </li>
+    `;
+  }).join('') : '';
+
+  if (!items.length && !habitRows) {
     list.innerHTML = '<li class="empty-hint">還沒有安排任何任務、活動或截止日，新增一個吧！</li>';
     return;
   }
@@ -205,7 +230,7 @@ function renderEventList(state) {
     `;
   };
 
-  list.innerHTML = pending.map(renderItem).join('') + done.map(renderItem).join('');
+  list.innerHTML = pending.map(renderItem).join('') + done.map(renderItem).join('') + habitRows;
 }
 
 function renderCalendarTab(state) {
