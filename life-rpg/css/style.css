@@ -1818,7 +1818,7 @@ ul { list-style: none; padding: 0; margin: 0; }
   .levelup-level { font-size: 40px; }
   .assistant-widget { flex-wrap: wrap; }
 
-  body { padding-bottom: 84px; } /* 留空間給底部固定導覽列 */
+  body { padding-bottom: calc(100px + env(safe-area-inset-bottom)); } /* 留空間給底部固定導覽列 */
 
   /* 手機版只有首頁需要看到 logo、雲端/靜音鈕跟人物資訊卡，其他分頁一進去就是內容，不用先滑過這些 */
   .app:not(.is-home-tab) h1,
@@ -1874,7 +1874,7 @@ ul { list-style: none; padding: 0; margin: 0; }
     padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
     box-shadow: 0 -4px 16px rgba(201, 156, 100, 0.18);
   }
-  .primary-nav .tab-btn { font-size: 12px; padding: 8px 4px; }
+  .primary-nav .tab-btn { font-size: 13px; padding: 14px 4px; }
 
   #tab-adventure.active { grid-template-columns: 1fr; gap: 14px; }
 
