@@ -1907,3 +1907,28 @@ ul { list-style: none; padding: 0; margin: 0; }
       "project";
   }
 }
+
+/* ── 有待處理事項的紅點（導覽按鈕）與 AI 使用者管理清單 ── */
+.tab-btn.has-alert { position: relative; }
+.tab-btn.has-alert::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--danger);
+  box-shadow: 0 0 0 2px var(--panel);
+}
+.ai-admin-sub { margin: 14px 0 6px; font-size: 14px; color: var(--accent-text-strong); }
+.ai-admin-ul { list-style: none; margin: 0; padding: 0; }
+.ai-admin-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--border-dim);
+}
+.ai-admin-email { flex: 1; min-width: 160px; word-break: break-all; }

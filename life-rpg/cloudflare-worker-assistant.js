@@ -18,7 +18,7 @@
 //    Variable name 一定要填 AI_KV，選剛剛建立的那個 KV，儲存後重新 Deploy
 // 8. 設定誰可以用 AI 教練（同樣在「Variables and Secrets」，類型選 Text）：
 //    ADMIN_EMAILS   = 你自己的信箱（可多個，用逗號隔開；永遠可用、不限次數）
-//    ALLOWED_EMAILS = 核准試用的人的信箱（多個用逗號隔開；要新增或移除人，改這裡再 Deploy）
+//    ALLOWED_EMAILS = （選填）固定開通的信箱，多個用逗號隔開。一般試用者改在 app「平台設定」裡核准，不用改這裡
 //    DAILY_LIMIT    = 每人每天最多可問幾次（不填預設 30；以台灣時間 0 點重新計算）
 // 9. 複製這個 Worker 的網址（長得像 https://life-rpg-ai.你的帳號.workers.dev），
 //    貼到「我的人生RPG」app 裡「小助手 → ⚙️ 小助手設定 → 中間人服務網址」欄位
@@ -65,6 +65,63 @@ function taipeiDate() {
   return new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
 }
 
+const normEmail = (e) => String(e || '').trim().toLowerCase();
+
+// 已開通 = 寫在環境變數 ALLOWED_EMAILS，或被管理者在 app 裡核准（存在 KV 的 allow:信箱）
+async function isAllowedEmail(env, email) {
+  if (parseList(env.ALLOWED_EMAILS).includes(email)) return true;
+  if (!env.AI_KV) return false;
+  return (await env.AI_KV.get('allow:' + email)) !== null;
+}
+
+async function listKV(env, prefix) {
+  const r = await env.AI_KV.list({ prefix });
+  return Promise.all(r.keys.map(async (k) => {
+    let info = {};
+    try { info = JSON.parse(await env.AI_KV.get(k.name)) || {}; } catch (e) {}
+    return { email: k.name.slice(prefix.length), at: info.at || 0 };
+  }));
+}
+
+// 非聊天的管理類請求：查詢自己狀態、申請開通、管理者審核名單
+async function handleAction(action, body, env, email, isAdmin, json) {
+  if (!env.AI_KV) return json({ code: 'SERVER_CONFIG', error: '伺服器尚未設定 AI_KV' }, 500);
+
+  if (action === 'status') {
+    return json({ isAdmin, allowed: isAdmin || await isAllowedEmail(env, email) });
+  }
+  if (action === 'request') {
+    if (isAdmin || await isAllowedEmail(env, email)) return json({ ok: true, already: true });
+    await env.AI_KV.put('req:' + email, JSON.stringify({ at: Date.now() }));
+    return json({ ok: true });
+  }
+
+  if (!isAdmin) return json({ code: 'NOT_ADMIN', error: '需要管理者權限' }, 403);
+
+  if (action === 'admin_list') {
+    const [pending, allowed] = await Promise.all([listKV(env, 'req:'), listKV(env, 'allow:')]);
+    pending.sort((a, b) => b.at - a.at);
+    return json({ pending, allowed, envAllowed: parseList(env.ALLOWED_EMAILS) });
+  }
+
+  const target = normEmail(body.email);
+  if (!target.includes('@')) return json({ code: 'BAD_EMAIL', error: '信箱格式不正確' }, 400);
+  if (action === 'admin_approve') {
+    await env.AI_KV.put('allow:' + target, JSON.stringify({ at: Date.now() }));
+    await env.AI_KV.delete('req:' + target);
+    return json({ ok: true });
+  }
+  if (action === 'admin_reject') {
+    await env.AI_KV.delete('req:' + target);
+    return json({ ok: true });
+  }
+  if (action === 'admin_remove') {
+    await env.AI_KV.delete('allow:' + target);
+    return json({ ok: true });
+  }
+  return json({ code: 'BAD_ACTION', error: '不支援的操作' }, 400);
+}
+
 export default {
   async fetch(request, env) {
     const corsHeaders = {
@@ -101,11 +158,22 @@ export default {
       return json({ code: 'BAD_LOGIN', error: '登入憑證無效或已過期，請重新登入' }, 401);
     }
 
-    // ── 名單檢查：管理者或被核准的信箱才能用 ──
-    const email = (user.email || '').toLowerCase();
-    const admins = parseList(env.ADMIN_EMAILS);
-    const isAdmin = admins.includes(email);
-    if (!isAdmin && !parseList(env.ALLOWED_EMAILS).includes(email)) {
+    const email = normEmail(user.email);
+    const isAdmin = parseList(env.ADMIN_EMAILS).includes(email);
+
+    let body;
+    try {
+      body = await request.json();
+    } catch (e) {
+      return new Response('Invalid JSON', { status: 400, headers: corsHeaders });
+    }
+
+    if (body.action && body.action !== 'chat') {
+      return handleAction(body.action, body, env, email, isAdmin, json);
+    }
+
+    // ── 名單檢查：管理者或已開通的信箱才能用 ──
+    if (!isAdmin && !(await isAllowedEmail(env, email))) {
       return json({ code: 'NOT_ALLOWED', error: '這個帳號尚未開通 AI 教練' }, 403);
     }
 
@@ -119,13 +187,6 @@ export default {
         return json({ code: 'RATE_LIMIT', error: `今天的 AI 使用次數（${limit} 次）已用完，明天再來`, limit }, 429);
       }
       await env.AI_KV.put(usageKey, String(used + 1), { expirationTtl: 172800 });
-    }
-
-    let body;
-    try {
-      body = await request.json();
-    } catch (e) {
-      return new Response('Invalid JSON', { status: 400, headers: corsHeaders });
     }
 
     const { system, message } = body;
