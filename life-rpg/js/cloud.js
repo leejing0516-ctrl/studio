@@ -45,8 +45,37 @@ function mergeNewCompletions(target, source, sinceMs) {
   return changed;
 }
 
+const FIREBASE_SCRIPTS = [
+  'https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js',
+  'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js',
+];
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const el = document.createElement('script');
+    el.src = src;
+    el.async = false; // 動態載入也要照順序執行（app 要先於 auth、firestore）
+    el.onload = resolve;
+    el.onerror = () => reject(new Error('載入失敗：' + src));
+    document.head.appendChild(el);
+  });
+}
+
+// Firebase 在背景載入：畫面與本機功能先能用，載入成功後才啟用雲端登入與同步；
+// 網路不穩載入失敗時，等網路恢復（online 事件）再試一次
 function initCloud() {
-  if (!window.firebase) return;
+  if (window.firebase) { startCloud(); return; }
+  Promise.all(FIREBASE_SCRIPTS.map(loadScript))
+    .then(startCloud)
+    .catch(e => {
+      console.error('雲端服務載入失敗，等網路恢復後重試', e);
+      window.addEventListener('online', initCloud, { once: true });
+    });
+}
+
+function startCloud() {
+  if (_cloudAuth || !window.firebase) return;
   try {
     firebase.initializeApp(CLOUD_FIREBASE_CONFIG);
     _cloudAuth = firebase.auth();
