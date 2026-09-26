@@ -348,14 +348,24 @@ function withAITimeout(promise, ms) {
 // （中間人服務偶爾會因為上游 Claude API 暫時性問題回傳空內容，重試一次通常就會成功；
 // 但如果是 max_tokens 不夠導致的空內容，重試同樣的請求不會有幫助，所以呼叫端要給足夠的 maxTokens）
 async function fetchAIReply(endpoint, system, message, timeoutMs, maxTokens) {
+  // AI 服務會驗證登入身分與使用名單，所以一定要先登入雲端帳號
+  if (typeof _cloudUser === 'undefined' || !_cloudUser) {
+    throw new Error('AI 教練需要先登入雲端帳號（右上角 ☁️）才能使用');
+  }
   const attempt = async () => {
+    const idToken = await _cloudUser.getIdToken();
     const resp = await withAITimeout(fetch(endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + idToken },
       body: JSON.stringify({ system, message, max_tokens: maxTokens }),
     }), timeoutMs);
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
+      let info = null;
+      try { info = JSON.parse(text); } catch (e) {}
+      if (resp.status === 401) throw new Error('登入狀態已失效，請重新登入雲端帳號後再試');
+      if (resp.status === 403 && info && info.code === 'NOT_ALLOWED') throw new Error('你的帳號尚未開通 AI 教練，請聯絡管理者開通');
+      if (resp.status === 429) throw new Error((info && info.error) || '今天的 AI 使用次數已用完，明天再來');
       throw new Error('AI 服務回應錯誤：' + (text || resp.status));
     }
     const data = await resp.json();

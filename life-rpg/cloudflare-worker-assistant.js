@@ -12,18 +12,69 @@
 //    名稱：ANTHROPIC_API_KEY
 //    值：貼上你在 console.anthropic.com 申請到的 API 金鑰
 //    類型記得選「Secret」（不是一般 Text），這樣才不會被任何人看到
-// 7. 複製這個 Worker 的網址（長得像 https://life-rpg-ai.你的帳號.workers.dev），
+// 7. 開通「使用次數紀錄」（這版新增，必做）：
+//    Cloudflare 左側「Storage & Databases」→「KV」→「Create」，名稱隨意（例如 life-rpg-usage）
+//    回到 Worker →「Settings」→「Bindings」→「Add」→「KV namespace」，
+//    Variable name 一定要填 AI_KV，選剛剛建立的那個 KV，儲存後重新 Deploy
+// 8. 設定誰可以用 AI 教練（同樣在「Variables and Secrets」，類型選 Text）：
+//    ADMIN_EMAILS   = 你自己的信箱（可多個，用逗號隔開；永遠可用、不限次數）
+//    ALLOWED_EMAILS = 核准試用的人的信箱（多個用逗號隔開；要新增或移除人，改這裡再 Deploy）
+//    DAILY_LIMIT    = 每人每天最多可問幾次（不填預設 30；以台灣時間 0 點重新計算）
+// 9. 複製這個 Worker 的網址（長得像 https://life-rpg-ai.你的帳號.workers.dev），
 //    貼到「我的人生RPG」app 裡「小助手 → ⚙️ 小助手設定 → 中間人服務網址」欄位
 
 const ALLOWED_ORIGIN = 'https://leejing0516-ctrl.github.io';
+const FIREBASE_PROJECT_ID = 'finlit-classroom';
+const JWK_URL = 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
+
+function b64urlToBytes(str) {
+  let s = str.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  return Uint8Array.from(atob(s), c => c.charCodeAt(0));
+}
+
+// 驗證網頁送來的 Firebase 登入憑證（簽章、發行者、對象、有效期限），通過才回傳裡面的資料
+async function verifyFirebaseToken(token) {
+  const parts = token.split('.');
+  if (parts.length !== 3) throw new Error('bad token');
+  const dec = new TextDecoder();
+  const header = JSON.parse(dec.decode(b64urlToBytes(parts[0])));
+  const payload = JSON.parse(dec.decode(b64urlToBytes(parts[1])));
+  if (header.alg !== 'RS256') throw new Error('bad alg');
+
+  const jwks = await fetch(JWK_URL, { cf: { cacheTtl: 3600, cacheEverything: true } }).then(r => r.json());
+  const jwk = (jwks.keys || []).find(k => k.kid === header.kid);
+  if (!jwk) throw new Error('unknown key');
+  const key = await crypto.subtle.importKey('jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
+  const ok = await crypto.subtle.verify(
+    'RSASSA-PKCS1-v1_5', key, b64urlToBytes(parts[2]), new TextEncoder().encode(parts[0] + '.' + parts[1])
+  );
+  if (!ok) throw new Error('bad signature');
+
+  const now = Math.floor(Date.now() / 1000);
+  if (payload.aud !== FIREBASE_PROJECT_ID) throw new Error('bad aud');
+  if (payload.iss !== 'https://securetoken.google.com/' + FIREBASE_PROJECT_ID) throw new Error('bad iss');
+  if (!payload.sub || !payload.exp || payload.exp < now) throw new Error('expired');
+  return payload;
+}
+
+const parseList = (v) => (v || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
+
+// 台灣時間（UTC+8）的今天日期，用來每天重新計算使用次數
+function taipeiDate() {
+  return new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+}
 
 export default {
   async fetch(request, env) {
     const corsHeaders = {
       'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
+    const json = (obj, status = 200) => new Response(JSON.stringify(obj), {
+      status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
 
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders });
@@ -33,10 +84,41 @@ export default {
       return new Response('Method not allowed', { status: 405, headers: corsHeaders });
     }
 
-    // 簡單檢查請求來源，減少被其他網站盜用（不是完全防呆，但可以擋掉大部分濫用）
+    // 簡單檢查請求來源，減少被其他網站盜用（真正的把關是下面的登入身分驗證）
     const origin = request.headers.get('Origin') || '';
     if (origin !== ALLOWED_ORIGIN) {
       return new Response('Forbidden', { status: 403, headers: corsHeaders });
+    }
+
+    // ── 身分驗證：一定要帶登入憑證 ──
+    const auth = request.headers.get('Authorization') || '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+    if (!token) return json({ code: 'NO_LOGIN', error: '請先登入' }, 401);
+    let user;
+    try {
+      user = await verifyFirebaseToken(token);
+    } catch (e) {
+      return json({ code: 'BAD_LOGIN', error: '登入憑證無效或已過期，請重新登入' }, 401);
+    }
+
+    // ── 名單檢查：管理者或被核准的信箱才能用 ──
+    const email = (user.email || '').toLowerCase();
+    const admins = parseList(env.ADMIN_EMAILS);
+    const isAdmin = admins.includes(email);
+    if (!isAdmin && !parseList(env.ALLOWED_EMAILS).includes(email)) {
+      return json({ code: 'NOT_ALLOWED', error: '這個帳號尚未開通 AI 教練' }, 403);
+    }
+
+    // ── 每日次數限制（管理者不限）──
+    if (!isAdmin) {
+      if (!env.AI_KV) return json({ code: 'SERVER_CONFIG', error: '伺服器尚未設定使用次數紀錄（AI_KV）' }, 500);
+      const limit = Number(env.DAILY_LIMIT) || 30;
+      const usageKey = `use:${user.sub}:${taipeiDate()}`;
+      const used = Number(await env.AI_KV.get(usageKey)) || 0;
+      if (used >= limit) {
+        return json({ code: 'RATE_LIMIT', error: `今天的 AI 使用次數（${limit} 次）已用完，明天再來`, limit }, 429);
+      }
+      await env.AI_KV.put(usageKey, String(used + 1), { expirationTtl: 172800 });
     }
 
     let body;
