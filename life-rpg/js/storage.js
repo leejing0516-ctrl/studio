@@ -1,4 +1,5 @@
 const STORAGE_KEY = 'life_rpg_state_v2';
+const DEFAULT_AI_ENDPOINT = 'https://life-rpg-ai.leejing0516.workers.dev'; // AI 教練中間人服務，預設帶入，使用者不用自己填
 const LOG_LIMIT = 500; // 活動紀錄最多保留幾筆
 
 function defaultState() {
@@ -22,7 +23,7 @@ function defaultState() {
     assistant: {
       log: [], lastSuggestionDate: null, lastVisitDate: null,
       aiEnabled: false,       // 是否啟用真人工智慧回覆
-      aiEndpoint: '',         // 中間人服務（例如 Cloudflare Worker）的網址
+      aiEndpoint: DEFAULT_AI_ENDPOINT, // 中間人服務（Cloudflare Worker）的網址
       style: 'warm',          // 教練人選：warm/jobs/munger/socrates/inamori/custom
       customStyle: '',        // style 為 custom 時使用者自訂的風格描述
       strengths: '',          // 蓋洛普天賦測驗前五大特質
@@ -57,6 +58,7 @@ function normalizeState(parsed) {
   merged.stats = Object.assign({}, base.stats, parsed.stats);
   merged.streak = Object.assign({}, base.streak, parsed.streak);
   merged.assistant = Object.assign({}, base.assistant, parsed.assistant);
+  if (!merged.assistant.aiEndpoint) merged.assistant.aiEndpoint = DEFAULT_AI_ENDPOINT;
   merged.googleCalendar = Object.assign({}, base.googleCalendar, parsed.googleCalendar);
   merged.budget = Object.assign({}, base.budget, parsed.budget);
   return merged;
