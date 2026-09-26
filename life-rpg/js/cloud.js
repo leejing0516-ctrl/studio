@@ -262,7 +262,7 @@ async function cloudResetPassword(email) {
     const el = document.getElementById('cloud-error');
     if (el) {
       el.style.color = '#4fae7d';
-      el.textContent = `已寄出重設密碼信到 ${email}，請到信箱點連結重設`;
+      el.textContent = `如果 ${email} 有註冊過，幾分鐘內會收到重設密碼信（寄件者是 noreply@…firebaseapp.com）。沒看到請檢查垃圾郵件匣，也確認信箱有沒有打錯。`;
       el.style.display = 'block';
     }
   } catch (e) {
