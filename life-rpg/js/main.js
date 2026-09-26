@@ -438,6 +438,42 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('project-start').value = todayStr();
   document.getElementById('gcal-origin-hint').textContent = location.origin;
 
+  document.getElementById('refresh-btn').addEventListener('click', () => location.reload());
+
+  // 下拉重新整理：頁面已在最上方時往下拉超過 80px 放開就重新載入
+  (function setupPullToRefresh() {
+    const ind = document.getElementById('ptr-indicator');
+    const THRESHOLD = 80;
+    let startY = null, pull = 0;
+    const scrollTop = () => window.scrollY || document.documentElement.scrollTop || 0;
+    document.addEventListener('touchstart', e => {
+      const modalOpen = document.querySelector('.modal-overlay.show');
+      startY = (scrollTop() <= 0 && !modalOpen && e.touches.length === 1) ? e.touches[0].clientY : null;
+      pull = 0;
+    }, { passive: true });
+    document.addEventListener('touchmove', e => {
+      if (startY === null) return;
+      if (scrollTop() > 0) { startY = null; ind.style.transform = ''; return; }
+      pull = e.touches[0].clientY - startY;
+      if (pull <= 0) { ind.style.transform = ''; return; }
+      ind.style.transition = 'none';
+      ind.style.transform = `translateY(${Math.min(pull * 0.5, 50) - 100}%)`;
+      ind.textContent = pull >= THRESHOLD ? '⟳ 放開重新整理' : '⟳ 下拉重新整理';
+    }, { passive: true });
+    document.addEventListener('touchend', () => {
+      if (startY === null) return;
+      ind.style.transition = 'transform 0.2s';
+      if (pull >= THRESHOLD) {
+        ind.style.transform = 'translateY(0)';
+        ind.textContent = '⟳ 重新整理中…';
+        location.reload();
+      } else {
+        ind.style.transform = '';
+      }
+      startY = null; pull = 0;
+    });
+  })();
+
   const muteBtn = document.getElementById('mute-btn');
   muteBtn.textContent = sound.muted ? '🔇' : '🔊';
   muteBtn.addEventListener('click', () => {

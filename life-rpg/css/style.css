@@ -231,6 +231,23 @@ h1 {
 .mute-btn:hover { border-color: var(--border-gold); }
 
 .cloud-btn { right: 56px; }
+.refresh-btn { right: 112px; }
+
+/* 下拉重新整理（全螢幕 App 模式沒有瀏覽器內建的下拉重整） */
+.ptr-indicator {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 300;
+  text-align: center;
+  padding: 10px 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-text-strong);
+  background: var(--panel);
+  border-bottom: 2px solid var(--border-gold);
+  transform: translateY(-100%);
+  pointer-events: none;
+}
 
 .cloud-panel {
   display: none;
