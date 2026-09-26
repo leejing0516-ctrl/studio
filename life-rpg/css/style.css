@@ -1423,7 +1423,7 @@ ul { list-style: none; padding: 0; margin: 0; }
 
 .calendar-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 4px;
   margin-bottom: 18px;
 }
@@ -1449,6 +1449,8 @@ ul { list-style: none; padding: 0; margin: 0; }
   border: 1px solid transparent;
   position: relative;
   gap: 2px;
+  min-width: 0;
+  overflow: hidden;
   touch-action: manipulation; /* 手機上關掉雙擊放大，讓雙擊可以正常觸發新增視窗 */
 }
 .cal-cell.empty { background: transparent; cursor: default; }
@@ -1460,6 +1462,7 @@ ul { list-style: none; padding: 0; margin: 0; }
 .cal-cell.drag-over { outline: 2px dashed var(--gold); background: #fff3d6; }
 .task-item[draggable="true"] { cursor: grab; }
 .task-item.dragging { opacity: 0.4; }
+.cal-marks { display: flex; align-items: center; justify-content: center; gap: 3px; }
 .cal-habit-mark { font-size: 10px; line-height: 1; color: var(--text-dim); }
 .cal-cell.has-events .cal-daynum { color: var(--accent-text); font-weight: 700; }
 

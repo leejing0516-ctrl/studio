@@ -153,8 +153,10 @@ function renderCalendarMonth(state) {
     html += `
       <div class="${classes.join(' ')}" data-date="${dateStr}" ${holiday ? `title="${holiday}"` : ''}>
         <span class="cal-daynum">${d}</span>
-        ${dayItems.length ? `<span class="cal-dot ${hasOverdue ? 'overdue' : ''}">${dayItems.length}</span>` : ''}
-        ${habitCount ? `<span class="cal-habit-mark" title="這天有 ${habitCount} 個習慣打卡">🔁${habitCount}</span>` : ''}
+        ${(dayItems.length || habitCount) ? `<span class="cal-marks">
+          ${dayItems.length ? `<span class="cal-dot ${hasOverdue ? 'overdue' : ''}">${dayItems.length}</span>` : ''}
+          ${habitCount ? `<span class="cal-habit-mark" title="這天有 ${habitCount} 個習慣打卡">🔁${habitCount}</span>` : ''}
+        </span>` : ''}
       </div>
     `;
   }
