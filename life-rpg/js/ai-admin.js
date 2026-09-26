@@ -1,6 +1,7 @@
 // AI 教練使用者管理：管理者在 app 裡核准／移除誰能用 AI 教練，有待審申請時導覽列會出現紅點
 let _aiAdmin = { isAdmin: false, pending: [], allowed: [], envAllowed: [] };
 let _aiAdminLastRefresh = 0;
+let _aiAdminMutatedAt = 0; // KV 清單查詢有延遲（最終一致），剛操作完的 60 秒內不要用重新查到的舊清單蓋掉畫面
 
 async function callAIService(payload) {
   const endpoint = state.assistant.aiEndpoint;
@@ -50,7 +51,7 @@ async function refreshAIAdminStatus() {
   try {
     const st = await callAIService({ action: 'status' });
     _aiAdmin.isAdmin = !!st.isAdmin;
-    if (_aiAdmin.isAdmin) {
+    if (_aiAdmin.isAdmin && Date.now() - _aiAdminMutatedAt > 60000) {
       const list = await callAIService({ action: 'admin_list' });
       _aiAdmin.pending = list.pending || [];
       _aiAdmin.allowed = list.allowed || [];
@@ -100,13 +101,26 @@ document.addEventListener('DOMContentLoaded', () => {
     listEl.addEventListener('click', async e => {
       const b = e.target.closest('[data-ai-act]');
       if (!b) return;
+      const act = b.dataset.aiAct, email = b.dataset.email;
       b.disabled = true;
+      b.textContent = '處理中…';
       try {
-        await callAIService({ action: b.dataset.aiAct, email: b.dataset.email });
+        await callAIService({ action: act, email });
       } catch (err) {
         alert('操作失敗：' + err.message);
+        renderAIAdmin();
+        return;
       }
-      await refreshAIAdminStatus();
+      // 直接在畫面上套用結果，不重新查詢
+      _aiAdminMutatedAt = Date.now();
+      const item = _aiAdmin.pending.find(p => p.email === email) || _aiAdmin.allowed.find(p => p.email === email) || { email, at: Date.now() };
+      _aiAdmin.pending = _aiAdmin.pending.filter(p => p.email !== email);
+      if (act === 'admin_approve') _aiAdmin.allowed = [item, ..._aiAdmin.allowed.filter(p => p.email !== email)];
+      if (act === 'admin_remove') _aiAdmin.allowed = _aiAdmin.allowed.filter(p => p.email !== email);
+      renderAIAdmin();
+      const label = { admin_approve: '已核准', admin_reject: '已拒絕', admin_remove: '已移除' }[act];
+      const msg = document.getElementById('ai-admin-msg');
+      if (msg) { msg.textContent = `✅ ${label}：${email}`; msg.style.display = 'block'; }
     });
   }
   // 登入狀態就緒後檢查一次；之後回到 app 或打開平台設定頁時，距離上次超過 30 秒就再檢查
