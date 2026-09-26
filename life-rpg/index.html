@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=123">
+<link rel="stylesheet" href="css/style.css?v=124">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -257,6 +257,18 @@
         <p id="gcal-status" class="tab-hint">尚未連接</p>
       </details>
       <p class="tab-hint">連接後，app 會在每天早上 5 點跟下午 3 點左右自動同步（上傳＋下載）一次。這是純前端網頁沒有背景執行能力，只有瀏覽器分頁開著、剛好經過這兩個時間點時才會自動觸發；如果都沒開過 app，記得到「行事曆」分頁手動同步。</p>
+    </div>
+
+    <div class="settings-section" id="account-section" style="display:none">
+      <h3 class="settings-section-title">🔐 帳號與密碼</h3>
+      <p class="tab-hint">目前登入：<span id="account-email"></span></p>
+      <div class="modal-fields">
+        <input type="password" id="pw-current" placeholder="目前的密碼" autocomplete="current-password">
+        <input type="password" id="pw-new" placeholder="新密碼（至少 6 碼）" autocomplete="new-password">
+        <input type="password" id="pw-confirm" placeholder="再輸入一次新密碼" autocomplete="new-password">
+      </div>
+      <button type="button" id="pw-change" class="btn small" style="margin-top:10px">修改密碼</button>
+      <p id="pw-msg" class="tab-hint" style="display:none"></p>
     </div>
 
     <div class="settings-section" id="ai-admin-section" style="display:none">
@@ -505,23 +517,23 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="js/config.js?v=123"></script>
-<script src="js/storage.js?v=123"></script>
-<script src="js/cloud.js?v=123"></script>
-<script src="js/sound.js?v=123"></script>
-<script src="js/assistant.js?v=123"></script>
-<script src="js/ai-admin.js?v=123"></script>
-<script src="js/character.js?v=123"></script>
-<script src="js/tasks.js?v=123"></script>
-<script src="js/habits.js?v=123"></script>
-<script src="js/projects.js?v=123"></script>
-<script src="js/story.js?v=123"></script>
-<script src="js/home.js?v=123"></script>
-<script src="js/reading.js?v=123"></script>
-<script src="js/finance.js?v=123"></script>
-<script src="js/calendar.js?v=123"></script>
-<script src="js/rewards.js?v=123"></script>
-<script src="js/achievements.js?v=123"></script>
-<script src="js/main.js?v=123"></script>
+<script src="js/config.js?v=124"></script>
+<script src="js/storage.js?v=124"></script>
+<script src="js/cloud.js?v=124"></script>
+<script src="js/sound.js?v=124"></script>
+<script src="js/assistant.js?v=124"></script>
+<script src="js/ai-admin.js?v=124"></script>
+<script src="js/character.js?v=124"></script>
+<script src="js/tasks.js?v=124"></script>
+<script src="js/habits.js?v=124"></script>
+<script src="js/projects.js?v=124"></script>
+<script src="js/story.js?v=124"></script>
+<script src="js/home.js?v=124"></script>
+<script src="js/reading.js?v=124"></script>
+<script src="js/finance.js?v=124"></script>
+<script src="js/calendar.js?v=124"></script>
+<script src="js/rewards.js?v=124"></script>
+<script src="js/achievements.js?v=124"></script>
+<script src="js/main.js?v=124"></script>
 </body>
 </html>

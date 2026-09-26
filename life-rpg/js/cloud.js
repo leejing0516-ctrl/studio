@@ -135,9 +135,38 @@ function updateCloudUI() {
     loggedOut.style.display = 'none';
     loggedIn.style.display = 'block';
     document.getElementById('cloud-user-email').textContent = _cloudUser.email;
+    scheduleCloudPanelAutoClose();
   } else {
     loggedOut.style.display = 'block';
     loggedIn.style.display = 'none';
+  }
+  const account = document.getElementById('account-section');
+  if (account) {
+    account.style.display = _cloudUser ? '' : 'none';
+    const emailEl = document.getElementById('account-email');
+    if (emailEl && _cloudUser) emailEl.textContent = _cloudUser.email;
+  }
+}
+
+// 已登入的狀態卡片打開後 3 秒自動收起（還沒登入時要輸入帳密，不自動收）
+let _cloudPanelTimer = null;
+function scheduleCloudPanelAutoClose() {
+  clearTimeout(_cloudPanelTimer);
+  const panel = document.getElementById('cloud-panel');
+  if (!_cloudUser || !panel || !panel.classList.contains('show')) return;
+  _cloudPanelTimer = setTimeout(() => panel.classList.remove('show'), 3000);
+}
+
+// 修改密碼：Firebase 要求近期驗證過身分，所以先用目前密碼重新驗證再更新
+async function cloudChangePassword(currentPassword, newPassword) {
+  if (!_cloudUser) throw new Error('請先登入');
+  try {
+    const cred = firebase.auth.EmailAuthProvider.credential(_cloudUser.email, currentPassword);
+    await withTimeout(_cloudUser.reauthenticateWithCredential(cred), 15000, '驗證逾時，請檢查網路連線後再試一次');
+    await withTimeout(_cloudUser.updatePassword(newPassword), 15000, '修改逾時，請檢查網路連線後再試一次');
+  } catch (e) {
+    if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') throw new Error('目前的密碼不正確');
+    throw new Error(translateAuthError(e));
   }
 }
 
@@ -168,6 +197,8 @@ function translateAuthError(e) {
     'auth/user-not-found': '找不到這個帳號，先按「註冊新帳號」',
     'auth/invalid-credential': '帳號或密碼錯誤',
     'auth/network-request-failed': '網路連線失敗，請稍後再試',
+    'auth/requires-recent-login': '為了安全，請先登出再重新登入後，再修改密碼',
+    'auth/too-many-requests': '嘗試次數過多，請稍後再試',
   };
   if (map[e.code]) return map[e.code];
   if (!e.code) return e.message; // 自訂逾時等訊息本身已經是完整的中文句子

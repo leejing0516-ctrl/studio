@@ -483,7 +483,34 @@ document.addEventListener('DOMContentLoaded', () => {
   initCloud();
   const cloudBtn = document.getElementById('cloud-btn');
   const cloudPanel = document.getElementById('cloud-panel');
-  cloudBtn.addEventListener('click', () => cloudPanel.classList.toggle('show'));
+  cloudBtn.addEventListener('click', () => {
+    cloudPanel.classList.toggle('show');
+    scheduleCloudPanelAutoClose();
+  });
+
+  document.getElementById('pw-change').addEventListener('click', async () => {
+    const cur = document.getElementById('pw-current').value;
+    const next = document.getElementById('pw-new').value;
+    const again = document.getElementById('pw-confirm').value;
+    const msg = document.getElementById('pw-msg');
+    const show = (text, ok) => { msg.textContent = text; msg.style.color = ok ? '#4fae7d' : '#e2685f'; msg.style.display = 'block'; };
+    if (!cur) return show('請輸入目前的密碼', false);
+    if (next.length < 6) return show('新密碼至少 6 碼', false);
+    if (next !== again) return show('兩次輸入的新密碼不一致', false);
+    if (next === cur) return show('新密碼不能和目前的密碼相同', false);
+    const btn = document.getElementById('pw-change');
+    btn.disabled = true;
+    btn.textContent = '修改中…';
+    try {
+      await cloudChangePassword(cur, next);
+      ['pw-current', 'pw-new', 'pw-confirm'].forEach(id => { document.getElementById(id).value = ''; });
+      show('✅ 密碼已修改，下次登入請使用新密碼', true);
+    } catch (e) {
+      show(e.message, false);
+    }
+    btn.disabled = false;
+    btn.textContent = '修改密碼';
+  });
 
   document.getElementById('cloud-signup').addEventListener('click', async () => {
     const email = document.getElementById('cloud-email').value.trim();
