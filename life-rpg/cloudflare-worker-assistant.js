@@ -79,7 +79,7 @@ async function listKV(env, prefix) {
   return Promise.all(r.keys.map(async (k) => {
     let info = {};
     try { info = JSON.parse(await env.AI_KV.get(k.name)) || {}; } catch (e) {}
-    return { email: k.name.slice(prefix.length), at: info.at || 0 };
+    return { email: k.name.slice(prefix.length), at: info.at || 0, note: info.note || '' };
   }));
 }
 
@@ -92,7 +92,8 @@ async function handleAction(action, body, env, email, isAdmin, json) {
   }
   if (action === 'request') {
     if (isAdmin || await isAllowedEmail(env, email)) return json({ ok: true, already: true });
-    await env.AI_KV.put('req:' + email, JSON.stringify({ at: Date.now() }));
+    const note = String(body.note || '').trim().slice(0, 60);
+    await env.AI_KV.put('req:' + email, JSON.stringify({ at: Date.now(), note }));
     return json({ ok: true });
   }
 
@@ -107,7 +108,9 @@ async function handleAction(action, body, env, email, isAdmin, json) {
   const target = normEmail(body.email);
   if (!target.includes('@')) return json({ code: 'BAD_EMAIL', error: '信箱格式不正確' }, 400);
   if (action === 'admin_approve') {
-    await env.AI_KV.put('allow:' + target, JSON.stringify({ at: Date.now() }));
+    let note = '';
+    try { note = (JSON.parse(await env.AI_KV.get('req:' + target)) || {}).note || ''; } catch (e) {}
+    await env.AI_KV.put('allow:' + target, JSON.stringify({ at: Date.now(), note }));
     await env.AI_KV.delete('req:' + target);
     return json({ ok: true });
   }

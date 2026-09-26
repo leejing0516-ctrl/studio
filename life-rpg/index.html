@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=120">
+<link rel="stylesheet" href="css/style.css?v=121">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -472,6 +472,20 @@
   </div>
 </div>
 
+<div id="ai-request-modal" class="modal-overlay">
+  <div class="modal-box frame">
+    <h3 class="modal-title">🤖 申請開通 AI 教練</h3>
+    <p class="tab-hint">你的帳號還沒開通 AI 教練。請填寫你是誰（姓名或單位），管理者才知道要不要核准。</p>
+    <div class="modal-fields">
+      <input type="text" id="ai-request-note" maxlength="60" placeholder="例如：王小明／南梓實小 三年級">
+    </div>
+    <div class="modal-actions">
+      <button type="button" id="ai-request-cancel" class="btn small">稍後再說</button>
+      <button type="button" id="ai-request-send" class="btn">送出申請</button>
+    </div>
+  </div>
+</div>
+
 <div id="info-modal" class="modal-overlay">
   <div class="modal-box frame">
     <h3 class="modal-title" id="info-modal-title">ℹ️ 說明</h3>
@@ -491,23 +505,23 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="js/config.js?v=120"></script>
-<script src="js/storage.js?v=120"></script>
-<script src="js/cloud.js?v=120"></script>
-<script src="js/sound.js?v=120"></script>
-<script src="js/assistant.js?v=120"></script>
-<script src="js/ai-admin.js?v=120"></script>
-<script src="js/character.js?v=120"></script>
-<script src="js/tasks.js?v=120"></script>
-<script src="js/habits.js?v=120"></script>
-<script src="js/projects.js?v=120"></script>
-<script src="js/story.js?v=120"></script>
-<script src="js/home.js?v=120"></script>
-<script src="js/reading.js?v=120"></script>
-<script src="js/finance.js?v=120"></script>
-<script src="js/calendar.js?v=120"></script>
-<script src="js/rewards.js?v=120"></script>
-<script src="js/achievements.js?v=120"></script>
-<script src="js/main.js?v=120"></script>
+<script src="js/config.js?v=121"></script>
+<script src="js/storage.js?v=121"></script>
+<script src="js/cloud.js?v=121"></script>
+<script src="js/sound.js?v=121"></script>
+<script src="js/assistant.js?v=121"></script>
+<script src="js/ai-admin.js?v=121"></script>
+<script src="js/character.js?v=121"></script>
+<script src="js/tasks.js?v=121"></script>
+<script src="js/habits.js?v=121"></script>
+<script src="js/projects.js?v=121"></script>
+<script src="js/story.js?v=121"></script>
+<script src="js/home.js?v=121"></script>
+<script src="js/reading.js?v=121"></script>
+<script src="js/finance.js?v=121"></script>
+<script src="js/calendar.js?v=121"></script>
+<script src="js/rewards.js?v=121"></script>
+<script src="js/achievements.js?v=121"></script>
+<script src="js/main.js?v=121"></script>
 </body>
 </html>

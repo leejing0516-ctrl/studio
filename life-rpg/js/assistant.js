@@ -365,8 +365,11 @@ async function fetchAIReply(endpoint, system, message, timeoutMs, maxTokens) {
       try { info = JSON.parse(text); } catch (e) {}
       if (resp.status === 401) throw new Error('登入狀態已失效，請重新登入雲端帳號後再試');
       if (resp.status === 403 && info && info.code === 'NOT_ALLOWED') {
-        if (typeof sendAIAccessRequest === 'function') sendAIAccessRequest();
-        throw new Error('你的帳號尚未開通 AI 教練，已幫你送出申請，管理者核准後就能使用');
+        if (typeof aiRequestRecentlySent === 'function' && !aiRequestRecentlySent()) {
+          openAIRequestModal();
+          throw new Error('你的帳號尚未開通 AI 教練，請先填寫申請資料，管理者核准後就能使用');
+        }
+        throw new Error('你的帳號尚未開通 AI 教練，申請已送出，請等管理者核准');
       }
       if (resp.status === 429) throw new Error((info && info.error) || '今天的 AI 使用次數已用完，明天再來');
       throw new Error('AI 服務回應錯誤：' + (text || resp.status));
