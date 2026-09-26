@@ -56,17 +56,49 @@ function initCloud() {
     return;
   }
 
-  _cloudAuth.onAuthStateChanged(user => {
-    _cloudUser = user;
-    updateCloudUI();
-    if (user) {
-      syncOnLogin(user);
-      attachCloudListener(user);
-    } else if (_cloudUnsub) {
+  _cloudAuth.onAuthStateChanged(handleAuthChange);
+}
+
+const CLOUD_UID_KEY = 'life_rpg_last_uid';
+
+// 這台裝置上的資料屬於別的帳號（換帳號登入，或登出）時，把本機資料清成全新狀態，
+// 避免上一個帳號的資料留在畫面上，甚至被推進新帳號的雲端
+function resetLocalDataForAccountSwitch() {
+  clearTimeout(_cloudSaveTimer);
+  if (_cloudUnsub) { _cloudUnsub(); _cloudUnsub = null; }
+  _cloudApplyingRemote = true;
+  try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem('life_rpg_ai_request_at'); } catch (e) {}
+  state = defaultState();
+  _cloudLastSeenAt = 0;
+  if (typeof _gcalAccessToken !== 'undefined') _gcalAccessToken = null;
+  if (typeof _aiAdmin !== 'undefined') { _aiAdmin.isAdmin = false; _aiAdmin.pending = []; _aiAdmin.allowed = []; _aiAdmin.envAllowed = []; }
+  renderAll();
+  if (typeof renderAIAdmin === 'function') renderAIAdmin();
+  _cloudApplyingRemote = false;
+}
+
+function handleAuthChange(user) {
+  const prev = _cloudUser;
+  _cloudUser = user;
+  updateCloudUI();
+  if (user) {
+    let lastUid = null;
+    try { lastUid = localStorage.getItem(CLOUD_UID_KEY); } catch (e) {}
+    if (lastUid && lastUid !== user.uid) resetLocalDataForAccountSwitch();
+    try { localStorage.setItem(CLOUD_UID_KEY, user.uid); } catch (e) {}
+    syncOnLogin(user);
+    attachCloudListener(user);
+  } else {
+    if (_cloudUnsub) {
       _cloudUnsub();
       _cloudUnsub = null;
     }
-  });
+    // 從「已登入」變成「登出」才清資料；一開始就沒登入的訪客，本機資料要保留
+    if (prev) {
+      resetLocalDataForAccountSwitch();
+      try { localStorage.removeItem(CLOUD_UID_KEY); } catch (e) {}
+    }
+  }
 }
 
 // 即時監聽雲端文件：只要其他裝置（手機/電腦）推送了更新的資料，這個分頁就會自動套用，
@@ -179,8 +211,15 @@ async function cloudSignIn(email, password) {
   }
 }
 
-function cloudSignOut() {
-  if (_cloudAuth) _cloudAuth.signOut();
+async function cloudSignOut() {
+  if (!_cloudAuth) return;
+  clearTimeout(_cloudSaveTimer);
+  const synced = await pushStateToCloud(); // 登出前先把最後的變更推上雲端
+  const msg = synced
+    ? '登出後，這台裝置上的資料會清除（資料已備份在雲端，再次登入就會回來）。確定要登出嗎？'
+    : '⚠️ 資料還沒有成功同步到雲端，現在登出會遺失這台裝置上尚未同步的資料。確定仍要登出嗎？';
+  if (!confirm(msg)) return;
+  _cloudAuth.signOut();
 }
 
 async function cloudResetPassword(email) {
@@ -231,7 +270,7 @@ async function syncOnLogin(user) {
 }
 
 async function pushStateToCloud() {
-  if (!_cloudUser || !_cloudDb) return;
+  if (!_cloudUser || !_cloudDb) return false;
   try {
     const docRef = _cloudDb.collection('life_rpg_users').doc(_cloudUser.uid);
     // 推送前先看雲端有沒有別台裝置在我們上次對齊之後新增的打卡，有的話先合併進來再推，避免蓋掉
@@ -247,9 +286,11 @@ async function pushStateToCloud() {
     }
     await docRef.set({ state: JSON.parse(JSON.stringify(state)) });
     _cloudLastSeenAt = state.updatedAt || 0;
+    return true;
   } catch (e) {
     console.error('推送到雲端失敗', e);
     setSyncStatus('⚠️ 同步失敗');
+    return false;
   }
 }
 
