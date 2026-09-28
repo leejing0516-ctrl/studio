@@ -18,6 +18,22 @@ let _cloudLastSeenAt = 0; // 上一次跟雲端對齊時，雲端資料的 updat
 // 把 source 裡「sinceMs 之後才新增」的打卡與活動紀錄補進 target。
 // 打卡值本身就是打卡當下的時間戳，所以能分辨「對方之後才新增的」跟「我這邊刻意取消的」，
 // 避免手機與網頁兩邊各自用舊資料存檔時，把對方的完成紀錄整個蓋掉
+function mergeArrayLog(target, source, sinceMs, limit) {
+  const seen = new Set(target.map(l => l.time + '|' + l.text));
+  let changed = false;
+  (source || []).forEach(l => {
+    if (l.time && l.time > sinceMs && !seen.has(l.time + '|' + l.text)) { target.push(l); changed = true; }
+  });
+  if (changed) {
+    target.sort((a, b) => (b.time || 0) - (a.time || 0));
+    if (target.length > limit) target.length = limit;
+  }
+  return changed;
+}
+
+// 把 source 裡「sinceMs 之後才新增」的打卡、活動紀錄、教練對話補進 target。
+// 打卡值本身就是打卡當下的時間戳，所以能分辨「對方之後才新增的」跟「我這邊刻意取消的」，
+// 避免手機與網頁兩邊各自用舊資料存檔時，把對方的完成紀錄或對話整個蓋掉
 function mergeNewCompletions(target, source, sinceMs) {
   let changed = false;
   ['habitCompletions', 'readingCompletions'].forEach(key => {
@@ -34,14 +50,10 @@ function mergeNewCompletions(target, source, sinceMs) {
     });
   });
   target.log = target.log || [];
-  const seen = new Set(target.log.map(l => l.time + '|' + l.text));
-  (source.log || []).forEach(l => {
-    if (l.time && l.time > sinceMs && !seen.has(l.time + '|' + l.text)) { target.log.push(l); changed = true; }
-  });
-  if (changed) {
-    target.log.sort((a, b) => (b.time || 0) - (a.time || 0));
-    if (target.log.length > LOG_LIMIT) target.log.length = LOG_LIMIT;
-  }
+  if (mergeArrayLog(target.log, source.log, sinceMs, LOG_LIMIT)) changed = true;
+  target.assistant = target.assistant || {};
+  target.assistant.log = target.assistant.log || [];
+  if (mergeArrayLog(target.assistant.log, (source.assistant || {}).log, sinceMs, 40)) changed = true;
   return changed;
 }
 
