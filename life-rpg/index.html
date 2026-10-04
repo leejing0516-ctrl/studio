@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <noscript><link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet"></noscript>
-<link rel="stylesheet" href="css/style.css?v=130">
+<link rel="stylesheet" href="css/style.css?v=131">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <!-- Firebase 改由 js/cloud.js 在背景載入，網路慢或失敗時不會卡住畫面 -->
 </head>
@@ -241,6 +241,17 @@
       <p class="tab-hint">像 LINE 一樣，在桌面圖示右上角用紅點顯示「今天還沒完成的項目數」。</p>
       <p id="badge-status" class="tab-hint"></p>
       <button type="button" id="badge-enable" class="btn small">開啟圖示數字</button>
+    </div>
+
+    <div class="settings-section">
+      <h3 class="settings-section-title">🔔 每天早上 6 點推播提醒</h3>
+      <p class="tab-hint">每天早上 6 點左右，手機會跳出通知告訴你今天還有幾項待辦，同時更新圖示上的數字。待辦內容只存在你的手機，不會上傳到伺服器。</p>
+      <p id="push-status" class="tab-hint"></p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button type="button" id="push-enable" class="btn small">開啟每日推播</button>
+        <button type="button" id="push-test" class="btn small">立即測試推播</button>
+        <button type="button" id="push-disable" class="btn small">關閉推播</button>
+      </div>
     </div>
 
     <div class="settings-section">
@@ -524,24 +535,25 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="js/config.js?v=130"></script>
-<script src="js/storage.js?v=130"></script>
-<script src="js/cloud.js?v=130"></script>
-<script src="js/sound.js?v=130"></script>
-<script src="js/assistant.js?v=130"></script>
-<script src="js/badge.js?v=130"></script>
-<script src="js/ai-admin.js?v=130"></script>
-<script src="js/character.js?v=130"></script>
-<script src="js/tasks.js?v=130"></script>
-<script src="js/habits.js?v=130"></script>
-<script src="js/projects.js?v=130"></script>
-<script src="js/story.js?v=130"></script>
-<script src="js/home.js?v=130"></script>
-<script src="js/reading.js?v=130"></script>
-<script src="js/finance.js?v=130"></script>
-<script src="js/calendar.js?v=130"></script>
-<script src="js/rewards.js?v=130"></script>
-<script src="js/achievements.js?v=130"></script>
-<script src="js/main.js?v=130"></script>
+<script src="js/config.js?v=131"></script>
+<script src="js/storage.js?v=131"></script>
+<script src="js/cloud.js?v=131"></script>
+<script src="js/sound.js?v=131"></script>
+<script src="js/assistant.js?v=131"></script>
+<script src="js/badge.js?v=131"></script>
+<script src="js/push.js?v=131"></script>
+<script src="js/ai-admin.js?v=131"></script>
+<script src="js/character.js?v=131"></script>
+<script src="js/tasks.js?v=131"></script>
+<script src="js/habits.js?v=131"></script>
+<script src="js/projects.js?v=131"></script>
+<script src="js/story.js?v=131"></script>
+<script src="js/home.js?v=131"></script>
+<script src="js/reading.js?v=131"></script>
+<script src="js/finance.js?v=131"></script>
+<script src="js/calendar.js?v=131"></script>
+<script src="js/rewards.js?v=131"></script>
+<script src="js/achievements.js?v=131"></script>
+<script src="js/main.js?v=131"></script>
 </body>
 </html>

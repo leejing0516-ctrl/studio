@@ -99,14 +99,18 @@ function moveCalendarItemDate(state, kind, id, newDate) {
   }
 }
 
-function getTodayItems(state) {
+function getItemsForDate(state, dateStr) {
   const today = todayStr();
   return getCalendarItems(state).filter(it => {
-    if (it.date === today) return true;
+    if (it.date === dateStr) return true;
     // 專案子任務／閱讀計畫／故事章節如果過期還沒完成，繼續留在「今日任務」直到完成為止，避免漏掉沒趕上的進度
-    if ((it.kind === 'project' || it.kind === 'readingplan' || it.kind === 'story') && it.date < today && !it.done) return true;
+    if ((it.kind === 'project' || it.kind === 'readingplan' || it.kind === 'story') && it.date < dateStr && !it.done) return true;
     return false;
   });
+}
+
+function getTodayItems(state) {
+  return getItemsForDate(state, todayStr());
 }
 
 // 某天已打卡的習慣（唯讀的歷史紀錄，習慣本身仍在「習慣養成」與今日任務打卡）

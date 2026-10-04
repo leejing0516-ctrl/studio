@@ -1,10 +1,15 @@
 // 把「今日任務、到期活動/截止日、專案子任務、閱讀計畫、今天該做的習慣、簡易閱讀打卡」統一成一份今日清單
 function getTodayChecklist(state) {
-  const today = todayStr();
-  const calItems = getTodayItems(state); // 今日任務 + 到期活動/截止日 + 到期專案子任務 + 到期閱讀計畫
+  return getChecklistForDate(state, todayStr());
+}
+
+// 某一天的完整清單（今天以外的日期用來預先算好推播提醒的摘要）
+function getChecklistForDate(state, dateStr) {
+  const today = dateStr;
+  const calItems = getItemsForDate(state, dateStr); // 任務 + 活動/截止日 + 專案子任務 + 閱讀計畫（含過期未完成的）
 
   const habitDone = state.habitCompletions[today] || {};
-  const habitItems = getDueHabitsToday(state).map(h => ({
+  const habitItems = state.habits.filter(h => habitDueToday(h, today)).map(h => ({
     id: h.id, kind: 'habit', title: h.name, domain: h.domain,
     done: !!habitDone[h.id], doneAt: habitDone[h.id] || null, difficulty: h.difficulty, streak: h.streak || 0,
   }));

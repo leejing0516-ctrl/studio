@@ -56,6 +56,7 @@ function renderAll() {
   renderFinance(state);
   updateAppBadge(state);
   renderBadgeSettings();
+  schedulePushSummarySync(state);
   if (_skipNextSave) { _skipNextSave = false; } else { saveState(state); }
 
   const unlocked = checkAchievements(state);

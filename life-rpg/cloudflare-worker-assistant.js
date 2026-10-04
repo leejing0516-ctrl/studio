@@ -20,7 +20,11 @@
 //    ADMIN_EMAILS   = 你自己的信箱（可多個，用逗號隔開；永遠可用、不限次數）
 //    ALLOWED_EMAILS = （選填）固定開通的信箱，多個用逗號隔開。一般試用者改在 app「平台設定」裡核准，不用改這裡
 //    DAILY_LIMIT    = 每人每天最多可問幾次（不填預設 30；以台灣時間 0 點重新計算）
-// 9. 複製這個 Worker 的網址（長得像 https://life-rpg-ai.你的帳號.workers.dev），
+// 9. 每天早上 6 點推播提醒（這版新增）：
+//    a. Variables and Secrets 新增 VAPID_PRIVATE_JWK，類型選 Secret，值貼上你拿到的那一整行 JSON
+//    b. Settings →「Trigger Events」（或 Triggers）→ Cron Triggers →「Add」→ 填入 0 22 * * *
+//       （這是 UTC 時間 22:00，等於台灣早上 6:00）
+// 10. 複製這個 Worker 的網址（長得像 https://life-rpg-ai.你的帳號.workers.dev），
 //    貼到「我的人生RPG」app 裡「小助手 → ⚙️ 小助手設定 → 中間人服務網址」欄位
 
 const ALLOWED_ORIGIN = 'https://leejing0516-ctrl.github.io';
@@ -83,9 +87,104 @@ async function listKV(env, prefix) {
   }));
 }
 
+
+// ── 每日推播（Web Push）──
+// 推播本身不帶內容：app 會把「未來幾天的待辦摘要」存在手機裡，收到推播時由手機自己組出通知文字，
+// 所以待辦內容不會經過或存在這個 Worker，這裡只保存「哪些裝置要收推播」。
+const VAPID_PUBLIC_KEY = 'BBVOJ0c6MfS-B8mQlUKP7KV0pvP0EK1COch4gew1U201hnA-h05gueF5kTY_nJEfnKOXSvVI-Hp0OMyaoxkR-9M';
+const PUSH_HOST_OK = [/(^|\.)push\.apple\.com$/, /(^|\.)googleapis\.com$/, /(^|\.)push\.services\.mozilla\.com$/, /(^|\.)notify\.windows\.com$/];
+
+function b64urlEncode(bytes) {
+  let s = '';
+  bytes.forEach(b => { s += String.fromCharCode(b); });
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 24);
+}
+
+async function vapidHeaders(env, endpoint) {
+  const enc = (o) => b64urlEncode(new TextEncoder().encode(JSON.stringify(o)));
+  const admin = parseList(env.ADMIN_EMAILS)[0] || 'admin@example.com';
+  const unsigned = enc({ typ: 'JWT', alg: 'ES256' }) + '.' + enc({
+    aud: new URL(endpoint).origin,
+    exp: Math.floor(Date.now() / 1000) + 12 * 3600,
+    sub: 'mailto:' + admin,
+  });
+  const key = await crypto.subtle.importKey('jwk', JSON.parse(env.VAPID_PRIVATE_JWK), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+  const sig = new Uint8Array(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, new TextEncoder().encode(unsigned)));
+  return {
+    Authorization: `vapid t=${unsigned}.${b64urlEncode(sig)}, k=${VAPID_PUBLIC_KEY}`,
+    TTL: '43200',
+    Urgency: 'high',
+  };
+}
+
+// 對 KV 裡某個 push: 開頭的紀錄發一則推播；訂閱已失效（404/410）就刪掉
+async function sendOnePush(env, kvKey) {
+  let info;
+  try { info = JSON.parse(await env.AI_KV.get(kvKey)); } catch (e) { return 'bad'; }
+  if (!info || !info.endpoint) return 'bad';
+  try {
+    const resp = await fetch(info.endpoint, { method: 'POST', headers: await vapidHeaders(env, info.endpoint) });
+    if (resp.status === 404 || resp.status === 410) { await env.AI_KV.delete(kvKey); return 'gone'; }
+    return resp.ok ? 'ok' : 'fail';
+  } catch (e) {
+    return 'fail';
+  }
+}
+
+async function sendAllPush(env) {
+  if (!env.AI_KV || !env.VAPID_PRIVATE_JWK) return { ok: 0, fail: 0, gone: 0 };
+  const result = { ok: 0, fail: 0, gone: 0 };
+  let cursor;
+  do {
+    const r = await env.AI_KV.list({ prefix: 'push:', cursor });
+    for (const k of r.keys) {
+      const res = await sendOnePush(env, k.name);
+      if (res === 'ok') result.ok++; else if (res === 'gone') result.gone++; else result.fail++;
+    }
+    cursor = r.list_complete ? undefined : r.cursor;
+  } while (cursor);
+  return result;
+}
+
+async function handlePushAction(action, body, env, uid, email, json) {
+  if (action === 'push_subscribe') {
+    const sub = body.subscription || {};
+    let host = '';
+    try { host = new URL(sub.endpoint).hostname; } catch (e) {}
+    if (!sub.endpoint || !PUSH_HOST_OK.some(re => re.test(host))) return json({ code: 'BAD_SUB', error: '推播訂閱格式不正確' }, 400);
+    const key = `push:${uid}:${await sha256Hex(sub.endpoint)}`;
+    const existing = await env.AI_KV.list({ prefix: `push:${uid}:` });
+    if (!existing.keys.some(k => k.name === key) && existing.keys.length >= 5) {
+      return json({ code: 'TOO_MANY', error: '同一個帳號最多綁定 5 個裝置的推播' }, 400);
+    }
+    await env.AI_KV.put(key, JSON.stringify({ endpoint: sub.endpoint, email, at: Date.now() }));
+    return json({ ok: true });
+  }
+  if (action === 'push_unsubscribe') {
+    if (body.endpoint) await env.AI_KV.delete(`push:${uid}:${await sha256Hex(String(body.endpoint))}`);
+    return json({ ok: true });
+  }
+  if (action === 'push_test') {
+    if (!env.VAPID_PRIVATE_JWK) return json({ code: 'SERVER_CONFIG', error: '伺服器尚未設定推播金鑰（VAPID_PRIVATE_JWK）' }, 500);
+    const limitKey = `pt:${uid}`;
+    if (await env.AI_KV.get(limitKey)) return json({ code: 'SLOW_DOWN', error: '請等一分鐘後再測試' }, 429);
+    await env.AI_KV.put(limitKey, '1', { expirationTtl: 60 });
+    const keys = (await env.AI_KV.list({ prefix: `push:${uid}:` })).keys;
+    const res = await Promise.all(keys.map(k => sendOnePush(env, k.name)));
+    return json({ sent: res.filter(r => r === 'ok').length, total: keys.length });
+  }
+  return json({ code: 'BAD_ACTION', error: '不支援的操作' }, 400);
+}
+
 // 非聊天的管理類請求：查詢自己狀態、申請開通、管理者審核名單
-async function handleAction(action, body, env, email, isAdmin, json) {
+async function handleAction(action, body, env, email, isAdmin, json, uid) {
   if (!env.AI_KV) return json({ code: 'SERVER_CONFIG', error: '伺服器尚未設定 AI_KV' }, 500);
+  if (action.startsWith('push_')) return handlePushAction(action, body, env, uid, email, json);
 
   if (action === 'status') {
     return json({ isAdmin, allowed: isAdmin || await isAllowedEmail(env, email) });
@@ -126,6 +225,11 @@ async function handleAction(action, body, env, email, isAdmin, json) {
 }
 
 export default {
+  // Cron Trigger：每天台灣早上 6 點（UTC 22:00）對所有已訂閱的裝置發推播
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(sendAllPush(env));
+  },
+
   async fetch(request, env) {
     const corsHeaders = {
       'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
@@ -172,7 +276,7 @@ export default {
     }
 
     if (body.action && body.action !== 'chat') {
-      return handleAction(body.action, body, env, email, isAdmin, json);
+      return handleAction(body.action, body, env, email, isAdmin, json, user.sub);
     }
 
     // ── 名單檢查：管理者或已開通的信箱才能用 ──
