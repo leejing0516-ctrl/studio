@@ -54,6 +54,8 @@ function renderAll() {
   renderProjects(state);
   renderStoryTab(state);
   renderFinance(state);
+  updateAppBadge(state);
+  renderBadgeSettings();
   if (_skipNextSave) { _skipNextSave = false; } else { saveState(state); }
 
   const unlocked = checkAchievements(state);
