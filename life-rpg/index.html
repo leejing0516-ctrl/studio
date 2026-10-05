@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <noscript><link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet"></noscript>
-<link rel="stylesheet" href="css/style.css?v=131">
+<link rel="stylesheet" href="css/style.css?v=132">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <!-- Firebase 改由 js/cloud.js 在背景載入，網路慢或失敗時不會卡住畫面 -->
 </head>
@@ -106,6 +106,7 @@
       <button type="button" class="tab-btn menu-item-btn" data-tab="tab-tasks">📋 今日任務</button>
       <button type="button" class="tab-btn menu-item-btn" data-tab="tab-calendar">📅 行事曆</button>
       <button type="button" class="tab-btn menu-item-btn" data-tab="tab-habits">🔁 習慣養成</button>
+      <button type="button" class="tab-btn menu-item-btn" data-tab="tab-overdue">⏰ 逾期清單<span id="overdue-count"></span></button>
     </div>
     <div class="menu-group">
       <div class="menu-group-title">成長旅程</div>
@@ -383,6 +384,11 @@
     <ul id="project-list"></ul>
   </div>
 
+  <div id="tab-overdue" class="tab-panel frame">
+    <p class="tab-hint">這裡列出已經過了日期、卻沒有勾選完成的事。有做但當天忘了勾，可以直接補勾，習慣的連續天數會自動重新計算。專案、閱讀計畫、故事章節過期的進度會自動留在「今日任務」，不用在這裡處理。習慣最多可以往回補登最近 30 天。</p>
+    <div id="overdue-list"></div>
+  </div>
+
   <div id="tab-calendar" class="tab-panel frame">
     <p class="tab-hint">這裡會顯示今日任務、活動與截止日期。事先安排活動或截止日期，完成後也能像任務一樣獲得 EXP。下方清單中的項目可以直接拖曳到上面的日期格子改期。</p>
     <form id="event-form" class="inline-form">
@@ -535,25 +541,26 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="js/config.js?v=131"></script>
-<script src="js/storage.js?v=131"></script>
-<script src="js/cloud.js?v=131"></script>
-<script src="js/sound.js?v=131"></script>
-<script src="js/assistant.js?v=131"></script>
-<script src="js/badge.js?v=131"></script>
-<script src="js/push.js?v=131"></script>
-<script src="js/ai-admin.js?v=131"></script>
-<script src="js/character.js?v=131"></script>
-<script src="js/tasks.js?v=131"></script>
-<script src="js/habits.js?v=131"></script>
-<script src="js/projects.js?v=131"></script>
-<script src="js/story.js?v=131"></script>
-<script src="js/home.js?v=131"></script>
-<script src="js/reading.js?v=131"></script>
-<script src="js/finance.js?v=131"></script>
-<script src="js/calendar.js?v=131"></script>
-<script src="js/rewards.js?v=131"></script>
-<script src="js/achievements.js?v=131"></script>
-<script src="js/main.js?v=131"></script>
+<script src="js/config.js?v=132"></script>
+<script src="js/storage.js?v=132"></script>
+<script src="js/cloud.js?v=132"></script>
+<script src="js/sound.js?v=132"></script>
+<script src="js/assistant.js?v=132"></script>
+<script src="js/badge.js?v=132"></script>
+<script src="js/push.js?v=132"></script>
+<script src="js/ai-admin.js?v=132"></script>
+<script src="js/character.js?v=132"></script>
+<script src="js/tasks.js?v=132"></script>
+<script src="js/habits.js?v=132"></script>
+<script src="js/overdue.js?v=132"></script>
+<script src="js/projects.js?v=132"></script>
+<script src="js/story.js?v=132"></script>
+<script src="js/home.js?v=132"></script>
+<script src="js/reading.js?v=132"></script>
+<script src="js/finance.js?v=132"></script>
+<script src="js/calendar.js?v=132"></script>
+<script src="js/rewards.js?v=132"></script>
+<script src="js/achievements.js?v=132"></script>
+<script src="js/main.js?v=132"></script>
 </body>
 </html>

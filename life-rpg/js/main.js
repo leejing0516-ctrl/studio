@@ -44,6 +44,7 @@ function renderAll() {
   renderTasks(state);
   renderBooks(state);
   renderHabits(state);
+  renderOverdue(state);
   renderRewards(state);
   renderAchievements(state);
   renderLog(state);
@@ -161,6 +162,7 @@ const PAGE_TITLES = {
   'tab-tasks': { icon: '📋', label: '今日任務' },
   'tab-calendar': { icon: '📅', label: '行事曆' },
   'tab-habits': { icon: '🔁', label: '習慣養成' },
+  'tab-overdue': { icon: '⏰', label: '逾期清單' },
   'tab-projects': { icon: '🎯', label: '專案管理' },
   'tab-reading': { icon: '📖', label: '閱讀進度' },
   'tab-story': { icon: '🗺️', label: '故事模式' },
