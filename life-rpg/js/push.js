@@ -82,6 +82,36 @@ async function disableDailyPush() {
   try { await callAIService({ action: 'push_unsubscribe', endpoint }); } catch (e) {}
 }
 
+function fmtDateTime(ms) {
+  const d = new Date(ms);
+  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+// 顯示伺服器端最後一次排程與你這台裝置的推播結果，沒收到通知時可以對照；同時把這台裝置的訂閱重新登記一次，
+// 避免伺服器上的紀錄因為暫時性錯誤遺失
+async function refreshPushDiagnostics() {
+  const el = document.getElementById('push-diag');
+  if (!el || !_cloudUser) return;
+  try {
+    const reg = await getPushRegistration();
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) await callAIService({ action: 'push_subscribe', subscription: sub.toJSON() });
+    const r = await callAIService({ action: 'push_status' });
+    const lines = [];
+    lines.push(r.lastCron
+      ? `伺服器上次排程：${fmtDateTime(r.lastCron.at)}（成功 ${r.lastCron.ok}、失敗 ${r.lastCron.fail}、失效 ${r.lastCron.gone}${r.lastCron.error ? '，錯誤：' + r.lastCron.error : ''}）`
+      : '伺服器還沒有執行過排程（Cron Trigger 可能沒設定好，或還沒到早上 6 點）');
+    if (!r.mine.length) lines.push('伺服器上找不到你這台裝置的訂閱，請按「關閉推播」再重新開啟');
+    r.mine.forEach(m => lines.push(m.lastAt
+      ? `你的裝置最後一次推播：${fmtDateTime(m.lastAt)}，蘋果回應 ${m.lastStatus}（${m.lastStatus >= 200 && m.lastStatus < 300 ? '已送達蘋果' : '送出失敗'}）`
+      : '你的裝置還沒有收過推播'));
+    el.textContent = lines.join('\n');
+    el.style.display = 'block';
+  } catch (e) {
+    el.style.display = 'none';
+  }
+}
+
 async function renderPushSettings() {
   const statusEl = document.getElementById('push-status');
   const enableBtn = document.getElementById('push-enable');
@@ -104,6 +134,7 @@ async function renderPushSettings() {
     statusEl.textContent = '✅ 已開啟：每天早上 6 點左右會推播今天的待辦。';
     testBtn.style.display = '';
     offBtn.style.display = '';
+    refreshPushDiagnostics();
   } else if (Notification.permission === 'denied') {
     statusEl.textContent = '你先前拒絕了通知權限。請到 iPhone「設定」→「通知」→ 找到這個 app → 開啟「允許通知」。';
   } else {

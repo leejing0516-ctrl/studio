@@ -50,9 +50,15 @@ self.addEventListener('push', event => {
       }
     } catch (e) {}
 
+    // 每天用不同的 tag：同一個 tag 會「靜悄悄地取代」前一則通知，只要昨天的通知還留在通知中心，今天就不會跳出提醒
+    try {
+      const old = await self.registration.getNotifications();
+      old.forEach(n => { if (n.tag && n.tag.startsWith('daily-')) n.close(); });
+    } catch (e) {}
     await self.registration.showNotification(title, {
       body,
-      tag: 'daily-summary',
+      tag: 'daily-' + localDateStr(),
+      renotify: true,
       icon: 'assets/icon-192.png',
     });
   })());

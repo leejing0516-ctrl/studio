@@ -127,27 +127,41 @@ async function sendOnePush(env, kvKey) {
   let info;
   try { info = JSON.parse(await env.AI_KV.get(kvKey)); } catch (e) { return 'bad'; }
   if (!info || !info.endpoint) return 'bad';
+  let status = 0, outcome = 'fail';
   try {
     const resp = await fetch(info.endpoint, { method: 'POST', headers: await vapidHeaders(env, info.endpoint) });
-    if (resp.status === 404 || resp.status === 410) { await env.AI_KV.delete(kvKey); return 'gone'; }
-    return resp.ok ? 'ok' : 'fail';
+    status = resp.status;
+    if (status === 404 || status === 410) outcome = 'gone';
+    else if (resp.ok) outcome = 'ok';
   } catch (e) {
-    return 'fail';
+    status = -1;
   }
+  console.log(`push ${kvKey.slice(0, 20)}… → ${status} (${outcome})`);
+  if (outcome === 'gone') { await env.AI_KV.delete(kvKey); return outcome; }
+  // 記下這個裝置最後一次推播的結果，方便在 app 裡診斷「為什麼沒收到」
+  await env.AI_KV.put(kvKey, JSON.stringify({ ...info, lastAt: Date.now(), lastStatus: status }));
+  return outcome;
 }
 
 async function sendAllPush(env) {
-  if (!env.AI_KV || !env.VAPID_PRIVATE_JWK) return { ok: 0, fail: 0, gone: 0 };
-  const result = { ok: 0, fail: 0, gone: 0 };
-  let cursor;
-  do {
-    const r = await env.AI_KV.list({ prefix: 'push:', cursor });
-    for (const k of r.keys) {
-      const res = await sendOnePush(env, k.name);
-      if (res === 'ok') result.ok++; else if (res === 'gone') result.gone++; else result.fail++;
-    }
-    cursor = r.list_complete ? undefined : r.cursor;
-  } while (cursor);
+  const result = { ok: 0, fail: 0, gone: 0, at: Date.now() };
+  try {
+    if (!env.AI_KV || !env.VAPID_PRIVATE_JWK) { result.error = '缺少 AI_KV 或 VAPID_PRIVATE_JWK'; return result; }
+    let cursor;
+    do {
+      const r = await env.AI_KV.list({ prefix: 'push:', cursor });
+      for (const k of r.keys) {
+        const res = await sendOnePush(env, k.name);
+        if (res === 'ok') result.ok++; else if (res === 'gone') result.gone++; else result.fail++;
+      }
+      cursor = r.list_complete ? undefined : r.cursor;
+    } while (cursor);
+  } catch (e) {
+    result.error = String(e);
+  } finally {
+    console.log('cron push result', JSON.stringify(result));
+    try { if (env.AI_KV) await env.AI_KV.put('meta:lastCron', JSON.stringify(result)); } catch (e) {}
+  }
   return result;
 }
 
@@ -177,6 +191,16 @@ async function handlePushAction(action, body, env, uid, email, json) {
     const keys = (await env.AI_KV.list({ prefix: `push:${uid}:` })).keys;
     const res = await Promise.all(keys.map(k => sendOnePush(env, k.name)));
     return json({ sent: res.filter(r => r === 'ok').length, total: keys.length });
+  }
+  if (action === 'push_status') {
+    let lastCron = null;
+    try { lastCron = JSON.parse(await env.AI_KV.get('meta:lastCron')); } catch (e) {}
+    const keys = (await env.AI_KV.list({ prefix: `push:${uid}:` })).keys;
+    const mine = [];
+    for (const k of keys) {
+      try { const v = JSON.parse(await env.AI_KV.get(k.name)); mine.push({ at: v.at, lastAt: v.lastAt || null, lastStatus: v.lastStatus ?? null }); } catch (e) {}
+    }
+    return json({ lastCron, mine });
   }
   return json({ code: 'BAD_ACTION', error: '不支援的操作' }, 400);
 }
